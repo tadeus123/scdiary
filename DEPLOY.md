@@ -29,8 +29,8 @@ In Vercel project settings, go to **Settings → Environment Variables** and add
 
 | Variable Name | Value | Description |
 |---------------|-------|-------------|
-| `ADMIN_PASSWORD` | `your_secure_password_here` | Your admin panel password |
-| `SESSION_SECRET` | `generate_random_string_here` | Random string for session encryption |
+| `ADMIN_PASSWORD` | `COREtmi5#di` | Your admin panel password |
+| `SESSION_SECRET` | `58de17072b06ba8631bda609b155150869e7cac4d854f9ebede99633f0c25742` | Random string for session encryption |
 | `NODE_ENV` | `production` | Production environment flag |
 
 **Generate a secure SESSION_SECRET:**
