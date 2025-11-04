@@ -9,7 +9,7 @@ const entriesPath = path.join(__dirname, '../data/entries.json');
 
 // Admin password (in production, use environment variable)
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || 
-  bcrypt.hashSync(process.env.ADMIN_PASSWORD || 'admin123', 10);
+  bcrypt.hashSync(process.env.ADMIN_PASSWORD || 'COREtmi5#di', 10);
 
 // Middleware to check authentication
 function isAuthenticated(req, res, next) {
