@@ -23,10 +23,6 @@ function isAuthenticated(req, res, next) {
 
 // Admin login/dashboard page
 router.get('/', async (req, res) => {
-  console.log('GET /admin - Session authenticated:', req.session.authenticated);
-  console.log('GET /admin - Session ID:', req.sessionID);
-  console.log('GET /admin - Session data:', JSON.stringify(req.session));
-  
   if (req.session.authenticated) {
     const entries = await getEntries();
     // Entries are already sorted by timestamp DESC from database
@@ -55,7 +51,15 @@ router.post('/login', async (req, res) => {
     
     if (match) {
       req.session.authenticated = true;
-      res.redirect('/admin');
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error:', err);
+        } else {
+          console.log('Session saved successfully');
+        }
+        res.redirect('/admin');
+      });
+      return;
     } else {
       res.render('admin', { authenticated: false, error: 'Invalid password', entries: [] });
     }
