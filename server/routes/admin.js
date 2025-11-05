@@ -6,10 +6,10 @@ const { getEntries, createEntry, deleteEntry } = require('../db/supabase');
 
 // Admin password (in production, use environment variable)
 // WARNING: Never hardcode passwords in production!
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || null;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || 
+  (process.env.ADMIN_PASSWORD ? bcrypt.hashSync(process.env.ADMIN_PASSWORD, 10) : null);
 
-if (!ADMIN_PASSWORD_HASH && !ADMIN_PASSWORD) {
+if (!ADMIN_PASSWORD_HASH) {
   console.error('⚠️  WARNING: ADMIN_PASSWORD or ADMIN_PASSWORD_HASH must be set in environment variables!');
 }
 
@@ -39,12 +39,13 @@ router.post('/login', async (req, res) => {
   let match = false;
   
   try {
-    // Try ADMIN_PASSWORD_HASH first if it exists
+    // Try ADMIN_PASSWORD_HASH first if it exists (secure bcrypt comparison)
     if (ADMIN_PASSWORD_HASH) {
       match = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
     }
     
-    // If no match and ADMIN_PASSWORD is set, try comparing directly
+    // Fallback: If ADMIN_PASSWORD_HASH doesn't exist or doesn't match, 
+    // and ADMIN_PASSWORD is set, compare directly (less secure but functional)
     if (!match && ADMIN_PASSWORD) {
       match = (password === ADMIN_PASSWORD);
     }
@@ -105,4 +106,3 @@ router.post('/logout', (req, res) => {
 });
 
 module.exports = router;
-
