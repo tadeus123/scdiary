@@ -44,7 +44,7 @@ CREATE POLICY "Allow all operations" ON entries
 
   console.log(createTableSQL);
   console.log('\n📝 Please copy the SQL above and run it in Supabase SQL Editor');
-  console.log('   Go to: https://supabase.com/dashboard/project/mvtrinbmwtpniavdcspk/sql\n');
+  console.log('   Go to your Supabase Dashboard → SQL Editor\n');
   
   return false;
 }
