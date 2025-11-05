@@ -52,7 +52,7 @@ CREATE POLICY "Allow all operations" ON entries
 async function migrateEntries() {
   console.log('\n🔄 Migrating entries...');
   
-  const entriesPath = path.join(__dirname, '../../data/entries.json');
+  const entriesPath = path.join(__dirname, '../data/entries.json');
   let entries = [];
   
   try {
