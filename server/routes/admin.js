@@ -23,6 +23,10 @@ function isAuthenticated(req, res, next) {
 
 // Admin login/dashboard page
 router.get('/', async (req, res) => {
+  console.log('GET /admin - Session authenticated:', req.session.authenticated);
+  console.log('GET /admin - Session ID:', req.sessionID);
+  console.log('GET /admin - Session data:', JSON.stringify(req.session));
+  
   if (req.session.authenticated) {
     const entries = await getEntries();
     // Entries are already sorted by timestamp DESC from database
@@ -39,30 +43,20 @@ router.post('/login', async (req, res) => {
   let match = false;
   
   try {
-    console.log('Login attempt - ADMIN_PASSWORD_HASH exists:', !!ADMIN_PASSWORD_HASH);
-    console.log('Login attempt - ADMIN_PASSWORD exists:', !!process.env.ADMIN_PASSWORD);
-    
     // Try ADMIN_PASSWORD_HASH first if it exists
     if (ADMIN_PASSWORD_HASH) {
       match = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
-      console.log('bcrypt comparison result:', match);
     }
     
     // If no match and ADMIN_PASSWORD is set, try comparing directly
     if (!match && process.env.ADMIN_PASSWORD) {
       match = (password === process.env.ADMIN_PASSWORD);
-      console.log('Plaintext comparison result:', match);
-      console.log('Password received:', password);
-      console.log('Password length:', password.length);
-      console.log('Env password length:', process.env.ADMIN_PASSWORD.length);
     }
     
     if (match) {
       req.session.authenticated = true;
-      console.log('Session authenticated set to true');
       res.redirect('/admin');
     } else {
-      console.log('Password mismatch - rendering error');
       res.render('admin', { authenticated: false, error: 'Invalid password', entries: [] });
     }
   } catch (error) {
