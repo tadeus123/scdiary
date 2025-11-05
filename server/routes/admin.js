@@ -6,11 +6,16 @@ const { getEntries, createEntry, deleteEntry } = require('../db/supabase');
 
 // Admin password (in production, use environment variable)
 // WARNING: Never hardcode passwords in production!
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || 
-  (process.env.ADMIN_PASSWORD ? bcrypt.hashSync(process.env.ADMIN_PASSWORD, 10) : null);
+// Prefer ADMIN_PASSWORD_HASH for security. ADMIN_PASSWORD (plaintext) is a fallback.
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || null;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
 
-if (!ADMIN_PASSWORD_HASH) {
+if (!ADMIN_PASSWORD_HASH && !ADMIN_PASSWORD) {
   console.error('⚠️  WARNING: ADMIN_PASSWORD or ADMIN_PASSWORD_HASH must be set in environment variables!');
+}
+
+if (ADMIN_PASSWORD && !ADMIN_PASSWORD_HASH) {
+  console.warn('⚠️  SECURITY WARNING: Using plaintext ADMIN_PASSWORD. Consider using ADMIN_PASSWORD_HASH for better security.');
 }
 
 // Middleware to check authentication
@@ -39,12 +44,12 @@ router.post('/login', async (req, res) => {
   let match = false;
   
   try {
-    // Try ADMIN_PASSWORD_HASH first if it exists (secure bcrypt comparison)
+    // Try ADMIN_PASSWORD_HASH first if it exists
     if (ADMIN_PASSWORD_HASH) {
       match = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
     }
     
-    // Fallback: If ADMIN_PASSWORD_HASH doesn't exist or doesn't match, 
+    // Fallback: If ADMIN_PASSWORD_HASH doesn't exist or doesn't match,
     // and ADMIN_PASSWORD is set, compare directly (less secure but functional)
     if (!match && ADMIN_PASSWORD) {
       match = (password === ADMIN_PASSWORD);
