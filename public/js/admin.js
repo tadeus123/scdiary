@@ -23,7 +23,10 @@ async function saveEntry() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ content })
+      body: JSON.stringify({ 
+        content,
+        timestamp: new Date().toISOString() // Use device's local time
+      })
     });
     
     const data = await response.json();

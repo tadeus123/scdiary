@@ -3,36 +3,19 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const { marked } = require('marked');
 const { getEntries, createEntry, deleteEntry } = require('../db/supabase');
-const crypto = require('crypto');
 
 // Admin password (in production, use environment variable)
 // WARNING: Never hardcode passwords in production!
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || null;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || 
+  (process.env.ADMIN_PASSWORD ? bcrypt.hashSync(process.env.ADMIN_PASSWORD, 10) : null);
 
-if (!ADMIN_PASSWORD_HASH && !ADMIN_PASSWORD) {
+if (!ADMIN_PASSWORD_HASH) {
   console.error('⚠️  WARNING: ADMIN_PASSWORD or ADMIN_PASSWORD_HASH must be set in environment variables!');
 }
 
-// Generate auth token
-const AUTH_SECRET = process.env.SESSION_SECRET || 'diary-secret-key-change-in-production';
-
-function generateAuthToken() {
-  return crypto.createHmac('sha256', AUTH_SECRET)
-    .update(Date.now().toString() + Math.random().toString())
-    .digest('hex');
-}
-
-function verifyAuthToken(token) {
-  if (!token) return false;
-  // Simple verification - token should be 64 char hex string
-  return token.length === 64 && /^[a-f0-9]+$/.test(token);
-}
-
-// Middleware to check authentication via cookie
+// Middleware to check authentication
 function isAuthenticated(req, res, next) {
-  const authToken = req.cookies.auth_token;
-  if (authToken && verifyAuthToken(authToken)) {
+  if (req.session.authenticated) {
     return next();
   }
   res.redirect('/admin');
@@ -40,9 +23,7 @@ function isAuthenticated(req, res, next) {
 
 // Admin login/dashboard page
 router.get('/', async (req, res) => {
-  const authToken = req.cookies.auth_token;
-  
-  if (authToken && verifyAuthToken(authToken)) {
+  if (req.session.authenticated) {
     const entries = await getEntries();
     // Entries are already sorted by timestamp DESC from database
     res.render('admin', { authenticated: true, entries });
@@ -64,19 +45,12 @@ router.post('/login', async (req, res) => {
     }
     
     // If no match and ADMIN_PASSWORD is set, try comparing directly
-    if (!match && ADMIN_PASSWORD) {
-      match = (password === ADMIN_PASSWORD);
+    if (!match && process.env.ADMIN_PASSWORD) {
+      match = (password === process.env.ADMIN_PASSWORD);
     }
     
     if (match) {
-      const authToken = generateAuthToken();
-      res.cookie('auth_token', authToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        sameSite: 'lax'
-      });
-      console.log('Auth cookie set, redirecting to /admin');
+      req.session.authenticated = true;
       res.redirect('/admin');
     } else {
       res.render('admin', { authenticated: false, error: 'Invalid password', entries: [] });
@@ -89,7 +63,7 @@ router.post('/login', async (req, res) => {
 
 // Save new entry
 router.post('/entry', isAuthenticated, async (req, res) => {
-  const { content } = req.body;
+  const { content, timestamp } = req.body;
   
   if (!content || content.trim() === '') {
     return res.status(400).json({ error: 'Content is required' });
@@ -97,7 +71,7 @@ router.post('/entry', isAuthenticated, async (req, res) => {
   
   const newEntry = {
     id: Date.now().toString(),
-    timestamp: new Date().toISOString(),
+    timestamp: timestamp || new Date().toISOString(), // Use client timestamp if provided
     content: content,
     html: marked(content)
   };
@@ -126,7 +100,7 @@ router.delete('/entry/:id', isAuthenticated, async (req, res) => {
 
 // Logout
 router.post('/logout', (req, res) => {
-  res.clearCookie('auth_token');
+  req.session.destroy();
   res.redirect('/admin');
 });
 
