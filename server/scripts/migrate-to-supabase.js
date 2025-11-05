@@ -9,8 +9,8 @@ const fs = require('fs');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://mvtrinbmwtpniavdcspk.supabase.co';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12dHJpbmJtd3RwbmlhdmRjc3BrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyOTU4NjcsImV4cCI6MjA3Nzg3MTg2N30.0xpV66XH1EZZw0gHe6Z-MQ90ay-Zs8f4B0wOFV9dZX0';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Error: SUPABASE_URL and SUPABASE_ANON_KEY must be set');

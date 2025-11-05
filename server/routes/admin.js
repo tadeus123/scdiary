@@ -5,8 +5,13 @@ const { marked } = require('marked');
 const { getEntries, createEntry, deleteEntry } = require('../db/supabase');
 
 // Admin password (in production, use environment variable)
+// WARNING: Never hardcode passwords in production!
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || 
-  bcrypt.hashSync(process.env.ADMIN_PASSWORD || 'COREtmi5#di', 10);
+  (process.env.ADMIN_PASSWORD ? bcrypt.hashSync(process.env.ADMIN_PASSWORD, 10) : null);
+
+if (!ADMIN_PASSWORD_HASH) {
+  console.error('⚠️  WARNING: ADMIN_PASSWORD or ADMIN_PASSWORD_HASH must be set in environment variables!');
+}
 
 // Middleware to check authentication
 function isAuthenticated(req, res, next) {

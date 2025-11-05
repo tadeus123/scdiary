@@ -29,11 +29,13 @@ In Vercel project settings, go to **Settings → Environment Variables** and add
 
 | Variable Name | Value | Description |
 |---------------|-------|-------------|
-| `ADMIN_PASSWORD` | `COREtmi5#di` | Your admin panel password |
-| `SESSION_SECRET` | `58de17072b06ba8631bda609b155150869e7cac4d854f9ebede99633f0c25742` | Random string for session encryption |
+| `ADMIN_PASSWORD` | `YOUR_PASSWORD` | Your admin panel password (or use `ADMIN_PASSWORD_HASH`) |
+| `SESSION_SECRET` | `GENERATE_RANDOM_STRING` | Random string for session encryption (see command below) |
 | `NODE_ENV` | `production` | Production environment flag |
-| `SUPABASE_URL` | `https://xxxxx.supabase.co` | Your Supabase project URL |
-| `SUPABASE_ANON_KEY` | `eyJ...` | Your Supabase anon/public key |
+| `SUPABASE_URL` | `YOUR_SUPABASE_URL` | Your Supabase project URL (from Supabase Dashboard) |
+| `SUPABASE_ANON_KEY` | `YOUR_SUPABASE_KEY` | Your Supabase anon/public key (from Supabase Dashboard) |
+
+**⚠️ SECURITY WARNING:** Never commit actual credential values to git!
 
 **Generate a secure SESSION_SECRET:**
 ```bash

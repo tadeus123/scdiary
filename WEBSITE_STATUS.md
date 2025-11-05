@@ -23,8 +23,8 @@
 
 **Solution Required:**
 1. Go to Vercel Dashboard → Your Project → Settings → Environment Variables
-2. Verify `ADMIN_PASSWORD` is set to: `COREtmi5#di`
-3. OR (better) set `ADMIN_PASSWORD_HASH` to: `$2b$10$D3MdsmeSY5uRi/PgOvXUa.JhzY/hBNAsEN3FbR3N4R2yegZspMs2O`
+2. Set `ADMIN_PASSWORD` to your actual password
+3. OR (better) set `ADMIN_PASSWORD_HASH` (generate locally using: `node -e "const bcrypt = require('bcrypt'); bcrypt.hash('YOUR_PASSWORD', 10).then(hash => console.log(hash));"`)
 4. Redeploy the project after adding/updating the variable
 
 **Note:** The code logic is correct - this is likely an environment variable configuration issue in Vercel.

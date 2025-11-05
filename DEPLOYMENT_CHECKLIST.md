@@ -17,13 +17,17 @@
 ### 3. Environment Variables
 Make sure these are set in **Vercel** (Settings → Environment Variables):
 
-| Variable | Value | Status |
-|----------|-------|--------|
-| `ADMIN_PASSWORD` | `COREtmi5#di` | ✅ Set |
-| `SESSION_SECRET` | `58de17072b06ba8631bda609b155150869e7cac4d854f9ebede99633f0c25742` | ✅ Set |
+| Variable | Description | Status |
+|----------|-------------|--------|
+| `ADMIN_PASSWORD` | Your admin panel password (or use `ADMIN_PASSWORD_HASH`) | ✅ Set |
+| `SESSION_SECRET` | Random secret for session encryption | ✅ Set |
 | `NODE_ENV` | `production` | ✅ Set |
-| `SUPABASE_URL` | `https://mvtrinbmwtpniavdcspk.supabase.co` | ✅ Set |
-| `SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` | ✅ Set |
+| `SUPABASE_URL` | Your Supabase project URL | ✅ Set |
+| `SUPABASE_ANON_KEY` | Your Supabase anon/public key | ✅ Set |
+
+**⚠️ IMPORTANT:** Never commit actual credential values to git. Get values from:
+- Supabase Dashboard → Project Settings → API
+- Generate `ADMIN_PASSWORD_HASH` locally using: `node -e "const bcrypt = require('bcrypt'); bcrypt.hash('YOUR_PASSWORD', 10).then(hash => console.log(hash));"`
 
 ### 4. GitHub & Vercel
 - ✅ Code pushed to GitHub (`https://github.com/tadeus123/scdiary.git`)

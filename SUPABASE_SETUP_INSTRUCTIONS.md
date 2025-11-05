@@ -2,7 +2,7 @@
 
 ## Step 1: Create the Database Table
 
-1. Go to your Supabase project: https://supabase.com/dashboard/project/mvtrinbmwtpniavdcspk
+1. Go to your Supabase project dashboard
 2. Click on **"SQL Editor"** in the left sidebar
 3. Click **"New query"** (or the + button)
 4. Copy and paste the SQL below into the editor:
