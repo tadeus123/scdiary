@@ -51,15 +51,7 @@ router.post('/login', async (req, res) => {
     
     if (match) {
       req.session.authenticated = true;
-      req.session.save((err) => {
-        if (err) {
-          console.error('Session save error:', err);
-        } else {
-          console.log('Session saved successfully');
-        }
-        res.redirect('/admin');
-      });
-      return;
+      res.redirect('/admin');
     } else {
       res.render('admin', { authenticated: false, error: 'Invalid password', entries: [] });
     }
@@ -108,7 +100,7 @@ router.delete('/entry/:id', isAuthenticated, async (req, res) => {
 
 // Logout
 router.post('/logout', (req, res) => {
-  req.session.destroy();
+  res.clearCookie('auth_token');
   res.redirect('/admin');
 });
 
