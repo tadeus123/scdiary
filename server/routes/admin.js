@@ -3,19 +3,36 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const { marked } = require('marked');
 const { getEntries, createEntry, deleteEntry } = require('../db/supabase');
+const crypto = require('crypto');
 
 // Admin password (in production, use environment variable)
 // WARNING: Never hardcode passwords in production!
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || 
-  (process.env.ADMIN_PASSWORD ? bcrypt.hashSync(process.env.ADMIN_PASSWORD, 10) : null);
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || null;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
 
-if (!ADMIN_PASSWORD_HASH) {
+if (!ADMIN_PASSWORD_HASH && !ADMIN_PASSWORD) {
   console.error('⚠️  WARNING: ADMIN_PASSWORD or ADMIN_PASSWORD_HASH must be set in environment variables!');
 }
 
-// Middleware to check authentication
+// Generate auth token
+const AUTH_SECRET = process.env.SESSION_SECRET || 'diary-secret-key-change-in-production';
+
+function generateAuthToken() {
+  return crypto.createHmac('sha256', AUTH_SECRET)
+    .update(Date.now().toString() + Math.random().toString())
+    .digest('hex');
+}
+
+function verifyAuthToken(token) {
+  if (!token) return false;
+  // Simple verification - token should be 64 char hex string
+  return token.length === 64 && /^[a-f0-9]+$/.test(token);
+}
+
+// Middleware to check authentication via cookie
 function isAuthenticated(req, res, next) {
-  if (req.session.authenticated) {
+  const authToken = req.cookies.auth_token;
+  if (authToken && verifyAuthToken(authToken)) {
     return next();
   }
   res.redirect('/admin');
@@ -23,7 +40,9 @@ function isAuthenticated(req, res, next) {
 
 // Admin login/dashboard page
 router.get('/', async (req, res) => {
-  if (req.session.authenticated) {
+  const authToken = req.cookies.auth_token;
+  
+  if (authToken && verifyAuthToken(authToken)) {
     const entries = await getEntries();
     // Entries are already sorted by timestamp DESC from database
     res.render('admin', { authenticated: true, entries });
@@ -45,12 +64,19 @@ router.post('/login', async (req, res) => {
     }
     
     // If no match and ADMIN_PASSWORD is set, try comparing directly
-    if (!match && process.env.ADMIN_PASSWORD) {
-      match = (password === process.env.ADMIN_PASSWORD);
+    if (!match && ADMIN_PASSWORD) {
+      match = (password === ADMIN_PASSWORD);
     }
     
     if (match) {
-      req.session.authenticated = true;
+      const authToken = generateAuthToken();
+      res.cookie('auth_token', authToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        sameSite: 'lax'
+      });
+      console.log('Auth cookie set, redirecting to /admin');
       res.redirect('/admin');
     } else {
       res.render('admin', { authenticated: false, error: 'Invalid password', entries: [] });
