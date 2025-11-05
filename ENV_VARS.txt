@@ -1,14 +1,16 @@
 === COPY THESE VALUES TO VERCEL ===
 
 ADMIN_PASSWORD = COREtmi5#di
+OR (preferred for production):
+ADMIN_PASSWORD_HASH = $2b$10$D3MdsmeSY5uRi/PgOvXUa.JhzY/hBNAsEN3FbR3N4R2yegZspMs2O
 
 SESSION_SECRET = 58de17072b06ba8631bda609b155150869e7cac4d854f9ebede99633f0c25742
 
 NODE_ENV = production
 
-SUPABASE_URL = [Your Supabase Project URL - get from Supabase dashboard]
+SUPABASE_URL = https://mvtrinbmwtpniavdcspk.supabase.co
 
-SUPABASE_ANON_KEY = [Your Supabase anon/public key - get from Supabase dashboard]
+SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12dHJpbmJtd3RwbmlhdmRjc3BrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyOTU4NjcsImV4cCI6MjA3Nzg3MTg2N30.0xpV66XH1EZZw0gHe6Z-MQ90ay-Zs8f4B0wOFV9dZX0
 
 === INSTRUCTIONS ===
 1. Go to your Vercel project settings
