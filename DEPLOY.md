@@ -32,6 +32,8 @@ In Vercel project settings, go to **Settings → Environment Variables** and add
 | `ADMIN_PASSWORD` | `COREtmi5#di` | Your admin panel password |
 | `SESSION_SECRET` | `58de17072b06ba8631bda609b155150869e7cac4d854f9ebede99633f0c25742` | Random string for session encryption |
 | `NODE_ENV` | `production` | Production environment flag |
+| `SUPABASE_URL` | `https://xxxxx.supabase.co` | Your Supabase project URL |
+| `SUPABASE_ANON_KEY` | `eyJ...` | Your Supabase anon/public key |
 
 **Generate a secure SESSION_SECRET:**
 ```bash

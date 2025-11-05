@@ -6,10 +6,15 @@ SESSION_SECRET = 58de17072b06ba8631bda609b155150869e7cac4d854f9ebede99633f0c2574
 
 NODE_ENV = production
 
+SUPABASE_URL = [Your Supabase Project URL - get from Supabase dashboard]
+
+SUPABASE_ANON_KEY = [Your Supabase anon/public key - get from Supabase dashboard]
+
 === INSTRUCTIONS ===
 1. Go to your Vercel project settings
 2. Click "Environment Variables"
 3. Add each variable above (copy exactly as shown)
-4. Make sure to select "Production" environment for all
-5. Redeploy your project
+4. Get SUPABASE_URL and SUPABASE_ANON_KEY from Supabase dashboard (see SUPABASE_SETUP.md)
+5. Make sure to select "Production" environment for all
+6. Redeploy your project
 
