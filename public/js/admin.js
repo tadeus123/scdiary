@@ -18,6 +18,16 @@ async function saveEntry() {
   saveBtn.textContent = 'saving...';
   
   try {
+    // Create ISO string using local time (not UTC)
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    const localTimestamp = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.000Z`;
+    
     const response = await fetch('/admin/entry', {
       method: 'POST',
       headers: {
@@ -25,7 +35,7 @@ async function saveEntry() {
       },
       body: JSON.stringify({ 
         content,
-        timestamp: new Date().toISOString() // Use device's local time
+        timestamp: localTimestamp
       })
     });
     
