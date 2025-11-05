@@ -36,14 +36,19 @@ router.get('/', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { password } = req.body;
   
-  if (!ADMIN_PASSWORD_HASH) {
-    console.error('⚠️  Admin password not configured');
-    res.render('admin', { authenticated: false, error: 'Admin password not configured. Please set ADMIN_PASSWORD or ADMIN_PASSWORD_HASH environment variable.', entries: [] });
-    return;
-  }
+  let match = false;
   
   try {
-    const match = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+    // Try ADMIN_PASSWORD_HASH first if it exists
+    if (ADMIN_PASSWORD_HASH) {
+      match = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+    }
+    
+    // If no match and ADMIN_PASSWORD is set, try comparing directly
+    if (!match && process.env.ADMIN_PASSWORD) {
+      match = (password === process.env.ADMIN_PASSWORD);
+    }
+    
     if (match) {
       req.session.authenticated = true;
       res.redirect('/admin');
