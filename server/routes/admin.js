@@ -39,15 +39,14 @@ router.post('/login', async (req, res) => {
   let match = false;
   
   try {
-    // Try ADMIN_PASSWORD_HASH first if it exists (secure bcrypt comparison)
+    // Try ADMIN_PASSWORD_HASH first if it exists
     if (ADMIN_PASSWORD_HASH) {
       match = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
     }
     
-    // Fallback: If ADMIN_PASSWORD_HASH doesn't exist or doesn't match,
-    // and ADMIN_PASSWORD is set, compare directly (less secure but functional)
-    if (!match && ADMIN_PASSWORD) {
-      match = (password === ADMIN_PASSWORD);
+    // If no match and ADMIN_PASSWORD is set, try comparing directly
+    if (!match && process.env.ADMIN_PASSWORD) {
+      match = (password === process.env.ADMIN_PASSWORD);
     }
     
     if (match) {
