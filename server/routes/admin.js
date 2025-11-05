@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const { marked } = require('marked');
 const { getEntries, createEntry, deleteEntry } = require('../db/supabase');
 
@@ -8,14 +9,30 @@ const { getEntries, createEntry, deleteEntry } = require('../db/supabase');
 // WARNING: Never hardcode passwords in production!
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || null;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
+const AUTH_SECRET = process.env.SESSION_SECRET || 'diary-secret-key-change-in-production';
 
 if (!ADMIN_PASSWORD_HASH && !ADMIN_PASSWORD) {
   console.error('⚠️  WARNING: ADMIN_PASSWORD or ADMIN_PASSWORD_HASH must be set in environment variables!');
 }
 
-// Middleware to check authentication
+// Generate secure auth token
+function generateAuthToken() {
+  return crypto.createHmac('sha256', AUTH_SECRET)
+    .update(Date.now().toString() + Math.random().toString())
+    .digest('hex');
+}
+
+// Verify auth token
+function verifyAuthToken(token) {
+  if (!token) return false;
+  // Token should be 64 char hex string from HMAC SHA256
+  return token.length === 64 && /^[a-f0-9]+$/.test(token);
+}
+
+// Middleware to check authentication via cookie
 function isAuthenticated(req, res, next) {
-  if (req.session.authenticated) {
+  const authToken = req.cookies.diary_auth;
+  if (authToken && verifyAuthToken(authToken)) {
     return next();
   }
   res.redirect('/admin');
@@ -23,9 +40,10 @@ function isAuthenticated(req, res, next) {
 
 // Admin login/dashboard page
 router.get('/', async (req, res) => {
-  if (req.session.authenticated) {
+  const authToken = req.cookies.diary_auth;
+  
+  if (authToken && verifyAuthToken(authToken)) {
     const entries = await getEntries();
-    // Entries are already sorted by timestamp DESC from database
     res.render('admin', { authenticated: true, entries });
   } else {
     res.render('admin', { authenticated: false, error: null, entries: [] });
@@ -50,7 +68,13 @@ router.post('/login', async (req, res) => {
     }
     
     if (match) {
-      req.session.authenticated = true;
+      const authToken = generateAuthToken();
+      res.cookie('diary_auth', authToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        sameSite: 'lax'
+      });
       res.redirect('/admin');
     } else {
       res.render('admin', { authenticated: false, error: 'Invalid password', entries: [] });
@@ -100,7 +124,7 @@ router.delete('/entry/:id', isAuthenticated, async (req, res) => {
 
 // Logout
 router.post('/logout', (req, res) => {
-  req.session.destroy();
+  res.clearCookie('diary_auth');
   res.redirect('/admin');
 });
 
