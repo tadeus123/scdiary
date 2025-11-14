@@ -109,6 +109,7 @@ nav {
   text-decoration: none;
   color: var(--text-color);
   letter-spacing: -0.02em;
+  cursor: pointer;
 }
 
 .site-title:hover {
