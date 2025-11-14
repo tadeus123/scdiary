@@ -563,26 +563,14 @@ nav a:hover:not(.site-title) {
 /* Corner / Mind Map page styles */
 .corner-mindmap {
   min-height: 100vh;
-  padding: 4rem 2rem;
+  padding: 2rem;
   position: relative;
   overflow: hidden;
 }
 
-.mindmap-title {
-  font-family: 'Kalam', 'Comic Sans MS', cursive;
-  font-size: 3rem;
-  font-weight: 700;
-  color: var(--text-color);
-  text-align: center;
-  margin-bottom: 4rem;
-  letter-spacing: -0.02em;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
-  transform: rotate(-0.5deg);
-}
-
 .mindmap-container {
   position: relative;
-  min-height: 80vh;
+  min-height: 100vh;
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
@@ -672,12 +660,7 @@ nav a:hover:not(.site-title) {
 
 @media (max-width: 768px) {
   .corner-mindmap {
-    padding: 3rem 1.5rem;
-  }
-
-  .mindmap-title {
-    font-size: 2.2rem;
-    margin-bottom: 3rem;
+    padding: 2rem 1rem;
   }
 
   .mindmap-goal {
