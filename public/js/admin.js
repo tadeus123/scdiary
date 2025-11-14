@@ -122,3 +122,105 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Goals management
+const goalInput = document.getElementById('goal-input');
+const goalsList = document.getElementById('goals-list');
+
+// Load goals on page load
+if (goalsList) {
+  loadGoals();
+}
+
+async function loadGoals() {
+  try {
+    const response = await fetch('/admin/goals');
+    const data = await response.json();
+    
+    if (data.success) {
+      renderGoals(data.goals);
+    }
+  } catch (error) {
+    console.error('Error loading goals:', error);
+  }
+}
+
+function renderGoals(goals) {
+  if (!goalsList) return;
+  
+  if (goals.length === 0) {
+    goalsList.innerHTML = '<p style="opacity: 0.5; font-style: italic;">No goals yet. Add your first goal above!</p>';
+    return;
+  }
+  
+  goalsList.innerHTML = goals.map(goal => `
+    <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 3px;">
+      <span style="flex: 1; font-size: 0.95rem;">${escapeHtml(goal.text)}</span>
+      <button onclick="deleteGoal('${goal.id}')" style="background: none; border: none; color: var(--text-color); cursor: pointer; opacity: 0.5; font-size: 1.2rem; padding: 0 0.5rem;" title="Delete goal">×</button>
+    </div>
+  `).join('');
+}
+
+async function addGoal() {
+  if (!goalInput) return;
+  
+  const text = goalInput.value.trim();
+  
+  if (!text) {
+    return;
+  }
+  
+  try {
+    const response = await fetch('/admin/goal', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      goalInput.value = '';
+      loadGoals();
+    } else {
+      showMessage(data.error || 'Failed to add goal.', 'error');
+    }
+  } catch (error) {
+    console.error('Error adding goal:', error);
+    showMessage('Network error. Please try again.', 'error');
+  }
+}
+
+async function deleteGoal(goalId) {
+  if (!confirm('Are you sure you want to delete this goal?')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/admin/goal/${goalId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      loadGoals();
+    } else {
+      showMessage(data.error || 'Failed to delete goal.', 'error');
+    }
+  } catch (error) {
+    console.error('Error deleting goal:', error);
+    showMessage('Network error. Please try again.', 'error');
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
