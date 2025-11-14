@@ -25,8 +25,8 @@ const adminRoutes = require('./routes/admin');
 app.use('/', diaryRoutes);
 app.use('/admin', adminRoutes);
 
-// Trouble corner route
-app.get('/trouble-corner', (req, res) => {
+// Corner route
+app.get('/corner', (req, res) => {
   res.render('trouble-corner');
 });
 
