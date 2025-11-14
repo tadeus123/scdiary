@@ -16,33 +16,17 @@
         <p class="mindmap-empty">No goals yet. Add your goals in the admin panel.</p>
       <% } else { %>
         <% 
+          var cols = Math.ceil(Math.sqrt(goals.length));
+          var rows = Math.ceil(goals.length / cols);
           goals.forEach((goal, index) => { 
-            // More organic, artistic placement - spiral/radial pattern with randomness
-            var angle = (index / goals.length) * Math.PI * 2;
-            var radius = 20 + (index % 3) * 8 + Math.random() * 15;
-            var centerX = 50;
-            var centerY = 50;
-            var x = centerX + Math.cos(angle) * radius + (Math.random() - 0.5) * 10;
-            var y = centerY + Math.sin(angle) * radius + (Math.random() - 0.5) * 10;
-            
-            // Vary rotation more dramatically for artistic feel
-            var rotation = (Math.random() * 8 - 4).toFixed(2);
-            
-            // Vary font size slightly for visual interest
-            var fontSize = (0.95 + Math.random() * 0.2).toFixed(2);
-            
-            // Vary opacity slightly
-            var opacity = (0.85 + Math.random() * 0.15).toFixed(2);
-            
-            var delay = (index * 0.08).toFixed(2);
+            var col = index % cols;
+            var row = Math.floor(index / cols);
+            var x = ((col + 0.5) / cols * 90 + 5).toFixed(2);
+            var y = ((row + 0.5) / rows * 85 + 7.5).toFixed(2);
         %>
           <div class="mindmap-goal" style="
-            --rotation: <%= rotation %>deg;
             --x: <%= x %>%;
             --y: <%= y %>%;
-            --delay: <%= delay %>s;
-            --font-size: <%= fontSize %>rem;
-            --opacity: <%= opacity %>;
           ">
             <span class="goal-text"><%= goal.text %></span>
           </div>
