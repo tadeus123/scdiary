@@ -117,10 +117,159 @@ async function deleteEntry(id) {
   }
 }
 
+// Goals functions
+async function getGoals() {
+  if (!supabase) {
+    // Fallback to file storage if Supabase not configured
+    const fs = require('fs');
+    const path = require('path');
+    const goalsPath = path.join(__dirname, '../../data/goals.json');
+    try {
+      const data = fs.readFileSync(goalsPath, 'utf8');
+      return JSON.parse(data);
+    } catch (error) {
+      return [];
+    }
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('goals')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching goals:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching goals:', error);
+    return [];
+  }
+}
+
+async function createGoal(goal) {
+  if (!supabase) {
+    // Fallback to file storage
+    const fs = require('fs');
+    const path = require('path');
+    const goalsPath = path.join(__dirname, '../../data/goals.json');
+    try {
+      const goals = JSON.parse(fs.readFileSync(goalsPath, 'utf8') || '[]');
+      goals.push(goal);
+      fs.writeFileSync(goalsPath, JSON.stringify(goals, null, 2), 'utf8');
+      return { success: true, goal };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('goals')
+      .insert([goal])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating goal:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, goal: data };
+  } catch (error) {
+    console.error('Error creating goal:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function updateGoal(id, updates) {
+  if (!supabase) {
+    // Fallback to file storage
+    const fs = require('fs');
+    const path = require('path');
+    const goalsPath = path.join(__dirname, '../../data/goals.json');
+    try {
+      const goals = JSON.parse(fs.readFileSync(goalsPath, 'utf8'));
+      const index = goals.findIndex(g => g.id === id);
+      if (index === -1) {
+        return { success: false, error: 'Goal not found' };
+      }
+      goals[index] = { ...goals[index], ...updates };
+      fs.writeFileSync(goalsPath, JSON.stringify(goals, null, 2), 'utf8');
+      return { success: true, goal: goals[index] };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('goals')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating goal:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, goal: data };
+  } catch (error) {
+    console.error('Error updating goal:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function deleteGoal(id) {
+  if (!supabase) {
+    // Fallback to file storage
+    const fs = require('fs');
+    const path = require('path');
+    const goalsPath = path.join(__dirname, '../../data/goals.json');
+    try {
+      const goals = JSON.parse(fs.readFileSync(goalsPath, 'utf8'));
+      const filtered = goals.filter(g => g.id !== id);
+      if (filtered.length === goals.length) {
+        return { success: false, error: 'Goal not found' };
+      }
+      fs.writeFileSync(goalsPath, JSON.stringify(filtered, null, 2), 'utf8');
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  try {
+    const { error } = await supabase
+      .from('goals')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting goal:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting goal:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   getEntries,
   createEntry,
   deleteEntry,
+  getGoals,
+  createGoal,
+  updateGoal,
+  deleteGoal,
   isConfigured: () => supabase !== null
 };
 
