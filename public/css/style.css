@@ -581,35 +581,22 @@ nav a:hover:not(.site-title) {
   left: var(--x);
   top: var(--y);
   transform: translate(-50%, -50%) rotate(var(--rotation));
-  padding: 1rem 1.5rem;
-  background-color: var(--entry-bg);
-  border: 2px solid var(--border-color);
-  border-radius: 15px;
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.1),
-    0 2px 4px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
   animation: fadeInUp 0.6s ease var(--delay) both;
-  max-width: 280px;
+  max-width: 300px;
   cursor: default;
-}
-
-.mindmap-goal:hover {
-  transform: translate(-50%, -50%) rotate(var(--rotation)) scale(1.05);
-  box-shadow: 
-    0 6px 20px rgba(0, 0, 0, 0.15),
-    0 3px 8px rgba(0, 0, 0, 0.1);
-  z-index: 10;
+  pointer-events: none;
 }
 
 .goal-text {
   font-family: 'Kalam', 'Comic Sans MS', cursive;
-  font-size: 1rem;
-  line-height: 1.6;
+  font-size: 1.1rem;
+  line-height: 1.8;
   color: var(--text-color);
   display: block;
   text-shadow: 0.5px 0.5px 1px rgba(0, 0, 0, 0.05);
   letter-spacing: 0.01em;
+  white-space: normal;
+  word-wrap: break-word;
 }
 
 .mindmap-empty {
@@ -633,28 +620,14 @@ nav a:hover:not(.site-title) {
   }
 }
 
-[data-theme="dark"] .mindmap-goal {
-  background-color: rgba(255, 255, 255, 0.03);
-  border-color: rgba(226, 232, 240, 0.15);
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.3),
-    0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-[data-theme="dark"] .mindmap-goal:hover {
-  box-shadow: 
-    0 6px 20px rgba(0, 0, 0, 0.4),
-    0 3px 8px rgba(0, 0, 0, 0.3);
-}
 
 @media (max-width: 1024px) {
   .mindmap-goal {
-    max-width: 240px;
-    padding: 0.875rem 1.25rem;
+    max-width: 250px;
   }
   
   .goal-text {
-    font-size: 0.95rem;
+    font-size: 1rem;
   }
 }
 
@@ -668,12 +641,8 @@ nav a:hover:not(.site-title) {
     left: auto;
     top: auto;
     transform: rotate(var(--rotation));
-    margin: 1rem auto;
+    margin: 1.5rem auto;
     max-width: 90%;
-  }
-
-  .mindmap-goal:hover {
-    transform: rotate(var(--rotation)) scale(1.02);
   }
 
   @keyframes fadeInUp {
