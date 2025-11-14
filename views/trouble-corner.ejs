@@ -16,14 +16,16 @@
         <p class="mindmap-empty">No goals yet. Add your goals in the admin panel.</p>
       <% } else { %>
         <% 
-          var cols = Math.ceil(Math.sqrt(goals.length));
+          var cols = Math.ceil(Math.sqrt(goals.length * 1.8));
           var rows = Math.ceil(goals.length / cols);
+          var xSpacing = 70 / Math.max(cols, 1);
+          var ySpacing = 60 / Math.max(rows, 1);
           goals.forEach((goal, index) => { 
             var col = index % cols;
             var row = Math.floor(index / cols);
-            var rotation = (Math.random() * 4 - 2).toFixed(2);
-            var x = ((col + 0.5) / cols * 80 + 10).toFixed(2);
-            var y = ((row + 0.5) / rows * 70 + 15).toFixed(2);
+            var rotation = (Math.random() * 2 - 1).toFixed(2);
+            var x = (15 + col * xSpacing).toFixed(2);
+            var y = (20 + row * ySpacing).toFixed(2);
             var delay = (index * 0.1).toFixed(1);
         %>
           <div class="mindmap-goal" style="
