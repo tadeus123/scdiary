@@ -10,18 +10,7 @@
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <a href="/" class="back-to-diary" aria-label="Back to diary">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M19 12H5M12 19l-7-7 7-7"/>
-    </svg>
-    <span>back to diary</span>
-  </a>
-  
   <div class="corner-mindmap">
-    <div class="mindmap-header">
-      <h1 class="mindmap-title">my goals & dreams</h1>
-      <p class="mindmap-subtitle">the vision board of what i aspire to achieve</p>
-    </div>
     <div class="mindmap-container">
       <% if (typeof goals === 'undefined' || goals.length === 0) { %>
         <p class="mindmap-empty">No goals yet. Add your goals in the admin panel.</p>
