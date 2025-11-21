@@ -597,18 +597,22 @@ body:has(.corner-mindmap) {
   left: var(--x);
   top: var(--y);
   transform: translate(-50%, -50%);
-  max-width: 280px;
+  max-width: 300px;
 }
 
 .goal-text {
   font-family: 'Kalam', 'Comic Sans MS', cursive;
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   font-weight: 400;
-  line-height: 1.6;
+  line-height: 1.7;
   color: var(--text-color);
   display: block;
+  padding: 1rem 1.5rem;
+  background: var(--entry-bg);
+  border-radius: 12px;
   white-space: normal;
   word-wrap: break-word;
+  border: 1px solid var(--border-color);
 }
 
 .mindmap-empty {
@@ -625,11 +629,12 @@ body:has(.corner-mindmap) {
 
 @media (max-width: 1024px) {
   .mindmap-goal {
-    max-width: 250px;
+    max-width: 270px;
   }
   
   .goal-text {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
+    padding: 0.9rem 1.3rem;
   }
   
   .corner-mindmap {
@@ -669,7 +674,8 @@ body:has(.corner-mindmap) {
   }
   
   .goal-text {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
+    padding: 1rem 1.25rem;
     display: block;
     width: 100%;
     text-align: center;
