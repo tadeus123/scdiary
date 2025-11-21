@@ -568,21 +568,101 @@ body:has(.corner-mindmap) {
   width: 100%;
 }
 
+.back-to-diary {
+  position: fixed;
+  top: 2rem;
+  left: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--entry-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 50px;
+  color: var(--text-color);
+  text-decoration: none;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.back-to-diary:hover {
+  background: var(--accent-color);
+  color: #FFFFFF;
+  border-color: var(--accent-color);
+  transform: translateX(-3px);
+  box-shadow: 0 4px 20px rgba(193, 106, 40, 0.2);
+}
+
+.back-to-diary svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
 .corner-mindmap {
   height: 100vh;
-  padding: 2rem;
+  padding: 3rem;
   position: relative;
-  overflow: hidden;
+  overflow: auto;
+  background: linear-gradient(135deg, var(--bg-color) 0%, var(--bg-color) 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.mindmap-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 2rem 1rem 1rem;
+  animation: fadeInDown 0.8s ease-out;
+}
+
+.mindmap-title {
+  font-family: 'Kalam', 'Comic Sans MS', cursive;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0 0 0.5rem 0;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.mindmap-subtitle {
+  font-family: 'Kalam', 'Comic Sans MS', cursive;
+  font-size: 1.2rem;
+  font-weight: 300;
+  color: var(--accent-color);
+  margin: 0;
+  opacity: 0.8;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .mindmap-container {
   position: relative;
-  height: 100%;
+  flex: 1;
   width: 100%;
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 2rem;
-  overflow: hidden;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mindmap-goal {
@@ -590,24 +670,75 @@ body:has(.corner-mindmap) {
   left: var(--x);
   top: var(--y);
   transform: translate(-50%, -50%);
-  max-width: 300px;
+  max-width: 320px;
   cursor: default;
-  pointer-events: none;
+  animation: floatIn 0.8s ease-out backwards;
+  animation-delay: calc(var(--index, 0) * 0.1s);
+}
+
+.mindmap-goal::before {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  background: radial-gradient(circle at center, var(--accent-color)08 0%, transparent 70%);
+  border-radius: 50%;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.mindmap-goal:hover::before {
+  opacity: 1;
 }
 
 .goal-text {
   font-family: 'Kalam', 'Comic Sans MS', cursive;
-  font-size: 1.1rem;
-  line-height: 1.8;
+  font-size: 1.3rem;
+  font-weight: 400;
+  line-height: 1.6;
   color: var(--text-color);
-  display: block;
+  display: inline-block;
+  padding: 1.2rem 1.8rem;
+  background: linear-gradient(135deg, 
+    rgba(193, 106, 40, 0.08) 0%, 
+    rgba(193, 106, 40, 0.04) 100%);
+  border: 2px solid rgba(193, 106, 40, 0.15);
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
   white-space: normal;
   word-wrap: break-word;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+[data-theme="dark"] .goal-text {
+  background: linear-gradient(135deg, 
+    rgba(193, 106, 40, 0.12) 0%, 
+    rgba(193, 106, 40, 0.06) 100%);
+  border-color: rgba(193, 106, 40, 0.25);
+  box-shadow: 0 4px 20px rgba(193, 106, 40, 0.1);
+}
+
+.goal-text::before {
+  content: '✦';
+  position: absolute;
+  left: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent-color);
+  font-size: 0.9rem;
+  opacity: 0.6;
+}
+
+.mindmap-goal:hover .goal-text {
+  transform: scale(1.05) rotate(0deg) !important;
+  box-shadow: 0 8px 30px rgba(193, 106, 40, 0.15);
+  border-color: var(--accent-color);
 }
 
 .mindmap-empty {
   font-family: 'Kalam', 'Comic Sans MS', cursive;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   color: var(--text-color);
   text-align: center;
   opacity: 0.5;
@@ -615,40 +746,114 @@ body:has(.corner-mindmap) {
   margin-top: 4rem;
 }
 
+@keyframes floatIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(30px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(0) scale(1);
+  }
+}
+
 
 
 @media (max-width: 1024px) {
   .mindmap-goal {
-    max-width: 250px;
+    max-width: 280px;
   }
   
   .goal-text {
-    font-size: 1rem;
+    font-size: 1.15rem;
+    padding: 1rem 1.5rem;
+  }
+  
+  .corner-mindmap {
+    padding: 2rem;
+  }
+  
+  .mindmap-title {
+    font-size: 2.5rem;
+  }
+  
+  .mindmap-subtitle {
+    font-size: 1.1rem;
   }
 }
 
 @media (max-width: 768px) {
+  .back-to-diary {
+    top: 1rem;
+    left: 1rem;
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+  }
+  
+  .back-to-diary svg {
+    width: 18px;
+    height: 18px;
+  }
+  
   .corner-mindmap {
-    padding: 2rem 1rem;
+    padding: 2rem 1.5rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+  
+  .mindmap-header {
+    padding: 1rem 0.5rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .mindmap-title {
+    font-size: 2rem;
+  }
+  
+  .mindmap-subtitle {
+    font-size: 1rem;
+  }
+
+  .mindmap-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1rem;
+    height: auto;
   }
 
   .mindmap-goal {
-    position: relative;
-    left: auto;
-    top: auto;
-    transform: rotate(var(--rotation));
-    margin: 1.5rem auto;
-    max-width: 90%;
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    margin: 0;
+    max-width: 100%;
+    width: 100%;
   }
-
-  @keyframes fadeInUp {
+  
+  .goal-text {
+    font-size: 1.1rem;
+    padding: 1.2rem 1.5rem;
+    display: block;
+    width: 100%;
+    text-align: center;
+  }
+  
+  @keyframes floatIn {
     from {
       opacity: 0;
-      transform: rotate(var(--rotation)) translateY(20px);
+      transform: translateY(20px);
     }
     to {
       opacity: 1;
-      transform: rotate(var(--rotation));
+      transform: translateY(0);
     }
   }
 }
