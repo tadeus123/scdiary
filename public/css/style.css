@@ -597,75 +597,23 @@ body:has(.corner-mindmap) {
   left: var(--x);
   top: var(--y);
   transform: translate(-50%, -50%);
-  max-width: 320px;
-  cursor: default;
-  animation: floatIn 0.8s ease-out backwards;
-  animation-delay: calc(var(--index, 0) * 0.1s);
-}
-
-.mindmap-goal::before {
-  content: '';
-  position: absolute;
-  inset: -12px;
-  background: radial-gradient(circle at center, var(--accent-color)08 0%, transparent 70%);
-  border-radius: 50%;
-  z-index: -1;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-
-.mindmap-goal:hover::before {
-  opacity: 1;
+  max-width: 280px;
 }
 
 .goal-text {
   font-family: 'Kalam', 'Comic Sans MS', cursive;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-weight: 400;
   line-height: 1.6;
   color: var(--text-color);
-  display: inline-block;
-  padding: 1.2rem 1.8rem;
-  background: linear-gradient(135deg, 
-    rgba(193, 106, 40, 0.08) 0%, 
-    rgba(193, 106, 40, 0.04) 100%);
-  border: 2px solid rgba(193, 106, 40, 0.15);
-  border-radius: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  display: block;
   white-space: normal;
   word-wrap: break-word;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-[data-theme="dark"] .goal-text {
-  background: linear-gradient(135deg, 
-    rgba(193, 106, 40, 0.12) 0%, 
-    rgba(193, 106, 40, 0.06) 100%);
-  border-color: rgba(193, 106, 40, 0.25);
-  box-shadow: 0 4px 20px rgba(193, 106, 40, 0.1);
-}
-
-.goal-text::before {
-  content: '✦';
-  position: absolute;
-  left: 0.8rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--accent-color);
-  font-size: 0.9rem;
-  opacity: 0.6;
-}
-
-.mindmap-goal:hover .goal-text {
-  transform: scale(1.05) rotate(0deg) !important;
-  box-shadow: 0 8px 30px rgba(193, 106, 40, 0.15);
-  border-color: var(--accent-color);
 }
 
 .mindmap-empty {
   font-family: 'Kalam', 'Comic Sans MS', cursive;
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   color: var(--text-color);
   text-align: center;
   opacity: 0.5;
@@ -673,27 +621,15 @@ body:has(.corner-mindmap) {
   margin-top: 4rem;
 }
 
-@keyframes floatIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -50%) translateY(30px) scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%) translateY(0) scale(1);
-  }
-}
-
 
 
 @media (max-width: 1024px) {
   .mindmap-goal {
-    max-width: 280px;
+    max-width: 250px;
   }
   
   .goal-text {
-    font-size: 1.15rem;
-    padding: 1rem 1.5rem;
+    font-size: 1.1rem;
   }
   
   .corner-mindmap {
@@ -734,21 +670,9 @@ body:has(.corner-mindmap) {
   
   .goal-text {
     font-size: 1.1rem;
-    padding: 1.2rem 1.5rem;
     display: block;
     width: 100%;
     text-align: center;
-  }
-  
-  @keyframes floatIn {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
   }
 }
 
