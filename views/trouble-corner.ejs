@@ -15,16 +15,8 @@
       <% if (typeof goals === 'undefined' || goals.length === 0) { %>
         <p class="mindmap-empty">No goals yet. Add your goals in the admin panel.</p>
       <% } else { %>
-        <% 
-          var cols = Math.ceil(Math.sqrt(goals.length));
-          var rows = Math.ceil(goals.length / cols);
-          goals.forEach((goal, index) => { 
-            var col = index % cols;
-            var row = Math.floor(index / cols);
-            var x = ((col + 0.5) / cols * 90 + 5).toFixed(2);
-            var y = ((row + 0.5) / rows * 85 + 7.5).toFixed(2);
-        %>
-          <div class="mindmap-goal" style="--x: <%= x %>%; --y: <%= y %>%;">
+        <% goals.forEach((goal, index) => { %>
+          <div class="mindmap-goal">
             <span class="goal-text"><%= goal.text %></span>
           </div>
         <% }) %>
