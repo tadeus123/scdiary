@@ -4,24 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>corner</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <div class="corner-mindmap">
-    <div class="mindmap-container">
-      <% if (typeof goals === 'undefined' || goals.length === 0) { %>
-        <p class="mindmap-empty">No goals yet. Add your goals in the admin panel.</p>
-      <% } else { %>
-        <% goals.forEach((goal, index) => { %>
-          <div class="mindmap-goal">
-            <span class="goal-text"><%= goal.text %></span>
-          </div>
-        <% }) %>
-      <% } %>
-    </div>
+  <div class="container">
+    <!-- Blank page -->
   </div>
   <script src="/js/main.js"></script>
 </body>

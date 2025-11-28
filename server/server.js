@@ -26,10 +26,8 @@ app.use('/', diaryRoutes);
 app.use('/admin', adminRoutes);
 
 // Corner route
-app.get('/corner', async (req, res) => {
-  const { getGoals } = require('./db/supabase');
-  const goals = await getGoals();
-  res.render('trouble-corner', { goals });
+app.get('/corner', (req, res) => {
+  res.render('trouble-corner', { goals: [] });
 });
 
 // Start server

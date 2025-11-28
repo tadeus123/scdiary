@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { marked } = require('marked');
-const { getEntries, createEntry, deleteEntry, getGoals, createGoal, updateGoal, deleteGoal } = require('../db/supabase');
+const { getEntries, createEntry, deleteEntry } = require('../db/supabase');
 
 // Admin password (in production, use environment variable)
 // WARNING: Never hardcode passwords in production!
@@ -119,66 +119,6 @@ router.delete('/entry/:id', isAuthenticated, async (req, res) => {
     res.json({ success: true });
   } else {
     res.status(404).json({ error: result.error || 'Entry not found' });
-  }
-});
-
-// Get goals
-router.get('/goals', isAuthenticated, async (req, res) => {
-  const goals = await getGoals();
-  res.json({ success: true, goals });
-});
-
-// Create goal
-router.post('/goal', isAuthenticated, async (req, res) => {
-  const { text } = req.body;
-  
-  if (!text || text.trim() === '') {
-    return res.status(400).json({ error: 'Goal text is required' });
-  }
-  
-  const newGoal = {
-    id: Date.now().toString(),
-    text: text.trim(),
-    created_at: new Date().toISOString()
-  };
-  
-  const result = await createGoal(newGoal);
-  
-  if (result.success) {
-    res.json({ success: true, goal: result.goal });
-  } else {
-    res.status(500).json({ error: result.error || 'Failed to save goal' });
-  }
-});
-
-// Update goal
-router.put('/goal/:id', isAuthenticated, async (req, res) => {
-  const { id } = req.params;
-  const { text } = req.body;
-  
-  if (!text || text.trim() === '') {
-    return res.status(400).json({ error: 'Goal text is required' });
-  }
-  
-  const result = await updateGoal(id, { text: text.trim() });
-  
-  if (result.success) {
-    res.json({ success: true, goal: result.goal });
-  } else {
-    res.status(404).json({ error: result.error || 'Goal not found' });
-  }
-});
-
-// Delete goal
-router.delete('/goal/:id', isAuthenticated, async (req, res) => {
-  const { id } = req.params;
-  
-  const result = await deleteGoal(id);
-  
-  if (result.success) {
-    res.json({ success: true });
-  } else {
-    res.status(404).json({ error: result.error || 'Goal not found' });
   }
 });
 

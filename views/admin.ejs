@@ -54,24 +54,6 @@
           <button type="submit" class="btn">login</button>
         </form>
       <% } else { %>
-        <!-- Goals Management -->
-        <div class="goals-admin-box" style="margin-bottom: 3rem; padding: 2rem; background-color: var(--entry-bg); border: 1px solid var(--border-color); border-radius: 5px;">
-          <h2 style="margin-bottom: 1rem; font-size: 1.3rem; color: var(--accent-color);">Goals Management</h2>
-          <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-            <input 
-              type="text" 
-              id="goal-input" 
-              placeholder="add a new goal..."
-              style="flex: 1; padding: 0.75rem; font-family: Georgia, serif; font-size: 1rem; background-color: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 5px;"
-              onkeypress="if(event.key === 'Enter') addGoal()"
-            >
-            <button onclick="addGoal()" class="btn" style="padding: 0.75rem 1.5rem;">add goal</button>
-          </div>
-          <div id="goals-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
-            <!-- Goals will be loaded here -->
-          </div>
-        </div>
-
         <!-- New Entry Input Box -->
         <div class="new-entry-box">
           <div id="message-container"></div>
