@@ -39,13 +39,14 @@ function renderImages(images) {
   
   if (card1 && card2) {
     let showingSecond = false;
-    
-    // Detect touch device
-    const isTouchDevice = ('ontouchstart' in window) || 
-                          (navigator.maxTouchPoints > 0) || 
-                          (window.matchMedia('(pointer: coarse)').matches);
+    let lastToggleTime = 0;
     
     function toggle() {
+      // Prevent rapid toggles (debounce 100ms)
+      const now = Date.now();
+      if (now - lastToggleTime < 100) return;
+      lastToggleTime = now;
+      
       showingSecond = !showingSecond;
       
       if (showingSecond) {
@@ -57,15 +58,13 @@ function renderImages(images) {
       }
     }
     
-    if (isTouchDevice) {
-      // Touch devices: tap anywhere on the image stack to toggle
-      imageStack.addEventListener('click', (e) => {
-        e.preventDefault();
-        toggle();
-      });
-    } else {
-      // Desktop: hover to toggle
-      imageStack.addEventListener('mouseenter', toggle);
-    }
+    // Hover for desktop mouse users
+    imageStack.addEventListener('mouseenter', toggle);
+    
+    // Touch tap for phones/tablets
+    imageStack.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      toggle();
+    }, { passive: false });
   }
 }
