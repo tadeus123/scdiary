@@ -1,12 +1,12 @@
 {
   "images": [
     {
-      "filename": "image2.png",
-      "alt": "Oasis - lush green palms and water in the desert"
-    },
-    {
       "filename": "image1.png",
       "alt": "Desert - dry cracked earth and distant mountains"
+    },
+    {
+      "filename": "image2.png",
+      "alt": "Oasis - lush green palms and water in the desert"
     }
   ]
 }
