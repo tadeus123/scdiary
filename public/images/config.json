@@ -1,0 +1,12 @@
+{
+  "images": [
+    {
+      "filename": "image1.jpg",
+      "alt": "Memory 1"
+    },
+    {
+      "filename": "image2.jpg",
+      "alt": "Memory 2"
+    }
+  ]
+}
