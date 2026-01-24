@@ -1,4 +1,4 @@
-// Corner page - load and display images with flip effect
+// Corner page - load and display images with hover switch effect
 document.addEventListener('DOMContentLoaded', async () => {
   const imageStack = document.getElementById('corner-image-stack');
   if (!imageStack) return;
@@ -22,9 +22,9 @@ function renderImages(images) {
   const imageStack = document.getElementById('corner-image-stack');
   if (!imageStack || images.length === 0) return;
   
-  // Use first two images for flip effect
+  // Use first two images for switch effect
   const image1 = images[0];
-  const image2 = images[1] || images[0]; // Use same image if only one exists
+  const image2 = images[1] || images[0];
   
   imageStack.innerHTML = `
     <div class="image-card" id="image-card-1">
@@ -35,19 +35,18 @@ function renderImages(images) {
     </div>
   `;
   
-  // Add click handlers for flip effect
   const card1 = document.getElementById('image-card-1');
   const card2 = document.getElementById('image-card-2');
   
   if (card1 && card2) {
-    // Click first image to show second
-    card1.addEventListener('click', () => {
+    // Hover on first image switches to second
+    card1.addEventListener('mouseenter', () => {
       card1.classList.add('flipped');
       card2.classList.add('flipped');
     });
     
-    // Click second image to show first
-    card2.addEventListener('click', () => {
+    // Hover on second image switches back to first
+    card2.addEventListener('mouseenter', () => {
       card1.classList.remove('flipped');
       card2.classList.remove('flipped');
     });

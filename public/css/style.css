@@ -778,11 +778,10 @@ body:has(.corner-mindmap) {
   position: absolute;
   width: 100%;
   max-width: 600px;
-  cursor: pointer;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  transition: opacity 0.4s ease, transform 0.3s ease;
+  transition: opacity 0.3s ease;
 }
 
 .image-card img {
@@ -790,11 +789,6 @@ body:has(.corner-mindmap) {
   height: auto;
   display: block;
   border-radius: 8px;
-}
-
-.image-card:hover {
-  transform: scale(1.02);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
 }
 
 #image-card-1 {
