@@ -1,4 +1,4 @@
-// Corner page - load and display images with hover switch effect
+// Corner page - load and display images with hover/tap switch effect
 document.addEventListener('DOMContentLoaded', async () => {
   const imageStack = document.getElementById('corner-image-stack');
   if (!imageStack) return;
@@ -40,8 +40,12 @@ function renderImages(images) {
   if (card1 && card2) {
     let showingSecond = false;
     
-    // Single hover on the container toggles the image
-    imageStack.addEventListener('mouseenter', () => {
+    // Detect touch device
+    const isTouchDevice = ('ontouchstart' in window) || 
+                          (navigator.maxTouchPoints > 0) || 
+                          (window.matchMedia('(pointer: coarse)').matches);
+    
+    function toggle() {
       showingSecond = !showingSecond;
       
       if (showingSecond) {
@@ -51,6 +55,17 @@ function renderImages(images) {
         card1.classList.remove('flipped');
         card2.classList.remove('flipped');
       }
-    });
+    }
+    
+    if (isTouchDevice) {
+      // Touch devices: tap anywhere on the image stack to toggle
+      imageStack.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggle();
+      });
+    } else {
+      // Desktop: hover to toggle
+      imageStack.addEventListener('mouseenter', toggle);
+    }
   }
 }
