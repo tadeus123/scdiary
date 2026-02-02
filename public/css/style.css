@@ -934,23 +934,22 @@ body.corner-page {
 .bookshelf-header .nav-left {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.4rem;
   pointer-events: auto; /* But allow clicks on the nav items */
 }
 
 .bookshelf-header .site-title {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1.5rem;
-  font-weight: normal;
-  color: var(--text-color);
+  font-size: 1.8rem;
+  font-weight: 400;
   text-decoration: none;
-  opacity: 0.6;
-  transition: opacity 0.3s ease;
+  color: var(--text-color);
+  letter-spacing: -0.02em;
+  cursor: default;
   pointer-events: auto;
 }
 
 .bookshelf-header .site-title:hover {
-  opacity: 1;
+  color: var(--text-color);
 }
 
 .bookshelf-header .theme-toggle {
@@ -1215,8 +1214,12 @@ body.corner-page {
     padding: 1.5rem 1.5rem;
   }
   
+  .bookshelf-header .nav-left {
+    gap: 0.3rem;
+  }
+  
   .bookshelf-header .site-title {
-    font-size: 1.3rem;
+    font-size: 1.5rem;
   }
   
   .book-details {
@@ -1249,7 +1252,7 @@ body.corner-page {
   }
   
   .bookshelf-header .site-title {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
   }
   
   .book-details {
