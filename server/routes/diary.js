@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { createClient } = require('@supabase/supabase-js');
 const { 
   getEntries, 
   getBooks, 
@@ -12,24 +13,15 @@ const {
   deleteBook 
 } = require('../db/supabase');
 
-// Configure multer for book cover uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, '../../public/images/books');
-    // Ensure directory exists
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'book-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Initialize Supabase client for storage
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
 
+// Configure multer for memory storage (Vercel-compatible)
 const upload = multer({ 
-  storage: storage,
+  storage: multer.memoryStorage(), // Store in memory instead of disk
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: function (req, file, cb) {
     const allowedTypes = /jpeg|jpg|png|gif|webp/;
@@ -97,11 +89,34 @@ router.post('/api/books', upload.single('cover'), async (req, res) => {
       return res.status(400).json({ success: false, error: 'All fields are required' });
     }
     
+    // Generate unique filename
+    const fileExt = path.extname(req.file.originalname);
+    const fileName = `book-${Date.now()}-${Math.round(Math.random() * 1E9)}${fileExt}`;
+    
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('book-covers')
+      .upload(fileName, req.file.buffer, {
+        contentType: req.file.mimetype,
+        cacheControl: '3600',
+        upsert: false
+      });
+    
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      return res.status(500).json({ success: false, error: 'Failed to upload image: ' + uploadError.message });
+    }
+    
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('book-covers')
+      .getPublicUrl(fileName);
+    
     const bookData = {
       title,
       author,
       date_read: dateRead,
-      cover_image_url: `/images/books/${req.file.filename}`
+      cover_image_url: urlData.publicUrl
     };
     
     const result = await addBook(bookData);
@@ -110,10 +125,7 @@ router.post('/api/books', upload.single('cover'), async (req, res) => {
       res.json({ success: true, book: result.book });
     } else {
       // If database insert fails, delete the uploaded file
-      const imagePath = path.join(__dirname, '../../public/images/books', req.file.filename);
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-      }
+      await supabase.storage.from('book-covers').remove([fileName]);
       res.status(500).json({ success: false, error: result.error || 'Failed to save book' });
     }
   } catch (error) {
@@ -165,10 +177,10 @@ router.delete('/api/books/:id', async (req, res) => {
     const result = await deleteBook(id);
     
     if (result.success) {
-      // Delete image file after successful database deletion
-      const imagePath = path.join(__dirname, '../../public', book.cover_image_url);
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
+      // Delete image from Supabase Storage
+      if (book.cover_image_url && book.cover_image_url.includes('supabase')) {
+        const fileName = book.cover_image_url.split('/').pop();
+        await supabase.storage.from('book-covers').remove([fileName]);
       }
       
       res.json({ success: true });
