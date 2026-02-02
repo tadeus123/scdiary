@@ -920,6 +920,43 @@ body.corner-page {
   background-color: var(--bg-color);
 }
 
+/* Bookshelf header - floats over network */
+.bookshelf-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 900;
+  padding: 2rem 3rem;
+  pointer-events: none; /* Allow clicks through to network */
+}
+
+.bookshelf-header .nav-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  pointer-events: auto; /* But allow clicks on the nav items */
+}
+
+.bookshelf-header .site-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.5rem;
+  font-weight: normal;
+  color: var(--text-color);
+  text-decoration: none;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+  pointer-events: auto;
+}
+
+.bookshelf-header .site-title:hover {
+  opacity: 1;
+}
+
+.bookshelf-header .theme-toggle {
+  pointer-events: auto;
+}
+
 #bookshelf-network {
   width: 100vw;
   height: 100vh;
@@ -1174,6 +1211,14 @@ body.corner-page {
     touch-action: none; /* Enable pinch-zoom and pan gestures */
   }
   
+  .bookshelf-header {
+    padding: 1.5rem 1.5rem;
+  }
+  
+  .bookshelf-header .site-title {
+    font-size: 1.3rem;
+  }
+  
   .book-details {
     bottom: 20px;
     padding: 1.5rem;
@@ -1199,6 +1244,14 @@ body.corner-page {
 }
 
 @media (max-width: 480px) {
+  .bookshelf-header {
+    padding: 1rem 1rem;
+  }
+  
+  .bookshelf-header .site-title {
+    font-size: 1.2rem;
+  }
+  
   .book-details {
     bottom: 15px;
     padding: 1.25rem;
