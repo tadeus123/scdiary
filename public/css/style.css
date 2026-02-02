@@ -112,8 +112,9 @@
 }
 
 .bookshelf-icon {
-  font-size: 24px;
-  line-height: 1;
+  width: 24px;
+  height: 24px;
+  color: #FFFFFF;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
 }
 
@@ -892,7 +893,8 @@ body.corner-page {
   }
   
   .bookshelf-icon {
-    font-size: 22px;
+    width: 22px;
+    height: 22px;
   }
 }
 
@@ -920,7 +922,8 @@ body.corner-page {
   }
   
   .bookshelf-icon {
-    font-size: 20px;
+    width: 20px;
+    height: 20px;
   }
 }
 
