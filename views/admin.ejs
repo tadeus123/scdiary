@@ -7,6 +7,10 @@
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+  <% if (authenticated) { %>
+    <a href="/admin/bookshelf" class="corner-btn" aria-label="Manage Bookshelf"></a>
+  <% } %>
+  
   <div class="container">
     <nav>
       <div class="nav-left">

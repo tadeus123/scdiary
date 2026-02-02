@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>bookshelf admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+</head>
+<body>
+  <!-- Back to admin button -->
+  <a href="/admin" class="corner-btn-left" aria-label="Back to Admin"></a>
+  
+  <div class="container">
+    <nav>
+      <div class="nav-left">
+        <h1 class="site-title">bookshelf admin</h1>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+          <svg class="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="6.5" x2="12" y2="3"></line>
+            <line x1="17.5" y1="12" x2="21" y2="12"></line>
+            <line x1="12" y1="17.5" x2="12" y2="21"></line>
+            <line x1="6.5" y1="12" x2="3" y2="12"></line>
+            <line x1="16.96" y1="7.04" x2="19.07" y2="4.93"></line>
+            <line x1="16.96" y1="16.96" x2="19.07" y2="19.07"></line>
+            <line x1="7.04" y1="16.96" x2="4.93" y2="19.07"></line>
+            <line x1="7.04" y1="7.04" x2="4.93" y2="4.93"></line>
+          </svg>
+        </button>
+      </div>
+    </nav>
+    
+    <!-- Add Book Form -->
+    <div class="add-book-section">
+      <h2>add new book</h2>
+      <form id="book-form" class="book-form" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="title">Title</label>
+          <input type="text" id="title" name="title" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="author">Author</label>
+          <input type="text" id="author" name="author" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="cover">Book Cover Image</label>
+          <input type="file" id="cover" name="cover" accept="image/*" required>
+          <div id="cover-preview" class="cover-preview hidden">
+            <img id="preview-img" src="" alt="Cover preview">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="dateRead">Date Read</label>
+          <input type="date" id="dateRead" name="dateRead" required>
+        </div>
+        
+        <button type="submit" class="btn">Add Book</button>
+        <div id="form-message" class="form-message"></div>
+      </form>
+    </div>
+    
+    <!-- Connection Controls -->
+    <div class="connection-section">
+      <h2>manage connections</h2>
+      <div class="connection-controls">
+        <button id="toggle-connection-mode" class="btn btn-secondary">
+          Connection Mode: <span id="connection-status">OFF</span>
+        </button>
+        <p class="connection-hint">
+          Click button to enable, then click two books to connect them
+        </p>
+      </div>
+      
+      <!-- Network Visualization -->
+      <div id="admin-bookshelf-network" class="admin-network"></div>
+      <div id="network-empty" class="network-empty">
+        No books yet. Add your first book above!
+      </div>
+    </div>
+  </div>
+  
+  <script src="/js/main.js"></script>
+  <script src="/js/admin-bookshelf.js"></script>
+</body>
+</html>

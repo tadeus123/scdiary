@@ -128,4 +128,9 @@ router.post('/logout', (req, res) => {
   res.redirect('/admin');
 });
 
+// Bookshelf admin page
+router.get('/bookshelf', isAuthenticated, (req, res) => {
+  res.render('admin-bookshelf');
+});
+
 module.exports = router;

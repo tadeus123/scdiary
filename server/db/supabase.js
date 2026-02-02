@@ -262,6 +262,152 @@ async function deleteGoal(id) {
   }
 }
 
+// ========================================
+// BOOKSHELF FUNCTIONS
+// ========================================
+
+// Get all books
+async function getBooks() {
+  if (!supabase) {
+    console.warn('⚠️  Supabase not configured for books');
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('books')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching books:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching books:', error);
+    return [];
+  }
+}
+
+// Get all book connections
+async function getBookConnections() {
+  if (!supabase) {
+    console.warn('⚠️  Supabase not configured for book connections');
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('book_connections')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching book connections:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching book connections:', error);
+    return [];
+  }
+}
+
+// Add a new book
+async function addBook(bookData) {
+  if (!supabase) {
+    console.warn('⚠️  Supabase not configured');
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('books')
+      .insert([bookData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding book:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, book: data };
+  } catch (error) {
+    console.error('Error adding book:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Create connection between books
+async function addBookConnection(fromId, toId) {
+  if (!supabase) {
+    console.warn('⚠️  Supabase not configured');
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    // Check if connection already exists (in either direction)
+    const { data: existing } = await supabase
+      .from('book_connections')
+      .select('*')
+      .or(`and(from_book_id.eq.${fromId},to_book_id.eq.${toId}),and(from_book_id.eq.${toId},to_book_id.eq.${fromId})`);
+
+    if (existing && existing.length > 0) {
+      return { success: false, error: 'Connection already exists' };
+    }
+
+    const connectionData = {
+      from_book_id: fromId,
+      to_book_id: toId
+    };
+
+    const { data, error } = await supabase
+      .from('book_connections')
+      .insert([connectionData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating connection:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, connection: data };
+  } catch (error) {
+    console.error('Error creating connection:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Delete a book (connections will be deleted via CASCADE)
+async function deleteBook(id) {
+  if (!supabase) {
+    console.warn('⚠️  Supabase not configured');
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('books')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting book:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting book:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   getEntries,
   createEntry,
@@ -270,6 +416,12 @@ module.exports = {
   createGoal,
   updateGoal,
   deleteGoal,
+  // Bookshelf functions
+  getBooks,
+  getBookConnections,
+  addBook,
+  addBookConnection,
+  deleteBook,
   isConfigured: () => supabase !== null
 };
 
