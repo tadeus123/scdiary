@@ -15,5 +15,10 @@ router.get('/api/entries', async (req, res) => {
   res.json(entries);
 });
 
+// Bookshelf page
+router.get('/bookshelf', (req, res) => {
+  res.render('bookshelf');
+});
+
 module.exports = router;
 

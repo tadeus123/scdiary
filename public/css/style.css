@@ -87,6 +87,36 @@
   opacity: 1;
 }
 
+/* Bookshelf button - bottom left */
+.bookshelf-btn {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 50px;
+  height: 50px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--accent-color);
+  border-radius: 8px;
+  opacity: 0.6;
+  transition: opacity 0.3s ease, transform 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  text-decoration: none;
+}
+
+.bookshelf-btn:hover {
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.bookshelf-icon {
+  font-size: 24px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -853,6 +883,17 @@ body.corner-page {
     max-height: 70vh;
     max-height: 70dvh;
   }
+  
+  .bookshelf-btn {
+    width: 45px;
+    height: 45px;
+    bottom: 15px;
+    left: 15px;
+  }
+  
+  .bookshelf-icon {
+    font-size: 22px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -868,6 +909,18 @@ body.corner-page {
     border-radius: 6px;
     max-height: 65vh;
     max-height: 65dvh;
+  }
+  
+  .bookshelf-btn {
+    width: 40px;
+    height: 40px;
+    bottom: 12px;
+    left: 12px;
+    border-radius: 6px;
+  }
+  
+  .bookshelf-icon {
+    font-size: 20px;
   }
 }
 
