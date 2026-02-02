@@ -1,6 +1,7 @@
 // Admin Bookshelf Management
 let network = null;
 let connectionMode = false;
+let deleteMode = false;
 let selectedNode = null;
 let nodesDataSet = null;
 let edgesDataSet = null;
@@ -119,9 +120,11 @@ async function initAdminBookshelf() {
     
     network = new vis.Network(container, graphData, options);
     
-    // Click handler for connection mode
+    // Click handler for connection and delete modes
     network.on('click', function(params) {
-      if (connectionMode && params.nodes.length > 0) {
+      if (deleteMode) {
+        handleDeleteClick(params);
+      } else if (connectionMode && params.nodes.length > 0) {
         handleConnectionClick(params.nodes[0]);
       }
     });
@@ -191,6 +194,13 @@ async function createConnection(fromId, toId) {
 
 // Toggle connection mode
 document.getElementById('toggle-connection-mode').addEventListener('click', () => {
+  // Turn off delete mode if it's on
+  if (deleteMode) {
+    deleteMode = false;
+    document.getElementById('delete-status').textContent = 'OFF';
+    document.getElementById('toggle-delete-mode').classList.remove('active');
+  }
+  
   connectionMode = !connectionMode;
   const statusSpan = document.getElementById('connection-status');
   const button = document.getElementById('toggle-connection-mode');
@@ -207,6 +217,88 @@ document.getElementById('toggle-connection-mode').addEventListener('click', () =
     showMessage('Connection mode disabled', 'info');
   }
 });
+
+// Toggle delete mode
+document.getElementById('toggle-delete-mode').addEventListener('click', () => {
+  // Turn off connection mode if it's on
+  if (connectionMode) {
+    connectionMode = false;
+    document.getElementById('connection-status').textContent = 'OFF';
+    document.getElementById('toggle-connection-mode').classList.remove('active');
+    selectedNode = null;
+    if (network) network.unselectAll();
+  }
+  
+  deleteMode = !deleteMode;
+  const statusSpan = document.getElementById('delete-status');
+  const button = document.getElementById('toggle-delete-mode');
+  
+  if (deleteMode) {
+    statusSpan.textContent = 'ON';
+    button.classList.add('active');
+    showMessage('Delete mode enabled. Click a book or connection to delete it.', 'info');
+  } else {
+    statusSpan.textContent = 'OFF';
+    button.classList.remove('active');
+    showMessage('Delete mode disabled', 'info');
+  }
+});
+
+// Handle delete mode clicks
+async function handleDeleteClick(params) {
+  // Delete book (node)
+  if (params.nodes.length > 0) {
+    const nodeId = params.nodes[0];
+    const node = nodesDataSet.get(nodeId);
+    
+    if (confirm(`Delete "${node.bookData.title}" by ${node.bookData.author}?\n\nThis will also delete all its connections.`)) {
+      try {
+        const response = await fetch(`/api/books/${nodeId}`, {
+          method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showMessage('Book deleted successfully!', 'success');
+          // Reload network
+          await initAdminBookshelf();
+        } else {
+          showMessage('Failed to delete book: ' + data.error, 'error');
+        }
+      } catch (error) {
+        console.error('Error deleting book:', error);
+        showMessage('Error deleting book', 'error');
+      }
+    }
+  }
+  // Delete connection (edge)
+  else if (params.edges.length > 0) {
+    const edgeId = params.edges[0];
+    const edge = edgesDataSet.get(edgeId);
+    
+    if (confirm('Delete this connection between books?')) {
+      try {
+        const response = await fetch(`/api/books/connections/${edgeId}`, {
+          method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showMessage('Connection deleted!', 'success');
+          // Remove from network
+          edgesDataSet.remove(edgeId);
+        } else {
+          showMessage('Failed to delete connection: ' + data.error, 'error');
+        }
+      } catch (error) {
+        console.error('Error deleting connection:', error);
+        showMessage('Error deleting connection', 'error');
+      }
+    }
+  }
+}
 
 // Image preview
 document.getElementById('cover').addEventListener('change', function(e) {

@@ -160,6 +160,29 @@ router.post('/api/books/connections', async (req, res) => {
   }
 });
 
+// API: Delete connection
+router.delete('/api/books/connections/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Delete connection from Supabase
+    const { error } = await supabase
+      .from('book_connections')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      console.error('Error deleting connection:', error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting connection:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // API: Delete book
 router.delete('/api/books/:id', async (req, res) => {
   try {

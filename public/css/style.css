@@ -1131,6 +1131,16 @@ body.corner-page {
   border-color: var(--accent-color);
 }
 
+.btn-delete {
+  margin-left: 1rem;
+}
+
+.btn-delete.active {
+  background-color: #d32f2f;
+  color: #FFFFFF;
+  border-color: #d32f2f;
+}
+
 .connection-hint {
   font-size: 0.9rem;
   color: var(--text-color);
