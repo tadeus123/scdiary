@@ -1,6 +1,29 @@
 // Bookshelf Network Visualization
 let network = null;
 let selectedNodeId = null;
+let edgesDataSet = null;
+
+// Get edge colors based on current theme
+function getEdgeColor() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  return {
+    color: isDark ? 'rgba(226, 232, 240, 0.15)' : 'rgba(26, 26, 26, 0.1)',
+    highlight: 'rgba(193, 106, 40, 0.3)'
+  };
+}
+
+// Update edge colors when theme changes
+function updateEdgeColors() {
+  if (edgesDataSet) {
+    const newColor = getEdgeColor();
+    edgesDataSet.forEach(edge => {
+      edgesDataSet.update({
+        id: edge.id,
+        color: newColor
+      });
+    });
+  }
+}
 
 // Initialize bookshelf network
 async function loadBookshelf() {
@@ -45,15 +68,13 @@ async function loadBookshelf() {
     );
     
     // Create edges from connections
-    const edges = new vis.DataSet(
+    const edgeColor = getEdgeColor();
+    edgesDataSet = new vis.DataSet(
       connections.map(conn => ({
         id: conn.id, // Use the actual database ID
         from: conn.from_book_id,
         to: conn.to_book_id,
-        color: {
-          color: 'rgba(26, 26, 26, 0.1)',
-          highlight: 'rgba(193, 106, 40, 0.3)'
-        },
+        color: edgeColor,
         width: 1,
         smooth: {
           type: 'continuous'
@@ -62,7 +83,7 @@ async function loadBookshelf() {
     );
     
     const container = document.getElementById('bookshelf-network');
-    const graphData = { nodes, edges };
+    const graphData = { nodes, edges: edgesDataSet };
     
     const options = {
       physics: {
@@ -182,6 +203,9 @@ document.addEventListener('keydown', (e) => {
     hideBookDetails();
   }
 });
+
+// Listen for theme changes to update edge colors
+document.addEventListener('themeChanged', updateEdgeColors);
 
 // Initialize on page load
 window.addEventListener('DOMContentLoaded', loadBookshelf);

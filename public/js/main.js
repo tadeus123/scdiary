@@ -15,6 +15,9 @@ document.addEventListener('DOMContentLoaded', () => {
       
       htmlElement.setAttribute('data-theme', newTheme);
       localStorage.setItem('theme', newTheme);
+      
+      // Dispatch custom event for other scripts to listen to
+      document.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: newTheme } }));
     });
   }
 });
