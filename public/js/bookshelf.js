@@ -25,9 +25,13 @@ async function loadBookshelf() {
     const nodes = new vis.DataSet(
       books.map(book => ({
         id: book.id,
-        shape: 'circularImage',
+        shape: 'image',
         image: book.cover_image_url,
-        size: 40,
+        size: 30,
+        shapeProperties: {
+          useImageSize: false,
+          useBorderWithImage: true
+        },
         borderWidth: 2,
         borderWidthSelected: 4,
         color: {
@@ -86,7 +90,20 @@ async function loadBookshelf() {
       },
       nodes: {
         borderWidth: 2,
-        borderWidthSelected: 4
+        borderWidthSelected: 4,
+        shape: 'image',
+        shapeProperties: {
+          useImageSize: false,
+          interpolation: true
+        },
+        scaling: {
+          min: 20,
+          max: 60
+        },
+        widthConstraint: {
+          minimum: 40,
+          maximum: 80
+        }
       }
     };
     
