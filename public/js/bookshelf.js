@@ -47,6 +47,7 @@ async function loadBookshelf() {
     // Create edges from connections
     const edges = new vis.DataSet(
       connections.map(conn => ({
+        id: conn.id, // Use the actual database ID
         from: conn.from_book_id,
         to: conn.to_book_id,
         color: {

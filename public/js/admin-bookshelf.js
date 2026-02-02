@@ -58,7 +58,7 @@ async function initAdminBookshelf() {
     // Create edges from connections
     edgesDataSet = new vis.DataSet(
       connections.map(conn => ({
-        id: `${conn.from_book_id}-${conn.to_book_id}`,
+        id: conn.id, // Use the actual database ID
         from: conn.from_book_id,
         to: conn.to_book_id,
         color: {
@@ -68,7 +68,8 @@ async function initAdminBookshelf() {
         width: 1,
         smooth: {
           type: 'continuous'
-        }
+        },
+        connectionData: conn // Store full connection data
       }))
     );
     
@@ -169,9 +170,9 @@ async function createConnection(fromId, toId) {
     
     if (data.success) {
       showMessage('Connection created!', 'success');
-      // Add edge to network
+      // Add edge to network with the database ID
       edgesDataSet.add({
-        id: `${fromId}-${toId}`,
+        id: data.connection.id, // Use the database ID
         from: fromId,
         to: toId,
         color: {
@@ -181,7 +182,8 @@ async function createConnection(fromId, toId) {
         width: 1,
         smooth: {
           type: 'continuous'
-        }
+        },
+        connectionData: data.connection
       });
     } else {
       showMessage('Failed to create connection: ' + data.error, 'error');
