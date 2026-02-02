@@ -100,7 +100,7 @@
   text-decoration: none;
   opacity: 0.5;
   transition: opacity 0.3s ease, color 0.2s ease;
-  max-width: 250px;
+  white-space: nowrap;
   line-height: 1.4;
 }
 
@@ -880,7 +880,6 @@ body.corner-page {
     font-size: 0.8rem;
     bottom: 15px;
     left: 15px;
-    max-width: 220px;
   }
 }
 
@@ -903,7 +902,6 @@ body.corner-page {
     font-size: 0.75rem;
     bottom: 12px;
     left: 12px;
-    max-width: 200px;
   }
 }
 
