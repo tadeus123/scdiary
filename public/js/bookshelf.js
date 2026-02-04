@@ -374,29 +374,24 @@ function renderTimeline() {
     return { x, y, book, index };
   });
   
-  // Group books by similar x-position (within 10px threshold)
+  // Group books by the exact same date (not just proximity)
   timelineBooksByPosition = {};
   currentBookIndexByPosition = {};
-  const positionThreshold = 10;
   
   points.forEach(point => {
-    // Find if there's already a group near this x position
-    let positionKey = null;
-    for (let key in timelineBooksByPosition) {
-      if (Math.abs(parseFloat(key) - point.x) < positionThreshold) {
-        positionKey = key;
-        break;
-      }
+    const book = point.book;
+    const dateKey = new Date(book.date_read).toDateString(); // Use date as key
+    
+    // Create group for this date if it doesn't exist
+    if (!timelineBooksByPosition[dateKey]) {
+      timelineBooksByPosition[dateKey] = [];
+      currentBookIndexByPosition[dateKey] = 0;
     }
     
-    // If no group found, create new one
-    if (!positionKey) {
-      positionKey = point.x.toString();
-      timelineBooksByPosition[positionKey] = [];
-      currentBookIndexByPosition[positionKey] = 0;
-    }
+    timelineBooksByPosition[dateKey].push(point.index);
     
-    timelineBooksByPosition[positionKey].push(point.index);
+    // Store the date key with the point for later use
+    point.dateKey = dateKey;
   });
   
   // Create line path
@@ -425,22 +420,14 @@ function renderTimeline() {
       
       <!-- Book markers -->
       ${points.map((p, idx) => {
-        // Find the position key for this point
-        let posKey = p.x.toString();
-        for (let key in timelineBooksByPosition) {
-          if (Math.abs(parseFloat(key) - p.x) < 10) {
-            posKey = key;
-            break;
-          }
-        }
         return `
         <g class="timeline-marker">
           <line x1="${p.x}" y1="${p.y}" x2="${p.x}" y2="${svgHeight - padding.bottom}" 
                 class="timeline-marker-line" 
-                onclick="window.showTimelineBook('${posKey}')" />
+                onclick="window.showTimelineBook('${p.dateKey}')" />
           <circle cx="${p.x}" cy="${p.y}" r="5" 
                   class="timeline-marker-dot" 
-                  onclick="window.showTimelineBook('${posKey}')" />
+                  onclick="window.showTimelineBook('${p.dateKey}')" />
         </g>
       `;}).join('')}
       
