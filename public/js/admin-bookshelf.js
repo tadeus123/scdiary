@@ -147,16 +147,18 @@ async function initAdminBookshelf() {
     
     network = new vis.Network(container, graphData, options);
     
-    // Obsidian-style: Camera zoom + Dynamic node scaling based on zoom level
+    // Obsidian-style: Camera zoom + Subtle node scaling
     network.on('zoom', function(params) {
       const scale = network.getScale();
       
-      // Update node sizes based on zoom (objects grow/shrink with camera)
+      // Nodes scale VERY subtly - mostly camera movement, less object growth
       const updates = [];
       nodesDataSet.forEach(node => {
+        // Much more subtle scaling - caps out quickly, then pure camera zoom
+        const nodeSize = 40 * Math.pow(scale, 0.15); // Very subtle scaling
         updates.push({
           id: node.id,
-          size: 40 * Math.pow(scale, 0.4) // Nodes scale with zoom (dampened)
+          size: Math.min(nodeSize, 70) // Cap max size - stops growing, pure depth
         });
       });
       nodesDataSet.update(updates);
