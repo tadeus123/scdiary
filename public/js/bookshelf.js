@@ -380,7 +380,15 @@ function renderTimeline() {
   
   points.forEach(point => {
     const book = point.book;
-    const dateKey = new Date(book.date_read).toDateString(); // Use date as key
+    const date = new Date(book.date_read);
+    
+    // Safeguard: ensure valid date
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date for book:', book.title);
+      return;
+    }
+    
+    const dateKey = date.toDateString(); // Use date as key
     
     // Create group for this date if it doesn't exist
     if (!timelineBooksByPosition[dateKey]) {
