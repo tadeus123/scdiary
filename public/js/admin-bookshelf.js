@@ -115,10 +115,10 @@ async function initAdminBookshelf() {
         }
       },
       interaction: {
-        zoomView: true,  // Camera zoom like Obsidian
+        zoomView: true,
         dragView: true,
         hover: true,
-        zoomSpeed: 0.5  // Smooth zoom speed
+        zoomSpeed: 0.6  // Smooth, responsive zoom
       },
       nodes: {
         borderWidth: 2,
@@ -130,15 +130,39 @@ async function initAdminBookshelf() {
           interpolation: true
         },
         scaling: {
-          min: 10,
-          max: 100
+          min: 15,
+          max: 80,
+          label: {
+            enabled: false
+          }
+        }
+      },
+      edges: {
+        scaling: {
+          min: 1,
+          max: 3
         }
       }
     };
     
     network = new vis.Network(container, graphData, options);
     
-    // Disable physics after initial layout for smooth zooming
+    // Obsidian-style: Camera zoom + Dynamic node scaling based on zoom level
+    network.on('zoom', function(params) {
+      const scale = network.getScale();
+      
+      // Update node sizes based on zoom (objects grow/shrink with camera)
+      const updates = [];
+      nodesDataSet.forEach(node => {
+        updates.push({
+          id: node.id,
+          size: 40 * Math.pow(scale, 0.4) // Nodes scale with zoom (dampened)
+        });
+      });
+      nodesDataSet.update(updates);
+    });
+    
+    // Disable physics after initial layout
     network.once('stabilizationIterationsDone', function() {
       network.setOptions({ physics: false });
     });
