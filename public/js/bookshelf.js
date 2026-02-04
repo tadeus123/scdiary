@@ -274,6 +274,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const toggleSwitch = document.getElementById('bookshelf-toggle');
   if (toggleSwitch) {
     toggleSwitch.addEventListener('change', function() {
+      // Hide book details when switching views
+      hideBookDetails();
+      
       isTimelineView = this.checked;
       if (isTimelineView) {
         showTimelineView();
