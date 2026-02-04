@@ -204,6 +204,17 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Toggle switch handler (placeholder for future functionality)
+document.addEventListener('DOMContentLoaded', () => {
+  const toggleSwitch = document.getElementById('bookshelf-toggle');
+  if (toggleSwitch) {
+    toggleSwitch.addEventListener('change', function() {
+      // Placeholder for future functionality
+      console.log('Toggle switched:', this.checked);
+    });
+  }
+});
+
 // Listen for theme changes to update edge colors
 document.addEventListener('themeChanged', updateEdgeColors);
 

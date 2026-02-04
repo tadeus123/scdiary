@@ -136,40 +136,54 @@ router.post('/api/books', upload.single('cover'), async (req, res) => {
     if (result.success) {
       // 🤖 Smart connections: Use AI similarity analysis
       if (category && category !== 'Other') {
-        console.log(`🤖 Analyzing similarity with other ${category} books...`);
-        
-        // Get all other books in the same category
-        const allBooks = await getBooks();
-        const categoryBooks = allBooks.filter(b => 
-          b.category === category && b.id !== result.book.id
-        );
-        
-        // Analyze similarity with each book
-        const newBook = {
-          id: result.book.id,
-          title: result.book.title,
-          author: result.book.author,
-          category: result.book.category
-        };
-        
-        let connectionsCreated = 0;
-        for (const otherBook of categoryBooks) {
-          const similarity = await calculateSimilarity(newBook, otherBook);
+        try {
+          console.log(`🤖 Analyzing similarity with other ${category} books...`);
           
-          if (similarity >= 5) {
-            // Create connection
-            await addBookConnection(newBook.id, otherBook.id);
-            connectionsCreated++;
-            console.log(`✅ Connected to "${otherBook.title}" (${similarity}/10)`);
-          } else {
-            console.log(`⚪ Skipped "${otherBook.title}" (${similarity}/10)`);
+          // Get all other books in the same category
+          const allBooks = await getBooks();
+          const categoryBooks = allBooks.filter(b => 
+            b.category === category && b.id !== result.book.id
+          );
+          
+          // Analyze similarity with each book
+          const newBook = {
+            id: result.book.id,
+            title: result.book.title,
+            author: result.book.author,
+            category: result.book.category
+          };
+          
+          let connectionsCreated = 0;
+          for (const otherBook of categoryBooks) {
+            try {
+              const similarity = await calculateSimilarity(newBook, otherBook);
+              
+              if (similarity >= 5) {
+                // Create connection
+                const connResult = await addBookConnection(newBook.id, otherBook.id);
+                if (connResult.success) {
+                  connectionsCreated++;
+                  console.log(`✅ Connected to "${otherBook.title}" (${similarity}/10)`);
+                } else {
+                  console.log(`⚠️  Failed to connect to "${otherBook.title}": ${connResult.error}`);
+                }
+              } else {
+                console.log(`⚪ Skipped "${otherBook.title}" (${similarity}/10)`);
+              }
+            } catch (connError) {
+              console.error(`❌ Error connecting to "${otherBook.title}":`, connError.message);
+              // Continue with other books
+            }
+            
+            // Small delay
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
           
-          // Small delay
-          await new Promise(resolve => setTimeout(resolve, 100));
+          console.log(`✅ Created ${connectionsCreated} smart connections`);
+        } catch (analysisError) {
+          console.error('❌ Error during similarity analysis:', analysisError.message);
+          // Book is still added, just without connections
         }
-        
-        console.log(`✅ Created ${connectionsCreated} smart connections`);
       }
       
       res.json({ success: true, book: result.book });
