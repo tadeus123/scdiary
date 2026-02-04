@@ -3,6 +3,9 @@ let network = null;
 let selectedNodeId = null;
 let edgesDataSet = null;
 let nodesDataSet = null;
+let allBooks = [];
+let allConnections = [];
+let isTimelineView = false;
 
 // Get edge colors based on current theme
 function getEdgeColor() {
@@ -38,6 +41,10 @@ async function loadBookshelf() {
     }
     
     const { books, connections } = data;
+    
+    // Store books and connections globally
+    allBooks = books;
+    allConnections = connections;
     
     // If no books, just show empty canvas
     if (books.length === 0) {
@@ -261,16 +268,129 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Toggle switch handler (placeholder for future functionality)
+// Toggle switch handler - Switch between network and timeline views
 document.addEventListener('DOMContentLoaded', () => {
   const toggleSwitch = document.getElementById('bookshelf-toggle');
   if (toggleSwitch) {
     toggleSwitch.addEventListener('change', function() {
-      // Placeholder for future functionality
-      console.log('Toggle switched:', this.checked);
+      isTimelineView = this.checked;
+      if (isTimelineView) {
+        showTimelineView();
+      } else {
+        showNetworkView();
+      }
     });
   }
 });
+
+// Show network view
+function showNetworkView() {
+  const networkContainer = document.getElementById('bookshelf-network');
+  const timelineContainer = document.getElementById('bookshelf-timeline');
+  
+  networkContainer.style.display = 'block';
+  if (timelineContainer) {
+    timelineContainer.style.display = 'none';
+  }
+  
+  // Refresh network if it exists
+  if (network) {
+    network.redraw();
+  }
+}
+
+// Show timeline view
+function showTimelineView() {
+  const networkContainer = document.getElementById('bookshelf-network');
+  let timelineContainer = document.getElementById('bookshelf-timeline');
+  
+  networkContainer.style.display = 'none';
+  
+  // Create timeline container if it doesn't exist
+  if (!timelineContainer) {
+    timelineContainer = document.createElement('div');
+    timelineContainer.id = 'bookshelf-timeline';
+    timelineContainer.className = 'bookshelf-timeline';
+    document.body.appendChild(timelineContainer);
+  }
+  
+  timelineContainer.style.display = 'block';
+  renderTimeline();
+}
+
+// Render timeline visualization
+function renderTimeline() {
+  const container = document.getElementById('bookshelf-timeline');
+  if (!container || allBooks.length === 0) return;
+  
+  // Sort books by date
+  const sortedBooks = [...allBooks].sort((a, b) => 
+    new Date(a.date_read) - new Date(b.date_read)
+  );
+  
+  // Group books by month
+  const booksByMonth = {};
+  sortedBooks.forEach(book => {
+    const date = new Date(book.date_read);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    if (!booksByMonth[monthKey]) {
+      booksByMonth[monthKey] = [];
+    }
+    booksByMonth[monthKey].push(book);
+  });
+  
+  // Get all months from first to last
+  const firstDate = new Date(sortedBooks[0].date_read);
+  const lastDate = new Date(sortedBooks[sortedBooks.length - 1].date_read);
+  const allMonths = [];
+  
+  let currentDate = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+  while (currentDate <= lastDate) {
+    const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+    allMonths.push({
+      key: monthKey,
+      date: new Date(currentDate),
+      books: booksByMonth[monthKey] || []
+    });
+    currentDate.setMonth(currentDate.getMonth() + 1);
+  }
+  
+  // Find max books per month for scaling
+  const maxBooksPerMonth = Math.max(...allMonths.map(m => m.books.length), 1);
+  
+  // Render timeline HTML
+  container.innerHTML = `
+    <div class="timeline-header">
+      <h2>Reading Timeline</h2>
+      <p class="timeline-stats">
+        ${allBooks.length} books read • 
+        ${allMonths.length} months • 
+        ${(allBooks.length / allMonths.length).toFixed(1)} books/month avg
+      </p>
+    </div>
+    <div class="timeline-chart">
+      ${allMonths.map(month => `
+        <div class="timeline-month" data-count="${month.books.length}">
+          <div class="timeline-bar-container">
+            <div class="timeline-bar" style="height: ${(month.books.length / maxBooksPerMonth) * 100}%">
+              <span class="timeline-count">${month.books.length}</span>
+            </div>
+          </div>
+          <div class="timeline-books">
+            ${month.books.map(book => `
+              <div class="timeline-book" title="${book.title} by ${book.author}">
+                <img src="${book.cover_image_url}" alt="${book.title}">
+              </div>
+            `).join('')}
+          </div>
+          <div class="timeline-label">
+            ${month.date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
 
 // Listen for theme changes to update edge colors
 document.addEventListener('themeChanged', updateEdgeColors);
