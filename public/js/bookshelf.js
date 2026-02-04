@@ -6,6 +6,7 @@ let nodesDataSet = null;
 let allBooks = [];
 let allConnections = [];
 let isTimelineView = false;
+let timelineBooks = []; // Store sorted books for timeline clicks
 
 // Get edge colors based on current theme
 function getEdgeColor() {
@@ -328,6 +329,9 @@ function renderTimeline() {
     new Date(a.date_read) - new Date(b.date_read)
   );
   
+  // Store for click handlers
+  timelineBooks = sortedBooks;
+  
   // Create SVG line graph
   const svgWidth = Math.max(1200, sortedBooks.length * 20);
   const svgHeight = 400;
@@ -370,8 +374,8 @@ function renderTimeline() {
       <path d="${linePath}" class="timeline-line" />
       
       <!-- Book markers -->
-      ${points.map(p => `
-        <g class="timeline-marker" data-book-id="${p.book.id}">
+      ${points.map((p, idx) => `
+        <g class="timeline-marker" onclick="window.showTimelineBook(${idx})">
           <!-- Invisible larger hit area for easier clicking -->
           <rect x="${p.x - 8}" y="${p.y - 8}" width="16" height="${svgHeight - padding.bottom - p.y + 8}" 
                 class="timeline-marker-hitarea" />
@@ -392,18 +396,18 @@ function renderTimeline() {
     </svg>
   `;
   
-  // Add click handlers to markers
-  container.querySelectorAll('.timeline-marker').forEach(marker => {
-    marker.addEventListener('click', function(e) {
-      e.stopPropagation();
-      const bookId = parseInt(this.getAttribute('data-book-id'));
-      const book = allBooks.find(b => b.id === bookId);
-      if (book) {
-        console.log('Clicked book:', book.title);
-        showBookDetails(book, bookId);
-      }
-    });
-  });
+}
+
+// Global function for timeline book clicks (called from SVG onclick)
+window.showTimelineBook = function(index) {
+  console.log('Timeline book clicked, index:', index);
+  if (timelineBooks && timelineBooks[index]) {
+    const book = timelineBooks[index];
+    console.log('Showing book:', book.title);
+    showBookDetails(book, book.id);
+  } else {
+    console.error('Book not found at index:', index);
+  }
 }
 
 // Listen for theme changes to update edge colors
