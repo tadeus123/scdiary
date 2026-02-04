@@ -924,7 +924,7 @@ body.corner-page {
 .bookshelf-toggle-container {
   position: fixed;
   bottom: 0.05rem;
-  left: 0.3rem;
+  left: 0.05rem;
   z-index: 950;
   pointer-events: auto;
 }
@@ -1338,7 +1338,7 @@ body.corner-page {
   
   .bookshelf-toggle-container {
     bottom: 0.05rem;
-    left: 0.3rem;
+    left: 0.05rem;
   }
   
   .toggle-switch {
@@ -1396,7 +1396,7 @@ body.corner-page {
 @media (max-width: 480px) {
   .bookshelf-toggle-container {
     bottom: 0.05rem;
-    left: 0.3rem;
+    left: 0.05rem;
   }
   
   .toggle-switch {
