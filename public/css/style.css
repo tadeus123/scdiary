@@ -7,7 +7,7 @@
   --entry-bg: rgba(255, 255, 255, 0.3);
   
   /* Toggle switch positioning - consistent across all devices */
-  --toggle-bottom: 0.3rem;
+  --toggle-bottom: 0.5rem;
   --toggle-left: 0.5rem;
 }
 
