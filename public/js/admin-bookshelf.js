@@ -115,10 +115,9 @@ async function initAdminBookshelf() {
         }
       },
       interaction: {
-        zoomView: true,
+        zoomView: false, // Disable camera zoom - we handle object scaling manually
         dragView: true,
-        hover: true,
-        zoomSpeed: 0.2 // Slow, controlled scaling
+        hover: true
       },
       nodes: {
         borderWidth: 2,
@@ -142,6 +141,37 @@ async function initAdminBookshelf() {
     };
     
     network = new vis.Network(container, graphData, options);
+    
+    // 🎯 Pure object scaling (Obsidian-style) - manipulate objects, not camera
+    let currentScale = 1.0;
+    const minScale = 0.3;
+    const maxScale = 3.0;
+    
+    container.addEventListener('wheel', function(e) {
+      e.preventDefault();
+      
+      // Adjust scale based on wheel direction
+      const delta = e.deltaY > 0 ? -0.05 : 0.05; // Slow, smooth scaling
+      currentScale = Math.max(minScale, Math.min(maxScale, currentScale + delta));
+      
+      // Scale ALL nodes
+      nodesDataSet.forEach(node => {
+        const baseSize = 40;
+        const scaledSize = baseSize * currentScale;
+        nodesDataSet.update({
+          id: node.id,
+          size: scaledSize
+        });
+      });
+      
+      // Scale edge width too for consistency
+      edgesDataSet.forEach(edge => {
+        edgesDataSet.update({
+          id: edge.id,
+          width: 1 * Math.max(0.5, currentScale * 0.5)
+        });
+      });
+    }, { passive: false });
     
     // Click handler for connection and delete modes
     network.on('click', function(params) {
