@@ -51,7 +51,6 @@ async function loadBookshelf() {
         id: book.id,
         shape: 'image',
         image: book.cover_image_url,
-        size: 30,
         shapeProperties: {
           useImageSize: false,
           useBorderWithImage: true
@@ -110,23 +109,25 @@ async function loadBookshelf() {
         tooltipDelay: 300,
         hideEdgesOnDrag: false,
         hideEdgesOnZoom: false,
-        zoomSpeed: 0.3 // Smooth, moderate zoom
+        zoomSpeed: 0.2 // Slow, controlled scaling
       },
       nodes: {
         borderWidth: 2,
         borderWidthSelected: 4,
         shape: 'image',
+        size: 40, // Base size
         shapeProperties: {
           useImageSize: false,
           interpolation: true
         },
         scaling: {
-          min: 20,
-          max: 60
-        },
-        widthConstraint: {
-          minimum: 40,
-          maximum: 80
+          min: 5,        // Can shrink to tiny dots
+          max: 150,      // Can grow very large
+          label: {
+            enabled: true,
+            min: 8,
+            max: 30
+          }
         }
       }
     };
