@@ -147,7 +147,8 @@ async function initAdminBookshelf() {
     
     network = new vis.Network(container, graphData, options);
     
-    // Obsidian-style: Camera zoom + Subtle node scaling
+    // Obsidian-style: Camera zoom + Subtle node scaling + Seamless spacing expansion
+    let lastSpacingUpdate = 0;
     network.on('zoom', function(params) {
       const scale = network.getScale();
       
@@ -162,6 +163,33 @@ async function initAdminBookshelf() {
         });
       });
       nodesDataSet.update(updates);
+      
+      // 🌊 SEAMLESS SPACING: Dots spread apart smoothly as you zoom in
+      // More aggressive the deeper you go, clean and smooth
+      const now = Date.now();
+      if (now - lastSpacingUpdate > 50) { // Throttle to prevent jitter
+        lastSpacingUpdate = now;
+        
+        // Exponential spacing expansion - gets more aggressive when zoomed in
+        const baseSpacing = 250;
+        const spacingMultiplier = Math.pow(scale, 1.2); // Gets stronger as you zoom
+        const dynamicSpacing = baseSpacing * spacingMultiplier;
+        
+        network.setOptions({
+          physics: {
+            enabled: true,
+            barnesHut: {
+              springLength: dynamicSpacing,
+              damping: 0.3 // Higher damping = smoother, less jitter
+            }
+          }
+        });
+        
+        // Brief stabilization for smoothness, then stop physics
+        setTimeout(() => {
+          network.stopSimulation();
+        }, 100);
+      }
     });
     
     // Disable physics after initial layout
