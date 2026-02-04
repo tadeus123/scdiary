@@ -962,7 +962,7 @@ body.corner-page {
   height: 11px;
   width: 11px;
   left: 2px;
-  bottom: 1.5px;
+  bottom: 2.5px;
   background-color: var(--text-color);
   transition: all 0.3s ease;
   border-radius: 50%;
@@ -1350,7 +1350,7 @@ body.corner-page {
     height: 10px;
     width: 10px;
     left: 2px;
-    bottom: 1.5px;
+    bottom: 2.5px;
   }
   
   .toggle-switch input:checked + .toggle-slider:before {
@@ -1408,7 +1408,7 @@ body.corner-page {
     height: 9px;
     width: 9px;
     left: 2px;
-    bottom: 1.5px;
+    bottom: 2.5px;
   }
   
   .toggle-switch input:checked + .toggle-slider:before {
