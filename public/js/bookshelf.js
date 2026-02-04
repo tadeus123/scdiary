@@ -379,8 +379,8 @@ function renderTimeline() {
       <!-- Book markers -->
       ${points.map((p, idx) => `
         <g class="timeline-marker" onclick="window.showTimelineBook(${idx})">
-          <!-- Invisible larger hit area for easier clicking -->
-          <rect x="${p.x - 8}" y="${p.y - 8}" width="16" height="${svgHeight - padding.bottom - p.y + 8}" 
+          <!-- Smaller hit area to avoid overlap -->
+          <rect x="${p.x - 4}" y="${p.y - 6}" width="8" height="${svgHeight - padding.bottom - p.y + 6}" 
                 class="timeline-marker-hitarea" />
           <line x1="${p.x}" y1="${p.y}" x2="${p.x}" y2="${svgHeight - padding.bottom}" 
                 class="timeline-marker-line" />
