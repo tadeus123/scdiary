@@ -94,12 +94,12 @@ async function loadBookshelf() {
           updateInterval: 25
         },
         barnesHut: {
-          gravitationalConstant: -3000, // Increased repulsion between all nodes
-          centralGravity: 0.1, // Reduced central pull for more spread
-          springLength: 200, // Longer springs for more space
-          springConstant: 0.02, // Weaker springs within categories
+          gravitationalConstant: -3000,
+          centralGravity: 0.1,
+          springLength: 200,
+          springConstant: 0.02,
           damping: 0.09,
-          avoidOverlap: 0.8 // Higher overlap avoidance
+          avoidOverlap: 0.8
         }
       },
       interaction: {
@@ -108,7 +108,9 @@ async function loadBookshelf() {
         hover: true,
         tooltipDelay: 300,
         hideEdgesOnDrag: false,
-        hideEdgesOnZoom: false
+        hideEdgesOnZoom: false,
+        zoomSpeed: 0.5, // Slower, smoother zoom
+        dragSpeed: 1.5 // Smooth drag momentum
       },
       nodes: {
         borderWidth: 2,

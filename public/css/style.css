@@ -1032,6 +1032,18 @@ body.corner-page {
   height: 100vh;
   background-color: var(--bg-color);
   transition: background-color 0.3s ease;
+  /* Hardware acceleration for smooth zoom/pan */
+  transform: translateZ(0);
+  will-change: transform;
+  -webkit-transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+#bookshelf-network canvas {
+  /* Smooth rendering */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
 /* Book details overlay */
@@ -1295,6 +1307,18 @@ body.corner-page {
   border-radius: 8px;
   background-color: var(--bg-color);
   margin-top: 1rem;
+  /* Hardware acceleration for smooth zoom/pan */
+  transform: translateZ(0);
+  will-change: transform;
+  -webkit-transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.admin-network canvas {
+  /* Smooth rendering */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
 .network-empty {
