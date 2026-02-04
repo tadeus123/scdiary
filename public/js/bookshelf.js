@@ -109,7 +109,9 @@ async function loadBookshelf() {
         tooltipDelay: 300,
         hideEdgesOnDrag: false,
         hideEdgesOnZoom: false,
-        zoomSpeed: 0.6  // Smooth, responsive zoom
+        zoomSpeed: 0.6,  // Smooth, responsive zoom
+        zoomMin: 0.3,    // Can zoom out
+        zoomMax: 2.5     // Limit how far you can zoom in
       },
       nodes: {
         borderWidth: 2,
@@ -138,8 +140,7 @@ async function loadBookshelf() {
     
     network = new vis.Network(container, graphData, options);
     
-    // Obsidian-style: Camera zoom + Subtle node scaling + Seamless spacing expansion
-    let lastSpacingUpdate = 0;
+    // Obsidian-style: Camera zoom + Subtle node scaling (elegant & static)
     network.on('zoom', function(params) {
       const scale = network.getScale();
       
@@ -154,33 +155,6 @@ async function loadBookshelf() {
         });
       });
       nodesDataSet.update(updates);
-      
-      // 🌊 SEAMLESS SPACING: Dots spread apart smoothly as you zoom in
-      // Gentle, smooth transitions
-      const now = Date.now();
-      if (now - lastSpacingUpdate > 100) { // Slower throttle = smoother
-        lastSpacingUpdate = now;
-        
-        // Gentle spacing expansion - smooth and subtle
-        const baseSpacing = 250;
-        const spacingMultiplier = Math.pow(scale, 0.6); // Gentler expansion
-        const dynamicSpacing = baseSpacing * spacingMultiplier;
-        
-        network.setOptions({
-          physics: {
-            enabled: true,
-            barnesHut: {
-              springLength: dynamicSpacing,
-              damping: 0.5 // Very high damping = very smooth
-            }
-          }
-        });
-        
-        // Longer stabilization for smooth settling
-        setTimeout(() => {
-          network.stopSimulation();
-        }, 200);
-      }
     });
     
     // Disable physics after initial layout
