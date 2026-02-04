@@ -106,57 +106,58 @@ async function initAdminBookshelf() {
           iterations: 300
         },
         barnesHut: {
-          gravitationalConstant: -5000, // Much stronger repulsion = less overlap
-          centralGravity: 0.05, // Less center pull = more spread
-          springLength: 250, // Longer springs = more space between groups
-          springConstant: 0.015, // Weaker springs = softer connections
-          damping: 0.15, // More damping = smoother settling
-          avoidOverlap: 1 // Maximum overlap avoidance
+          gravitationalConstant: -4000,
+          centralGravity: 0.08,
+          springLength: 200,
+          springConstant: 0.02,
+          damping: 0.2,
+          avoidOverlap: 0.9
         }
       },
       interaction: {
         zoomView: true,
         dragView: true,
         hover: true,
-        zoomSpeed: 0.6  // Smooth, responsive zoom
+        zoomSpeed: 0.4  // Balanced, smooth zoom
       },
       nodes: {
         borderWidth: 2,
         borderWidthSelected: 4,
         shape: 'image',
-        size: 40,
+        size: 45,  // Balanced base size
         shapeProperties: {
           useImageSize: false,
           interpolation: true
         },
         scaling: {
-          min: 15,
-          max: 80,
+          min: 20,
+          max: 90,
           label: {
             enabled: false
           }
         }
       },
       edges: {
+        width: 1.5,
         scaling: {
-          min: 1,
-          max: 3
+          min: 0.5,
+          max: 2.5
         }
       }
     };
     
     network = new vis.Network(container, graphData, options);
     
-    // Obsidian-style: Camera zoom + Dynamic node scaling based on zoom level
+    // Obsidian-style: Harmonized camera zoom + node scaling
     network.on('zoom', function(params) {
       const scale = network.getScale();
       
-      // Update node sizes based on zoom (objects grow/shrink with camera)
+      // Nodes scale proportionally with zoom for smooth visual consistency
       const updates = [];
       nodesDataSet.forEach(node => {
         updates.push({
           id: node.id,
-          size: 40 * Math.pow(scale, 0.4) // Nodes scale with zoom (dampened)
+          size: 45 * Math.pow(scale, 0.5) // Balanced scaling that matches camera zoom
         });
       });
       nodesDataSet.update(updates);
