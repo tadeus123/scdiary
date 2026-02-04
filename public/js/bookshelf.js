@@ -140,19 +140,19 @@ async function loadBookshelf() {
     
     network = new vis.Network(container, graphData, options);
     
-    // Obsidian-style: Infinite depth zoom - everything spreads apart uniformly
+    // Obsidian-style: Infinite depth zoom - smooth spreading, no overlap
     network.on('zoom', function(params) {
       const scale = network.getScale();
       
-      // Nodes scale proportionally with camera for uniform expansion
-      // Like infinite fractals - everything grows together
+      // Nodes grow VERY slowly - mostly camera creates depth feeling
+      // This prevents overlap and keeps it smooth
       const updates = [];
       nodesDataSet.forEach(node => {
-        // Proportional scaling creates infinite depth feeling
-        const nodeSize = 40 * Math.pow(scale, 0.3); // Balanced with camera
+        // Very subtle growth - camera does the work
+        const nodeSize = 40 * Math.pow(scale, 0.12); // Very slow growth
         updates.push({
           id: node.id,
-          size: nodeSize
+          size: Math.min(nodeSize, 65) // Cap to prevent too large
         });
       });
       nodesDataSet.update(updates);
