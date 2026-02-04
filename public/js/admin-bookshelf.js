@@ -106,12 +106,12 @@ async function initAdminBookshelf() {
           iterations: 300
         },
         barnesHut: {
-          gravitationalConstant: -3000, // Moderate repulsion
-          centralGravity: 0.1, // Balanced center pull
-          springLength: 120, // TIGHTER initial spacing
-          springConstant: 0.02, // Moderate springs
-          damping: 0.2, // Smooth settling
-          avoidOverlap: 0.8 // Good overlap avoidance
+          gravitationalConstant: -5000, // Much stronger repulsion = less overlap
+          centralGravity: 0.05, // Less center pull = more spread
+          springLength: 250, // Longer springs = more space between groups
+          springConstant: 0.015, // Weaker springs = softer connections
+          damping: 0.15, // More damping = smoother settling
+          avoidOverlap: 1 // Maximum overlap avoidance
         }
       },
       interaction: {
@@ -147,7 +147,7 @@ async function initAdminBookshelf() {
     
     network = new vis.Network(container, graphData, options);
     
-    // Obsidian-style: Camera zoom + Dynamic node scaling + Dynamic spacing
+    // Obsidian-style: Camera zoom + Dynamic node scaling based on zoom level
     network.on('zoom', function(params) {
       const scale = network.getScale();
       
@@ -160,19 +160,6 @@ async function initAdminBookshelf() {
         });
       });
       nodesDataSet.update(updates);
-      
-      // 🌊 FLOW APART: Spacing scales proportionally with book sizes
-      // Books scale by scale^0.4, so spacing should scale similarly but MORE
-      const dynamicSpringLength = 150 * Math.pow(scale, 1.5); // More aggressive spacing
-      
-      network.setOptions({
-        physics: {
-          barnesHut: {
-            springLength: dynamicSpringLength,
-            gravitationalConstant: -3000 * Math.pow(scale, 0.3) // Also scale repulsion
-          }
-        }
-      });
     });
     
     // Disable physics after initial layout
