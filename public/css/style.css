@@ -1055,6 +1055,7 @@ body.corner-page {
 }
 
 .add-book-section h2,
+.ai-tools-section h2,
 .connection-section h2 {
   font-size: 1.5rem;
   font-weight: 400;
@@ -1135,6 +1136,36 @@ body.corner-page {
 .form-message.info {
   background-color: rgba(193, 106, 40, 0.1);
   color: var(--accent-color);
+}
+
+.ai-tools-section {
+  margin-top: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ai-tools-controls {
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.ai-tools-controls .btn {
+  margin-bottom: 0.5rem;
+}
+
+.ai-tools-hint {
+  font-size: 0.9rem;
+  color: var(--text-color);
+  opacity: 0.7;
+  line-height: 1.6;
+  margin-top: 0.5rem;
+}
+
+#ai-tools-message {
+  margin-top: 1rem;
 }
 
 .connection-section {

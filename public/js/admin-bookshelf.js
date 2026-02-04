@@ -104,15 +104,15 @@ async function initAdminBookshelf() {
         enabled: true,
         stabilization: {
           enabled: true,
-          iterations: 200
+          iterations: 300
         },
         barnesHut: {
-          gravitationalConstant: -2000,
-          centralGravity: 0.3,
-          springLength: 150,
-          springConstant: 0.04,
+          gravitationalConstant: -3000, // Increased repulsion between all nodes
+          centralGravity: 0.1, // Reduced central pull for more spread
+          springLength: 200, // Longer springs for more space
+          springConstant: 0.02, // Weaker springs within categories
           damping: 0.09,
-          avoidOverlap: 0.5
+          avoidOverlap: 0.8 // Higher overlap avoidance
         }
       },
       interaction: {
@@ -386,6 +386,58 @@ function showMessage(message, type = 'info') {
     messageDiv.style.display = 'none';
   }, 5000);
 }
+
+// AI Tools: Recategorize all books button
+document.getElementById('recategorize-all')?.addEventListener('click', async () => {
+  const button = document.getElementById('recategorize-all');
+  const messageDiv = document.getElementById('ai-tools-message');
+  
+  if (!confirm('This will re-categorize all books using AI and rebuild all connections. This may take a few minutes. Continue?')) {
+    return;
+  }
+  
+  button.disabled = true;
+  button.textContent = '🤖 Categorizing...';
+  messageDiv.textContent = 'AI is analyzing your books... This may take a few minutes.';
+  messageDiv.className = 'form-message info';
+  messageDiv.style.display = 'block';
+  
+  try {
+    const response = await fetch('/api/books/recategorize-all', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      messageDiv.textContent = `✅ Success! Categorized ${data.categorized} books, created ${data.connectionsCreated} connections.`;
+      messageDiv.className = 'form-message success';
+      
+      // Reload network
+      setTimeout(async () => {
+        await initAdminBookshelf();
+        messageDiv.style.display = 'none';
+      }, 3000);
+    } else {
+      messageDiv.textContent = `❌ Error: ${data.error}`;
+      messageDiv.className = 'form-message error';
+    }
+  } catch (error) {
+    console.error('Error recategorizing:', error);
+    messageDiv.textContent = `❌ Error: ${error.message}`;
+    messageDiv.className = 'form-message error';
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Recategorize All Books';
+    
+    setTimeout(() => {
+      messageDiv.style.display = 'none';
+    }, 8000);
+  }
+});
 
 // Listen for theme changes to update edge colors
 document.addEventListener('themeChanged', updateEdgeColors);

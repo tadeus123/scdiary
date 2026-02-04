@@ -10,8 +10,13 @@ const {
   getBookConnections, 
   addBook, 
   addBookConnection, 
-  deleteBook 
+  deleteBook,
+  deleteConnection,
+  autoConnectBook,
+  rebuildAllConnections,
+  updateBookCategory
 } = require('../db/supabase');
+const { categorizeBook } = require('../services/categorization');
 
 // Initialize Supabase client for storage
 const supabase = createClient(
@@ -112,16 +117,31 @@ router.post('/api/books', upload.single('cover'), async (req, res) => {
       .from('book-covers')
       .getPublicUrl(fileName);
     
+    // 🤖 AI: Categorize the book automatically
+    console.log(`🤖 Categorizing "${title}" by ${author}...`);
+    const category = await categorizeBook(title, author);
+    console.log(`✅ Category: ${category}`);
+    
     const bookData = {
       title,
       author,
       date_read: dateRead,
-      cover_image_url: urlData.publicUrl
+      cover_image_url: urlData.publicUrl,
+      category: category
     };
     
     const result = await addBook(bookData);
     
     if (result.success) {
+      // 🔗 Auto-create connections to books in the same category
+      if (category && category !== 'Other') {
+        console.log(`🔗 Auto-connecting to other ${category} books...`);
+        const connectResult = await autoConnectBook(result.book.id, category);
+        if (connectResult.success) {
+          console.log(`✅ Created ${connectResult.connectionsCreated} connections`);
+        }
+      }
+      
       res.json({ success: true, book: result.book });
     } else {
       // If database insert fails, delete the uploaded file
@@ -212,6 +232,77 @@ router.delete('/api/books/:id', async (req, res) => {
     }
   } catch (error) {
     console.error('Error deleting book:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// API: Recategorize all books using AI (admin only)
+router.post('/api/books/recategorize-all', async (req, res) => {
+  try {
+    console.log('🤖 Starting recategorization of all books...');
+    
+    const books = await getBooks();
+    let categorized = 0;
+    let failed = 0;
+    
+    for (const book of books) {
+      try {
+        const category = await categorizeBook(book.title, book.author);
+        const result = await updateBookCategory(book.id, category);
+        
+        if (result.success) {
+          categorized++;
+          console.log(`✅ "${book.title}" → ${category}`);
+        } else {
+          failed++;
+          console.error(`❌ Failed to update "${book.title}"`);
+        }
+        
+        // Small delay to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        failed++;
+        console.error(`❌ Error categorizing "${book.title}":`, error.message);
+      }
+    }
+    
+    // Rebuild all connections based on new categories
+    console.log('🔗 Rebuilding all connections...');
+    const rebuildResult = await rebuildAllConnections();
+    
+    if (rebuildResult.success) {
+      console.log(`✅ Created ${rebuildResult.connectionsCreated} connections`);
+    }
+    
+    res.json({ 
+      success: true, 
+      categorized,
+      failed,
+      connectionsCreated: rebuildResult.connectionsCreated || 0
+    });
+  } catch (error) {
+    console.error('Error recategorizing books:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// API: Rebuild all connections based on categories (admin only)
+router.post('/api/books/rebuild-connections', async (req, res) => {
+  try {
+    console.log('🔗 Rebuilding all connections...');
+    const result = await rebuildAllConnections();
+    
+    if (result.success) {
+      console.log(`✅ Created ${result.connectionsCreated} connections`);
+      res.json({ 
+        success: true, 
+        connectionsCreated: result.connectionsCreated 
+      });
+    } else {
+      res.status(500).json({ success: false, error: result.error });
+    }
+  } catch (error) {
+    console.error('Error rebuilding connections:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

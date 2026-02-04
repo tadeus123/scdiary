@@ -408,6 +408,171 @@ async function deleteBook(id) {
   }
 }
 
+// Delete a specific connection
+async function deleteConnection(id) {
+  if (!supabase) {
+    console.warn('⚠️  Supabase not configured');
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('book_connections')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting connection:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting connection:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Auto-create connections for a book based on its category
+async function autoConnectBook(bookId, category) {
+  if (!supabase || !category) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    // Find all other books in the same category
+    const { data: booksInCategory, error: fetchError } = await supabase
+      .from('books')
+      .select('id')
+      .eq('category', category)
+      .neq('id', bookId);
+
+    if (fetchError) {
+      console.error('Error fetching books in category:', fetchError);
+      return { success: false, error: fetchError.message };
+    }
+
+    if (!booksInCategory || booksInCategory.length === 0) {
+      return { success: true, connectionsCreated: 0 };
+    }
+
+    // Create connections to all books in the same category
+    const connections = booksInCategory.map(book => ({
+      from_book_id: bookId,
+      to_book_id: book.id
+    }));
+
+    const { data, error: insertError } = await supabase
+      .from('book_connections')
+      .insert(connections)
+      .select();
+
+    if (insertError) {
+      console.error('Error creating auto-connections:', insertError);
+      return { success: false, error: insertError.message };
+    }
+
+    return { success: true, connectionsCreated: data.length };
+  } catch (error) {
+    console.error('Error in autoConnectBook:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Rebuild all connections based on categories (deletes all, recreates)
+async function rebuildAllConnections() {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    // Delete all existing connections
+    const { error: deleteError } = await supabase
+      .from('book_connections')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+
+    if (deleteError) {
+      console.error('Error deleting connections:', deleteError);
+      return { success: false, error: deleteError.message };
+    }
+
+    // Get all books with categories
+    const { data: books, error: fetchError } = await supabase
+      .from('books')
+      .select('id, category')
+      .not('category', 'is', null);
+
+    if (fetchError) {
+      console.error('Error fetching books:', fetchError);
+      return { success: false, error: fetchError.message };
+    }
+
+    // Group books by category
+    const booksByCategory = {};
+    books.forEach(book => {
+      if (!booksByCategory[book.category]) {
+        booksByCategory[book.category] = [];
+      }
+      booksByCategory[book.category].push(book.id);
+    });
+
+    // Create connections within each category
+    const allConnections = [];
+    Object.entries(booksByCategory).forEach(([category, bookIds]) => {
+      // Connect each book to every other book in the same category
+      for (let i = 0; i < bookIds.length; i++) {
+        for (let j = i + 1; j < bookIds.length; j++) {
+          allConnections.push({
+            from_book_id: bookIds[i],
+            to_book_id: bookIds[j]
+          });
+        }
+      }
+    });
+
+    if (allConnections.length > 0) {
+      const { error: insertError } = await supabase
+        .from('book_connections')
+        .insert(allConnections);
+
+      if (insertError) {
+        console.error('Error creating connections:', insertError);
+        return { success: false, error: insertError.message };
+      }
+    }
+
+    return { success: true, connectionsCreated: allConnections.length };
+  } catch (error) {
+    console.error('Error rebuilding connections:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Update book category
+async function updateBookCategory(bookId, category) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('books')
+      .update({ category })
+      .eq('id', bookId);
+
+    if (error) {
+      console.error('Error updating book category:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating book category:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   getEntries,
   createEntry,
@@ -422,6 +587,10 @@ module.exports = {
   addBook,
   addBookConnection,
   deleteBook,
+  deleteConnection,
+  autoConnectBook,
+  rebuildAllConnections,
+  updateBookCategory,
   isConfigured: () => supabase !== null
 };
 

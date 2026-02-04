@@ -90,16 +90,16 @@ async function loadBookshelf() {
         enabled: true,
         stabilization: {
           enabled: true,
-          iterations: 200,
+          iterations: 300,
           updateInterval: 25
         },
         barnesHut: {
-          gravitationalConstant: -2000,
-          centralGravity: 0.3,
-          springLength: 150,
-          springConstant: 0.04,
+          gravitationalConstant: -3000, // Increased repulsion between all nodes
+          centralGravity: 0.1, // Reduced central pull for more spread
+          springLength: 200, // Longer springs for more space
+          springConstant: 0.02, // Weaker springs within categories
           damping: 0.09,
-          avoidOverlap: 0.5
+          avoidOverlap: 0.8 // Higher overlap avoidance
         }
       },
       interaction: {
