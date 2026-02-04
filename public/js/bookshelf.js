@@ -124,17 +124,11 @@ async function loadBookshelf() {
     
     network = new vis.Network(container, graphData, options);
     
-    // Disable physics after stabilization for smooth performance
-    network.once('stabilizationIterationsDone', function() {
-      network.setOptions({ physics: false });
-    });
-    
-    // 🎯 OBSIDIAN-STYLE OBJECT SCALING
-    // Scroll manipulates the objects themselves, not the camera
+    // 🎯 OBSIDIAN-STYLE: Objects get smaller/bigger AND spaces change
     let currentScale = 1.0;
-    const minScale = 0.2;
-    const maxScale = 3.0;
-    const scaleStep = 0.08; // Smooth scaling
+    const minScale = 0.3;
+    const maxScale = 2.5;
+    const scaleStep = 0.05; // Smooth scaling
     
     container.addEventListener('wheel', function(e) {
       e.preventDefault();
@@ -147,15 +141,35 @@ async function loadBookshelf() {
       if (newScale !== currentScale) {
         currentScale = newScale;
         
-        // Update ALL node sizes directly
+        // 1. Update node sizes
         const updates = [];
         nodesDataSet.forEach(node => {
           updates.push({
             id: node.id,
-            size: 40 * currentScale // Base size 40, scaled
+            size: 40 * currentScale
           });
         });
         nodesDataSet.update(updates);
+        
+        // 2. Update spring lengths (distances between nodes)
+        network.setOptions({
+          physics: {
+            enabled: true,
+            barnesHut: {
+              gravitationalConstant: -5000,
+              centralGravity: 0.05,
+              springLength: 250 * currentScale, // Scale distances!
+              springConstant: 0.015,
+              damping: 0.15,
+              avoidOverlap: 1
+            }
+          }
+        });
+        
+        // Stabilize briefly then stop physics
+        setTimeout(() => {
+          network.stopSimulation();
+        }, 100);
       }
     }, { passive: false });
     
