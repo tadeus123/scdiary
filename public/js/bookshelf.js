@@ -152,15 +152,15 @@ async function loadBookshelf() {
       });
       nodesDataSet.update(updates);
       
-      // 🌊 FLOW APART: Dynamically adjust spacing based on zoom
-      // When zoomed in (scale > 1), spacing expands MORE
-      // When zoomed out (scale < 1), spacing contracts
-      const dynamicSpringLength = 120 * Math.pow(scale, 1.2); // Aggressive spacing expansion
+      // 🌊 FLOW APART: Spacing scales proportionally with book sizes
+      // Books scale by scale^0.4, so spacing should scale similarly but MORE
+      const dynamicSpringLength = 150 * Math.pow(scale, 1.5); // More aggressive spacing
       
       network.setOptions({
         physics: {
           barnesHut: {
-            springLength: dynamicSpringLength
+            springLength: dynamicSpringLength,
+            gravitationalConstant: -3000 * Math.pow(scale, 0.3) // Also scale repulsion
           }
         }
       });
