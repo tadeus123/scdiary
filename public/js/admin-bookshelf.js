@@ -150,45 +150,21 @@ async function initAdminBookshelf() {
     network = new vis.Network(container, graphData, options);
     
     // Obsidian-style: Infinite depth zoom - smooth spreading, no overlap
-    let lastUpdate = 0;
     network.on('zoom', function(params) {
       const scale = network.getScale();
       
       // Nodes grow VERY slowly - mostly camera creates depth feeling
+      // This prevents overlap and keeps it smooth
       const updates = [];
       nodesDataSet.forEach(node => {
+        // Very subtle growth - camera does the work
         const nodeSize = 40 * Math.pow(scale, 0.12); // Very slow growth
         updates.push({
           id: node.id,
-          size: Math.min(nodeSize, 65)
+          size: Math.min(nodeSize, 65) // Cap to prevent too large
         });
       });
       nodesDataSet.update(updates);
-      
-      // Dynamic spacing to prevent overlap when zoomed in
-      const now = Date.now();
-      if (now - lastUpdate > 150) { // Smooth throttle
-        lastUpdate = now;
-        
-        // Spacing grows with zoom to prevent overlap
-        const dynamicSpacing = 250 * Math.pow(scale, 0.5); // Moderate expansion
-        
-        network.setOptions({
-          physics: {
-            enabled: true,
-            barnesHut: {
-              springLength: dynamicSpacing,
-              damping: 0.6, // High damping for smoothness
-              avoidOverlap: 1
-            }
-          }
-        });
-        
-        // Brief stabilization, then freeze
-        setTimeout(() => {
-          network.stopSimulation();
-        }, 150);
-      }
     });
     
     // Disable physics after initial layout
