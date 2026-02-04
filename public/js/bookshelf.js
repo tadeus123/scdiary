@@ -337,8 +337,10 @@ function renderTimeline() {
   // Store for click handlers
   timelineBooks = sortedBooks;
   
-  // Create SVG line graph
-  const svgWidth = Math.max(1200, sortedBooks.length * 20);
+  // Create SVG line graph - scale based on number of books
+  const minWidth = 1200;
+  const pixelsPerBook = 25; // Give each book more space
+  const svgWidth = Math.max(minWidth, sortedBooks.length * pixelsPerBook);
   const svgHeight = 400;
   const padding = { top: 40, right: 40, bottom: 60, left: 60 };
   const graphWidth = svgWidth - padding.left - padding.right;
@@ -346,12 +348,23 @@ function renderTimeline() {
   
   const firstDate = new Date(sortedBooks[0].date_read);
   const lastDate = new Date(sortedBooks[sortedBooks.length - 1].date_read);
-  const timeRange = lastDate - firstDate;
+  let timeRange = lastDate - firstDate;
+  
+  // Handle edge case: if all books on same day or only one book, add 1 day padding
+  if (timeRange === 0) {
+    timeRange = 86400000; // 1 day in milliseconds
+  }
   
   // Create points for line graph (cumulative books over time)
   const points = sortedBooks.map((book, index) => {
     const date = new Date(book.date_read);
-    const x = padding.left + ((date - firstDate) / timeRange) * graphWidth;
+    let x = padding.left + ((date - firstDate) / timeRange) * graphWidth;
+    
+    // If all books are on the same day, center them
+    if (lastDate - firstDate === 0) {
+      x = padding.left + graphWidth / 2;
+    }
+    
     const y = padding.top + graphHeight - ((index + 1) / sortedBooks.length) * graphHeight;
     return { x, y, book, index };
   });
@@ -390,15 +403,17 @@ function renderTimeline() {
   container.innerHTML = `
     <svg class="timeline-svg" viewBox="0 0 ${svgWidth} ${svgHeight}">
       <!-- Grid lines -->
-      ${[0, 0.25, 0.5, 0.75, 1].map(ratio => `
+      ${[0, 0.25, 0.5, 0.75, 1].map(ratio => {
+        const bookCount = Math.round(sortedBooks.length * ratio);
+        return `
         <line x1="${padding.left}" y1="${padding.top + graphHeight * (1 - ratio)}" 
               x2="${svgWidth - padding.right}" y2="${padding.top + graphHeight * (1 - ratio)}" 
               class="timeline-grid-line" />
         <text x="${padding.left - 10}" y="${padding.top + graphHeight * (1 - ratio) + 5}" 
               class="timeline-axis-label" text-anchor="end">
-          ${Math.round(sortedBooks.length * ratio)}
+          ${bookCount}
         </text>
-      `).join('')}
+      `;}).join('')}
       
       <!-- Line graph -->
       <path d="${linePath}" class="timeline-line" />
