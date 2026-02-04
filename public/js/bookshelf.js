@@ -156,9 +156,9 @@ async function loadBookshelf() {
       });
       nodesDataSet.update(updates);
       
-      // Ultra-smooth spacing expansion - no jitter, no weird movement
+      // Ultra-smooth spacing expansion - responsive, no jitter
       const now = Date.now();
-      if (now - lastUpdate > 250) { // Long throttle for smoothness
+      if (now - lastUpdate > 100) { // Responsive throttle
         lastUpdate = now;
         
         // Gentle spacing expansion
@@ -176,10 +176,10 @@ async function loadBookshelf() {
           }
         });
         
-        // Very brief physics, then freeze immediately
+        // Quick freeze
         setTimeout(() => {
           network.stopSimulation();
-        }, 100);
+        }, 60);
       }
     });
     
