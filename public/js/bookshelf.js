@@ -7,6 +7,8 @@ let allBooks = [];
 let allConnections = [];
 let isTimelineView = false;
 let timelineBooks = []; // Store sorted books for timeline clicks
+let timelineBooksByPosition = {}; // Group books by x-position
+let currentBookIndexByPosition = {}; // Track current book index for each position
 
 // Get edge colors based on current theme
 function getEdgeColor() {
@@ -354,6 +356,31 @@ function renderTimeline() {
     return { x, y, book, index };
   });
   
+  // Group books by similar x-position (within 10px threshold)
+  timelineBooksByPosition = {};
+  currentBookIndexByPosition = {};
+  const positionThreshold = 10;
+  
+  points.forEach(point => {
+    // Find if there's already a group near this x position
+    let positionKey = null;
+    for (let key in timelineBooksByPosition) {
+      if (Math.abs(parseFloat(key) - point.x) < positionThreshold) {
+        positionKey = key;
+        break;
+      }
+    }
+    
+    // If no group found, create new one
+    if (!positionKey) {
+      positionKey = point.x.toString();
+      timelineBooksByPosition[positionKey] = [];
+      currentBookIndexByPosition[positionKey] = 0;
+    }
+    
+    timelineBooksByPosition[positionKey].push(point.index);
+  });
+  
   // Create line path
   const linePath = points.map((p, i) => 
     `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
@@ -377,16 +404,25 @@ function renderTimeline() {
       <path d="${linePath}" class="timeline-line" />
       
       <!-- Book markers -->
-      ${points.map((p, idx) => `
-        <g class="timeline-marker" onclick="window.showTimelineBook(${idx})">
-          <!-- Smaller hit area to avoid overlap -->
-          <rect x="${p.x - 4}" y="${p.y - 6}" width="8" height="${svgHeight - padding.bottom - p.y + 6}" 
+      ${points.map((p, idx) => {
+        // Find the position key for this point
+        let posKey = p.x.toString();
+        for (let key in timelineBooksByPosition) {
+          if (Math.abs(parseFloat(key) - p.x) < 10) {
+            posKey = key;
+            break;
+          }
+        }
+        return `
+        <g class="timeline-marker" onclick="window.showTimelineBook('${posKey}')">
+          <!-- Hit area for clicking -->
+          <rect x="${p.x - 6}" y="${p.y - 6}" width="12" height="${svgHeight - padding.bottom - p.y + 6}" 
                 class="timeline-marker-hitarea" />
           <line x1="${p.x}" y1="${p.y}" x2="${p.x}" y2="${svgHeight - padding.bottom}" 
                 class="timeline-marker-line" />
           <circle cx="${p.x}" cy="${p.y}" r="5" class="timeline-marker-dot" />
         </g>
-      `).join('')}
+      `;}).join('')}
       
       <!-- Axis labels -->
       <text x="${svgWidth / 2}" y="${svgHeight - 10}" class="timeline-axis-title" text-anchor="middle">
@@ -402,14 +438,28 @@ function renderTimeline() {
 }
 
 // Global function for timeline book clicks (called from SVG onclick)
-window.showTimelineBook = function(index) {
-  console.log('Timeline book clicked, index:', index);
-  if (timelineBooks && timelineBooks[index]) {
-    const book = timelineBooks[index];
-    console.log('Showing book:', book.title);
+window.showTimelineBook = function(positionKey) {
+  console.log('Timeline position clicked:', positionKey);
+  
+  const booksAtPosition = timelineBooksByPosition[positionKey];
+  if (!booksAtPosition || booksAtPosition.length === 0) {
+    console.error('No books found at position:', positionKey);
+    return;
+  }
+  
+  // Get current index for this position (cycles through books)
+  const currentIdx = currentBookIndexByPosition[positionKey];
+  const bookIndex = booksAtPosition[currentIdx];
+  const book = timelineBooks[bookIndex];
+  
+  if (book) {
+    console.log(`Showing book ${currentIdx + 1}/${booksAtPosition.length}:`, book.title);
     showBookDetails(book, book.id);
+    
+    // Increment for next click (cycle back to 0 when reaching end)
+    currentBookIndexByPosition[positionKey] = (currentIdx + 1) % booksAtPosition.length;
   } else {
-    console.error('Book not found at index:', index);
+    console.error('Book not found at index:', bookIndex);
   }
 }
 
