@@ -2,6 +2,7 @@
 let network = null;
 let selectedNodeId = null;
 let edgesDataSet = null;
+let nodesDataSet = null;
 
 // Get edge colors based on current theme
 function getEdgeColor() {
@@ -45,7 +46,7 @@ async function loadBookshelf() {
     }
     
     // Create nodes from books (book covers as images)
-    const nodes = new vis.DataSet(
+    nodesDataSet = new vis.DataSet(
       books.map(book => ({
         id: book.id,
         shape: 'image',
@@ -83,7 +84,7 @@ async function loadBookshelf() {
     );
     
     const container = document.getElementById('bookshelf-network');
-    const graphData = { nodes, edges: edgesDataSet };
+    const graphData = { nodes: nodesDataSet, edges: edgesDataSet };
     
     const options = {
       physics: {
@@ -133,16 +134,36 @@ async function loadBookshelf() {
     
     network = new vis.Network(container, graphData, options);
     
-    // Disable physics animation after initial stabilization for smoother zoom
+    // Disable physics animation after initial stabilization
     network.once('stabilizationIterationsDone', function() {
       network.setOptions({ physics: false });
+    });
+    
+    // 🎨 Obsidian-style object scaling on zoom
+    network.on('zoom', function(params) {
+      const scale = network.getScale();
+      
+      // Scale nodes based on zoom level
+      // When zoomed out (scale < 1): nodes get tiny
+      // When zoomed in (scale > 1): nodes get huge
+      const nodeScaleFactor = Math.pow(scale, 0.7); // Gentler scaling curve
+      
+      nodesDataSet.forEach(node => {
+        nodesDataSet.update({
+          id: node.id,
+          size: 30 * nodeScaleFactor, // Base size 30, scales with zoom
+          font: {
+            size: 14 * nodeScaleFactor // Scale text too
+          }
+        });
+      });
     });
     
     // Click handler - show book details
     network.on('click', function(params) {
       if (params.nodes.length > 0) {
         const nodeId = params.nodes[0];
-        const node = nodes.get(nodeId);
+        const node = nodesDataSet.get(nodeId);
         showBookDetails(node.bookData, nodeId);
       } else {
         hideBookDetails();

@@ -143,9 +143,29 @@ async function initAdminBookshelf() {
     
     network = new vis.Network(container, graphData, options);
     
-    // Disable physics animation after initial stabilization for smoother zoom
+    // Disable physics animation after initial stabilization
     network.once('stabilizationIterationsDone', function() {
       network.setOptions({ physics: false });
+    });
+    
+    // 🎨 Obsidian-style object scaling on zoom
+    network.on('zoom', function(params) {
+      const scale = network.getScale();
+      
+      // Scale nodes based on zoom level
+      // When zoomed out (scale < 1): nodes get tiny
+      // When zoomed in (scale > 1): nodes get huge
+      const nodeScaleFactor = Math.pow(scale, 0.7); // Gentler scaling curve
+      
+      nodesDataSet.forEach(node => {
+        nodesDataSet.update({
+          id: node.id,
+          size: 30 * nodeScaleFactor, // Base size 30, scales with zoom
+          font: {
+            size: 14 * nodeScaleFactor // Scale text too
+          }
+        });
+      });
     });
     
     // Click handler for connection and delete modes
