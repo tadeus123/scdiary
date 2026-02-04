@@ -131,31 +131,9 @@ async function loadBookshelf() {
     
     network = new vis.Network(container, graphData, options);
     
-    // 🎨 Dynamic zoom physics (Obsidian-like feel)
-    let isAdjustingPhysics = false;
-    const baseSpringLength = 200;
-    const baseGravity = -3000;
-    
-    network.on('zoom', function(params) {
-      if (isAdjustingPhysics) return;
-      
-      const scale = params.scale;
-      // Adjust physics based on zoom level
-      // When zooming IN (scale > 1): nodes spread apart
-      // When zooming OUT (scale < 1): nodes come together
-      const adjustedSpringLength = baseSpringLength * scale;
-      const adjustedGravity = baseGravity * Math.sqrt(scale);
-      
-      isAdjustingPhysics = true;
-      network.setOptions({
-        physics: {
-          barnesHut: {
-            springLength: adjustedSpringLength,
-            gravitationalConstant: adjustedGravity
-          }
-        }
-      });
-      isAdjustingPhysics = false;
+    // Disable physics animation after initial stabilization for smoother zoom
+    network.once('stabilizationIterationsDone', function() {
+      network.setOptions({ physics: false });
     });
     
     // Click handler - show book details
