@@ -8,7 +8,7 @@
   
   /* Toggle switch positioning - consistent across all devices */
   --toggle-bottom: 0.1rem;
-  --toggle-left: 10rem;
+  --toggle-left: 3rem;
 }
 
 [data-theme="dark"] {
