@@ -103,13 +103,12 @@ async function loadBookshelf() {
         }
       },
       interaction: {
-        zoomView: true,
+        zoomView: false,  // Disable camera zoom - we control objects directly
         dragView: true,
         hover: true,
         tooltipDelay: 300,
         hideEdgesOnDrag: false,
-        hideEdgesOnZoom: false,
-        zoomSpeed: 0.2
+        hideEdgesOnZoom: false
       },
       nodes: {
         borderWidth: 2,
@@ -119,20 +118,46 @@ async function loadBookshelf() {
         shapeProperties: {
           useImageSize: false,
           interpolation: true
-        },
-        scaling: {
-          min: 5,        // Can shrink to tiny dots
-          max: 150,      // Can grow very large
-          label: {
-            enabled: true,
-            min: 8,
-            max: 30
-          }
         }
       }
     };
     
     network = new vis.Network(container, graphData, options);
+    
+    // Disable physics after stabilization for smooth performance
+    network.once('stabilizationIterationsDone', function() {
+      network.setOptions({ physics: false });
+    });
+    
+    // 🎯 OBSIDIAN-STYLE OBJECT SCALING
+    // Scroll manipulates the objects themselves, not the camera
+    let currentScale = 1.0;
+    const minScale = 0.2;
+    const maxScale = 3.0;
+    const scaleStep = 0.08; // Smooth scaling
+    
+    container.addEventListener('wheel', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Update scale based on scroll direction
+      const delta = e.deltaY > 0 ? -scaleStep : scaleStep;
+      const newScale = Math.max(minScale, Math.min(maxScale, currentScale + delta));
+      
+      if (newScale !== currentScale) {
+        currentScale = newScale;
+        
+        // Update ALL node sizes directly
+        const updates = [];
+        nodesDataSet.forEach(node => {
+          updates.push({
+            id: node.id,
+            size: 40 * currentScale // Base size 40, scaled
+          });
+        });
+        nodesDataSet.update(updates);
+      }
+    }, { passive: false });
     
     // Click handler - show book details
     network.on('click', function(params) {
