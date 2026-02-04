@@ -140,22 +140,47 @@ async function loadBookshelf() {
     
     network = new vis.Network(container, graphData, options);
     
-    // Obsidian-style: Infinite depth zoom - smooth spreading, no overlap
+    // Obsidian-style: Infinite depth zoom - ultra smooth, no jitter
+    let lastUpdate = 0;
     network.on('zoom', function(params) {
       const scale = network.getScale();
       
       // Nodes grow VERY slowly - mostly camera creates depth feeling
-      // This prevents overlap and keeps it smooth
       const updates = [];
       nodesDataSet.forEach(node => {
-        // Very subtle growth - camera does the work
         const nodeSize = 40 * Math.pow(scale, 0.12); // Very slow growth
         updates.push({
           id: node.id,
-          size: Math.min(nodeSize, 65) // Cap to prevent too large
+          size: Math.min(nodeSize, 65)
         });
       });
       nodesDataSet.update(updates);
+      
+      // Ultra-smooth spacing expansion - no jitter, no weird movement
+      const now = Date.now();
+      if (now - lastUpdate > 250) { // Long throttle for smoothness
+        lastUpdate = now;
+        
+        // Gentle spacing expansion
+        const dynamicSpacing = 250 * Math.pow(scale, 0.4);
+        
+        network.setOptions({
+          physics: {
+            enabled: true,
+            barnesHut: {
+              springLength: dynamicSpacing,
+              springConstant: 0.001, // Very weak springs = minimal movement
+              damping: 0.9, // Maximum damping = no jitter
+              avoidOverlap: 1
+            }
+          }
+        });
+        
+        // Very brief physics, then freeze immediately
+        setTimeout(() => {
+          network.stopSimulation();
+        }, 100);
+      }
     });
     
     // Disable physics after initial layout
