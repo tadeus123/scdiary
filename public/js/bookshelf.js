@@ -103,75 +103,36 @@ async function loadBookshelf() {
         }
       },
       interaction: {
-        zoomView: false,  // Disable camera zoom - we control objects directly
+        zoomView: true,  // Camera zoom like Obsidian
         dragView: true,
         hover: true,
         tooltipDelay: 300,
         hideEdgesOnDrag: false,
-        hideEdgesOnZoom: false
+        hideEdgesOnZoom: false,
+        zoomSpeed: 0.5  // Smooth zoom speed
       },
       nodes: {
         borderWidth: 2,
         borderWidthSelected: 4,
         shape: 'image',
-        size: 40, // Base size
+        size: 40,
         shapeProperties: {
           useImageSize: false,
           interpolation: true
+        },
+        scaling: {
+          min: 10,
+          max: 100
         }
       }
     };
     
     network = new vis.Network(container, graphData, options);
     
-    // 🎯 OBSIDIAN-STYLE: Objects get smaller/bigger AND spaces change
-    let currentScale = 1.0;
-    const minScale = 0.3;
-    const maxScale = 2.5;
-    const scaleStep = 0.05; // Smooth scaling
-    
-    container.addEventListener('wheel', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      // Update scale based on scroll direction
-      const delta = e.deltaY > 0 ? -scaleStep : scaleStep;
-      const newScale = Math.max(minScale, Math.min(maxScale, currentScale + delta));
-      
-      if (newScale !== currentScale) {
-        currentScale = newScale;
-        
-        // 1. Update node sizes
-        const updates = [];
-        nodesDataSet.forEach(node => {
-          updates.push({
-            id: node.id,
-            size: 40 * currentScale
-          });
-        });
-        nodesDataSet.update(updates);
-        
-        // 2. Update spring lengths (distances between nodes)
-        network.setOptions({
-          physics: {
-            enabled: true,
-            barnesHut: {
-              gravitationalConstant: -5000,
-              centralGravity: 0.05,
-              springLength: 250 * currentScale, // Scale distances!
-              springConstant: 0.015,
-              damping: 0.15,
-              avoidOverlap: 1
-            }
-          }
-        });
-        
-        // Stabilize briefly then stop physics
-        setTimeout(() => {
-          network.stopSimulation();
-        }, 100);
-      }
-    }, { passive: false });
+    // Disable physics after initial layout for smooth zooming
+    network.once('stabilizationIterationsDone', function() {
+      network.setOptions({ physics: false });
+    });
     
     // Click handler - show book details
     network.on('click', function(params) {
