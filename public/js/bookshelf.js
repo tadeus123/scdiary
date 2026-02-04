@@ -318,7 +318,7 @@ function showTimelineView() {
   renderTimeline();
 }
 
-// Render timeline visualization
+// Render timeline visualization - simple line graph
 function renderTimeline() {
   const container = document.getElementById('bookshelf-timeline');
   if (!container || allBooks.length === 0) return;
@@ -328,68 +328,77 @@ function renderTimeline() {
     new Date(a.date_read) - new Date(b.date_read)
   );
   
-  // Group books by month
-  const booksByMonth = {};
-  sortedBooks.forEach(book => {
-    const date = new Date(book.date_read);
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    if (!booksByMonth[monthKey]) {
-      booksByMonth[monthKey] = [];
-    }
-    booksByMonth[monthKey].push(book);
-  });
+  // Create SVG line graph
+  const svgWidth = Math.max(1200, sortedBooks.length * 20);
+  const svgHeight = 400;
+  const padding = { top: 40, right: 40, bottom: 60, left: 60 };
+  const graphWidth = svgWidth - padding.left - padding.right;
+  const graphHeight = svgHeight - padding.top - padding.bottom;
   
-  // Get all months from first to last
   const firstDate = new Date(sortedBooks[0].date_read);
   const lastDate = new Date(sortedBooks[sortedBooks.length - 1].date_read);
-  const allMonths = [];
+  const timeRange = lastDate - firstDate;
   
-  let currentDate = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
-  while (currentDate <= lastDate) {
-    const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-    allMonths.push({
-      key: monthKey,
-      date: new Date(currentDate),
-      books: booksByMonth[monthKey] || []
-    });
-    currentDate.setMonth(currentDate.getMonth() + 1);
-  }
+  // Create points for line graph (cumulative books over time)
+  const points = sortedBooks.map((book, index) => {
+    const date = new Date(book.date_read);
+    const x = padding.left + ((date - firstDate) / timeRange) * graphWidth;
+    const y = padding.top + graphHeight - ((index + 1) / sortedBooks.length) * graphHeight;
+    return { x, y, book, index };
+  });
   
-  // Find max books per month for scaling
-  const maxBooksPerMonth = Math.max(...allMonths.map(m => m.books.length), 1);
+  // Create line path
+  const linePath = points.map((p, i) => 
+    `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
+  ).join(' ');
   
-  // Render timeline HTML
+  // Render
   container.innerHTML = `
-    <div class="timeline-header">
-      <h2>Reading Timeline</h2>
-      <p class="timeline-stats">
-        ${allBooks.length} books read • 
-        ${allMonths.length} months • 
-        ${(allBooks.length / allMonths.length).toFixed(1)} books/month avg
-      </p>
-    </div>
-    <div class="timeline-chart">
-      ${allMonths.map(month => `
-        <div class="timeline-month" data-count="${month.books.length}">
-          <div class="timeline-bar-container">
-            <div class="timeline-bar" style="height: ${(month.books.length / maxBooksPerMonth) * 100}%">
-              <span class="timeline-count">${month.books.length}</span>
-            </div>
-          </div>
-          <div class="timeline-books">
-            ${month.books.map(book => `
-              <div class="timeline-book" title="${book.title} by ${book.author}">
-                <img src="${book.cover_image_url}" alt="${book.title}">
-              </div>
-            `).join('')}
-          </div>
-          <div class="timeline-label">
-            ${month.date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-          </div>
-        </div>
+    <svg class="timeline-svg" viewBox="0 0 ${svgWidth} ${svgHeight}">
+      <!-- Grid lines -->
+      ${[0, 0.25, 0.5, 0.75, 1].map(ratio => `
+        <line x1="${padding.left}" y1="${padding.top + graphHeight * (1 - ratio)}" 
+              x2="${svgWidth - padding.right}" y2="${padding.top + graphHeight * (1 - ratio)}" 
+              class="timeline-grid-line" />
+        <text x="${padding.left - 10}" y="${padding.top + graphHeight * (1 - ratio) + 5}" 
+              class="timeline-axis-label" text-anchor="end">
+          ${Math.round(sortedBooks.length * ratio)}
+        </text>
       `).join('')}
-    </div>
+      
+      <!-- Line graph -->
+      <path d="${linePath}" class="timeline-line" />
+      
+      <!-- Book markers -->
+      ${points.map(p => `
+        <g class="timeline-marker" data-book-id="${p.book.id}">
+          <line x1="${p.x}" y1="${p.y}" x2="${p.x}" y2="${svgHeight - padding.bottom}" 
+                class="timeline-marker-line" />
+          <circle cx="${p.x}" cy="${p.y}" r="4" class="timeline-marker-dot" />
+        </g>
+      `).join('')}
+      
+      <!-- Axis labels -->
+      <text x="${svgWidth / 2}" y="${svgHeight - 10}" class="timeline-axis-title" text-anchor="middle">
+        Time
+      </text>
+      <text x="20" y="${svgHeight / 2}" class="timeline-axis-title" text-anchor="middle" 
+            transform="rotate(-90 20 ${svgHeight / 2})">
+        Books Read
+      </text>
+    </svg>
   `;
+  
+  // Add click handlers to markers
+  container.querySelectorAll('.timeline-marker').forEach(marker => {
+    marker.addEventListener('click', function() {
+      const bookId = parseInt(this.getAttribute('data-book-id'));
+      const book = allBooks.find(b => b.id === bookId);
+      if (book) {
+        showBookDetails(book, bookId);
+      }
+    });
+  });
 }
 
 // Listen for theme changes to update edge colors
