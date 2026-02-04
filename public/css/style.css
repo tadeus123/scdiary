@@ -5,6 +5,10 @@
   --accent-color: #C16A28;
   --border-color: rgba(26, 26, 26, 0.1);
   --entry-bg: rgba(255, 255, 255, 0.3);
+  
+  /* Toggle switch positioning - consistent across all devices */
+  --toggle-bottom: 0.3rem;
+  --toggle-left: 0.5rem;
 }
 
 [data-theme="dark"] {
@@ -923,8 +927,8 @@ body.corner-page {
 /* Toggle switch in bottom left corner */
 .bookshelf-toggle-container {
   position: fixed;
-  bottom: 0.3rem;
-  left: 0.5rem;
+  bottom: var(--toggle-bottom);
+  left: var(--toggle-left);
   z-index: 950;
   pointer-events: auto;
 }
