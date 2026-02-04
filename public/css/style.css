@@ -1081,6 +1081,13 @@ body.corner-page {
 
 .timeline-marker {
   cursor: pointer;
+  pointer-events: all;
+}
+
+.timeline-marker-hitarea {
+  fill: transparent;
+  stroke: none;
+  cursor: pointer;
 }
 
 .timeline-marker-line {
@@ -1088,6 +1095,7 @@ body.corner-page {
   stroke-width: 1;
   opacity: 0.2;
   transition: all 0.2s ease;
+  pointer-events: none;
 }
 
 .timeline-marker:hover .timeline-marker-line {
@@ -1100,10 +1108,11 @@ body.corner-page {
   stroke: var(--bg-color);
   stroke-width: 2;
   transition: all 0.2s ease;
+  pointer-events: none;
 }
 
 .timeline-marker:hover .timeline-marker-dot {
-  r: 6;
+  fill: var(--accent-color);
   stroke-width: 3;
 }
 

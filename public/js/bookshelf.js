@@ -372,9 +372,12 @@ function renderTimeline() {
       <!-- Book markers -->
       ${points.map(p => `
         <g class="timeline-marker" data-book-id="${p.book.id}">
+          <!-- Invisible larger hit area for easier clicking -->
+          <rect x="${p.x - 8}" y="${p.y - 8}" width="16" height="${svgHeight - padding.bottom - p.y + 8}" 
+                class="timeline-marker-hitarea" />
           <line x1="${p.x}" y1="${p.y}" x2="${p.x}" y2="${svgHeight - padding.bottom}" 
                 class="timeline-marker-line" />
-          <circle cx="${p.x}" cy="${p.y}" r="4" class="timeline-marker-dot" />
+          <circle cx="${p.x}" cy="${p.y}" r="5" class="timeline-marker-dot" />
         </g>
       `).join('')}
       
@@ -391,10 +394,12 @@ function renderTimeline() {
   
   // Add click handlers to markers
   container.querySelectorAll('.timeline-marker').forEach(marker => {
-    marker.addEventListener('click', function() {
+    marker.addEventListener('click', function(e) {
+      e.stopPropagation();
       const bookId = parseInt(this.getAttribute('data-book-id'));
       const book = allBooks.find(b => b.id === bookId);
       if (book) {
+        console.log('Clicked book:', book.title);
         showBookDetails(book, bookId);
       }
     });
