@@ -975,7 +975,7 @@ body.corner-page {
 }
 
 .toggle-switch input:checked + .toggle-slider:before {
-  transform: translateX(12px);
+  transform: translateX(13px);
   background-color: #FFFFFF;
 }
 
@@ -1354,7 +1354,7 @@ body.corner-page {
   }
   
   .toggle-switch input:checked + .toggle-slider:before {
-    transform: translateX(11px);
+    transform: translateX(12px);
   }
   
   .bookshelf-header {
@@ -1412,7 +1412,7 @@ body.corner-page {
   }
   
   .toggle-switch input:checked + .toggle-slider:before {
-    transform: translateX(10px);
+    transform: translateX(11px);
   }
   
   .bookshelf-header {
