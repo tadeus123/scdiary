@@ -156,14 +156,14 @@ async function loadBookshelf() {
       nodesDataSet.update(updates);
       
       // 🌊 SEAMLESS SPACING: Dots spread apart smoothly as you zoom in
-      // More aggressive the deeper you go, clean and smooth
+      // Gentle, smooth transitions
       const now = Date.now();
-      if (now - lastSpacingUpdate > 50) { // Throttle to prevent jitter
+      if (now - lastSpacingUpdate > 100) { // Slower throttle = smoother
         lastSpacingUpdate = now;
         
-        // Exponential spacing expansion - gets more aggressive when zoomed in
+        // Gentle spacing expansion - smooth and subtle
         const baseSpacing = 250;
-        const spacingMultiplier = Math.pow(scale, 1.2); // Gets stronger as you zoom
+        const spacingMultiplier = Math.pow(scale, 0.6); // Gentler expansion
         const dynamicSpacing = baseSpacing * spacingMultiplier;
         
         network.setOptions({
@@ -171,15 +171,15 @@ async function loadBookshelf() {
             enabled: true,
             barnesHut: {
               springLength: dynamicSpacing,
-              damping: 0.3 // Higher damping = smoother, less jitter
+              damping: 0.5 // Very high damping = very smooth
             }
           }
         });
         
-        // Brief stabilization for smoothness, then stop physics
+        // Longer stabilization for smooth settling
         setTimeout(() => {
           network.stopSimulation();
-        }, 100);
+        }, 200);
       }
     });
     
