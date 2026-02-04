@@ -138,7 +138,7 @@ async function loadBookshelf() {
     
     network = new vis.Network(container, graphData, options);
     
-    // Obsidian-style: Camera zoom + Subtle node scaling
+    // Obsidian-style: Camera zoom + Subtle node scaling + Dynamic spacing when close
     network.on('zoom', function(params) {
       const scale = network.getScale();
       
@@ -153,6 +153,27 @@ async function loadBookshelf() {
         });
       });
       nodesDataSet.update(updates);
+      
+      // 🌌 DEPTH EXPANSION: When zoomed in close, spread nodes apart more
+      if (scale > 1.5) {
+        const dynamicSpacing = 250 * Math.pow(scale / 1.5, 0.8);
+        network.setOptions({
+          physics: {
+            barnesHut: {
+              springLength: dynamicSpacing
+            }
+          }
+        });
+      } else {
+        // Reset to default spacing when zoomed out
+        network.setOptions({
+          physics: {
+            barnesHut: {
+              springLength: 250
+            }
+          }
+        });
+      }
     });
     
     // Disable physics after initial layout
