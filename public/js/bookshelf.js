@@ -55,6 +55,11 @@ async function loadBookshelf() {
       return;
     }
     
+    // If timeline view is active, refresh it with new data
+    if (isTimelineView) {
+      renderTimeline();
+    }
+    
     // Create nodes from books (book covers as images)
     nodesDataSet = new vis.DataSet(
       books.map(book => ({
