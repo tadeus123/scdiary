@@ -1079,26 +1079,16 @@ body.corner-page {
   stroke-linejoin: round;
 }
 
-.timeline-marker {
-  cursor: pointer;
-  pointer-events: all;
-}
-
-.timeline-marker-hitarea {
-  fill: transparent;
-  stroke: none;
-  cursor: pointer;
-}
-
 .timeline-marker-line {
   stroke: var(--text-color);
   stroke-width: 1;
   opacity: 0.2;
-  transition: all 0.2s ease;
-  pointer-events: none;
+  transition: opacity 0.2s ease, stroke-width 0.2s ease;
+  cursor: pointer;
+  pointer-events: stroke;
 }
 
-.timeline-marker:hover .timeline-marker-line {
+.timeline-marker-line:hover {
   opacity: 0.6;
   stroke-width: 2;
 }
@@ -1107,12 +1097,12 @@ body.corner-page {
   fill: var(--accent-color);
   stroke: var(--bg-color);
   stroke-width: 2;
-  transition: all 0.2s ease;
-  pointer-events: none;
+  transition: stroke-width 0.2s ease;
+  cursor: pointer;
+  pointer-events: all;
 }
 
-.timeline-marker:hover .timeline-marker-dot {
-  fill: var(--accent-color);
+.timeline-marker-dot:hover {
   stroke-width: 3;
 }
 

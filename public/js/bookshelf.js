@@ -434,13 +434,13 @@ function renderTimeline() {
           }
         }
         return `
-        <g class="timeline-marker" onclick="window.showTimelineBook('${posKey}')">
-          <!-- Hit area for clicking -->
-          <rect x="${p.x - 6}" y="${p.y - 6}" width="12" height="${svgHeight - padding.bottom - p.y + 6}" 
-                class="timeline-marker-hitarea" />
+        <g class="timeline-marker">
           <line x1="${p.x}" y1="${p.y}" x2="${p.x}" y2="${svgHeight - padding.bottom}" 
-                class="timeline-marker-line" />
-          <circle cx="${p.x}" cy="${p.y}" r="5" class="timeline-marker-dot" />
+                class="timeline-marker-line" 
+                onclick="window.showTimelineBook('${posKey}')" />
+          <circle cx="${p.x}" cy="${p.y}" r="5" 
+                  class="timeline-marker-dot" 
+                  onclick="window.showTimelineBook('${posKey}')" />
         </g>
       `;}).join('')}
       
