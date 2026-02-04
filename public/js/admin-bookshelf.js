@@ -118,9 +118,9 @@ async function initAdminBookshelf() {
         zoomView: true,
         dragView: true,
         hover: true,
-        zoomSpeed: 0.6,  // Smooth, responsive zoom
-        zoomMin: 0.3,    // Can zoom out
-        zoomMax: 2.5     // Limit how far you can zoom in
+        zoomSpeed: 0.5,  // Smooth zoom
+        zoomMin: 0.2,    // Can zoom out far
+        zoomMax: 8.0     // Deep infinite zoom feeling
       },
       nodes: {
         borderWidth: 2,
@@ -132,8 +132,8 @@ async function initAdminBookshelf() {
           interpolation: true
         },
         scaling: {
-          min: 15,
-          max: 80,
+          min: 10,
+          max: 150,  // Allow larger growth for infinite depth feeling
           label: {
             enabled: false
           }
@@ -149,18 +149,19 @@ async function initAdminBookshelf() {
     
     network = new vis.Network(container, graphData, options);
     
-    // Obsidian-style: Camera zoom + Subtle node scaling (elegant & static)
+    // Obsidian-style: Infinite depth zoom - everything spreads apart uniformly
     network.on('zoom', function(params) {
       const scale = network.getScale();
       
-      // Nodes scale VERY subtly - mostly camera movement, less object growth
+      // Nodes scale proportionally with camera for uniform expansion
+      // Like infinite fractals - everything grows together
       const updates = [];
       nodesDataSet.forEach(node => {
-        // Much more subtle scaling - caps out quickly, then pure camera zoom
-        const nodeSize = 40 * Math.pow(scale, 0.15); // Very subtle scaling
+        // Proportional scaling creates infinite depth feeling
+        const nodeSize = 40 * Math.pow(scale, 0.3); // Balanced with camera
         updates.push({
           id: node.id,
-          size: Math.min(nodeSize, 70) // Cap max size - stops growing, pure depth
+          size: nodeSize
         });
       });
       nodesDataSet.update(updates);
