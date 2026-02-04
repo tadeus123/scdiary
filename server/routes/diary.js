@@ -17,6 +17,7 @@ const {
   updateBookCategory
 } = require('../db/supabase');
 const { categorizeBook } = require('../services/categorization');
+const { calculateSimilarity } = require('../services/similarity');
 
 // Initialize Supabase client for storage
 const supabase = createClient(
@@ -133,13 +134,42 @@ router.post('/api/books', upload.single('cover'), async (req, res) => {
     const result = await addBook(bookData);
     
     if (result.success) {
-      // 🔗 Auto-create connections to books in the same category
+      // 🤖 Smart connections: Use AI similarity analysis
       if (category && category !== 'Other') {
-        console.log(`🔗 Auto-connecting to other ${category} books...`);
-        const connectResult = await autoConnectBook(result.book.id, category);
-        if (connectResult.success) {
-          console.log(`✅ Created ${connectResult.connectionsCreated} connections`);
+        console.log(`🤖 Analyzing similarity with other ${category} books...`);
+        
+        // Get all other books in the same category
+        const allBooks = await getBooks();
+        const categoryBooks = allBooks.filter(b => 
+          b.category === category && b.id !== result.book.id
+        );
+        
+        // Analyze similarity with each book
+        const newBook = {
+          id: result.book.id,
+          title: result.book.title,
+          author: result.book.author,
+          category: result.book.category
+        };
+        
+        let connectionsCreated = 0;
+        for (const otherBook of categoryBooks) {
+          const similarity = await calculateSimilarity(newBook, otherBook);
+          
+          if (similarity >= 5) {
+            // Create connection
+            await addBookConnection(newBook.id, otherBook.id);
+            connectionsCreated++;
+            console.log(`✅ Connected to "${otherBook.title}" (${similarity}/10)`);
+          } else {
+            console.log(`⚪ Skipped "${otherBook.title}" (${similarity}/10)`);
+          }
+          
+          // Small delay
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
+        
+        console.log(`✅ Created ${connectionsCreated} smart connections`);
       }
       
       res.json({ success: true, book: result.book });
