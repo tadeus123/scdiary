@@ -58,11 +58,14 @@
           <input type="date" id="dateRead" name="dateRead" required>
         </div>
         
+        <div class="form-group">
+          <label for="audioDuration">Audio Duration (minutes)</label>
+          <input type="number" id="audioDuration" name="audioDuration" min="0" placeholder="e.g. 318 for 5h 18m" required>
+          <small class="form-hint">Find the audiobook length on Audible and enter total minutes</small>
+        </div>
+        
         <button type="submit" class="btn">Add Book</button>
         <div id="form-message" class="form-message"></div>
-        <p class="form-hint" style="margin-top: 1rem;">
-          🎧 <strong>AI will search Audible.com:</strong> for the exact audiobook duration from Audible
-        </p>
       </form>
     </div>
     
@@ -70,15 +73,7 @@
     <div class="ai-tools-section">
       <h2>🤖 ai tools</h2>
       <div class="ai-tools-controls">
-        <button id="research-reading-times" class="btn btn-secondary">
-          🎧 Research Audible Durations for All Books
-        </button>
-        <p class="connection-hint">
-          <strong>🎧 Audible Research:</strong> AI will search Audible.com for EACH book's audiobook duration.<br>
-          This may take a few minutes. Only real Audible audiobook lengths are used.
-        </p>
-        
-        <button id="recategorize-all" class="btn btn-secondary" style="margin-top: 1rem;">
+        <button id="recategorize-all" class="btn btn-secondary">
           Recategorize All Books
         </button>
         <p class="connection-hint">
