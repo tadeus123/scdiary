@@ -89,7 +89,7 @@ router.post('/api/books', upload.single('cover'), async (req, res) => {
       return res.status(400).json({ success: false, error: 'Cover image is required' });
     }
     
-    const { title, author, dateRead } = req.body;
+    const { title, author, dateRead, pageCount, audioDuration } = req.body;
     
     if (!title || !author || !dateRead) {
       return res.status(400).json({ success: false, error: 'All fields are required' });
@@ -128,7 +128,9 @@ router.post('/api/books', upload.single('cover'), async (req, res) => {
       author,
       date_read: dateRead,
       cover_image_url: urlData.publicUrl,
-      category: category
+      category: category,
+      page_count: pageCount ? parseInt(pageCount) : null,
+      audio_duration_minutes: audioDuration ? parseInt(audioDuration) : null
     };
     
     const result = await addBook(bookData);
@@ -350,6 +352,81 @@ router.post('/api/books/rebuild-connections', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// API: Calculate total reading time for all books
+router.get('/api/books/total-reading-time', async (req, res) => {
+  try {
+    const books = await getBooks();
+    
+    let totalMinutes = 0;
+    let calculatedBooks = 0;
+    let estimatedBooks = 0;
+    
+    for (const book of books) {
+      // Priority 1: Use audio duration if available
+      if (book.audio_duration_minutes && book.audio_duration_minutes > 0) {
+        totalMinutes += book.audio_duration_minutes;
+        calculatedBooks++;
+      }
+      // Priority 2: Estimate based on page count
+      else if (book.page_count && book.page_count > 0) {
+        // Average reading speed: ~250 words per minute
+        // Average words per page: ~250-300 words
+        // So roughly 1 minute per page
+        const estimatedMinutes = book.page_count;
+        totalMinutes += estimatedMinutes;
+        estimatedBooks++;
+      }
+      // Priority 3: Use a default average if no data available
+      else {
+        // Average book is ~300 pages = ~5 hours
+        const defaultMinutes = 300;
+        totalMinutes += defaultMinutes;
+        estimatedBooks++;
+      }
+    }
+    
+    // Convert minutes to hours
+    const totalHours = Math.round(totalMinutes / 60);
+    const totalDays = Math.round(totalHours / 24 * 10) / 10; // 1 decimal place
+    
+    res.json({
+      success: true,
+      totalMinutes,
+      totalHours,
+      totalDays,
+      totalBooks: books.length,
+      booksWithAudioDuration: calculatedBooks,
+      booksEstimated: estimatedBooks,
+      formattedTime: formatReadingTime(totalMinutes)
+    });
+  } catch (error) {
+    console.error('Error calculating reading time:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Helper function to format reading time in a human-readable way
+function formatReadingTime(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (days > 0) {
+    const remainingHours = hours % 24;
+    if (remainingHours > 0) {
+      return `${days} day${days > 1 ? 's' : ''} ${remainingHours} hour${remainingHours > 1 ? 's' : ''}`;
+    }
+    return `${days} day${days > 1 ? 's' : ''}`;
+  } else if (hours > 0) {
+    const remainingMinutes = minutes % 60;
+    if (remainingMinutes > 0) {
+      return `${hours} hour${hours > 1 ? 's' : ''} ${remainingMinutes} min`;
+    }
+    return `${hours} hour${hours > 1 ? 's' : ''}`;
+  } else {
+    return `${minutes} min`;
+  }
+}
 
 module.exports = router;
 

@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { marked } = require('marked');
-const { getEntries, createEntry, deleteEntry } = require('../db/supabase');
+const { getEntries, createEntry, deleteEntry, getBooks } = require('../db/supabase');
 
 // Admin password (in production, use environment variable)
 // WARNING: Never hardcode passwords in production!
@@ -85,6 +85,45 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Convert @mentions to bookshelf links
+async function processBookMentions(content) {
+  try {
+    const books = await getBooks();
+    let processedContent = content;
+    
+    // If no books or books array is empty, return content unchanged
+    if (!books || books.length === 0) {
+      return processedContent;
+    }
+    
+    // Create a map of book titles to IDs for quick lookup
+    const bookMap = new Map();
+    books.forEach(book => {
+      if (book && book.title && book.id) {
+        bookMap.set(book.title.toLowerCase(), book.id);
+      }
+    });
+    
+    // Match @[Book Title] pattern (with brackets for exact matches)
+    const bracketPattern = /@\[([^\]]+)\]/g;
+    processedContent = processedContent.replace(bracketPattern, (match, title) => {
+      const bookId = bookMap.get(title.toLowerCase());
+      if (bookId) {
+        return `[@${title}](/bookshelf?book=${bookId})`;
+      }
+      // If book not found, leave the @[Book Title] as-is (will render as plain text)
+      return match;
+    });
+    
+    return processedContent;
+  } catch (error) {
+    // If book fetching fails, log error but don't break entry creation
+    console.error('Error processing book mentions:', error);
+    // Return original content so entry can still be saved
+    return content;
+  }
+}
+
 // Save new entry
 router.post('/entry', isAuthenticated, async (req, res) => {
   const { content, timestamp } = req.body;
@@ -93,11 +132,14 @@ router.post('/entry', isAuthenticated, async (req, res) => {
     return res.status(400).json({ error: 'Content is required' });
   }
   
+  // Process @mentions before converting to markdown
+  const processedContent = await processBookMentions(content);
+  
   const newEntry = {
     id: Date.now().toString(),
     timestamp: timestamp || new Date().toISOString(), // Use client timestamp if provided
     content: content,
-    html: marked(content)
+    html: marked(processedContent)
   };
   
   const result = await createEntry(newEntry);
@@ -131,6 +173,38 @@ router.post('/logout', (req, res) => {
 // Bookshelf admin page
 router.get('/bookshelf', isAuthenticated, (req, res) => {
   res.render('admin-bookshelf');
+});
+
+// API: Get books for autocomplete (search by title)
+router.get('/api/books-search', isAuthenticated, async (req, res) => {
+  try {
+    const { q } = req.query;
+    const { getBooks } = require('../db/supabase');
+    const books = await getBooks();
+    
+    // Handle case where books is null, undefined, or not an array
+    if (!books || !Array.isArray(books)) {
+      return res.json({ success: true, books: [] });
+    }
+    
+    if (q && q.trim()) {
+      const query = q.toLowerCase();
+      // Filter with safety checks
+      const filtered = books.filter(book => 
+        book && 
+        book.title && 
+        book.author &&
+        (book.title.toLowerCase().includes(query) || 
+         book.author.toLowerCase().includes(query))
+      );
+      res.json({ success: true, books: filtered });
+    } else {
+      res.json({ success: true, books: books });
+    }
+  } catch (error) {
+    console.error('Error searching books:', error);
+    res.status(500).json({ success: false, error: error.message, books: [] });
+  }
 });
 
 module.exports = router;

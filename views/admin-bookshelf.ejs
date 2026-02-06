@@ -58,6 +58,18 @@
           <input type="date" id="dateRead" name="dateRead" required>
         </div>
         
+        <div class="form-group">
+          <label for="pageCount">Page Count (optional)</label>
+          <input type="number" id="pageCount" name="pageCount" min="0" placeholder="e.g. 350">
+          <small class="form-hint">Used for reading time estimation if no audio duration</small>
+        </div>
+        
+        <div class="form-group">
+          <label for="audioDuration">Audio Duration (minutes, optional)</label>
+          <input type="number" id="audioDuration" name="audioDuration" min="0" placeholder="e.g. 420">
+          <small class="form-hint">Preferred for reading time calculation (e.g. 7 hours = 420 minutes)</small>
+        </div>
+        
         <button type="submit" class="btn">Add Book</button>
         <div id="form-message" class="form-message"></div>
       </form>
