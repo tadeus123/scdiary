@@ -381,11 +381,13 @@ router.get('/api/books/total-reading-time', async (req, res) => {
     
     for (const book of books) {
       // ONLY use Audible audiobook duration (no page counts!)
-      if (book.audio_duration_minutes && book.audio_duration_minutes > 0) {
+      // Use != null to check for both null and undefined (allows 0 as valid value)
+      if (book.audio_duration_minutes != null) {
+        // Has a value set (including 0 for books with no duration)
         totalMinutes += book.audio_duration_minutes;
         calculatedBooks++;
       }
-      // If no audiobook found, use default estimate
+      // If not set yet (NULL), use default estimate
       else {
         // Default: Average audiobook is ~5 hours (300 minutes)
         const defaultMinutes = 300;
