@@ -1649,20 +1649,37 @@ body.corner-page {
   position: fixed;
   background: var(--entry-bg);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  min-width: 300px;
   max-width: 400px;
-  max-height: 300px;
+  max-height: 240px; /* More compact - fits ~4-6 items */
   overflow-y: auto;
   z-index: 9999;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Custom scrollbar for dropdown */
+.book-autocomplete::-webkit-scrollbar {
+  width: 6px;
+}
+
+.book-autocomplete::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.book-autocomplete::-webkit-scrollbar-thumb {
+  background: var(--accent-color);
+  border-radius: 3px;
+  opacity: 0.5;
 }
 
 .book-autocomplete-item {
-  padding: 0.75rem 1rem;
+  padding: 0.65rem 0.85rem;
   cursor: pointer;
   border-bottom: 1px solid var(--border-color);
-  transition: background 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .book-autocomplete-item:last-child {
@@ -1671,20 +1688,33 @@ body.corner-page {
 
 .book-autocomplete-item:hover,
 .book-autocomplete-item.selected {
-  background: rgba(193, 106, 40, 0.15);
+  background: rgba(193, 106, 40, 0.12);
+  transform: translateX(2px);
 }
 
 .book-autocomplete-title {
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: var(--text-color);
   font-weight: 500;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
+  line-height: 1.3;
+}
+
+/* Highlight matching text */
+.book-autocomplete-title strong,
+.book-autocomplete-author strong {
+  color: var(--accent-color);
+  font-weight: 600;
+  background: rgba(193, 106, 40, 0.1);
+  padding: 0 2px;
+  border-radius: 2px;
 }
 
 .book-autocomplete-author {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 0.85rem;
-  color: var(--accent-color);
-  opacity: 0.8;
+  font-size: 0.8rem;
+  color: var(--text-color);
+  opacity: 0.6;
+  line-height: 1.2;
 }
