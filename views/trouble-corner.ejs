@@ -6,12 +6,10 @@
   <title>corner</title>
   <link rel="stylesheet" href="/css/style.css">
   
-  <!-- Preload bookshelf resources for instant loading -->
+  <!-- Prerender entire bookshelf page for instant loading -->
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link rel="dns-prefetch" href="https://unpkg.com">
-  <link rel="prefetch" href="/bookshelf" as="document">
-  <link rel="prefetch" href="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js" as="script">
-  <link rel="prefetch" href="/js/bookshelf.js" as="script">
+  <link rel="prerender" href="/bookshelf">
 </head>
 <body class="corner-page">
   <a href="/" class="corner-btn-left" aria-label="Back to Diary"></a>
@@ -26,18 +24,27 @@
   <script src="/js/main.js"></script>
   <script src="/js/corner.js"></script>
   
-  <!-- Smart hover-based prefetch for instant bookshelf loading -->
+  <!-- Speculation Rules API for instant navigation -->
+  <script type="speculationrules">
+    {
+      "prerender": [
+        {
+          "source": "list",
+          "urls": ["/bookshelf"]
+        }
+      ]
+    }
+  </script>
+  
+  <!-- Aggressive prefetch for instant bookshelf loading -->
   <script>
     (function() {
       // Store prefetched data globally so bookshelf.js can use it
       window.__prefetchedBookshelfData__ = null;
       window.__prefetchedReadingTime__ = null;
-      let prefetchStarted = false;
       
-      async function startPrefetch() {
-        if (prefetchStarted) return;
-        prefetchStarted = true;
-        
+      // Start prefetching immediately after page loads
+      window.addEventListener('load', async () => {
         try {
           // Prefetch books data and store it
           const booksResponse = await fetch(`/api/books?t=${Date.now()}`);
@@ -61,17 +68,10 @@
           if (readingTimeResponse.ok) {
             window.__prefetchedReadingTime__ = await readingTimeResponse.json();
           }
+          
+          console.log('Bookshelf fully preloaded - click will be instant!');
         } catch (error) {
           console.log('Prefetch failed, will load normally');
-        }
-      }
-      
-      // Start prefetching when user hovers over the bookshelf link
-      document.addEventListener('DOMContentLoaded', () => {
-        const bookshelfLink = document.querySelector('.bookshelf-text');
-        if (bookshelfLink) {
-          bookshelfLink.addEventListener('mouseenter', startPrefetch);
-          bookshelfLink.addEventListener('touchstart', startPrefetch, { passive: true });
         }
       });
     })();
