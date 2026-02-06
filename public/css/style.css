@@ -298,11 +298,11 @@ nav a:hover:not(.site-title) {
   opacity: 0.7;
 }
 
-/* Book mention links - just slightly bigger, same color */
+/* Book mention links - bold (fett), same color and size */
 .entry-content a[href*="/bookshelf?book="] {
   color: inherit; /* Same color as surrounding text */
   text-decoration: none;
-  font-size: 1.08em; /* Slightly bigger than surrounding text */
+  font-weight: 600; /* Bold */
 }
 
 .entry-content ul,
