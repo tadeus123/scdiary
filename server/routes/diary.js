@@ -126,10 +126,14 @@ router.post('/api/books', upload.single('cover'), async (req, res) => {
       .from('book-covers')
       .getPublicUrl(fileName);
     
-    // 🤖 AI: Research book information (audiobook duration & page count)
-    console.log(`🔍 AI researching book info for "${title}" by ${author}...`);
+    // 🤖 AI: Research audiobook duration from Audible.com ONLY
+    console.log(`\n🔍 Searching Audible.com for "${title}" by ${author}...`);
     const bookInfo = await researchBookInfo(title, author);
-    console.log(`✅ Found: Audio=${bookInfo.audioDuration}min, Pages=${bookInfo.pageCount}`);
+    if (bookInfo.audioDuration) {
+      console.log(`✅ Found on Audible: ${bookInfo.audioDuration} minutes (${Math.round(bookInfo.audioDuration / 60 * 10) / 10} hours)`);
+    } else {
+      console.log(`⚠️  Not found on Audible - will use default 5-hour estimate`);
+    }
     
     // 🤖 AI: Categorize the book automatically
     console.log(`🤖 Categorizing "${title}" by ${author}...`);
@@ -455,23 +459,14 @@ router.get('/api/books/total-reading-time', async (req, res) => {
     let estimatedBooks = 0;
     
     for (const book of books) {
-      // Priority 1: Use audio duration if available
+      // ONLY use Audible audiobook duration (no page counts!)
       if (book.audio_duration_minutes && book.audio_duration_minutes > 0) {
         totalMinutes += book.audio_duration_minutes;
         calculatedBooks++;
       }
-      // Priority 2: Estimate based on page count
-      else if (book.page_count && book.page_count > 0) {
-        // Average reading speed: ~250 words per minute
-        // Average words per page: ~250-300 words
-        // So roughly 1 minute per page
-        const estimatedMinutes = book.page_count;
-        totalMinutes += estimatedMinutes;
-        estimatedBooks++;
-      }
-      // Priority 3: Use a default average if no data available
+      // If no audiobook found, use default estimate
       else {
-        // Average book is ~300 pages = ~5 hours
+        // Default: Average audiobook is ~5 hours (300 minutes)
         const defaultMinutes = 300;
         totalMinutes += defaultMinutes;
         estimatedBooks++;
