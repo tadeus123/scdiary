@@ -65,9 +65,13 @@ async function loadBookshelf() {
     allBooks = books;
     allConnections = connections;
     
-    // If no books, just show empty canvas
+    // If no books, hide loading and show empty canvas
     if (books.length === 0) {
       console.log('No books yet');
+      const loadingOverlay = document.getElementById('bookshelf-loading');
+      if (loadingOverlay) {
+        loadingOverlay.classList.add('hidden');
+      }
       return;
     }
     
@@ -214,9 +218,15 @@ async function loadBookshelf() {
       }
     });
     
-    // Disable physics after initial layout
+    // Disable physics after initial layout and hide loading indicator
     network.once('stabilizationIterationsDone', function() {
       network.setOptions({ physics: false });
+      
+      // Hide loading indicator - bookshelf is ready!
+      const loadingOverlay = document.getElementById('bookshelf-loading');
+      if (loadingOverlay) {
+        loadingOverlay.classList.add('hidden');
+      }
     });
     
     // Click handler - show book details
@@ -343,6 +353,12 @@ function showTimelineView() {
   
   timelineContainer.style.display = 'block';
   renderTimeline();
+  
+  // Hide loading indicator when timeline is ready
+  const loadingOverlay = document.getElementById('bookshelf-loading');
+  if (loadingOverlay) {
+    loadingOverlay.classList.add('hidden');
+  }
 }
 
 // Render timeline visualization - simple line graph
