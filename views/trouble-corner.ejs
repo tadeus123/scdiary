@@ -26,16 +26,18 @@
   <script src="/js/main.js"></script>
   <script src="/js/corner.js"></script>
   
-  <!-- Prefetch bookshelf data for instant loading -->
+  <!-- Smart hover-based prefetch for instant bookshelf loading -->
   <script>
-    // Aggressive preloading for instant bookshelf experience
     (function() {
       // Store prefetched data globally so bookshelf.js can use it
       window.__prefetchedBookshelfData__ = null;
       window.__prefetchedReadingTime__ = null;
+      let prefetchStarted = false;
       
-      // Start preloading immediately
-      setTimeout(async () => {
+      async function startPrefetch() {
+        if (prefetchStarted) return;
+        prefetchStarted = true;
+        
         try {
           // Prefetch books data and store it
           const booksResponse = await fetch(`/api/books?t=${Date.now()}`);
@@ -43,7 +45,7 @@
             const data = await booksResponse.json();
             window.__prefetchedBookshelfData__ = data;
             
-            // Preload all book cover images aggressively
+            // Preload book cover images
             if (data.success && data.books) {
               data.books.forEach(book => {
                 if (book.cover_image_url) {
@@ -54,16 +56,24 @@
             }
           }
           
-          // Prefetch reading time and store it
+          // Prefetch reading time
           const readingTimeResponse = await fetch(`/api/books/total-reading-time?t=${Date.now()}`);
           if (readingTimeResponse.ok) {
             window.__prefetchedReadingTime__ = await readingTimeResponse.json();
           }
         } catch (error) {
-          // Silent fail - prefetching is optional
           console.log('Prefetch failed, will load normally');
         }
-      }, 100); // Start very quickly
+      }
+      
+      // Start prefetching when user hovers over the bookshelf link
+      document.addEventListener('DOMContentLoaded', () => {
+        const bookshelfLink = document.querySelector('.bookshelf-text');
+        if (bookshelfLink) {
+          bookshelfLink.addEventListener('mouseenter', startPrefetch);
+          bookshelfLink.addEventListener('touchstart', startPrefetch, { passive: true });
+        }
+      });
     })();
   </script>
 </body>
