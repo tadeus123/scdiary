@@ -109,7 +109,8 @@ async function processBookMentions(content) {
     processedContent = processedContent.replace(bracketPattern, (match, title) => {
       const bookId = bookMap.get(title.toLowerCase());
       if (bookId) {
-        return `[@${title}](/bookshelf?book=${bookId})`;
+        // Create link without @ symbol in display text
+        return `[${title}](/bookshelf?book=${bookId})`;
       }
       // If book not found, leave the @[Book Title] as-is (will render as plain text)
       return match;
