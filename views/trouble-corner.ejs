@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>corner</title>
   <link rel="stylesheet" href="/css/style.css">
+  
+  <!-- Preload bookshelf resources for instant loading -->
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="dns-prefetch" href="https://unpkg.com">
+  <link rel="prefetch" href="/bookshelf" as="document">
+  <link rel="prefetch" href="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js" as="script">
+  <link rel="prefetch" href="/js/bookshelf.js" as="script">
 </head>
 <body class="corner-page">
   <a href="/" class="corner-btn-left" aria-label="Back to Diary"></a>
@@ -18,5 +25,46 @@
   
   <script src="/js/main.js"></script>
   <script src="/js/corner.js"></script>
+  
+  <!-- Prefetch bookshelf data for instant loading -->
+  <script>
+    // Aggressive preloading for instant bookshelf experience
+    (function() {
+      // Store prefetched data globally so bookshelf.js can use it
+      window.__prefetchedBookshelfData__ = null;
+      window.__prefetchedReadingTime__ = null;
+      
+      // Start preloading immediately
+      setTimeout(async () => {
+        try {
+          // Prefetch books data and store it
+          const booksResponse = await fetch(`/api/books?t=${Date.now()}`);
+          if (booksResponse.ok) {
+            const data = await booksResponse.json();
+            window.__prefetchedBookshelfData__ = data;
+            
+            // Preload all book cover images aggressively
+            if (data.success && data.books) {
+              data.books.forEach(book => {
+                if (book.cover_image_url) {
+                  const img = new Image();
+                  img.src = book.cover_image_url;
+                }
+              });
+            }
+          }
+          
+          // Prefetch reading time and store it
+          const readingTimeResponse = await fetch(`/api/books/total-reading-time?t=${Date.now()}`);
+          if (readingTimeResponse.ok) {
+            window.__prefetchedReadingTime__ = await readingTimeResponse.json();
+          }
+        } catch (error) {
+          // Silent fail - prefetching is optional
+          console.log('Prefetch failed, will load normally');
+        }
+      }, 100); // Start very quickly
+    })();
+  </script>
 </body>
 </html>

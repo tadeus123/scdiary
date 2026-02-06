@@ -35,13 +35,24 @@ function updateEdgeColors() {
 // Initialize bookshelf network
 async function loadBookshelf() {
   try {
-    const response = await fetch(`/api/books?t=${Date.now()}`, {
-      cache: 'no-cache',
-      headers: {
-        'Cache-Control': 'no-cache'
-      }
-    });
-    const data = await response.json();
+    let data;
+    
+    // Use prefetched data if available (from corner page)
+    if (window.__prefetchedBookshelfData__) {
+      console.log('Using prefetched bookshelf data - instant load!');
+      data = window.__prefetchedBookshelfData__;
+      // Clear it so we don't use stale data on refresh
+      window.__prefetchedBookshelfData__ = null;
+    } else {
+      // Fetch normally if not prefetched
+      const response = await fetch(`/api/books?t=${Date.now()}`, {
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
+      data = await response.json();
+    }
     
     if (!data.success) {
       console.error('Failed to load books');
@@ -347,16 +358,26 @@ async function renderTimeline() {
   // Store for click handlers
   timelineBooks = sortedBooks;
   
-  // Fetch total reading time (with cache-busting to ensure fresh data)
+  // Fetch total reading time (use prefetched if available)
   let readingTimeHtml = '';
   try {
-    const response = await fetch(`/api/books/total-reading-time?t=${Date.now()}`, {
-      cache: 'no-cache',
-      headers: {
-        'Cache-Control': 'no-cache'
-      }
-    });
-    const data = await response.json();
+    let data;
+    
+    // Use prefetched reading time if available
+    if (window.__prefetchedReadingTime__) {
+      console.log('Using prefetched reading time - instant load!');
+      data = window.__prefetchedReadingTime__;
+      window.__prefetchedReadingTime__ = null; // Clear after use
+    } else {
+      // Fetch normally if not prefetched
+      const response = await fetch(`/api/books/total-reading-time?t=${Date.now()}`, {
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
+      data = await response.json();
+    }
     
     if (data.success) {
       readingTimeHtml = `
