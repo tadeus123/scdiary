@@ -32,7 +32,7 @@ function updateEdgeColors() {
   }
 }
 
-// Initialize bookshelf network (returns a promise)
+// Initialize bookshelf network
 async function loadBookshelf() {
   try {
     const response = await fetch(`/api/books?t=${Date.now()}`, {
@@ -45,7 +45,7 @@ async function loadBookshelf() {
     
     if (!data.success) {
       console.error('Failed to load books');
-      return Promise.resolve();
+      return;
     }
     
     const { books, connections } = data;
@@ -57,7 +57,7 @@ async function loadBookshelf() {
     // If no books, just show empty canvas
     if (books.length === 0) {
       console.log('No books yet');
-      return Promise.resolve();
+      return;
     }
     
     // If timeline view is active, refresh it with new data
@@ -224,10 +224,8 @@ async function loadBookshelf() {
       hideBookDetails();
     });
     
-    return Promise.resolve();
   } catch (error) {
     console.error('Error loading bookshelf:', error);
-    return Promise.resolve();
   }
 }
 
@@ -511,71 +509,5 @@ window.showTimelineBook = function(positionKey) {
 // Listen for theme changes to update edge colors
 document.addEventListener('themeChanged', updateEdgeColors);
 
-// ========================================
-// DEEP LINKING - Auto-open book from URL
-// ========================================
-
-// Check URL parameters and auto-open book if specified
-function checkAndOpenBookFromUrl() {
-  try {
-    const urlParams = new URLSearchParams(window.location.search);
-    const bookId = urlParams.get('book');
-    
-    // Only proceed if we have a book ID and books are loaded
-    if (!bookId || !allBooks || allBooks.length === 0) {
-      return;
-    }
-    
-    // Find the book by ID (handle both string and number IDs)
-    const book = allBooks.find(b => b && (b.id === bookId || String(b.id) === String(bookId)));
-    
-    if (!book) {
-      console.warn('Book not found with ID:', bookId);
-      return;
-    }
-    
-    console.log('Auto-opening book from URL:', book.title);
-    
-    // Wait a bit for network to stabilize, then focus and show book
-    setTimeout(() => {
-      // Focus on the book node in the network (only if in network view)
-      if (network && !isTimelineView) {
-        try {
-          network.focus(bookId, {
-            scale: 2.0,
-            animation: {
-              duration: 1000,
-              easingFunction: 'easeInOutQuad'
-            }
-          });
-          
-          // Select the node
-          network.selectNodes([bookId]);
-        } catch (error) {
-          console.warn('Could not focus on book node:', error);
-          // Continue anyway - details panel can still open
-        }
-      }
-      
-      // Show book details (works in both network and timeline views)
-      setTimeout(() => {
-        try {
-          showBookDetails(book, bookId);
-        } catch (error) {
-          console.error('Could not show book details:', error);
-        }
-      }, isTimelineView ? 100 : 500);
-    }, isTimelineView ? 100 : 1000);
-  } catch (error) {
-    console.error('Error in checkAndOpenBookFromUrl:', error);
-    // Fail silently - bookshelf still works normally
-  }
-}
-
 // Initialize on page load
-window.addEventListener('DOMContentLoaded', () => {
-  loadBookshelf().then(() => {
-    // After bookshelf loads, check for deep link
-    checkAndOpenBookFromUrl();
-  });
-});
+window.addEventListener('DOMContentLoaded', loadBookshelf);
