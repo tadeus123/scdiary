@@ -64,6 +64,13 @@ router.get('/bookshelf', (req, res) => {
 // API: Get all books and connections
 router.get('/api/books', async (req, res) => {
   try {
+    // Set cache-control headers to ensure fresh data
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    
     const books = await getBooks();
     const connections = await getBookConnections();
     
@@ -434,6 +441,13 @@ router.post('/api/books/research-all-reading-times', async (req, res) => {
 // API: Calculate total reading time for all books
 router.get('/api/books/total-reading-time', async (req, res) => {
   try {
+    // Set cache-control headers to ensure fresh data
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    
     const books = await getBooks();
     
     let totalMinutes = 0;

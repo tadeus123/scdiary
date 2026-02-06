@@ -35,7 +35,12 @@ function updateEdgeColors() {
 // Initialize bookshelf network (returns a promise)
 async function loadBookshelf() {
   try {
-    const response = await fetch('/api/books');
+    const response = await fetch(`/api/books?t=${Date.now()}`, {
+      cache: 'no-cache',
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    });
     const data = await response.json();
     
     if (!data.success) {
@@ -344,10 +349,15 @@ async function renderTimeline() {
   // Store for click handlers
   timelineBooks = sortedBooks;
   
-  // Fetch total reading time
+  // Fetch total reading time (with cache-busting to ensure fresh data)
   let readingTimeHtml = '';
   try {
-    const response = await fetch('/api/books/total-reading-time');
+    const response = await fetch(`/api/books/total-reading-time?t=${Date.now()}`, {
+      cache: 'no-cache',
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    });
     const data = await response.json();
     
     if (data.success) {
