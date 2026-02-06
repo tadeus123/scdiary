@@ -298,21 +298,15 @@ nav a:hover:not(.site-title) {
   opacity: 0.7;
 }
 
-/* Book mention links - elegant styling without @ symbol */
+/* Book mention links - simple, just slightly bigger */
 .entry-content a[href*="/bookshelf?book="] {
-  font-weight: 500;
-  text-decoration: none;
   color: var(--accent-color);
-  background: rgba(193, 106, 40, 0.08);
-  padding: 2px 6px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
+  text-decoration: none;
+  font-size: 1.08em; /* Slightly bigger than surrounding text */
 }
 
 .entry-content a[href*="/bookshelf?book="]:hover {
-  background: rgba(193, 106, 40, 0.15);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(193, 106, 40, 0.2);
+  opacity: 0.7;
 }
 
 .entry-content ul,
