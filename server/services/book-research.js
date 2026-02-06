@@ -1,7 +1,6 @@
 /**
  * AI-Powered Audiobook Research Service
  * Searches Audible.com ONLY for accurate audiobook durations
- * NO page counts - ONLY audiobook lengths from Audible
  */
 
 require('dotenv').config();
@@ -14,7 +13,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 async function searchAudiobookWithAI(title, author) {
   if (!OPENAI_API_KEY) {
     console.warn('⚠️ OpenAI API key not configured.');
-    return { audioDuration: null, pageCount: null };
+    return { audioDuration: null };
   }
 
   try {
@@ -75,7 +74,7 @@ IMPORTANT: Only return audioDurationMinutes if you found it on Audible.com and a
     if (!response.ok) {
       const errorData = await response.json();
       console.error('OpenAI API error:', errorData);
-      return { audioDuration: null, pageCount: null };
+      return { audioDuration: null };
     }
 
     const data = await response.json();
@@ -97,7 +96,6 @@ IMPORTANT: Only return audioDurationMinutes if you found it on Audible.com and a
       
       return {
         audioDuration: bookData.audioDurationMinutes || null,
-        pageCount: null, // Never use page count
         confidence: bookData.confidence || 'unknown',
         source: bookData.audibleUrl || 'Audible.com',
         matchedTitle: bookData.matchedTitle,
@@ -106,20 +104,19 @@ IMPORTANT: Only return audioDurationMinutes if you found it on Audible.com and a
     }
     
     console.warn('⚠️ Could not parse AI response as JSON');
-    return { audioDuration: null, pageCount: null };
+    return { audioDuration: null };
     
   } catch (error) {
     console.error('❌ AI search failed:', error.message);
-    return { audioDuration: null, pageCount: null };
+    return { audioDuration: null };
   }
 }
 
 /**
- * Research book information from Audible.com ONLY
- * Priority: Audiobook duration from Audible (NO page counts!)
+ * Research audiobook duration from Audible.com ONLY
  * @param {string} title - Book title
  * @param {string} author - Book author
- * @returns {Promise<{audioDuration: number|null, pageCount: number|null}>}
+ * @returns {Promise<{audioDuration: number|null}>}
  */
 async function researchBookInfo(title, author) {
   try {
@@ -142,14 +139,13 @@ async function researchBookInfo(title, author) {
     }
     
     return {
-      audioDuration: finalAudioDuration,
-      pageCount: null  // Never use page counts - ONLY audiobook duration
+      audioDuration: finalAudioDuration
     };
     
   } catch (error) {
     console.error('❌ Error researching book info:', error.message);
-    // Return nulls so the book can still be added (will use default estimate)
-    return { audioDuration: null, pageCount: null };
+    // Return null so the book can still be added (will use default estimate)
+    return { audioDuration: null };
   }
 }
 

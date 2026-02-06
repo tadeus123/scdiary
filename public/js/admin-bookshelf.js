@@ -448,13 +448,13 @@ document.getElementById('research-reading-times')?.addEventListener('click', asy
   const button = document.getElementById('research-reading-times');
   const messageDiv = document.getElementById('ai-tools-message');
   
-  if (!confirm('This will use AI to research audiobook duration and page count for ALL your existing books. This may take several minutes. Continue?')) {
+  if (!confirm('This will search Audible.com for the audiobook duration of ALL your books. This may take several minutes. Continue?')) {
     return;
   }
   
   button.disabled = true;
-  button.textContent = '🔍 Researching...';
-  messageDiv.textContent = 'AI is researching audiobook durations and page counts... This may take a few minutes. Check console for progress.';
+  button.textContent = '🎧 Searching Audible...';
+  messageDiv.textContent = 'AI is searching Audible.com for each book\'s audiobook duration... This may take a few minutes. Check console for progress.';
   messageDiv.className = 'form-message info';
   messageDiv.style.display = 'block';
   
@@ -490,7 +490,7 @@ document.getElementById('research-reading-times')?.addEventListener('click', asy
     messageDiv.className = 'form-message error';
   } finally {
     button.disabled = false;
-    button.textContent = '🔍 Research Reading Times for All Books';
+    button.textContent = '🎧 Research Audible Durations for All Books';
     
     setTimeout(() => {
       messageDiv.style.display = 'none';

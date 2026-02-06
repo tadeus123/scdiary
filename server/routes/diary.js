@@ -146,7 +146,6 @@ router.post('/api/books', upload.single('cover'), async (req, res) => {
       date_read: dateRead,
       cover_image_url: urlData.publicUrl,
       category: category,
-      page_count: bookInfo.pageCount,
       audio_duration_minutes: bookInfo.audioDuration
     };
     
@@ -384,9 +383,9 @@ router.post('/api/books/research-all-reading-times', async (req, res) => {
     const results = [];
     
     for (const book of books) {
-      // Skip if already has both values
-      if (book.audio_duration_minutes && book.page_count) {
-        console.log(`⏭️  Skipping "${book.title}" - already has data`);
+      // Skip if already has audio duration
+      if (book.audio_duration_minutes) {
+        console.log(`⏭️  Skipping "${book.title}" - already has Audible duration`);
         skipped++;
         continue;
       }
@@ -397,7 +396,6 @@ router.post('/api/books/research-all-reading-times', async (req, res) => {
         
         // Update the book in database
         const updated = await updateBookReadingTime(book.id, {
-          page_count: bookInfo.pageCount,
           audio_duration_minutes: bookInfo.audioDuration
         });
         
@@ -405,8 +403,7 @@ router.post('/api/books/research-all-reading-times', async (req, res) => {
           researched++;
           results.push({
             title: book.title,
-            audioDuration: bookInfo.audioDuration,
-            pageCount: bookInfo.pageCount
+            audioDuration: bookInfo.audioDuration
           });
           console.log(`✅ Updated "${book.title}"`);
         } else {
