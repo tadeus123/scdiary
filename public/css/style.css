@@ -1143,50 +1143,18 @@ body.corner-page {
 /* Reading Time Summary */
 .reading-time-summary {
   position: fixed;
-  bottom: 80px;
-  right: 40px;
-  background: var(--entry-bg);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 1.5rem 2rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  z-index: 900;
-  transition: all 0.3s ease;
-}
-
-.reading-time-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  align-items: flex-end;
-  text-align: right;
-}
-
-.reading-time-title {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 0.85rem;
-  color: var(--text-color);
-  opacity: 0.6;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 400;
-}
-
-.reading-time-value {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1.8rem;
-  color: var(--accent-color);
-  font-weight: 400;
-  line-height: 1.2;
-}
-
-.reading-time-details {
+  bottom: 20px;
+  right: 20px;
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 0.85rem;
   color: var(--text-color);
   opacity: 0.5;
-  margin-top: 0.25rem;
+  z-index: 900;
+  transition: opacity 0.2s ease;
+}
+
+.reading-time-summary:hover {
+  opacity: 0.8;
 }
 
 /* Book details overlay */
@@ -1544,17 +1512,8 @@ body.corner-page {
   }
   
   .reading-time-summary {
-    bottom: 60px;
-    right: 20px;
-    padding: 1.25rem 1.5rem;
-  }
-  
-  .reading-time-value {
-    font-size: 1.5rem;
-  }
-  
-  .reading-time-title,
-  .reading-time-details {
+    bottom: 15px;
+    right: 15px;
     font-size: 0.8rem;
   }
 }
@@ -1620,17 +1579,8 @@ body.corner-page {
   }
   
   .reading-time-summary {
-    bottom: 50px;
-    right: 15px;
-    padding: 1rem 1.25rem;
-  }
-  
-  .reading-time-value {
-    font-size: 1.3rem;
-  }
-  
-  .reading-time-title,
-  .reading-time-details {
+    bottom: 12px;
+    right: 12px;
     font-size: 0.75rem;
   }
 }

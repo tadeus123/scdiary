@@ -573,6 +573,33 @@ async function updateBookCategory(bookId, category) {
   }
 }
 
+// Update book reading time info (page_count and audio_duration_minutes)
+async function updateBookReadingTime(bookId, { page_count, audio_duration_minutes }) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('books')
+      .update({ 
+        page_count,
+        audio_duration_minutes
+      })
+      .eq('id', bookId);
+
+    if (error) {
+      console.error('Error updating book reading time:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating book reading time:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   getEntries,
   createEntry,
@@ -591,6 +618,7 @@ module.exports = {
   autoConnectBook,
   rebuildAllConnections,
   updateBookCategory,
+  updateBookReadingTime,
   isConfigured: () => supabase !== null
 };
 

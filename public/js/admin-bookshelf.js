@@ -443,6 +443,61 @@ function showMessage(message, type = 'info') {
   }, 5000);
 }
 
+// AI Tools: Research reading times for all books button
+document.getElementById('research-reading-times')?.addEventListener('click', async () => {
+  const button = document.getElementById('research-reading-times');
+  const messageDiv = document.getElementById('ai-tools-message');
+  
+  if (!confirm('This will use AI to research audiobook duration and page count for ALL your existing books. This may take several minutes. Continue?')) {
+    return;
+  }
+  
+  button.disabled = true;
+  button.textContent = '🔍 Researching...';
+  messageDiv.textContent = 'AI is researching audiobook durations and page counts... This may take a few minutes. Check console for progress.';
+  messageDiv.className = 'form-message info';
+  messageDiv.style.display = 'block';
+  
+  try {
+    const response = await fetch('/api/books/research-all-reading-times', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      messageDiv.textContent = `✅ Success! Researched ${data.researched} books, skipped ${data.skipped} (already had data), ${data.failed} failed.`;
+      messageDiv.className = 'form-message success';
+      
+      // Show some results
+      if (data.results.length > 0) {
+        console.log('📊 Research Results:', data.results);
+      }
+      
+      setTimeout(() => {
+        messageDiv.style.display = 'none';
+      }, 10000);
+    } else {
+      messageDiv.textContent = `❌ Error: ${data.error}`;
+      messageDiv.className = 'form-message error';
+    }
+  } catch (error) {
+    console.error('Error researching reading times:', error);
+    messageDiv.textContent = `❌ Error: ${error.message}`;
+    messageDiv.className = 'form-message error';
+  } finally {
+    button.disabled = false;
+    button.textContent = '🔍 Research Reading Times for All Books';
+    
+    setTimeout(() => {
+      messageDiv.style.display = 'none';
+    }, 10000);
+  }
+});
+
 // AI Tools: Recategorize all books button
 document.getElementById('recategorize-all')?.addEventListener('click', async () => {
   const button = document.getElementById('recategorize-all');

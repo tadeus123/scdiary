@@ -58,20 +58,11 @@
           <input type="date" id="dateRead" name="dateRead" required>
         </div>
         
-        <div class="form-group">
-          <label for="pageCount">Page Count (optional)</label>
-          <input type="number" id="pageCount" name="pageCount" min="0" placeholder="e.g. 350">
-          <small class="form-hint">Used for reading time estimation if no audio duration</small>
-        </div>
-        
-        <div class="form-group">
-          <label for="audioDuration">Audio Duration (minutes, optional)</label>
-          <input type="number" id="audioDuration" name="audioDuration" min="0" placeholder="e.g. 420">
-          <small class="form-hint">Preferred for reading time calculation (e.g. 7 hours = 420 minutes)</small>
-        </div>
-        
         <button type="submit" class="btn">Add Book</button>
         <div id="form-message" class="form-message"></div>
+        <p class="form-hint" style="margin-top: 1rem;">
+          🤖 <strong>AI will automatically research:</strong> audiobook duration and page count for accurate reading time calculation
+        </p>
       </form>
     </div>
     
@@ -79,7 +70,15 @@
     <div class="ai-tools-section">
       <h2>🤖 ai tools</h2>
       <div class="ai-tools-controls">
-        <button id="recategorize-all" class="btn btn-secondary">
+        <button id="research-reading-times" class="btn btn-secondary">
+          🔍 Research Reading Times for All Books
+        </button>
+        <p class="connection-hint">
+          <strong>🔍 Reading Time Research:</strong> AI will automatically find audiobook duration and page count for ALL your existing books.<br>
+          This may take a few minutes depending on how many books you have.
+        </p>
+        
+        <button id="recategorize-all" class="btn btn-secondary" style="margin-top: 1rem;">
           Recategorize All Books
         </button>
         <p class="connection-hint">

@@ -353,13 +353,7 @@ async function renderTimeline() {
     if (data.success) {
       readingTimeHtml = `
         <div class="reading-time-summary">
-          <div class="reading-time-content">
-            <div class="reading-time-title">Total Reading Time</div>
-            <div class="reading-time-value">${data.formattedTime}</div>
-            <div class="reading-time-details">
-              ${data.totalBooks} book${data.totalBooks !== 1 ? 's' : ''} • ${data.totalHours} hour${data.totalHours !== 1 ? 's' : ''}
-            </div>
-          </div>
+          total reading time: ${data.totalHours} hours
         </div>
       `;
     }

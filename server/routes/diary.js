@@ -18,6 +18,7 @@ const {
 } = require('../db/supabase');
 const { categorizeBook } = require('../services/categorization');
 const { calculateSimilarity } = require('../services/similarity');
+const { researchBookInfo } = require('../services/book-research');
 
 // Initialize Supabase client for storage
 const supabase = createClient(
@@ -89,7 +90,7 @@ router.post('/api/books', upload.single('cover'), async (req, res) => {
       return res.status(400).json({ success: false, error: 'Cover image is required' });
     }
     
-    const { title, author, dateRead, pageCount, audioDuration } = req.body;
+    const { title, author, dateRead } = req.body;
     
     if (!title || !author || !dateRead) {
       return res.status(400).json({ success: false, error: 'All fields are required' });
@@ -118,6 +119,11 @@ router.post('/api/books', upload.single('cover'), async (req, res) => {
       .from('book-covers')
       .getPublicUrl(fileName);
     
+    // 🤖 AI: Research book information (audiobook duration & page count)
+    console.log(`🔍 AI researching book info for "${title}" by ${author}...`);
+    const bookInfo = await researchBookInfo(title, author);
+    console.log(`✅ Found: Audio=${bookInfo.audioDuration}min, Pages=${bookInfo.pageCount}`);
+    
     // 🤖 AI: Categorize the book automatically
     console.log(`🤖 Categorizing "${title}" by ${author}...`);
     const category = await categorizeBook(title, author);
@@ -129,8 +135,8 @@ router.post('/api/books', upload.single('cover'), async (req, res) => {
       date_read: dateRead,
       cover_image_url: urlData.publicUrl,
       category: category,
-      page_count: pageCount ? parseInt(pageCount) : null,
-      audio_duration_minutes: audioDuration ? parseInt(audioDuration) : null
+      page_count: bookInfo.pageCount,
+      audio_duration_minutes: bookInfo.audioDuration
     };
     
     const result = await addBook(bookData);
@@ -349,6 +355,78 @@ router.post('/api/books/rebuild-connections', async (req, res) => {
     }
   } catch (error) {
     console.error('Error rebuilding connections:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// API: Research reading time info for all existing books (admin only)
+router.post('/api/books/research-all-reading-times', async (req, res) => {
+  try {
+    console.log('🔍 Starting AI research for all existing books...\n');
+    
+    const books = await getBooks();
+    const { updateBookReadingTime } = require('../db/supabase');
+    
+    let researched = 0;
+    let skipped = 0;
+    let failed = 0;
+    const results = [];
+    
+    for (const book of books) {
+      // Skip if already has both values
+      if (book.audio_duration_minutes && book.page_count) {
+        console.log(`⏭️  Skipping "${book.title}" - already has data`);
+        skipped++;
+        continue;
+      }
+      
+      try {
+        console.log(`\n📚 Researching: "${book.title}" by ${book.author}`);
+        const bookInfo = await researchBookInfo(book.title, book.author);
+        
+        // Update the book in database
+        const updated = await updateBookReadingTime(book.id, {
+          page_count: bookInfo.pageCount,
+          audio_duration_minutes: bookInfo.audioDuration
+        });
+        
+        if (updated.success) {
+          researched++;
+          results.push({
+            title: book.title,
+            audioDuration: bookInfo.audioDuration,
+            pageCount: bookInfo.pageCount
+          });
+          console.log(`✅ Updated "${book.title}"`);
+        } else {
+          failed++;
+          console.error(`❌ Failed to update "${book.title}": ${updated.error}`);
+        }
+        
+        // Small delay to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+      } catch (error) {
+        failed++;
+        console.error(`❌ Error researching "${book.title}":`, error.message);
+      }
+    }
+    
+    console.log(`\n✅ Research complete!`);
+    console.log(`   - Researched: ${researched}`);
+    console.log(`   - Skipped: ${skipped}`);
+    console.log(`   - Failed: ${failed}`);
+    
+    res.json({ 
+      success: true, 
+      researched,
+      skipped,
+      failed,
+      results
+    });
+    
+  } catch (error) {
+    console.error('Error researching reading times:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
