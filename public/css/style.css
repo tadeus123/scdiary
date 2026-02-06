@@ -298,15 +298,11 @@ nav a:hover:not(.site-title) {
   opacity: 0.7;
 }
 
-/* Book mention links - simple, just slightly bigger */
+/* Book mention links - just slightly bigger, same color */
 .entry-content a[href*="/bookshelf?book="] {
-  color: var(--accent-color);
+  color: inherit; /* Same color as surrounding text */
   text-decoration: none;
   font-size: 1.08em; /* Slightly bigger than surrounding text */
-}
-
-.entry-content a[href*="/bookshelf?book="]:hover {
-  opacity: 0.7;
 }
 
 .entry-content ul,
