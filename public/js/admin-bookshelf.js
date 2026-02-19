@@ -470,12 +470,9 @@ function showAdminBookPanel(book) {
     `<p class="book-date">Read: ${formatDate(rd.date)}</p>`
   ).join('');
 
-  // Default to today in YYYY-MM-DD
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  dateInput.value = `${yyyy}-${mm}-${dd}`;
+  // Default reread date to today
+  const today = new Date().toISOString().split('T')[0];
+  dateInput.value = today;
 
   panel.classList.remove('hidden');
 }
