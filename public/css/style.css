@@ -1288,12 +1288,20 @@ body.corner-page {
   flex-wrap: wrap;
 }
 
-.reread-form .form-input {
-  padding: 0.5rem;
+.reread-form input[type="date"] {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1rem;
+  padding: 0.75rem;
+  background-color: var(--entry-bg);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background: var(--bg-color);
   color: var(--text-color);
+  border-radius: 5px;
+  transition: border-color 0.2s ease;
+}
+
+.reread-form input[type="date"]:focus {
+  outline: none;
+  border-color: var(--accent-color);
 }
 
 .reread-message {
