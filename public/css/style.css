@@ -1288,7 +1288,7 @@ body.corner-page {
   flex-wrap: wrap;
 }
 
-.reread-form input[type="date"] {
+.reread-form input[type="text"] {
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 1rem;
   padding: 0.75rem;
@@ -1297,9 +1297,10 @@ body.corner-page {
   color: var(--text-color);
   border-radius: 5px;
   transition: border-color 0.2s ease;
+  width: 140px;
 }
 
-.reread-form input[type="date"]:focus {
+.reread-form input[type="text"]:focus {
   outline: none;
   border-color: var(--accent-color);
 }
