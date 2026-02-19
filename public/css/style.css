@@ -1199,6 +1199,13 @@ body.corner-page {
   font-style: italic;
 }
 
+.book-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: center;
+}
+
 .book-date {
   font-size: 0.95rem;
   color: var(--text-color);
@@ -1228,6 +1235,75 @@ body.corner-page {
 .close-details:hover {
   opacity: 1;
 }
+
+/* Admin book panel (re-read feature) */
+.admin-book-panel {
+  position: fixed;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--entry-bg);
+  backdrop-filter: blur(10px);
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-color);
+  z-index: 1000;
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.admin-book-panel.hidden {
+  display: none;
+}
+
+.admin-book-panel-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.admin-reread-section {
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  width: 100%;
+}
+
+.admin-reread-section h3 {
+  font-size: 1rem;
+  font-weight: 400;
+  margin: 0 0 0.75rem 0;
+  color: var(--text-color);
+}
+
+.reread-form {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.reread-form .form-input {
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+
+.reread-message {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  display: none;
+}
+
+.reread-message.success { color: var(--accent-color); }
+.reread-message.error { color: #e53e3e; }
 
 /* Admin Bookshelf Styles */
 .add-book-section {

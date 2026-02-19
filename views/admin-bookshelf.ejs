@@ -107,6 +107,25 @@
       </div>
     </div>
   </div>
+
+  <!-- Book detail panel (when clicking a book, connection/delete mode off) -->
+  <div id="admin-book-panel" class="admin-book-panel hidden">
+    <div class="admin-book-panel-content">
+      <img id="admin-book-cover" class="book-cover-detail" src="" alt="">
+      <h2 id="admin-book-title"></h2>
+      <p id="admin-book-author" class="book-author"></p>
+      <div id="admin-book-dates" class="book-dates"></div>
+      <div class="admin-reread-section">
+        <h3>Mark as re-read</h3>
+        <div class="reread-form">
+          <input type="date" id="reread-date" class="form-input">
+          <button type="button" id="mark-reread-btn" class="btn">I read it again</button>
+        </div>
+        <div id="reread-message" class="reread-message"></div>
+      </div>
+    </div>
+    <button id="admin-close-panel" class="close-details">✕</button>
+  </div>
   
   <script src="/js/main.js"></script>
   <script src="/js/admin-bookshelf.js"></script>

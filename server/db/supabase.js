@@ -433,6 +433,62 @@ async function deleteConnection(id) {
   }
 }
 
+// Get all book rereads
+async function getAllBookRereads() {
+  if (!supabase) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('book_rereads')
+      .select('book_id, date_read')
+      .order('date_read', { ascending: true });
+
+    if (error) {
+      if (error.code === '42P01') {
+        console.warn('book_rereads table does not exist - run create-book-rereads-table.sql');
+      } else {
+        console.error('Error fetching book rereads:', error);
+      }
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching book rereads:', error);
+    return [];
+  }
+}
+
+// Add a re-read for a book
+async function addBookReread(bookId, dateRead) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('book_rereads')
+      .insert([{ book_id: bookId, date_read: dateRead }])
+      .select()
+      .single();
+
+    if (error) {
+      const msg = error.code === '42P01'
+        ? 'Run create-book-rereads-table.sql in Supabase first'
+        : error.message;
+      console.error('Error adding book reread:', error);
+      return { success: false, error: msg };
+    }
+
+    return { success: true, reread: data };
+  } catch (error) {
+    console.error('Error adding book reread:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // Auto-create connections for a book based on its category
 async function autoConnectBook(bookId, category) {
   if (!supabase || !category) {
@@ -610,6 +666,8 @@ module.exports = {
   // Bookshelf functions
   getBooks,
   getBookConnections,
+  getAllBookRereads,
+  addBookReread,
   addBook,
   addBookConnection,
   deleteBook,

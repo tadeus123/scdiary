@@ -248,20 +248,27 @@ function showBookDetails(book, nodeId) {
   const coverImg = document.getElementById('book-cover-detail');
   const titleEl = document.getElementById('book-title');
   const authorEl = document.getElementById('book-author');
-  const dateEl = document.getElementById('book-date');
+  const datesContainer = document.getElementById('book-dates');
   
   coverImg.src = book.cover_image_url;
   coverImg.alt = book.title;
   titleEl.textContent = book.title;
   authorEl.textContent = book.author;
   
-  // Format date nicely
-  const dateRead = new Date(book.date_read);
-  dateEl.textContent = `Read: ${dateRead.toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  })}`;
+  // Build list of all read dates (first read + re-reads), sorted chronologically
+  const allReadDates = [
+    { date: book.date_read },
+    ...(book.rereads || []).map(r => ({ date: r.date_read }))
+  ].sort((a, b) => new Date(a.date) - new Date(b.date));
+  
+  const formatDate = (dateStr) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+  
+  datesContainer.innerHTML = allReadDates.map(rd => 
+    `<p class="book-date">Read: ${formatDate(rd.date)}</p>`
+  ).join('');
   
   detailsDiv.classList.remove('hidden');
   
@@ -350,13 +357,22 @@ async function renderTimeline() {
   const container = document.getElementById('bookshelf-timeline');
   if (!container || allBooks.length === 0) return;
   
-  // Sort books by date
-  const sortedBooks = [...allBooks].sort((a, b) => 
+  // Build reading events: each book + each re-read = one event per read
+  const readingEvents = [];
+  for (const book of allBooks) {
+    readingEvents.push({ book, date_read: book.date_read });
+    for (const r of book.rereads || []) {
+      readingEvents.push({ book, date_read: r.date_read });
+    }
+  }
+  
+  // Sort all events by date
+  const sortedEvents = [...readingEvents].sort((a, b) => 
     new Date(a.date_read) - new Date(b.date_read)
   );
   
-  // Store for click handlers
-  timelineBooks = sortedBooks;
+  // Store for click handlers (each event has { book, date_read })
+  timelineBooks = sortedEvents;
   
   // Fetch total reading time (use prefetched if available)
   let readingTimeHtml = '';
@@ -392,15 +408,15 @@ async function renderTimeline() {
   
   // Create SVG line graph - scale based on number of books
   const minWidth = 1200;
-  const pixelsPerBook = 25; // Give each book more space
-  const svgWidth = Math.max(minWidth, sortedBooks.length * pixelsPerBook);
+  const pixelsPerBook = 25; // Give each reading event more space
+  const svgWidth = Math.max(minWidth, sortedEvents.length * pixelsPerBook);
   const svgHeight = 400;
   const padding = { top: 40, right: 40, bottom: 60, left: 60 };
   const graphWidth = svgWidth - padding.left - padding.right;
   const graphHeight = svgHeight - padding.top - padding.bottom;
   
-  const firstDate = new Date(sortedBooks[0].date_read);
-  const lastDate = new Date(sortedBooks[sortedBooks.length - 1].date_read);
+  const firstDate = new Date(sortedEvents[0].date_read);
+  const lastDate = new Date(sortedEvents[sortedEvents.length - 1].date_read);
   let timeRange = lastDate - firstDate;
   
   // Handle edge case: if all books on same day or only one book, add 1 day padding
@@ -408,9 +424,9 @@ async function renderTimeline() {
     timeRange = 86400000; // 1 day in milliseconds
   }
   
-  // Create points for line graph (cumulative books over time)
-  const points = sortedBooks.map((book, index) => {
-    const date = new Date(book.date_read);
+  // Create points for line graph (cumulative reading events over time)
+  const points = sortedEvents.map((event, index) => {
+    const date = new Date(event.date_read);
     let x = padding.left + ((date - firstDate) / timeRange) * graphWidth;
     
     // If all books are on the same day, center them
@@ -418,8 +434,8 @@ async function renderTimeline() {
       x = padding.left + graphWidth / 2;
     }
     
-    const y = padding.top + graphHeight - ((index + 1) / sortedBooks.length) * graphHeight;
-    return { x, y, book, index };
+    const y = padding.top + graphHeight - ((index + 1) / sortedEvents.length) * graphHeight;
+    return { x, y, book: event.book, date_read: event.date_read, index };
   });
   
   // Group books by the exact same date (not just proximity)
@@ -427,8 +443,7 @@ async function renderTimeline() {
   currentBookIndexByPosition = {};
   
   points.forEach(point => {
-    const book = point.book;
-    const date = new Date(book.date_read);
+    const date = new Date(point.date_read);
     
     // Safeguard: ensure valid date
     if (isNaN(date.getTime())) {
@@ -460,7 +475,7 @@ async function renderTimeline() {
     <svg class="timeline-svg" viewBox="0 0 ${svgWidth} ${svgHeight}">
       <!-- Grid lines -->
       ${[0, 0.25, 0.5, 0.75, 1].map(ratio => {
-        const bookCount = Math.round(sortedBooks.length * ratio);
+        const bookCount = Math.round(sortedEvents.length * ratio);
         return `
         <line x1="${padding.left}" y1="${padding.top + graphHeight * (1 - ratio)}" 
               x2="${svgWidth - padding.right}" y2="${padding.top + graphHeight * (1 - ratio)}" 
@@ -493,7 +508,7 @@ async function renderTimeline() {
       </text>
       <text x="20" y="${svgHeight / 2}" class="timeline-axis-title" text-anchor="middle" 
             transform="rotate(-90 20 ${svgHeight / 2})">
-        Books Read
+        Reads
       </text>
     </svg>
     ${readingTimeHtml}
@@ -513,17 +528,17 @@ window.showTimelineBook = function(positionKey) {
   
   // Get current index for this position (cycles through books)
   const currentIdx = currentBookIndexByPosition[positionKey];
-  const bookIndex = booksAtPosition[currentIdx];
-  const book = timelineBooks[bookIndex];
+  const eventIndex = booksAtPosition[currentIdx];
+  const event = timelineBooks[eventIndex];
   
-  if (book) {
-    console.log(`Showing book ${currentIdx + 1}/${booksAtPosition.length}:`, book.title);
-    showBookDetails(book, book.id);
+  if (event && event.book) {
+    console.log(`Showing book ${currentIdx + 1}/${booksAtPosition.length}:`, event.book.title);
+    showBookDetails(event.book, event.book.id);
     
     // Increment for next click (cycle back to 0 when reaching end)
     currentBookIndexByPosition[positionKey] = (currentIdx + 1) % booksAtPosition.length;
   } else {
-    console.error('Book not found at index:', bookIndex);
+    console.error('Book not found at index:', eventIndex);
   }
 }
 

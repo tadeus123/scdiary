@@ -197,12 +197,17 @@ async function initAdminBookshelf() {
       network.setOptions({ physics: false });
     });
     
-    // Click handler for connection and delete modes
+    // Click handler for connection, delete, and book detail modes
     network.on('click', function(params) {
       if (deleteMode) {
         handleDeleteClick(params);
       } else if (connectionMode && params.nodes.length > 0) {
         handleConnectionClick(params.nodes[0]);
+      } else if (params.nodes.length > 0) {
+        // Neither mode: show book detail panel with re-read option
+        const nodeId = params.nodes[0];
+        const node = nodesDataSet.get(nodeId);
+        showAdminBookPanel(node.bookData);
       }
     });
     
@@ -282,6 +287,7 @@ document.getElementById('toggle-connection-mode').addEventListener('click', () =
   const button = document.getElementById('toggle-connection-mode');
   
   if (connectionMode) {
+    hideAdminBookPanel();
     statusSpan.textContent = 'ON';
     button.classList.add('active');
     showMessage('Connection mode enabled. Click two books to connect them.', 'info');
@@ -310,6 +316,7 @@ document.getElementById('toggle-delete-mode').addEventListener('click', () => {
   const button = document.getElementById('toggle-delete-mode');
   
   if (deleteMode) {
+    hideAdminBookPanel();
     statusSpan.textContent = 'ON';
     button.classList.add('active');
     showMessage('Delete mode enabled. Click a book or connection to delete it.', 'info');
@@ -430,6 +437,113 @@ document.getElementById('book-form').addEventListener('submit', async (e) => {
     submitBtn.textContent = 'Add Book';
   }
 });
+
+// Show admin book panel (with re-read option)
+let currentAdminBookId = null;
+
+function showAdminBookPanel(book) {
+  currentAdminBookId = book.id;
+  const panel = document.getElementById('admin-book-panel');
+  const coverImg = document.getElementById('admin-book-cover');
+  const titleEl = document.getElementById('admin-book-title');
+  const authorEl = document.getElementById('admin-book-author');
+  const datesContainer = document.getElementById('admin-book-dates');
+  const dateInput = document.getElementById('reread-date');
+
+  coverImg.src = book.cover_image_url;
+  coverImg.alt = book.title;
+  titleEl.textContent = book.title;
+  authorEl.textContent = book.author;
+
+  // Build read dates list
+  const allReadDates = [
+    { date: book.date_read },
+    ...(book.rereads || []).map(r => ({ date: r.date_read }))
+  ].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const formatDate = (dateStr) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+
+  datesContainer.innerHTML = allReadDates.map(rd =>
+    `<p class="book-date">Read: ${formatDate(rd.date)}</p>`
+  ).join('');
+
+  // Default reread date to today
+  const today = new Date().toISOString().split('T')[0];
+  dateInput.value = today;
+
+  panel.classList.remove('hidden');
+}
+
+function hideAdminBookPanel() {
+  document.getElementById('admin-book-panel').classList.add('hidden');
+  currentAdminBookId = null;
+}
+
+// Close admin book panel
+document.getElementById('admin-close-panel')?.addEventListener('click', hideAdminBookPanel);
+
+// Mark as re-read
+document.getElementById('mark-reread-btn')?.addEventListener('click', async () => {
+  if (!currentAdminBookId) return;
+
+  const dateInput = document.getElementById('reread-date');
+  const dateRead = dateInput.value;
+
+  if (!dateRead) {
+    showRereadMessage('Please select a date', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('mark-reread-btn');
+  btn.disabled = true;
+  btn.textContent = 'Adding...';
+
+  try {
+    const response = await fetch(`/api/books/${currentAdminBookId}/reread`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dateRead })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      showRereadMessage('Re-read added!', 'success');
+      // Refetch books and update panel
+      const booksResponse = await fetch('/api/books');
+      const booksData = await booksResponse.json();
+      if (booksData.success) {
+        const updatedBook = booksData.books.find(b => b.id === currentAdminBookId);
+        if (updatedBook) {
+          // Update node's bookData
+          nodesDataSet.update([{ id: currentAdminBookId, bookData: updatedBook }]);
+          showAdminBookPanel(updatedBook);
+        }
+      }
+      } else {
+      showRereadMessage('Failed: ' + data.error, 'error');
+    }
+  } catch (error) {
+    console.error('Error adding re-read:', error);
+    showRereadMessage('Error adding re-read', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'I read it again';
+  }
+});
+
+// Show message in re-read panel
+function showRereadMessage(message, type = 'info') {
+  const el = document.getElementById('reread-message');
+  if (!el) return;
+  el.textContent = message;
+  el.className = `reread-message ${type}`;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
 
 // Show message helper
 function showMessage(message, type = 'info') {

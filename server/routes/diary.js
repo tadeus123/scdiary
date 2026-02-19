@@ -8,6 +8,8 @@ const {
   getEntries, 
   getBooks, 
   getBookConnections, 
+  getAllBookRereads,
+  addBookReread,
   addBook, 
   addBookConnection, 
   deleteBook,
@@ -70,12 +72,27 @@ router.get('/api/books', async (req, res) => {
       'Expires': '0'
     });
     
-    const books = await getBooks();
-    const connections = await getBookConnections();
+    const [books, connections, rereads] = await Promise.all([
+      getBooks(),
+      getBookConnections(),
+      getAllBookRereads()
+    ]);
+    
+    // Group rereads by book_id and attach to each book
+    const rereadsByBook = {};
+    for (const r of rereads) {
+      if (!rereadsByBook[r.book_id]) rereadsByBook[r.book_id] = [];
+      rereadsByBook[r.book_id].push({ date_read: r.date_read });
+    }
+    
+    const booksWithRereads = books.map(book => ({
+      ...book,
+      rereads: rereadsByBook[book.id] || []
+    }));
     
     res.json({
       success: true,
-      books: books,
+      books: booksWithRereads,
       connections: connections
     });
   } catch (error) {
@@ -236,6 +253,29 @@ router.post('/api/books/connections', async (req, res) => {
   }
 });
 
+// API: Add re-read for a book
+router.post('/api/books/:id/reread', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { dateRead } = req.body;
+    
+    if (!dateRead) {
+      return res.status(400).json({ success: false, error: 'Date is required' });
+    }
+    
+    const result = await addBookReread(id, dateRead);
+    
+    if (result.success) {
+      res.json({ success: true, reread: result.reread });
+    } else {
+      res.status(400).json({ success: false, error: result.error });
+    }
+  } catch (error) {
+    console.error('Error adding re-read:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // API: Delete connection
 router.delete('/api/books/connections/:id', async (req, res) => {
   try {
@@ -363,7 +403,7 @@ router.post('/api/books/rebuild-connections', async (req, res) => {
   }
 });
 
-// API: Calculate total reading time for all books
+// API: Calculate total reading time for all books (includes re-reads)
 router.get('/api/books/total-reading-time', async (req, res) => {
   try {
     // Set cache-control headers to ensure fresh data
@@ -373,16 +413,25 @@ router.get('/api/books/total-reading-time', async (req, res) => {
       'Expires': '0'
     });
     
-    const books = await getBooks();
+    const [books, rereads] = await Promise.all([
+      getBooks(),
+      getAllBookRereads()
+    ]);
+    
+    // Count rereads per book
+    const rereadCountByBook = {};
+    for (const r of rereads) {
+      rereadCountByBook[r.book_id] = (rereadCountByBook[r.book_id] || 0) + 1;
+    }
     
     let totalMinutes = 0;
     let booksWithDuration = 0;
     
     for (const book of books) {
-      // ONLY use Audible audiobook duration (no page counts!)
-      // NULL is treated as 0 (no estimate) - use nullish coalescing
+      // Duration per read (1 first read + N rereads = 1 + N total reads)
       const duration = book.audio_duration_minutes ?? 0;
-      totalMinutes += duration;
+      const readCount = 1 + (rereadCountByBook[book.id] || 0);
+      totalMinutes += duration * readCount;
       
       if (duration > 0) {
         booksWithDuration++;
