@@ -1,0 +1,12 @@
+---
+description: Push changes to GitHub main after making edits
+alwaysApply: true
+---
+
+# Push to GitHub
+
+When making code changes to this project, **always push to `origin main`** after the edits are complete, unless the user explicitly asks otherwise.
+
+- Stage all changes: `git add -A`
+- Commit with a descriptive message
+- Push: `git push origin main`

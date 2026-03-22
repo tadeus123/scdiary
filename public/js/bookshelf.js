@@ -321,10 +321,14 @@ document.addEventListener('DOMContentLoaded', () => {
 function showNetworkView() {
   const networkContainer = document.getElementById('bookshelf-network');
   const timelineContainer = document.getElementById('bookshelf-timeline');
+  const officeLink = document.getElementById('bookshelf-office-link');
   
   networkContainer.style.display = 'block';
   if (timelineContainer) {
     timelineContainer.style.display = 'none';
+  }
+  if (officeLink) {
+    officeLink.classList.add('hidden');
   }
   
   // Refresh network if it exists
@@ -337,8 +341,12 @@ function showNetworkView() {
 function showTimelineView() {
   const networkContainer = document.getElementById('bookshelf-network');
   let timelineContainer = document.getElementById('bookshelf-timeline');
+  const officeLink = document.getElementById('bookshelf-office-link');
   
   networkContainer.style.display = 'none';
+  if (officeLink) {
+    officeLink.classList.remove('hidden');
+  }
   
   // Create timeline container if it doesn't exist
   if (!timelineContainer) {
