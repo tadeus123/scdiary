@@ -113,6 +113,26 @@
   color: var(--accent-color);
 }
 
+/* Office text link - bottom right on corner page */
+.corner-office-text {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--text-color);
+  text-decoration: none;
+  opacity: 0.5;
+  transition: opacity 0.3s ease, color 0.2s ease;
+}
+
+.corner-office-text:hover {
+  opacity: 1;
+  color: var(--accent-color);
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -894,6 +914,12 @@ body.corner-page {
     bottom: 15px;
     left: 15px;
   }
+
+  .corner-office-text {
+    font-size: 0.8rem;
+    bottom: 15px;
+    right: 15px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -915,6 +941,12 @@ body.corner-page {
     font-size: 0.75rem;
     bottom: 12px;
     left: 12px;
+  }
+
+  .corner-office-text {
+    font-size: 0.75rem;
+    bottom: 12px;
+    right: 12px;
   }
 }
 

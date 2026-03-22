@@ -33,6 +33,11 @@ app.get('/corner', (req, res) => {
   res.render('trouble-corner', { goals: [] });
 });
 
+// Office route
+app.get('/office', (req, res) => {
+  res.render('office');
+});
+
 // API endpoint to get corner images
 app.get('/api/corner-images', (req, res) => {
   const configPath = path.join(__dirname, '../public/images/config.json');
