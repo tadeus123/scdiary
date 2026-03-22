@@ -6,8 +6,8 @@
   --border-color: rgba(26, 26, 26, 0.1);
   --entry-bg: rgba(255, 255, 255, 0.3);
   
-  /* Toggle switch positioning - consistent across all devices */
-  --toggle-bottom: 0.1rem;
+  /* Toggle switch positioning - aligned with reading-time-summary height */
+  --toggle-bottom: 20px;
   --toggle-left: 1.5rem;
 }
 
@@ -1545,7 +1545,7 @@ body.corner-page {
   }
   
   .bookshelf-toggle-container {
-    bottom: 0.3rem;
+    bottom: 15px;
     left: 0.5rem;
     gap: 0.5rem;
   }
@@ -1622,7 +1622,7 @@ body.corner-page {
 
 @media (max-width: 480px) {
   .bookshelf-toggle-container {
-    bottom: 0.3rem;
+    bottom: 12px;
     left: 0.5rem;
     gap: 0.4rem;
   }
