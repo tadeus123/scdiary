@@ -1,0 +1,12 @@
+---
+description: Don't build or start without explicit request
+alwaysApply: true
+---
+
+# Wait for Explicit Instructions
+
+**Never assume or start building** when the user has not explicitly asked for it.
+
+- Do not implement features, add pages, or create new functionality unless the user clearly requests it
+- If the user describes something (e.g. "the office will consist of..."), wait for them to ask you to build it
+- Ask before implementing when intent is unclear
