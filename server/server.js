@@ -38,6 +38,32 @@ app.get('/office', (req, res) => {
   res.render('office');
 });
 
+// API endpoint to get office gallery items
+app.get('/api/office-items', (req, res) => {
+  const configPath = path.join(__dirname, '../public/images/office/config.json');
+  
+  try {
+    if (fs.existsSync(configPath)) {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      const categories = (config.categories || []).map(cat => ({
+        ...cat,
+        items: (cat.items || []).map(item => ({
+          ...item,
+          imageUrl: item.url || `/images/office/${item.filename}`,
+          title: item.title || '',
+          description: item.description || ''
+        }))
+      }));
+      res.json({ success: true, categories });
+    } else {
+      res.json({ success: true, categories: [] });
+    }
+  } catch (error) {
+    console.error('Error reading office config:', error);
+    res.json({ success: true, categories: [] });
+  }
+});
+
 // API endpoint to get corner images
 app.get('/api/corner-images', (req, res) => {
   const configPath = path.join(__dirname, '../public/images/config.json');

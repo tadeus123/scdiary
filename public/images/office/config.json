@@ -1,0 +1,22 @@
+{
+  "categories": [
+    {
+      "id": "structures",
+      "name": "Structures",
+      "description": "Architecture, spatial design, form",
+      "items": []
+    },
+    {
+      "id": "products",
+      "name": "Products",
+      "description": "Objects of enduring quality",
+      "items": []
+    },
+    {
+      "id": "elements",
+      "name": "Elements",
+      "description": "Details, materials, textures",
+      "items": []
+    }
+  ]
+}

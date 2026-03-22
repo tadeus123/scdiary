@@ -1692,3 +1692,126 @@ body.corner-page {
   }
 }
 
+/* ========================================
+   OFFICE PAGE - TASTE TRAINING GALLERY
+   ======================================== */
+
+.office-main {
+  margin-top: 0;
+}
+
+.office-intro {
+  font-style: italic;
+  opacity: 0.7;
+  margin-bottom: 3rem;
+  font-size: 0.95rem;
+}
+
+.office-empty {
+  text-align: center;
+  opacity: 0.6;
+  font-style: italic;
+  padding: 3rem 1rem;
+}
+
+.office-category {
+  margin-bottom: 4rem;
+}
+
+.office-category:last-child {
+  margin-bottom: 0;
+}
+
+.office-category-title {
+  font-size: 1.1rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.25rem;
+  color: var(--text-color);
+}
+
+.office-category-desc {
+  font-size: 0.8rem;
+  opacity: 0.6;
+  margin-bottom: 1.5rem;
+  font-style: italic;
+}
+
+.office-category-empty {
+  font-size: 0.9rem;
+  opacity: 0.5;
+  font-style: italic;
+  padding: 2rem;
+}
+
+.office-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.office-card {
+  background: var(--entry-bg);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.office-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .office-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.office-card-image {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .office-card-image {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.office-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.office-card-image.error img {
+  opacity: 0.3;
+}
+
+.office-card-title {
+  font-size: 0.95rem;
+  font-weight: 400;
+  padding: 1rem 1rem 0.25rem;
+  margin: 0;
+}
+
+.office-card-desc {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  padding: 0 1rem 1rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .office-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .office-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
