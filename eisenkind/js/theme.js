@@ -1,9 +1,14 @@
 (function () {
   const toggle = document.getElementById("theme-toggle");
   const themeColorMeta = document.getElementById("theme-color");
-  const stored = localStorage.getItem("theme");
+  const STORAGE_KEY = "theme";
 
-  function applyTheme(dark) {
+  function getTheme() {
+    return localStorage.getItem(STORAGE_KEY) || "light";
+  }
+
+  function applyTheme(theme) {
+    const dark = theme === "dark";
     if (dark) {
       document.documentElement.setAttribute("data-theme", "dark");
       if (themeColorMeta) themeColorMeta.content = "#000000";
@@ -13,12 +18,18 @@
     }
   }
 
-  applyTheme(stored === "dark");
+  applyTheme(getTheme());
 
   toggle?.addEventListener("click", () => {
-    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-    const nextDark = !isDark;
-    applyTheme(nextDark);
-    localStorage.setItem("theme", nextDark ? "dark" : "light");
+    const next = getTheme() === "dark" ? "light" : "dark";
+    applyTheme(next);
+    localStorage.setItem(STORAGE_KEY, next);
+  });
+
+  // Keep in sync when theme changes on another tademehl page (same origin)
+  window.addEventListener("storage", (e) => {
+    if (e.key === STORAGE_KEY && e.newValue) {
+      applyTheme(e.newValue);
+    }
   });
 })();
