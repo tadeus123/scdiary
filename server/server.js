@@ -16,6 +16,13 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Eisenkind static site at /tademehl/eisenkind
+const eisenkindDir = path.join(__dirname, '../eisenkind');
+app.get(['/tademehl/eisenkind', '/tademehl/eisenkind/'], (req, res) => {
+  res.sendFile(path.join(eisenkindDir, 'index.html'));
+});
+app.use('/tademehl/eisenkind', express.static(eisenkindDir));
+
 // View engine setup
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));
