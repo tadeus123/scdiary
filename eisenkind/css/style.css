@@ -220,6 +220,46 @@ body {
   transition: color 0.3s ease, opacity 0.3s ease;
 }
 
+/* Clickable motto — same size/layout as before */
+button.site-motto.site-motto--link {
+  display: block;
+  position: relative;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font-size: clamp(0.58rem, 1.2vw + 0.4rem, 0.68rem);
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+  text-align: right;
+  color: var(--text-color);
+  opacity: 0.5;
+  text-wrap: balance;
+  hyphens: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+button.site-motto.site-motto--link:hover,
+button.site-motto.site-motto--link:focus-visible {
+  opacity: 0.85;
+  color: var(--accent-color);
+  outline: none;
+}
+
+.site-aside--interactive {
+  pointer-events: none;
+}
+
+.site-aside--interactive .site-motto--link {
+  pointer-events: auto;
+}
+
 .brand-mark span {
   display: block;
   width: 5px;
@@ -239,7 +279,8 @@ body {
     max-width: 12.5rem;
   }
 
-  .site-motto {
+  .site-motto,
+  button.site-motto.site-motto--link {
     font-size: 0.68rem;
     line-height: 1.5;
   }
@@ -261,7 +302,8 @@ body {
     max-width: min(9.5rem, 38vw);
   }
 
-  .site-motto {
+  .site-motto,
+  button.site-motto.site-motto--link {
     font-size: clamp(0.54rem, 2.5vw + 0.32rem, 0.6rem);
     line-height: 1.35;
   }
@@ -312,7 +354,8 @@ body {
     max-width: min(8.25rem, 44vw);
   }
 
-  .site-motto {
+  .site-motto,
+  button.site-motto.site-motto--link {
     font-size: 0.53rem;
     line-height: 1.32;
   }
@@ -343,7 +386,8 @@ body {
     max-width: min(8rem, 36vw);
   }
 
-  .site-motto {
+  .site-motto,
+  button.site-motto.site-motto--link {
     font-size: 0.52rem;
     line-height: 1.3;
   }

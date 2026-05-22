@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Save failed');
+        throw new Error(data.error || `Save failed (${response.status})`);
       }
 
       setStatus('saved', 'ok');
@@ -56,7 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 2000);
     } catch (error) {
       console.error('Error saving eisenkind notes:', error);
-      setStatus('save failed', 'error');
+      const msg = error.message || 'save failed';
+      setStatus(msg.length > 48 ? 'save failed — see console' : msg, 'error');
+      console.error(msg);
     } finally {
       saving = false;
     }

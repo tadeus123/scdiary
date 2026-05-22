@@ -4,22 +4,10 @@
   --a4-bg: #EFE8DC;
   --a4-text: #1A1A1A;
   --a4-accent: #C16A28;
-  width: min(210mm, calc(100vw - 2.5rem));
-  min-height: min(297mm, 70vh);
-  max-height: none;
-  height: auto;
-  margin: 0 auto;
-  padding: clamp(1.5rem, 4vw, 2.25rem) clamp(1.25rem, 3.5vw, 2rem);
-  background-color: var(--a4-bg);
   color: var(--a4-text);
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(0.95rem, 2vw + 0.7rem, 1.05rem);
   line-height: 1.85;
-  box-shadow:
-    0 4px 24px rgba(26, 26, 26, 0.12),
-    0 0 0 1px rgba(26, 26, 26, 0.06);
-  overflow-x: hidden;
-  overflow-y: visible;
   text-wrap: pretty;
 }
 
@@ -49,15 +37,15 @@
   margin-bottom: 0;
 }
 
-.eisenkind-a4-body:empty::before {
-  content: '';
-  display: block;
-  min-height: 1rem;
-}
-
+/* Admin editable sheet */
 .eisenkind-a4--editable {
-  max-height: none;
-  min-height: min(297mm, calc(100vh - 6rem));
+  width: min(210mm, 100%);
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 2.25rem) clamp(1.25rem, 3.5vw, 2rem);
+  background-color: var(--a4-bg);
+  box-shadow:
+    0 4px 24px rgba(26, 26, 26, 0.12),
+    0 0 0 1px rgba(26, 26, 26, 0.06);
 }
 
 .eisenkind-field-label {
@@ -100,7 +88,7 @@
 }
 
 .eisenkind-a4-input--body {
-  min-height: calc(min(297mm, 70vh) - 8rem);
+  min-height: 12rem;
 }
 
 .eisenkind-a4-input::placeholder {
@@ -108,87 +96,63 @@
   font-style: italic;
 }
 
-.eisenkind-a4-input:focus {
-  outline: none;
-}
-
-/* Public overlay */
+/* Public overlay — one continuous cream page, sides blurred */
 .eisenkind-overlay {
   position: fixed;
   inset: 0;
   z-index: 300;
   display: none;
-  align-items: stretch;
-  justify-content: center;
 }
 
 .eisenkind-overlay.is-open {
-  display: flex;
+  display: block;
 }
 
 .eisenkind-overlay-side {
-  flex: 1 1 0;
-  min-width: 0;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: max(0.75rem, calc((100vw - min(210mm, calc(100vw - 2.5rem))) / 2));
   cursor: pointer;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  background: rgba(26, 26, 26, 0.18);
-  transition: background 0.25s ease;
+  background: rgba(26, 26, 26, 0.2);
+}
+
+.eisenkind-overlay-side:first-of-type {
+  left: 0;
+}
+
+.eisenkind-overlay-side:last-of-type {
+  right: 0;
 }
 
 [data-theme="dark"] .eisenkind-overlay-side {
   background: rgba(0, 0, 0, 0.45);
 }
 
-.eisenkind-overlay-side:hover {
-  background: rgba(26, 26, 26, 0.24);
-}
-
 .eisenkind-overlay-center {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: max(1rem, env(safe-area-inset-top)) 0 max(1rem, env(safe-area-inset-bottom));
-  max-height: 100vh;
+  position: relative;
+  z-index: 2;
+  width: min(210mm, calc(100vw - 2.5rem));
   max-height: 100dvh;
-  overflow-y: auto;
+  margin: 0 auto;
+  padding:
+    clamp(1.5rem, 4vw, 2.25rem)
+    clamp(1.25rem, 3.5vw, 2rem)
+    clamp(2rem, 5vw, 3rem);
+  background-color: var(--a4-bg);
+  box-shadow:
+    0 4px 24px rgba(26, 26, 26, 0.12),
+    0 0 0 1px rgba(26, 26, 26, 0.06);
   overflow-x: hidden;
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  pointer-events: none;
-}
-
-.eisenkind-overlay-center .eisenkind-a4 {
-  pointer-events: auto;
 }
 
 body.eisenkind-overlay-open {
   overflow: hidden;
-}
-
-/* Clickable motto */
-.site-motto--link {
-  pointer-events: auto;
-  cursor: pointer;
-  border: none;
-  background: none;
-  padding: 0;
-  font: inherit;
-  text-align: right;
-  width: 100%;
-  -webkit-tap-highlight-color: transparent;
-  transition: color 0.2s ease, opacity 0.2s ease;
-}
-
-.site-motto--link:hover,
-.site-motto--link:focus-visible {
-  opacity: 0.85;
-  color: var(--accent-color);
-  outline: none;
-}
-
-.site-aside--interactive .site-motto--link {
-  pointer-events: auto;
 }
 
 /* Admin page layout */
@@ -230,8 +194,9 @@ body.eisenkind-overlay-open {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 0.75rem;
   opacity: 0.55;
-  min-width: 4.5rem;
+  max-width: 12rem;
   text-align: right;
+  line-height: 1.3;
 }
 
 .eisenkind-save-status[data-kind="error"] {
@@ -246,47 +211,26 @@ body.eisenkind-overlay-open {
 
 @media (max-width: 768px) {
   .eisenkind-overlay-side {
-    flex: 0 0 clamp(1.25rem, 8vw, 2.5rem);
+    width: max(0.5rem, calc((100vw - min(210mm, calc(100vw - 3rem))) / 2));
   }
 
-  .eisenkind-a4 {
+  .eisenkind-overlay-center {
     width: min(210mm, calc(100vw - 3rem));
-  }
-
-  .site-motto--link {
-    min-height: 44px;
-    display: flex;
-    align-items: flex-end;
-    justify-content: flex-end;
   }
 }
 
 @media (max-width: 480px) {
-  .eisenkind-a4 {
-    width: min(210mm, calc(100vw - 2.75rem));
-    padding: 1.25rem 1rem;
-    font-size: 0.98rem;
-  }
-
   .eisenkind-overlay-center {
-    padding-top: max(0.5rem, env(safe-area-inset-top));
-    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
-  }
-
-  .eisenkind-overlay-side {
-    flex: 0 0 max(1rem, env(safe-area-inset-left));
+    width: min(210mm, calc(100vw - 2.75rem));
+    padding: 1.25rem 1rem 2rem;
+    font-size: 0.98rem;
   }
 }
 
 @media (max-height: 500px) and (orientation: landscape) {
-  .eisenkind-a4 {
-    min-height: auto;
-    padding: 1rem 1.25rem;
-  }
-
   .eisenkind-overlay-center {
-    padding-top: 0.35rem;
-    padding-bottom: 0.35rem;
+    padding-top: 1rem;
+    padding-bottom: 1.25rem;
   }
 }
 

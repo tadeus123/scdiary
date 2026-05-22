@@ -3,7 +3,14 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { marked } = require('marked');
-const { getEntries, createEntry, deleteEntry, getEisenkindNotes, updateEisenkindNotes } = require('../db/supabase');
+const {
+  getEntries,
+  createEntry,
+  deleteEntry,
+  getEisenkindNotes,
+  updateEisenkindNotes,
+  isConfigured
+} = require('../db/supabase');
 
 // Admin password (in production, use environment variable)
 // WARNING: Never hardcode passwords in production!
@@ -141,6 +148,13 @@ router.get('/eisenkind', isAuthenticated, async (req, res) => {
 
 router.put('/eisenkind/notes', isAuthenticated, async (req, res) => {
   const { headline, content } = req.body;
+
+  if (!isConfigured()) {
+    return res.status(503).json({
+      error:
+        'Supabase is not configured on the server. Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel environment variables.'
+    });
+  }
 
   if (typeof content !== 'string') {
     return res.status(400).json({ error: 'Content must be a string' });

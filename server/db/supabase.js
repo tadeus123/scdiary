@@ -748,7 +748,15 @@ async function updateEisenkindNotes({ headline, content }) {
 
     if (error) {
       console.error('Error updating eisenkind notes:', error);
-      return { success: false, error: error.message };
+      let message = error.message || 'Failed to save notes';
+      if (error.code === '42P01' || /eisenkind_notes/i.test(message)) {
+        message =
+          'Table eisenkind_notes missing. Run server/scripts/create-eisenkind-notes-table.sql in Supabase SQL Editor.';
+      } else if (/headline/i.test(message) && /column/i.test(message)) {
+        message =
+          'Column headline missing. Re-run create-eisenkind-notes-table.sql in Supabase (includes ALTER for headline).';
+      }
+      return { success: false, error: message };
     }
 
     return { success: true, notes: data };
