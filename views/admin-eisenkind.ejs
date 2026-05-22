@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>eisenkind admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/eisenkind/css/a4.css">
+</head>
+<body class="eisenkind-admin-page">
+  <a href="/admin" class="corner-btn-left" aria-label="Back to Admin"></a>
+
+  <div class="eisenkind-admin-wrap">
+    <div class="eisenkind-admin-toolbar">
+      <h1 class="eisenkind-admin-title">eisenkind</h1>
+      <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme" type="button">
+        <svg class="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="6.5" x2="12" y2="3"></line>
+          <line x1="17.5" y1="12" x2="21" y2="12"></line>
+          <line x1="12" y1="17.5" x2="12" y2="21"></line>
+          <line x1="6.5" y1="12" x2="3" y2="12"></line>
+          <line x1="16.96" y1="7.04" x2="19.07" y2="4.93"></line>
+          <line x1="16.96" y1="16.96" x2="19.07" y2="19.07"></line>
+          <line x1="7.04" y1="16.96" x2="4.93" y2="19.07"></line>
+          <line x1="7.04" y1="7.04" x2="4.93" y2="4.93"></line>
+        </svg>
+      </button>
+      <span id="save-status" class="eisenkind-save-status" aria-live="polite"></span>
+    </div>
+
+    <article class="eisenkind-a4 eisenkind-a4--editable">
+      <label class="eisenkind-field-label" for="eisenkind-headline-input">headline</label>
+      <textarea
+        id="eisenkind-headline-input"
+        class="eisenkind-a4-input eisenkind-a4-input--headline"
+        rows="2"
+        spellcheck="true"
+        aria-label="Headline"
+      ><%= notes.headline %></textarea>
+
+      <label class="eisenkind-field-label" for="eisenkind-notes-input">notes</label>
+      <textarea
+        id="eisenkind-notes-input"
+        class="eisenkind-a4-input eisenkind-a4-input--body"
+        placeholder="Write notes here. Blank lines start new paragraphs on the public page."
+        spellcheck="true"
+        aria-label="Notes body"
+      ><%= notes.content %></textarea>
+    </article>
+  </div>
+
+  <script src="/js/main.js"></script>
+  <script src="/js/admin-eisenkind.js"></script>
+</body>
+</html>

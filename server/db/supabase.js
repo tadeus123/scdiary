@@ -655,10 +655,115 @@ async function updateBookReadingTime(bookId, { audio_duration_minutes }) {
   }
 }
 
+const EISENKIND_DEFAULT_HEADLINE =
+  'How to make humanoid robots that we love and that spread love?';
+
+// Eisenkind notes (singleton document)
+async function getEisenkindNotes() {
+  if (!supabase) {
+    const fs = require('fs');
+    const path = require('path');
+    const notesPath = path.join(__dirname, '../../data/eisenkind-notes.json');
+    try {
+      const data = JSON.parse(fs.readFileSync(notesPath, 'utf8'));
+      return {
+        headline: data.headline || EISENKIND_DEFAULT_HEADLINE,
+        content: data.content || '',
+        updated_at: data.updated_at || null
+      };
+    } catch {
+      return {
+        headline: EISENKIND_DEFAULT_HEADLINE,
+        content: '',
+        updated_at: null
+      };
+    }
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('eisenkind_notes')
+      .select('headline, content, updated_at')
+      .eq('id', 'main')
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching eisenkind notes:', error);
+      return {
+        headline: EISENKIND_DEFAULT_HEADLINE,
+        content: '',
+        updated_at: null
+      };
+    }
+
+    return {
+      headline: data?.headline || EISENKIND_DEFAULT_HEADLINE,
+      content: data?.content || '',
+      updated_at: data?.updated_at || null
+    };
+  } catch (error) {
+    console.error('Error fetching eisenkind notes:', error);
+    return {
+      headline: EISENKIND_DEFAULT_HEADLINE,
+      content: '',
+      updated_at: null
+    };
+  }
+}
+
+async function updateEisenkindNotes({ headline, content }) {
+  let resolvedHeadline = headline;
+  if (typeof resolvedHeadline !== 'string') {
+    const current = await getEisenkindNotes();
+    resolvedHeadline = current.headline;
+  }
+
+  const payload = {
+    id: 'main',
+    headline: (resolvedHeadline || '').trim() || EISENKIND_DEFAULT_HEADLINE,
+    content: content || '',
+    updated_at: new Date().toISOString()
+  };
+
+  if (!supabase) {
+    const fs = require('fs');
+    const path = require('path');
+    const notesPath = path.join(__dirname, '../../data/eisenkind-notes.json');
+    try {
+      const dir = path.dirname(notesPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(notesPath, JSON.stringify(payload, null, 2), 'utf8');
+      return { success: true, notes: payload };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('eisenkind_notes')
+      .upsert(payload, { onConflict: 'id' })
+      .select('headline, content, updated_at')
+      .single();
+
+    if (error) {
+      console.error('Error updating eisenkind notes:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, notes: data };
+  } catch (error) {
+    console.error('Error updating eisenkind notes:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   getEntries,
   createEntry,
   deleteEntry,
+  getEisenkindNotes,
+  updateEisenkindNotes,
   getGoals,
   createGoal,
   updateGoal,

@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { marked } = require('marked');
-const { getEntries, createEntry, deleteEntry } = require('../db/supabase');
+const { getEntries, createEntry, deleteEntry, getEisenkindNotes, updateEisenkindNotes } = require('../db/supabase');
 
 // Admin password (in production, use environment variable)
 // WARNING: Never hardcode passwords in production!
@@ -131,6 +131,34 @@ router.post('/logout', (req, res) => {
 // Bookshelf admin page
 router.get('/bookshelf', isAuthenticated, (req, res) => {
   res.render('admin-bookshelf');
+});
+
+// Eisenkind notes admin page
+router.get('/eisenkind', isAuthenticated, async (req, res) => {
+  const notes = await getEisenkindNotes();
+  res.render('admin-eisenkind', { notes });
+});
+
+router.put('/eisenkind/notes', isAuthenticated, async (req, res) => {
+  const { headline, content } = req.body;
+
+  if (typeof content !== 'string') {
+    return res.status(400).json({ error: 'Content must be a string' });
+  }
+  if (headline !== undefined && typeof headline !== 'string') {
+    return res.status(400).json({ error: 'Headline must be a string' });
+  }
+
+  const result = await updateEisenkindNotes({
+    headline: typeof headline === 'string' ? headline : undefined,
+    content
+  });
+
+  if (result.success) {
+    res.json({ success: true, notes: result.notes });
+  } else {
+    res.status(500).json({ error: result.error || 'Failed to save notes' });
+  }
 });
 
 module.exports = router;

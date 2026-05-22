@@ -48,6 +48,23 @@ app.get('/office', (req, res) => {
   res.render('office');
 });
 
+// Eisenkind notes (public read)
+const { getEisenkindNotes } = require('./db/supabase');
+app.get('/api/eisenkind/notes', async (req, res) => {
+  try {
+    const notes = await getEisenkindNotes();
+    res.json({
+      success: true,
+      headline: notes.headline,
+      content: notes.content,
+      updated_at: notes.updated_at
+    });
+  } catch (error) {
+    console.error('Error loading eisenkind notes:', error);
+    res.status(500).json({ success: false, content: '', error: 'Failed to load notes' });
+  }
+});
+
 // API endpoint to get corner images
 app.get('/api/corner-images', (req, res) => {
   const configPath = path.join(__dirname, '../public/images/config.json');
