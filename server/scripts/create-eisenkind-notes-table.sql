@@ -1,10 +1,15 @@
--- Eisenkind manifesto / notes (single document, edited in /admin/eisenkind)
+-- Eisenkind notes — run once in Supabase SQL Editor
+-- Safe to re-run (fixes tables created without headline column)
+
 CREATE TABLE IF NOT EXISTS eisenkind_notes (
   id TEXT PRIMARY KEY DEFAULT 'main',
-  headline TEXT NOT NULL DEFAULT 'How to make humanoid robots that we love and that spread love?',
   content TEXT NOT NULL DEFAULT '',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Add headline BEFORE any insert that uses it (fixes existing tables)
+ALTER TABLE eisenkind_notes
+  ADD COLUMN IF NOT EXISTS headline TEXT NOT NULL DEFAULT 'How to make humanoid robots that we love and that spread love?';
 
 INSERT INTO eisenkind_notes (id, headline, content)
 VALUES (
@@ -13,10 +18,6 @@ VALUES (
   ''
 )
 ON CONFLICT (id) DO NOTHING;
-
--- If table already exists without headline (re-run safe):
-ALTER TABLE eisenkind_notes
-  ADD COLUMN IF NOT EXISTS headline TEXT NOT NULL DEFAULT 'How to make humanoid robots that we love and that spread love?';
 
 ALTER TABLE eisenkind_notes ENABLE ROW LEVEL SECURITY;
 

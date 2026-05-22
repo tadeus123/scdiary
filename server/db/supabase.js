@@ -658,6 +658,29 @@ async function updateBookReadingTime(bookId, { audio_duration_minutes }) {
 const EISENKIND_DEFAULT_HEADLINE =
   'How to make humanoid robots that we love and that spread love?';
 
+function isEisenkindHeadlineMissing(error) {
+  const msg = error?.message || '';
+  return error?.code === '42703' && /headline/i.test(msg);
+}
+
+function isEisenkindTableMissing(error) {
+  const msg = error?.message || '';
+  return (
+    error?.code === '42P01' ||
+    (/relation/i.test(msg) && /eisenkind_notes/i.test(msg) && /does not exist/i.test(msg))
+  );
+}
+
+function formatEisenkindError(error) {
+  if (isEisenkindTableMissing(error)) {
+    return 'Table eisenkind_notes missing. Run server/scripts/create-eisenkind-notes-table.sql in Supabase SQL Editor.';
+  }
+  if (isEisenkindHeadlineMissing(error)) {
+    return 'Column headline missing. Run server/scripts/add-eisenkind-headline-column.sql in Supabase SQL Editor.';
+  }
+  return error?.message || 'Failed to save notes';
+}
+
 // Eisenkind notes (singleton document)
 async function getEisenkindNotes() {
   if (!supabase) {
@@ -686,6 +709,22 @@ async function getEisenkindNotes() {
       .select('headline, content, updated_at')
       .eq('id', 'main')
       .maybeSingle();
+
+    if (error && isEisenkindHeadlineMissing(error)) {
+      const { data: legacy, error: legacyError } = await supabase
+        .from('eisenkind_notes')
+        .select('content, updated_at')
+        .eq('id', 'main')
+        .maybeSingle();
+
+      if (!legacyError) {
+        return {
+          headline: EISENKIND_DEFAULT_HEADLINE,
+          content: legacy?.content || '',
+          updated_at: legacy?.updated_at || null
+        };
+      }
+    }
 
     if (error) {
       console.error('Error fetching eisenkind notes:', error);
@@ -746,17 +785,34 @@ async function updateEisenkindNotes({ headline, content }) {
       .select('headline, content, updated_at')
       .single();
 
+    if (error && isEisenkindHeadlineMissing(error)) {
+      const slimPayload = {
+        id: 'main',
+        content: payload.content,
+        updated_at: payload.updated_at
+      };
+      const { data: legacy, error: legacyError } = await supabase
+        .from('eisenkind_notes')
+        .upsert(slimPayload, { onConflict: 'id' })
+        .select('content, updated_at')
+        .single();
+
+      if (!legacyError) {
+        return {
+          success: true,
+          notes: {
+            headline: payload.headline,
+            content: legacy.content,
+            updated_at: legacy.updated_at
+          }
+        };
+      }
+      error = legacyError;
+    }
+
     if (error) {
       console.error('Error updating eisenkind notes:', error);
-      let message = error.message || 'Failed to save notes';
-      if (error.code === '42P01' || /eisenkind_notes/i.test(message)) {
-        message =
-          'Table eisenkind_notes missing. Run server/scripts/create-eisenkind-notes-table.sql in Supabase SQL Editor.';
-      } else if (/headline/i.test(message) && /column/i.test(message)) {
-        message =
-          'Column headline missing. Re-run create-eisenkind-notes-table.sql in Supabase (includes ALTER for headline).';
-      }
-      return { success: false, error: message };
+      return { success: false, error: formatEisenkindError(error) };
     }
 
     return { success: true, notes: data };
