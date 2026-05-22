@@ -10,18 +10,13 @@
   const DEFAULT_HEADLINE =
     'How to make humanoid robots that we love and that spread love?';
 
-  function openOverlay() {
-    overlay.classList.add('is-open');
-    overlay.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('eisenkind-overlay-open');
-    loadNotes();
-  }
+  let cache = null;
+  let fetchPromise = null;
 
-  function closeOverlay() {
-    overlay.classList.remove('is-open');
-    overlay.setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('eisenkind-overlay-open');
-    openBtn.focus();
+  function applyNotes(notes) {
+    if (!notes) return;
+    headlineEl.textContent = notes.headline || DEFAULT_HEADLINE;
+    renderBody(notes.content);
   }
 
   function renderBody(text) {
@@ -38,23 +33,60 @@
     });
   }
 
-  async function loadNotes() {
-    notesBody.innerHTML = '';
-    headlineEl.textContent = DEFAULT_HEADLINE;
+  async function fetchNotes() {
+    if (fetchPromise) return fetchPromise;
 
-    try {
-      const response = await fetch('/api/eisenkind/notes');
-      const data = await response.json();
-      if (data.success) {
-        headlineEl.textContent = data.headline || DEFAULT_HEADLINE;
-        renderBody(data.content);
+    fetchPromise = (async () => {
+      try {
+        const response = await fetch('/api/eisenkind/notes');
+        const data = await response.json();
+        if (data.success) {
+          cache = {
+            headline: data.headline || DEFAULT_HEADLINE,
+            content: data.content || ''
+          };
+        }
+      } catch (error) {
+        console.error('Error loading eisenkind notes:', error);
+      } finally {
+        fetchPromise = null;
       }
-    } catch (error) {
-      console.error('Error loading eisenkind notes:', error);
-    }
+      return cache;
+    })();
+
+    return fetchPromise;
   }
 
-  openBtn.addEventListener('click', openOverlay);
+  async function openOverlay() {
+    if (!cache) {
+      await fetchNotes();
+    }
+
+    if (cache) {
+      applyNotes(cache);
+    }
+
+    overlay.classList.add('is-open');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('eisenkind-overlay-open');
+
+    fetchNotes().then((fresh) => {
+      if (fresh && overlay.classList.contains('is-open')) {
+        applyNotes(fresh);
+      }
+    });
+  }
+
+  function closeOverlay() {
+    overlay.classList.remove('is-open');
+    overlay.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('eisenkind-overlay-open');
+    openBtn.focus();
+  }
+
+  openBtn.addEventListener('click', () => {
+    openOverlay();
+  });
 
   sides.forEach((side) => {
     side.addEventListener('click', closeOverlay);
@@ -65,4 +97,6 @@
       closeOverlay();
     }
   });
+
+  fetchNotes();
 })();
