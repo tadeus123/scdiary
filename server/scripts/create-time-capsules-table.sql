@@ -52,21 +52,14 @@ BEGIN
 END;
 $$;
 
--- Hourly at :05 UTC — publishes within ~1h of due time (06 Jun 01:00 Europe/Berlin)
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
-    PERFORM cron.unschedule(jobid)
-    FROM cron.job
-    WHERE jobname = 'publish-time-capsules';
+-- Hourly at :05 — publishes within ~1h of due time (06 Jun 01:00 Europe/Berlin)
+-- Requires pg_cron extension enabled. Safe to re-run.
+SELECT cron.unschedule(jobid)
+FROM cron.job
+WHERE jobname = 'publish-time-capsules';
 
-    PERFORM cron.schedule(
-      'publish-time-capsules',
-      '5 * * * *',
-      $$SELECT publish_due_time_capsules();$$
-    );
-  ELSE
-    RAISE NOTICE 'pg_cron not enabled — enable it in Dashboard → Database → Extensions, then re-run the cron.schedule block.';
-  END IF;
-END;
-$$;
+SELECT cron.schedule(
+  'publish-time-capsules',
+  '5 * * * *',
+  'SELECT publish_due_time_capsules();'
+);
