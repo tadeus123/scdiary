@@ -32,7 +32,111 @@
 .eisenkind-a4-body {
   display: flex;
   flex-direction: column;
-  gap: clamp(1.35rem, 4vw, 2rem);
+  gap: clamp(1.1rem, 3vw, 1.5rem);
+}
+
+/* Lennon story (public + admin preview) */
+.eisenkind-story {
+  text-align: left;
+}
+
+.eisenkind-story-paragraph {
+  margin: 0;
+  line-height: 1.9;
+  text-indent: 1.25em;
+}
+
+.eisenkind-story-paragraph:first-child {
+  text-indent: 0;
+}
+
+.eisenkind-story-paragraph + .eisenkind-story-paragraph {
+  margin-top: 0.15rem;
+}
+
+/* Admin brain dump + story sections */
+.eisenkind-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: clamp(1rem, 3vw, 1.5rem) 0 0.35rem;
+  flex-wrap: wrap;
+}
+
+.eisenkind-section-header .eisenkind-field-label {
+  margin: 0;
+}
+
+.eisenkind-section-hint {
+  margin: 0 0 0.65rem;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  opacity: 0.45;
+  font-style: italic;
+}
+
+.eisenkind-a4-input--brain-dump {
+  min-height: 10rem;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  opacity: 0.88;
+}
+
+.eisenkind-generate-btn {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  border: 1px solid rgba(26, 26, 26, 0.15);
+  background: rgba(26, 26, 26, 0.04);
+  color: rgba(26, 26, 26, 0.75);
+  border-radius: 3px;
+  padding: 0.4rem 0.65rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.eisenkind-generate-btn:hover:not(:disabled) {
+  color: var(--a4-accent);
+  border-color: rgba(193, 106, 40, 0.45);
+  background: rgba(193, 106, 40, 0.06);
+}
+
+.eisenkind-generate-btn:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+
+.eisenkind-story-preview-wrap {
+  margin-top: clamp(1.5rem, 4vw, 2rem);
+  padding-top: clamp(1rem, 3vw, 1.35rem);
+  border-top: 1px solid rgba(26, 26, 26, 0.08);
+}
+
+.eisenkind-story-meta {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.62rem;
+  opacity: 0.4;
+}
+
+.eisenkind-story-empty {
+  margin: 0.5rem 0 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.75rem;
+  opacity: 0.4;
+  font-style: italic;
+}
+
+.eisenkind-story-empty[hidden] {
+  display: none;
+}
+
+.eisenkind-story-preview-wrap .eisenkind-story:not(:empty) + .eisenkind-story-empty {
+  display: none;
 }
 
 .eisenkind-block {

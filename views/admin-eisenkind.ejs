@@ -39,25 +39,31 @@
         aria-label="Headline"
       ><%= notes.headline %></textarea>
 
-      <div class="eisenkind-blocks-header">
-        <span class="eisenkind-field-label">blocks</span>
-        <div class="eisenkind-add-block-wrap">
-          <select id="eisenkind-add-block-type" class="eisenkind-block-type-select" aria-label="Block type to add">
-            <option value="principle">principle</option>
-            <option value="question">question</option>
-            <option value="note" selected>note</option>
-            <option value="quote">quote</option>
-            <option value="entry">entry</option>
-          </select>
-          <button type="button" id="eisenkind-add-block" class="eisenkind-add-block-btn">+ add</button>
-        </div>
+      <div class="eisenkind-section-header">
+        <label class="eisenkind-field-label" for="eisenkind-brain-dump-input">brain dump</label>
+        <button type="button" id="eisenkind-generate-story" class="eisenkind-generate-btn">generate story</button>
       </div>
+      <p class="eisenkind-section-hint">Dump ideas, design details, scenes — anything. AI weaves them into Lennon&rsquo;s story without dropping your specifics.</p>
+      <textarea
+        id="eisenkind-brain-dump-input"
+        class="eisenkind-a4-input eisenkind-a4-input--brain-dump"
+        placeholder="Robot should help package Lego orders before school… Dad stressed about tea shop inventory… violin practice in the evening…"
+        spellcheck="true"
+        aria-label="Brain dump"
+      ><%= notes.brain_dump %></textarea>
 
-      <div id="eisenkind-blocks-editor" class="eisenkind-blocks-editor" aria-live="polite"></div>
+      <div class="eisenkind-story-preview-wrap">
+        <div class="eisenkind-section-header">
+          <span class="eisenkind-field-label">story preview</span>
+          <span id="story-updated-label" class="eisenkind-story-meta"></span>
+        </div>
+        <div id="eisenkind-story-preview" class="eisenkind-a4-body eisenkind-story" aria-live="polite"></div>
+        <p id="eisenkind-story-empty" class="eisenkind-story-empty">No story yet. Add a brain dump and click generate story.</p>
+      </div>
     </article>
   </div>
 
-  <script type="application/json" id="eisenkind-initial-data"><%- JSON.stringify({ blocks: notes.blocks || [] }).replace(/</g, '\\u003c') %></script>
+  <script type="application/json" id="eisenkind-initial-data"><%- JSON.stringify({ story: notes.story || '', story_updated_at: notes.story_updated_at || null }).replace(/</g, '\\u003c') %></script>
   <script src="/js/main.js"></script>
   <script src="/js/admin-eisenkind.js"></script>
 </body>

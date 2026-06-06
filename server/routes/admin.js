@@ -11,6 +11,7 @@ const {
   updateEisenkindNotes,
   isConfigured
 } = require('../db/supabase');
+const { generateEisenkindStory } = require('../services/eisenkind-story');
 
 // Admin password (in production, use environment variable)
 // WARNING: Never hardcode passwords in production!
@@ -147,7 +148,7 @@ router.get('/eisenkind', isAuthenticated, async (req, res) => {
 });
 
 router.put('/eisenkind/notes', isAuthenticated, async (req, res) => {
-  const { headline, blocks } = req.body;
+  const { headline, brain_dump } = req.body;
 
   if (!isConfigured()) {
     return res.status(503).json({
@@ -156,23 +157,67 @@ router.put('/eisenkind/notes', isAuthenticated, async (req, res) => {
     });
   }
 
-  if (!Array.isArray(blocks)) {
-    return res.status(400).json({ error: 'Blocks must be an array' });
+  if (brain_dump !== undefined && typeof brain_dump !== 'string') {
+    return res.status(400).json({ error: 'Brain dump must be a string' });
   }
   if (headline !== undefined && typeof headline !== 'string') {
     return res.status(400).json({ error: 'Headline must be a string' });
   }
 
-  const result = await updateEisenkindNotes({
-    headline: typeof headline === 'string' ? headline : undefined,
-    blocks
-  });
+  const updates = {};
+  if (typeof headline === 'string') updates.headline = headline;
+  if (typeof brain_dump === 'string') updates.brain_dump = brain_dump;
+
+  const result = await updateEisenkindNotes(updates);
 
   if (result.success) {
     res.json({ success: true, notes: result.notes });
   } else {
     res.status(500).json({ error: result.error || 'Failed to save notes' });
   }
+});
+
+router.post('/eisenkind/generate-story', isAuthenticated, async (req, res) => {
+  if (!isConfigured()) {
+    return res.status(503).json({
+      error:
+        'Supabase is not configured on the server. Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel environment variables.'
+    });
+  }
+
+  const notes = await getEisenkindNotes();
+  const brainDump =
+    typeof req.body?.brain_dump === 'string' ? req.body.brain_dump : notes.brain_dump;
+
+  if (typeof req.body?.brain_dump === 'string') {
+    const saveDraft = await updateEisenkindNotes({
+      brain_dump: req.body.brain_dump,
+      headline: typeof req.body?.headline === 'string' ? req.body.headline : undefined
+    });
+    if (!saveDraft.success) {
+      return res.status(500).json({ error: saveDraft.error || 'Failed to save brain dump' });
+    }
+  }
+
+  const generated = await generateEisenkindStory({
+    brainDump,
+    existingStory: notes.story
+  });
+
+  if (!generated.success) {
+    return res.status(500).json({ error: generated.error || 'Story generation failed' });
+  }
+
+  const saved = await updateEisenkindNotes({
+    story: generated.story,
+    story_updated_at: new Date().toISOString()
+  });
+
+  if (!saved.success) {
+    return res.status(500).json({ error: saved.error || 'Failed to save story' });
+  }
+
+  res.json({ success: true, notes: saved.notes });
 });
 
 module.exports = router;

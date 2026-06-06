@@ -56,7 +56,8 @@ app.get('/api/eisenkind/notes', async (req, res) => {
     res.json({
       success: true,
       headline: notes.headline,
-      blocks: notes.blocks,
+      story: notes.story,
+      story_updated_at: notes.story_updated_at,
       updated_at: notes.updated_at
     });
   } catch (error) {

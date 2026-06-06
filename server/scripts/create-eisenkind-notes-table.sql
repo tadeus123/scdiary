@@ -5,6 +5,9 @@ CREATE TABLE IF NOT EXISTS eisenkind_notes (
   id TEXT PRIMARY KEY DEFAULT 'main',
   content TEXT NOT NULL DEFAULT '',
   blocks JSONB NOT NULL DEFAULT '[]'::jsonb,
+  brain_dump TEXT NOT NULL DEFAULT '',
+  story TEXT NOT NULL DEFAULT '',
+  story_updated_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -14,6 +17,15 @@ ALTER TABLE eisenkind_notes
 
 ALTER TABLE eisenkind_notes
   ADD COLUMN IF NOT EXISTS blocks JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+ALTER TABLE eisenkind_notes
+  ADD COLUMN IF NOT EXISTS brain_dump TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE eisenkind_notes
+  ADD COLUMN IF NOT EXISTS story TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE eisenkind_notes
+  ADD COLUMN IF NOT EXISTS story_updated_at TIMESTAMPTZ;
 
 INSERT INTO eisenkind_notes (id, headline, content)
 VALUES (
