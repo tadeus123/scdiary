@@ -1,7 +1,82 @@
 require('dotenv').config();
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_MODEL = process.env.OPENAI_EISENKIND_MODEL || 'gpt-4o';
+
+/** Best-first chain; env override is tried first, then fallbacks. */
+const EISENKIND_MODEL_CHAIN = ['gpt-4.1', 'gpt-4o', 'gpt-4o-mini'];
+
+function getEisenkindModelChain() {
+  const override = process.env.OPENAI_EISENKIND_MODEL?.trim();
+  if (!override) return EISENKIND_MODEL_CHAIN;
+  return [override, ...EISENKIND_MODEL_CHAIN.filter((model) => model !== override)];
+}
+
+function isModelUnavailable(status, errorData) {
+  const code = errorData?.error?.code || '';
+  const message = (errorData?.error?.message || '').toLowerCase();
+
+  if (code === 'model_not_found' || code === 'invalid_model') return true;
+  if (status === 404) return true;
+  return /model/.test(message) && /(not found|does not exist|not available|unknown|access)/.test(message);
+}
+
+async function requestStoryFromModel(model, messages) {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${OPENAI_API_KEY}`
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: 0.5,
+      max_tokens: 12000
+    })
+  });
+
+  const errorData = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message = errorData?.error?.message || `OpenAI API error (${response.status})`;
+    return { ok: false, status: response.status, errorData, error: message };
+  }
+
+  const story = (errorData.choices?.[0]?.message?.content || '').trim();
+  if (!story) {
+    return { ok: false, status: response.status, errorData, error: 'OpenAI returned an empty story.' };
+  }
+
+  return { ok: true, story, model };
+}
+
+async function completeEisenkindStory(messages) {
+  const models = getEisenkindModelChain();
+  let lastError = 'No OpenAI models available for Eisenkind story generation.';
+
+  for (let i = 0; i < models.length; i += 1) {
+    const model = models[i];
+    const result = await requestStoryFromModel(model, messages);
+
+    if (result.ok) {
+      console.log(`✅ Eisenkind story generated with ${result.model}`);
+      return { success: true, story: result.story, model: result.model };
+    }
+
+    lastError = result.error;
+    const hasFallback = i < models.length - 1;
+
+    if (hasFallback && isModelUnavailable(result.status, result.errorData)) {
+      console.warn(`⚠️ Eisenkind model "${model}" unavailable — trying ${models[i + 1]}…`);
+      continue;
+    }
+
+    console.error(`Eisenkind story generation error (${model}):`, result.error);
+    return { success: false, error: result.error };
+  }
+
+  return { success: false, error: lastError };
+}
 
 const SYSTEM_PROMPT = `You work on Eisenkind — a project about humanoid robots that spread love through great user experience.
 
@@ -119,45 +194,13 @@ async function generateEisenkindStory({ brainDump, existingStory }) {
     ? buildRefineStoryPrompt(trimmedDump, previousStory)
     : buildFirstStoryPrompt(trimmedDump);
 
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'user', content: userPrompt }
+  ];
+
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: OPENAI_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content: SYSTEM_PROMPT
-          },
-          {
-            role: 'user',
-            content: userPrompt
-          }
-        ],
-        temperature: 0.5,
-        max_tokens: 12000
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const message = errorData?.error?.message || `OpenAI API error (${response.status})`;
-      console.error('Eisenkind story generation error:', message);
-      return { success: false, error: message };
-    }
-
-    const data = await response.json();
-    const story = (data.choices?.[0]?.message?.content || '').trim();
-
-    if (!story) {
-      return { success: false, error: 'OpenAI returned an empty story.' };
-    }
-
-    return { success: true, story };
+    return await completeEisenkindStory(messages);
   } catch (error) {
     console.error('Eisenkind story generation failed:', error);
     return { success: false, error: error.message || 'Story generation failed.' };
