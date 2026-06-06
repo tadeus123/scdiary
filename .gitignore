@@ -6,4 +6,6 @@ node_modules/
 .vercel
 ENV_VARS.txt
 data/eisenkind-notes.json
+data/time-capsules-backup.json
+server/scripts/time-capsules-messages.js
 
