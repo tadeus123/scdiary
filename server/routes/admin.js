@@ -185,28 +185,68 @@ router.post('/eisenkind/generate-story', isAuthenticated, async (req, res) => {
     });
   }
 
+  const useStream = req.query.stream === '1';
+  const startedAt = Date.now();
   const notes = await getEisenkindNotes();
   const brainDump =
     typeof req.body?.brain_dump === 'string' ? req.body.brain_dump : notes.brain_dump;
 
+  const sendEvent = (payload) => {
+    if (!useStream) return;
+    res.write(`${JSON.stringify({ ...payload, elapsedMs: Date.now() - startedAt })}\n`);
+  };
+
+  if (useStream) {
+    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    if (typeof res.flushHeaders === 'function') res.flushHeaders();
+  }
+
   if (typeof req.body?.brain_dump === 'string') {
+    sendEvent({
+      type: 'progress',
+      phase: 'save_draft',
+      label: 'saving brain dump…',
+      percent: 5
+    });
+
     const saveDraft = await updateEisenkindNotes({
       brain_dump: req.body.brain_dump,
       headline: typeof req.body?.headline === 'string' ? req.body.headline : undefined
     });
     if (!saveDraft.success) {
+      if (useStream) {
+        sendEvent({ type: 'error', error: saveDraft.error || 'Failed to save brain dump' });
+        return res.end();
+      }
       return res.status(500).json({ error: saveDraft.error || 'Failed to save brain dump' });
     }
   }
 
   const generated = await generateEisenkindStory({
     brainDump,
-    existingStory: notes.story
+    existingStory: notes.story,
+    onProgress: (progress) => {
+      sendEvent({ type: 'progress', ...progress });
+    }
   });
 
   if (!generated.success) {
+    if (useStream) {
+      sendEvent({ type: 'error', error: generated.error || 'Story generation failed' });
+      return res.end();
+    }
     return res.status(500).json({ error: generated.error || 'Story generation failed' });
   }
+
+  sendEvent({
+    type: 'progress',
+    phase: 'save_story',
+    label: 'saving story…',
+    percent: 96
+  });
 
   const saved = await updateEisenkindNotes({
     story: generated.story,
@@ -214,7 +254,22 @@ router.post('/eisenkind/generate-story', isAuthenticated, async (req, res) => {
   });
 
   if (!saved.success) {
+    if (useStream) {
+      sendEvent({ type: 'error', error: saved.error || 'Failed to save story' });
+      return res.end();
+    }
     return res.status(500).json({ error: saved.error || 'Failed to save story' });
+  }
+
+  if (useStream) {
+    sendEvent({
+      type: 'complete',
+      success: true,
+      notes: saved.notes,
+      stages: generated.stages,
+      percent: 100
+    });
+    return res.end();
   }
 
   res.json({ success: true, notes: saved.notes });

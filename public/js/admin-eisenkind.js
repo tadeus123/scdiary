@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const storyUpdatedLabel = document.getElementById('story-updated-label');
   const initialDataEl = document.getElementById('eisenkind-initial-data');
   const statusEl = document.getElementById('save-status');
+  const progressWrap = document.getElementById('eisenkind-gen-progress');
+  const progressTrack = document.getElementById('eisenkind-gen-progress-track');
+  const progressBar = document.getElementById('eisenkind-gen-progress-bar');
 
   if (
     !headlineInput ||
@@ -15,7 +18,10 @@ document.addEventListener('DOMContentLoaded', () => {
     !storyPreview ||
     !storyEmpty ||
     !initialDataEl ||
-    !statusEl
+    !statusEl ||
+    !progressWrap ||
+    !progressTrack ||
+    !progressBar
   ) {
     return;
   }
@@ -25,6 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let saveTimer = null;
   let saving = false;
   let generating = false;
+  let progressTimer = null;
+  let generationStartedAt = 0;
+  let lastProgressLabel = '';
 
   try {
     const initial = JSON.parse(initialDataEl.textContent || '{}');
@@ -37,6 +46,111 @@ document.addEventListener('DOMContentLoaded', () => {
   function autoResize(textarea) {
     textarea.style.height = 'auto';
     textarea.style.height = `${textarea.scrollHeight}px`;
+  }
+
+  function formatElapsed(ms) {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+  }
+
+  function showGenerationProgress(show) {
+    progressWrap.hidden = !show;
+    progressWrap.setAttribute('aria-hidden', show ? 'false' : 'true');
+    if (!show) {
+      progressBar.style.width = '0%';
+      progressTrack.setAttribute('aria-valuenow', '0');
+    }
+  }
+
+  function updateGenerationProgress(percent, label, elapsedMs) {
+    if (label) lastProgressLabel = label;
+
+    const safePercent = Math.min(100, Math.max(0, Math.round(percent || 0)));
+    progressBar.style.width = `${safePercent}%`;
+    progressTrack.setAttribute('aria-valuenow', String(safePercent));
+
+    const elapsed = formatElapsed(elapsedMs ?? Date.now() - generationStartedAt);
+    setStatus(`${elapsed} · ${lastProgressLabel || 'working…'}`, 'pending');
+  }
+
+  function startProgressClock() {
+    window.clearInterval(progressTimer);
+    progressTimer = window.setInterval(() => {
+      if (!generating) return;
+      updateGenerationProgress(
+        Number(progressTrack.getAttribute('aria-valuenow') || 0),
+        lastProgressLabel,
+        Date.now() - generationStartedAt
+      );
+    }, 1000);
+  }
+
+  function stopProgressClock() {
+    window.clearInterval(progressTimer);
+    progressTimer = null;
+  }
+
+  function handleStreamEvent(event) {
+    if (event.type === 'progress') {
+      lastProgressLabel = event.label || lastProgressLabel;
+      updateGenerationProgress(event.percent, lastProgressLabel, event.elapsedMs);
+      return null;
+    }
+
+    if (event.type === 'complete') {
+      updateGenerationProgress(100, 'done', event.elapsedMs);
+      return event;
+    }
+
+    if (event.type === 'error') {
+      throw new Error(event.error || 'Story generation failed');
+    }
+
+    return null;
+  }
+
+  async function readStreamResponse(response) {
+    if (!response.body) {
+      throw new Error('Streaming not supported in this browser.');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let completeEvent = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        const event = JSON.parse(trimmed);
+        const result = handleStreamEvent(event);
+        if (result?.type === 'complete') completeEvent = result;
+      }
+    }
+
+    const tail = buffer.trim();
+    if (tail) {
+      const event = JSON.parse(tail);
+      const result = handleStreamEvent(event);
+      if (result?.type === 'complete') completeEvent = result;
+    }
+
+    if (!completeEvent) {
+      throw new Error('Story generation ended without a result.');
+    }
+
+    return completeEvent;
   }
 
   function setStatus(text, kind) {
@@ -124,10 +238,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     generating = true;
     generateBtn.disabled = true;
-    setStatus('writing story (may take a few minutes)…', 'pending');
+    generationStartedAt = Date.now();
+    lastProgressLabel = 'starting…';
+    showGenerationProgress(true);
+    updateGenerationProgress(0, 'starting…', 0);
+    startProgressClock();
+
+    let succeeded = false;
 
     try {
-      const response = await fetch('/admin/eisenkind/generate-story', {
+      const response = await fetch('/admin/eisenkind/generate-story?stream=1', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -135,11 +255,18 @@ document.addEventListener('DOMContentLoaded', () => {
           brain_dump: brainDumpInput.value
         })
       });
-      const data = await response.json();
 
-      if (!response.ok || !data.success) {
+      if (!response.ok && response.headers.get('content-type')?.includes('application/json')) {
+        const data = await response.json();
         throw new Error(data.error || `Generation failed (${response.status})`);
       }
+
+      if (!response.ok) {
+        throw new Error(`Generation failed (${response.status})`);
+      }
+
+      const data = await readStreamResponse(response);
+      succeeded = true;
 
       story = data.notes?.story || '';
       storyUpdatedAt = data.notes?.story_updated_at || null;
@@ -155,6 +282,12 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
       generating = false;
       generateBtn.disabled = false;
+      stopProgressClock();
+      if (succeeded) {
+        window.setTimeout(() => showGenerationProgress(false), 900);
+      } else {
+        showGenerationProgress(false);
+      }
     }
   }
 

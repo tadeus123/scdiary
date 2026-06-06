@@ -26,7 +26,21 @@
           <line x1="7.04" y1="7.04" x2="4.93" y2="4.93"></line>
         </svg>
       </button>
-      <span id="save-status" class="eisenkind-save-status" aria-live="polite"></span>
+      <div class="eisenkind-toolbar-status">
+        <div id="eisenkind-gen-progress" class="eisenkind-gen-progress" hidden aria-hidden="true">
+          <div
+            id="eisenkind-gen-progress-track"
+            class="eisenkind-gen-progress-track"
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+          >
+            <div id="eisenkind-gen-progress-bar" class="eisenkind-gen-progress-bar"></div>
+          </div>
+        </div>
+        <span id="save-status" class="eisenkind-save-status" aria-live="polite"></span>
+      </div>
     </div>
 
     <article class="eisenkind-a4 eisenkind-a4--editable">

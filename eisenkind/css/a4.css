@@ -507,13 +507,50 @@ body.eisenkind-overlay-open {
   flex: 1;
 }
 
+.eisenkind-toolbar-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  min-width: 9.5rem;
+  max-width: 15rem;
+}
+
+.eisenkind-gen-progress {
+  width: 100%;
+}
+
+.eisenkind-gen-progress[hidden] {
+  display: none;
+}
+
+.eisenkind-gen-progress-track {
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(26, 26, 26, 0.12);
+  overflow: hidden;
+}
+
+.eisenkind-gen-progress-bar {
+  width: 0%;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent-color, #c16a28);
+  transition: width 0.4s ease;
+}
+
 .eisenkind-save-status {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 0.75rem;
   opacity: 0.55;
-  max-width: 12rem;
+  max-width: 15rem;
   text-align: right;
   line-height: 1.3;
+}
+
+.eisenkind-save-status[data-kind="pending"] {
+  opacity: 0.72;
 }
 
 .eisenkind-save-status[data-kind="error"] {

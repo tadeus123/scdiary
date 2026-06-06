@@ -398,13 +398,46 @@ ${brainDump}
 ## Write the ending section now.`;
 }
 
-async function generateStoryInStages(brainDump, existingStory) {
+function stageProgressLabel({ stage, forceEndingNext, isRefine, phase }) {
+  if (phase === 'save_draft') return 'saving brain dump…';
+  if (phase === 'save_story') return 'saving story…';
+  if (phase === 'prepare') return 'preparing…';
+  if (stage === 1) return isRefine ? 'rewriting story…' : 'writing opening…';
+  if (forceEndingNext) return 'writing ending…';
+  return `writing part ${stage}…`;
+}
+
+function stageProgressPercent({ phase, stage, maxStages, stageComplete }) {
+  if (phase === 'prepare') return 2;
+  if (phase === 'save_draft') return 5;
+  if (phase === 'save_story') return 96;
+  if (phase === 'complete') return 100;
+
+  const base = 8;
+  const span = 84;
+  const ratio = stageComplete ? stage / maxStages : (stage - 1) / maxStages + 0.08;
+  return Math.min(94, Math.round(base + ratio * span));
+}
+
+async function generateStoryInStages(brainDump, existingStory, onProgress) {
   let story = '';
   let modelUsed = null;
   let stage = 1;
   let forceEndingNext = false;
-
+  const startedAt = Date.now();
   const isRefine = Boolean(existingStory);
+
+  const report = (payload) => {
+    if (!onProgress) return;
+    onProgress({
+      ...payload,
+      elapsedMs: Date.now() - startedAt,
+      maxStages: MAX_STORY_STAGES,
+      percent: stageProgressPercent(payload)
+    });
+  };
+
+  report({ phase: 'prepare', stage: 1, stageComplete: false, label: stageProgressLabel({ phase: 'prepare', stage: 1 }) });
 
   while (stage <= MAX_STORY_STAGES) {
     let userPrompt;
@@ -424,6 +457,9 @@ async function generateStoryInStages(brainDump, existingStory) {
       { role: 'user', content: userPrompt }
     ];
 
+    const stageLabel = stageProgressLabel({ stage, forceEndingNext, isRefine, phase: 'writing' });
+    report({ phase: 'writing', stage, stageComplete: false, label: stageLabel });
+
     console.log(`📝 Eisenkind story stage ${stage}/${MAX_STORY_STAGES}…`);
     const result = await completeEisenkindStoryCall(messages);
 
@@ -437,6 +473,14 @@ async function generateStoryInStages(brainDump, existingStory) {
     console.log(
       `   stage ${stage}: +${result.story.length} chars (total ${story.length}), finish=${result.finishReason}, max_tokens=${result.maxTokens}`
     );
+
+    report({
+      phase: 'writing',
+      stage,
+      stageComplete: true,
+      label: stageLabel,
+      storyChars: story.length
+    });
 
     const shouldContinue = shouldContinueWriting({
       finishReason: result.finishReason,
@@ -464,7 +508,7 @@ async function generateStoryInStages(brainDump, existingStory) {
   return { success: true, story, model: modelUsed, stages: stage };
 }
 
-async function generateEisenkindStory({ brainDump, existingStory }) {
+async function generateEisenkindStory({ brainDump, existingStory, onProgress }) {
   if (!OPENAI_API_KEY) {
     return { success: false, error: 'OpenAI API key not configured. Set OPENAI_API_KEY.' };
   }
@@ -484,7 +528,7 @@ async function generateEisenkindStory({ brainDump, existingStory }) {
   }
 
   try {
-    return await generateStoryInStages(fitted.brainDump, fitted.existingStory);
+    return await generateStoryInStages(fitted.brainDump, fitted.existingStory, onProgress);
   } catch (error) {
     console.error('Eisenkind story generation failed:', error);
     return { success: false, error: error.message || 'Story generation failed.' };
