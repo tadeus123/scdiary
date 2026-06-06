@@ -5,11 +5,11 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 /** Best-first chain; env override is tried first, then fallbacks. */
 const EISENKIND_MODEL_CHAIN = ['gpt-4.1', 'gpt-4o', 'gpt-4o-mini'];
 
-/** Output tiers — lower on retry to stay under org TPM limits (input + max_tokens). */
-const OUTPUT_TOKEN_TIERS = [4096, 2048];
-
-/** Reserve headroom under typical 30k TPM caps (input + max_tokens). */
-const TPM_BUDGET_TOKENS = 24000;
+const OUTPUT_TOKEN_FLOOR = 2048;
+const OUTPUT_TOKEN_CEILING = 8192;
+const TPM_BUDGET_TOKENS = 28000;
+const MAX_STORY_STAGES = 6;
+const CONTINUE_CONTEXT_CHARS = 14000;
 
 function estimateTokens(text) {
   return Math.ceil((text || '').length / 4);
@@ -31,8 +31,8 @@ ${trimmed.slice(-tailChars)}`;
 
 function fitPromptToBudget({ brainDump, existingStory }) {
   const systemTokens = estimateTokens(SYSTEM_PROMPT);
-  const templateOverhead = 600;
-  const outputReserve = OUTPUT_TOKEN_TIERS[0];
+  const templateOverhead = 800;
+  const outputReserve = OUTPUT_TOKEN_CEILING;
   let budget = TPM_BUDGET_TOKENS - systemTokens - templateOverhead - outputReserve;
 
   let dump = (brainDump || '').trim();
@@ -56,6 +56,12 @@ function fitPromptToBudget({ brainDump, existingStory }) {
   story = story ? trimTextToTokenBudget(story, Math.floor(budget * 0.22)) : '';
   trimmed = true;
   return { brainDump: dump, existingStory: story, trimmed };
+}
+
+function computeMaxOutputTokens(messages) {
+  const inputTokens = messages.reduce((sum, message) => sum + estimateTokens(message.content), 0);
+  const available = TPM_BUDGET_TOKENS - inputTokens - 300;
+  return Math.min(OUTPUT_TOKEN_CEILING, Math.max(OUTPUT_TOKEN_FLOOR, available));
 }
 
 function getEisenkindModelChain() {
@@ -88,6 +94,43 @@ function isRequestTooLarge(status, errorData) {
   );
 }
 
+function mergeStoryContinuation(existing, continuation) {
+  const base = (existing || '').trimEnd();
+  const next = (continuation || '').trim();
+
+  if (!next) return base;
+  if (!base) return next;
+
+  if (next.startsWith(base.slice(-Math.min(200, base.length)))) {
+    return next;
+  }
+
+  return `${base}\n\n${next}`;
+}
+
+function shouldContinueWriting({ finishReason, story, brainDump, stage, forceEndingNext }) {
+  if (stage >= MAX_STORY_STAGES) return false;
+  if (forceEndingNext) return false;
+  if (finishReason === 'length') return true;
+
+  const dumpLen = (brainDump || '').length;
+  const storyLen = (story || '').length;
+
+  if (dumpLen > 1200 && storyLen < dumpLen * 1.2 && stage < 3) return true;
+  if (dumpLen > 3000 && storyLen < dumpLen * 1.8 && stage < 4) return true;
+
+  return false;
+}
+
+function needsFinalEnding(story) {
+  const text = (story || '').trim();
+  if (text.length < 800) return true;
+  const tail = text.slice(-1200).toLowerCase();
+  return !/(finally|at last|that evening|that night|years later|the end|went to bed|goodnight|good night|held each other|together again|love is|happier|at peace)/.test(
+    tail
+  );
+}
+
 async function requestStoryFromModel(model, messages, maxTokens) {
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -110,54 +153,57 @@ async function requestStoryFromModel(model, messages, maxTokens) {
     return { ok: false, status: response.status, errorData, error: message };
   }
 
-  const story = (errorData.choices?.[0]?.message?.content || '').trim();
+  const choice = errorData.choices?.[0];
+  const story = (choice?.message?.content || '').trim();
   if (!story) {
     return { ok: false, status: response.status, errorData, error: 'OpenAI returned an empty story.' };
   }
 
-  return { ok: true, story, model };
+  return {
+    ok: true,
+    story,
+    model,
+    finishReason: choice?.finish_reason || 'stop'
+  };
 }
 
-async function completeEisenkindStory(messages) {
+async function completeEisenkindStoryCall(messages) {
   const models = getEisenkindModelChain();
+  const maxTokens = computeMaxOutputTokens(messages);
+  const tokenTiers = [maxTokens, Math.max(OUTPUT_TOKEN_FLOOR, Math.floor(maxTokens / 2))];
   let lastError = 'No OpenAI models available for Eisenkind story generation.';
 
   for (let modelIndex = 0; modelIndex < models.length; modelIndex += 1) {
     const model = models[modelIndex];
 
-    for (let tierIndex = 0; tierIndex < OUTPUT_TOKEN_TIERS.length; tierIndex += 1) {
-      const maxTokens = OUTPUT_TOKEN_TIERS[tierIndex];
-      const result = await requestStoryFromModel(model, messages, maxTokens);
+    for (let tierIndex = 0; tierIndex < tokenTiers.length; tierIndex += 1) {
+      const tokens = tokenTiers[tierIndex];
+      const result = await requestStoryFromModel(model, messages, tokens);
 
       if (result.ok) {
-        console.log(`✅ Eisenkind story generated with ${result.model} (max_tokens=${maxTokens})`);
-        return { success: true, story: result.story, model: result.model };
+        return {
+          success: true,
+          story: result.story,
+          model: result.model,
+          finishReason: result.finishReason,
+          maxTokens: tokens
+        };
       }
 
       lastError = result.error;
-      const hasLowerTier = tierIndex < OUTPUT_TOKEN_TIERS.length - 1;
+      const hasLowerTier = tierIndex < tokenTiers.length - 1;
       const hasNextModel = modelIndex < models.length - 1;
 
       if (isRequestTooLarge(result.status, result.errorData)) {
-        if (hasLowerTier) {
-          console.warn(`⚠️ Eisenkind ${model} TPM/context limit hit — retrying with max_tokens=${OUTPUT_TOKEN_TIERS[tierIndex + 1]}…`);
-          continue;
-        }
-        if (hasNextModel) {
-          console.warn(`⚠️ Eisenkind ${model} still too large — trying ${models[modelIndex + 1]}…`);
-          break;
-        }
+        if (hasLowerTier) continue;
+        if (hasNextModel) break;
         lastError =
-          'Brain dump too large for OpenAI rate limits. Try a shorter dump or generate again in a minute.';
+          'Brain dump too large for OpenAI rate limits. Try again in a minute or shorten the dump slightly.';
         continue;
       }
 
-      if (hasNextModel && isModelUnavailable(result.status, result.errorData)) {
-        console.warn(`⚠️ Eisenkind model "${model}" unavailable — trying ${models[modelIndex + 1]}…`);
-        break;
-      }
+      if (hasNextModel && isModelUnavailable(result.status, result.errorData)) break;
 
-      console.error(`Eisenkind story generation error (${model}):`, result.error);
       return { success: false, error: result.error };
     }
   }
@@ -190,10 +236,18 @@ Your job is NOT to invent a new story from scratch and NOT to rewrite their idea
 Your job IS to:
 1. **Sort** — take every distinct thought from the brain dump and place it in the right part of a coherent narrative.
 2. **Preserve** — keep every specific detail the author mentioned. Nothing good gets lost, cut, or “smoothed away”.
-3. **Functional story** — turn design/UX/product details into a **functional short story**: the reader should *see* each idea working in real life through scenes, not as a list or essay.
+3. **Functional story** — turn design/UX/product details into a **full functional story**: the reader should *see* each idea working in real life through scenes, not as a list or essay.
 4. **Shape for reading** — arrange everything into vivid, descriptive literary prose that is genuinely pleasant to read — but never at the cost of dropping or diluting the author’s material.
 
 Think: **literary organizer**, not creative co-author. You structure and dramatize what is already there.
+
+## Length (critical)
+
+Write a **real, full story** — as long as the brain dump requires. **Never** compress material to be brief. **Never** summarize multiple brain-dump points into one rushed paragraph.
+- Expand scenes: let moments breathe, use sensory detail, dialogue where natural.
+- Cover the full arc of Lennon’s life with the robot — days, routines, family rhythms — whatever the material needs.
+- If you cannot fit everything in one response, stop at a natural mid-story break — **do not** rush an ending early.
+- When continuing a story, pick up exactly where it left off.
 
 ## The story world (fixed canon — always true)
 
@@ -227,71 +281,187 @@ Only override fixed canon if the brain dump **explicitly** contradicts it.
 3. **No oversimplification**: Do not flatten complex ideas into generic statements. Do not merge distinct brain-dump points into one vague sentence if they were separate ideas.
 4. **Preserve wording**: Keep the author’s distinctive phrasing. Where a brain-dump line is already good, **use it verbatim or nearly verbatim** inside the prose. Do not paraphrase into bland corporate language. Do not “improve” their wording — **sort and place** it.
 5. **No loss on update**: When refining an existing story, you must keep every detail from the previous story that is still valid. New brain-dump material is **added in** by editing the relevant passages — not by deleting old good parts.
-6. **Surgical updates**: When the brain dump grows, do not rewrite the whole story from scratch unless necessary. Find the right scenes and **adjust, extend, or insert** so new details fit naturally. Small targeted edits are preferred over wholesale replacement.
+6. **Surgical updates**: When the brain dump grows, do not rewrite the whole story from scratch unless necessary. Find the right scenes and **adjust, extend, or insert** so new details fit naturally.
 7. **Design = dramatized**: Product/UX/design notes from the brain dump must become **visible actions, moments, dialogue, or sensory scenes** in Lennon’s daily life with the robot — not a manifesto paragraph.
 
-## Narrative structure (must read as one complete short story)
+## Narrative structure (one complete story)
 
 This is NOT a list of disconnected scene snippets, UX examples, or bullet points dressed as prose.
-Write **one continuous short story** that a reader can follow from start to finish:
+Write **one continuous full story** that a reader can follow from start to finish:
 
 - **Opening** — ground us in Lennon’s world (family, house, his creative life) and lead naturally toward the robot arriving (the purchase / first meeting is a story beat, not a footnote).
-- **Middle** — weave brain-dump details through **connected scenes** that flow in time. Use transitions. Show cause and effect. Details should emerge from lived moments, not feel pasted in.
-- **Ending** — a clear, satisfying closing beat that **embodies the Eisenkind mission**: love spread, people happier, family closer, the robot proven as a force for joy — not a slogan, a felt moment. The reader should feel the story **ended** on "love is the answer" without those words necessarily being quoted.
+- **Middle** — weave brain-dump details through **many connected scenes** that flow in time. Use transitions. Show cause and effect. Let weeks or meaningful stretches of life unfold if needed.
+- **Ending** — only when the story is truly ready to close: a clear, satisfying final beat that **embodies the Eisenkind mission** — love spread, people happier, family closer.
 
-Scenes must **connect** — not jump randomly. Prefer chronological or emotionally logical flow through a day, a week, or a meaningful arc. Every paragraph should belong to the same story.
+Scenes must **connect** — not jump randomly. Every paragraph belongs to the same story.
 
 ## Writing quality rules
 
-- Write as a **vivid, descriptive short story** — scenes you can see, hear, smell, feel.
-- Good literary prose: rhythm, specificity, emotional texture.
-- Show the robot’s love-spreading through **behavior**, not slogans — but always in service of the Eisenkind mission above.
+- Vivid, descriptive literary prose — scenes you can see, hear, smell, feel.
+- Good rhythm, specificity, emotional texture.
+- Show the robot’s love-spreading through **behavior**, not slogans.
 - Paragraph breaks between story beats (blank line between paragraphs).
 - English prose. No bullet lists, no headers, no markdown, no meta-commentary.
 
 ## Output
 
-Return ONLY the story text. No title, no preamble, no “Here is the story”, no checklist, no notes to the author.`;
+Return ONLY the story text. No title, no preamble, no part labels, no “Continued from”, no checklist.`;
 
 function buildFirstStoryPrompt(brainDump) {
   return `## Task
-Write the complete Lennon short story from the brain dump below.
+Write the **full** Lennon story from the brain dump below — as long as it needs to be.
 
 ## Before you write (internal check — do not output this)
 - List every distinct detail in the brain dump.
-- Plan a story arc: opening → middle scenes → ending — all serving the Eisenkind mission (love, happiness, robots spreading joy).
-- Assign each brain-dump detail to a moment inside that arc (not as standalone snippets).
-- Confirm fixed canon (Lennon, family, robot) is woven in where the brain dump does not override it.
+- Plan a long story arc: opening → many middle scenes → ending — all serving the Eisenkind mission.
+- Assign each brain-dump detail to a specific scene (not as standalone snippets).
+- Confirm fixed canon is woven in where the brain dump does not override it.
 
-## Brain dump (SOURCE OF TRUTH — every item above must appear in the story)
+## Brain dump (SOURCE OF TRUTH — every item must appear in the story)
 ${brainDump}
 
-## Write the complete story now.
-One continuous short story with a real opening and ending — not disconnected vignettes. Use blank lines between paragraphs. Dramatize every brain-dump detail. Preserve the author's wording where it is already strong.`;
+## Write now
+A real, full-length story — rich scenes, not a summary. Do not rush the ending if material remains. If you hit length limits, stop at a natural mid-story moment. Use blank lines between paragraphs. Preserve the author's wording where it is already strong.`;
 }
 
 function buildRefineStoryPrompt(brainDump, existingStory) {
   return `## Task
-Refine the existing story below. New and old brain-dump material must ALL be in the final story.
+Refine and **expand** the existing story. New and old brain-dump material must ALL be in the final story. Make it longer and richer where details were thin.
 
 ## How to refine (follow exactly)
-1. Read the PREVIOUS STORY and keep every detail that still applies — do not cut good passages.
-2. Read the full BRAIN DUMP (source of truth). Identify anything not yet fully represented in the previous story.
-3. Integrate missing material by **editing specific passages** — extend a scene, add a beat, insert a paragraph, adjust a moment. Prefer surgical edits over rewriting from scratch.
-4. If the brain dump repeats or sharpens an idea already in the story, deepen that scene — do not duplicate clumsily.
-5. Preserve the author's distinctive phrases from the brain dump verbatim where possible.
-6. Output the **complete updated story** (not a diff, not partial — the full text ready to publish).
-7. Keep it **one connected story** with opening, flowing middle, and ending — not a patchwork of new snippets appended to old ones.
+1. Keep every valid detail from the PREVIOUS STORY — do not cut good passages.
+2. Read the full BRAIN DUMP. Identify anything missing or under-dramatized.
+3. Integrate missing material by extending scenes — more depth, more moments, not one-line mentions.
+4. Preserve the author's distinctive phrases from the brain dump verbatim where possible.
+5. Output the **complete updated story** — full text, ready to publish.
+6. One connected story with opening, flowing middle, and a proper ending.
 
-## Previous story (keep all valid details — refine, don't discard)
+## Previous story
 ${existingStory}
 
 ---
 
-## Brain dump (SOURCE OF TRUTH — every specific detail must be in the final story)
+## Brain dump (SOURCE OF TRUTH)
 ${brainDump}
 
-## Write the complete updated story now.`;
+## Write the complete updated story now — as long as it needs to be.`;
+}
+
+function buildContinuePrompt(brainDump, storySoFar, partNumber) {
+  const context =
+    storySoFar.length > CONTINUE_CONTEXT_CHARS
+      ? storySoFar.slice(-CONTINUE_CONTEXT_CHARS)
+      : storySoFar;
+
+  return `## Task — continue the Lennon story (segment ${partNumber})
+
+The story was interrupted by output length. Continue **immediately** from the last sentence below.
+- Do NOT repeat text already written.
+- Do NOT restart from the beginning.
+- Write the **next** section at full length — rich scenes, not summary.
+- Cover brain-dump details not yet dramatized.
+- Do NOT write the final ending until all brain-dump details are covered — unless this segment completes the last missing details.
+
+## Story so far (continue right after this)
+${context}
+
+---
+
+## Brain dump (SOURCE OF TRUTH — all details must appear across the full story)
+${brainDump}
+
+## Continue the story now.`;
+}
+
+function buildEndingPrompt(brainDump, storySoFar) {
+  const context =
+    storySoFar.length > CONTINUE_CONTEXT_CHARS
+      ? storySoFar.slice(-CONTINUE_CONTEXT_CHARS)
+      : storySoFar;
+
+  return `## Task — write the story's **final ending**
+
+The story below is nearly complete. Write the closing section only:
+- Continue seamlessly from the last sentence.
+- Do NOT repeat earlier paragraphs.
+- Land a proper ending that embodies the Eisenkind mission (love, happiness, family together).
+- Ensure any brain-dump detail still missing appears in this closing section.
+
+## Story so far
+${context}
+
+---
+
+## Brain dump (SOURCE OF TRUTH)
+${brainDump}
+
+## Write the ending section now.`;
+}
+
+async function generateStoryInStages(brainDump, existingStory) {
+  let story = '';
+  let modelUsed = null;
+  let stage = 1;
+  let forceEndingNext = false;
+
+  const isRefine = Boolean(existingStory);
+
+  while (stage <= MAX_STORY_STAGES) {
+    let userPrompt;
+
+    if (stage === 1) {
+      userPrompt = isRefine
+        ? buildRefineStoryPrompt(brainDump, existingStory)
+        : buildFirstStoryPrompt(brainDump);
+    } else if (forceEndingNext) {
+      userPrompt = buildEndingPrompt(brainDump, story);
+    } else {
+      userPrompt = buildContinuePrompt(brainDump, story, stage);
+    }
+
+    const messages = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt }
+    ];
+
+    console.log(`📝 Eisenkind story stage ${stage}/${MAX_STORY_STAGES}…`);
+    const result = await completeEisenkindStoryCall(messages);
+
+    if (!result.success) {
+      return result;
+    }
+
+    story = stage === 1 ? result.story : mergeStoryContinuation(story, result.story);
+    modelUsed = result.model;
+
+    console.log(
+      `   stage ${stage}: +${result.story.length} chars (total ${story.length}), finish=${result.finishReason}, max_tokens=${result.maxTokens}`
+    );
+
+    const shouldContinue = shouldContinueWriting({
+      finishReason: result.finishReason,
+      story,
+      brainDump,
+      stage,
+      forceEndingNext
+    });
+
+    if (shouldContinue) {
+      stage += 1;
+      continue;
+    }
+
+    if (!forceEndingNext && needsFinalEnding(story) && stage < MAX_STORY_STAGES) {
+      forceEndingNext = true;
+      stage += 1;
+      continue;
+    }
+
+    break;
+  }
+
+  console.log(`✅ Eisenkind story complete (${story.length} chars, ${stage} stage(s), ${modelUsed})`);
+  return { success: true, story, model: modelUsed, stages: stage };
 }
 
 async function generateEisenkindStory({ brainDump, existingStory }) {
@@ -304,27 +474,17 @@ async function generateEisenkindStory({ brainDump, existingStory }) {
     return { success: false, error: 'Brain dump is empty. Add some notes first.' };
   }
 
-  const previousStory = (existingStory || '').trim();
   const fitted = fitPromptToBudget({
     brainDump: trimmedDump,
-    existingStory: previousStory
+    existingStory: (existingStory || '').trim()
   });
 
   if (fitted.trimmed) {
     console.warn('⚠️ Eisenkind prompt trimmed to fit OpenAI token limits');
   }
 
-  const userPrompt = fitted.existingStory
-    ? buildRefineStoryPrompt(fitted.brainDump, fitted.existingStory)
-    : buildFirstStoryPrompt(fitted.brainDump);
-
-  const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
-    { role: 'user', content: userPrompt }
-  ];
-
   try {
-    return await completeEisenkindStory(messages);
+    return await generateStoryInStages(fitted.brainDump, fitted.existingStory);
   } catch (error) {
     console.error('Eisenkind story generation failed:', error);
     return { success: false, error: error.message || 'Story generation failed.' };

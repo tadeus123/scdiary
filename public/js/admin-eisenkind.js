@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     generating = true;
     generateBtn.disabled = true;
-    setStatus('writing story…', 'pending');
+    setStatus('writing story (may take a few minutes)…', 'pending');
 
     try {
       const response = await fetch('/admin/eisenkind/generate-story', {
