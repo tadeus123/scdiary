@@ -5,6 +5,59 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 /** Best-first chain; env override is tried first, then fallbacks. */
 const EISENKIND_MODEL_CHAIN = ['gpt-4.1', 'gpt-4o', 'gpt-4o-mini'];
 
+/** Output tiers — lower on retry to stay under org TPM limits (input + max_tokens). */
+const OUTPUT_TOKEN_TIERS = [4096, 2048];
+
+/** Reserve headroom under typical 30k TPM caps (input + max_tokens). */
+const TPM_BUDGET_TOKENS = 24000;
+
+function estimateTokens(text) {
+  return Math.ceil((text || '').length / 4);
+}
+
+function trimTextToTokenBudget(text, tokenBudget) {
+  const trimmed = (text || '').trim();
+  const maxChars = Math.max(800, tokenBudget * 4);
+  if (trimmed.length <= maxChars) return trimmed;
+
+  const headChars = Math.floor(maxChars * 0.45);
+  const tailChars = Math.floor(maxChars * 0.45);
+  return `${trimmed.slice(0, headChars)}
+
+[…middle omitted to fit API limits — merge themes from both parts…]
+
+${trimmed.slice(-tailChars)}`;
+}
+
+function fitPromptToBudget({ brainDump, existingStory }) {
+  const systemTokens = estimateTokens(SYSTEM_PROMPT);
+  const templateOverhead = 600;
+  const outputReserve = OUTPUT_TOKEN_TIERS[0];
+  let budget = TPM_BUDGET_TOKENS - systemTokens - templateOverhead - outputReserve;
+
+  let dump = (brainDump || '').trim();
+  let story = (existingStory || '').trim();
+  let trimmed = false;
+
+  if (estimateTokens(dump) + estimateTokens(story) <= budget) {
+    return { brainDump: dump, existingStory: story, trimmed };
+  }
+
+  if (story) {
+    const dumpTokens = estimateTokens(dump);
+    if (dumpTokens < budget) {
+      story = trimTextToTokenBudget(story, budget - dumpTokens);
+      trimmed = true;
+      return { brainDump: dump, existingStory: story, trimmed };
+    }
+  }
+
+  dump = trimTextToTokenBudget(dump, Math.floor(budget * 0.72));
+  story = story ? trimTextToTokenBudget(story, Math.floor(budget * 0.22)) : '';
+  trimmed = true;
+  return { brainDump: dump, existingStory: story, trimmed };
+}
+
 function getEisenkindModelChain() {
   const override = process.env.OPENAI_EISENKIND_MODEL?.trim();
   if (!override) return EISENKIND_MODEL_CHAIN;
@@ -20,7 +73,22 @@ function isModelUnavailable(status, errorData) {
   return /model/.test(message) && /(not found|does not exist|not available|unknown|access)/.test(message);
 }
 
-async function requestStoryFromModel(model, messages) {
+function isRequestTooLarge(status, errorData) {
+  const code = errorData?.error?.code || '';
+  const message = (errorData?.error?.message || '').toLowerCase();
+
+  if (code === 'rate_limit_exceeded' || code === 'context_length_exceeded') return true;
+  if (status === 429) return true;
+  return (
+    /too large/.test(message) ||
+    /tokens per min/.test(message) ||
+    /tpm/.test(message) ||
+    /context length/.test(message) ||
+    /maximum context/.test(message)
+  );
+}
+
+async function requestStoryFromModel(model, messages, maxTokens) {
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -31,7 +99,7 @@ async function requestStoryFromModel(model, messages) {
       model,
       messages,
       temperature: 0.5,
-      max_tokens: 12000
+      max_tokens: maxTokens
     })
   });
 
@@ -54,25 +122,44 @@ async function completeEisenkindStory(messages) {
   const models = getEisenkindModelChain();
   let lastError = 'No OpenAI models available for Eisenkind story generation.';
 
-  for (let i = 0; i < models.length; i += 1) {
-    const model = models[i];
-    const result = await requestStoryFromModel(model, messages);
+  for (let modelIndex = 0; modelIndex < models.length; modelIndex += 1) {
+    const model = models[modelIndex];
 
-    if (result.ok) {
-      console.log(`✅ Eisenkind story generated with ${result.model}`);
-      return { success: true, story: result.story, model: result.model };
+    for (let tierIndex = 0; tierIndex < OUTPUT_TOKEN_TIERS.length; tierIndex += 1) {
+      const maxTokens = OUTPUT_TOKEN_TIERS[tierIndex];
+      const result = await requestStoryFromModel(model, messages, maxTokens);
+
+      if (result.ok) {
+        console.log(`✅ Eisenkind story generated with ${result.model} (max_tokens=${maxTokens})`);
+        return { success: true, story: result.story, model: result.model };
+      }
+
+      lastError = result.error;
+      const hasLowerTier = tierIndex < OUTPUT_TOKEN_TIERS.length - 1;
+      const hasNextModel = modelIndex < models.length - 1;
+
+      if (isRequestTooLarge(result.status, result.errorData)) {
+        if (hasLowerTier) {
+          console.warn(`⚠️ Eisenkind ${model} TPM/context limit hit — retrying with max_tokens=${OUTPUT_TOKEN_TIERS[tierIndex + 1]}…`);
+          continue;
+        }
+        if (hasNextModel) {
+          console.warn(`⚠️ Eisenkind ${model} still too large — trying ${models[modelIndex + 1]}…`);
+          break;
+        }
+        lastError =
+          'Brain dump too large for OpenAI rate limits. Try a shorter dump or generate again in a minute.';
+        continue;
+      }
+
+      if (hasNextModel && isModelUnavailable(result.status, result.errorData)) {
+        console.warn(`⚠️ Eisenkind model "${model}" unavailable — trying ${models[modelIndex + 1]}…`);
+        break;
+      }
+
+      console.error(`Eisenkind story generation error (${model}):`, result.error);
+      return { success: false, error: result.error };
     }
-
-    lastError = result.error;
-    const hasFallback = i < models.length - 1;
-
-    if (hasFallback && isModelUnavailable(result.status, result.errorData)) {
-      console.warn(`⚠️ Eisenkind model "${model}" unavailable — trying ${models[i + 1]}…`);
-      continue;
-    }
-
-    console.error(`Eisenkind story generation error (${model}):`, result.error);
-    return { success: false, error: result.error };
   }
 
   return { success: false, error: lastError };
@@ -218,9 +305,18 @@ async function generateEisenkindStory({ brainDump, existingStory }) {
   }
 
   const previousStory = (existingStory || '').trim();
-  const userPrompt = previousStory
-    ? buildRefineStoryPrompt(trimmedDump, previousStory)
-    : buildFirstStoryPrompt(trimmedDump);
+  const fitted = fitPromptToBudget({
+    brainDump: trimmedDump,
+    existingStory: previousStory
+  });
+
+  if (fitted.trimmed) {
+    console.warn('⚠️ Eisenkind prompt trimmed to fit OpenAI token limits');
+  }
+
+  const userPrompt = fitted.existingStory
+    ? buildRefineStoryPrompt(fitted.brainDump, fitted.existingStory)
+    : buildFirstStoryPrompt(fitted.brainDump);
 
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },

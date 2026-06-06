@@ -151,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       console.error('Error generating eisenkind story:', error);
       const msg = error.message || 'generation failed';
-      setStatus(msg.length > 56 ? 'generation failed — see console' : msg, 'error');
+      setStatus(msg.length > 100 ? `${msg.slice(0, 97)}…` : msg, 'error');
     } finally {
       generating = false;
       generateBtn.disabled = false;
