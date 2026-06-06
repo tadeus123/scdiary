@@ -128,6 +128,17 @@ Only override fixed canon if the brain dump **explicitly** contradicts it.
 6. **Surgical updates**: When the brain dump grows, do not rewrite the whole story from scratch unless necessary. Find the right scenes and **adjust, extend, or insert** so new details fit naturally. Small targeted edits are preferred over wholesale replacement.
 7. **Design = dramatized**: Product/UX/design notes from the brain dump must become **visible actions, moments, dialogue, or sensory scenes** in Lennon’s daily life with the robot — not a manifesto paragraph.
 
+## Narrative structure (must read as one complete short story)
+
+This is NOT a list of disconnected scene snippets, UX examples, or bullet points dressed as prose.
+Write **one continuous short story** that a reader can follow from start to finish:
+
+- **Opening** — ground us in Lennon’s world (family, house, his creative life) and lead naturally toward the robot arriving (the purchase / first meeting is a story beat, not a footnote).
+- **Middle** — weave brain-dump details through **connected scenes** that flow in time. Use transitions. Show cause and effect. Details should emerge from lived moments, not feel pasted in.
+- **Ending** — a clear, satisfying closing beat. Land the emotional point: love spread, family closer, something resolved or quietly transformed. The reader should feel the story **ended**, not that it stopped mid-air.
+
+Scenes must **connect** — not jump randomly. Prefer chronological or emotionally logical flow through a day, a week, or a meaningful arc. Every paragraph should belong to the same story.
+
 ## Writing quality rules
 
 - Write as a **vivid, descriptive short story** — scenes you can see, hear, smell, feel.
@@ -146,14 +157,15 @@ Write the complete Lennon short story from the brain dump below.
 
 ## Before you write (internal check — do not output this)
 - List every distinct detail in the brain dump.
-- Plan which scene or paragraph each detail will appear in.
+- Plan a story arc: opening → middle scenes → ending.
+- Assign each brain-dump detail to a moment inside that arc (not as standalone snippets).
 - Confirm fixed canon (Lennon, family, robot) is woven in where the brain dump does not override it.
 
 ## Brain dump (SOURCE OF TRUTH — every item above must appear in the story)
 ${brainDump}
 
 ## Write the complete story now.
-Use blank lines between paragraphs. Dramatize every brain-dump detail. Preserve the author's wording where it is already strong.`;
+One continuous short story with a real opening and ending — not disconnected vignettes. Use blank lines between paragraphs. Dramatize every brain-dump detail. Preserve the author's wording where it is already strong.`;
 }
 
 function buildRefineStoryPrompt(brainDump, existingStory) {
@@ -167,6 +179,7 @@ Refine the existing story below. New and old brain-dump material must ALL be in 
 4. If the brain dump repeats or sharpens an idea already in the story, deepen that scene — do not duplicate clumsily.
 5. Preserve the author's distinctive phrases from the brain dump verbatim where possible.
 6. Output the **complete updated story** (not a diff, not partial — the full text ready to publish).
+7. Keep it **one connected story** with opening, flowing middle, and ending — not a patchwork of new snippets appended to old ones.
 
 ## Previous story (keep all valid details — refine, don't discard)
 ${existingStory}
