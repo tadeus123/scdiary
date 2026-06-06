@@ -147,7 +147,7 @@ router.get('/eisenkind', isAuthenticated, async (req, res) => {
 });
 
 router.put('/eisenkind/notes', isAuthenticated, async (req, res) => {
-  const { headline, content } = req.body;
+  const { headline, blocks } = req.body;
 
   if (!isConfigured()) {
     return res.status(503).json({
@@ -156,8 +156,8 @@ router.put('/eisenkind/notes', isAuthenticated, async (req, res) => {
     });
   }
 
-  if (typeof content !== 'string') {
-    return res.status(400).json({ error: 'Content must be a string' });
+  if (!Array.isArray(blocks)) {
+    return res.status(400).json({ error: 'Blocks must be an array' });
   }
   if (headline !== undefined && typeof headline !== 'string') {
     return res.status(400).json({ error: 'Headline must be a string' });
@@ -165,7 +165,7 @@ router.put('/eisenkind/notes', isAuthenticated, async (req, res) => {
 
   const result = await updateEisenkindNotes({
     headline: typeof headline === 'string' ? headline : undefined,
-    content
+    blocks
   });
 
   if (result.success) {

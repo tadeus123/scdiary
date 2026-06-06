@@ -4,12 +4,16 @@
 CREATE TABLE IF NOT EXISTS eisenkind_notes (
   id TEXT PRIMARY KEY DEFAULT 'main',
   content TEXT NOT NULL DEFAULT '',
+  blocks JSONB NOT NULL DEFAULT '[]'::jsonb,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Add headline BEFORE any insert that uses it (fixes existing tables)
 ALTER TABLE eisenkind_notes
   ADD COLUMN IF NOT EXISTS headline TEXT NOT NULL DEFAULT 'How to make humanoid robots that we love and that spread love?';
+
+ALTER TABLE eisenkind_notes
+  ADD COLUMN IF NOT EXISTS blocks JSONB NOT NULL DEFAULT '[]'::jsonb;
 
 INSERT INTO eisenkind_notes (id, headline, content)
 VALUES (

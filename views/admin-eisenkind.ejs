@@ -39,17 +39,25 @@
         aria-label="Headline"
       ><%= notes.headline %></textarea>
 
-      <label class="eisenkind-field-label" for="eisenkind-notes-input">notes</label>
-      <textarea
-        id="eisenkind-notes-input"
-        class="eisenkind-a4-input eisenkind-a4-input--body"
-        placeholder="Write notes here. Blank lines start new paragraphs on the public page."
-        spellcheck="true"
-        aria-label="Notes body"
-      ><%= notes.content %></textarea>
+      <div class="eisenkind-blocks-header">
+        <span class="eisenkind-field-label">blocks</span>
+        <div class="eisenkind-add-block-wrap">
+          <select id="eisenkind-add-block-type" class="eisenkind-block-type-select" aria-label="Block type to add">
+            <option value="principle">principle</option>
+            <option value="question">question</option>
+            <option value="note" selected>note</option>
+            <option value="quote">quote</option>
+            <option value="entry">entry</option>
+          </select>
+          <button type="button" id="eisenkind-add-block" class="eisenkind-add-block-btn">+ add</button>
+        </div>
+      </div>
+
+      <div id="eisenkind-blocks-editor" class="eisenkind-blocks-editor" aria-live="polite"></div>
     </article>
   </div>
 
+  <script type="application/json" id="eisenkind-initial-data"><%- JSON.stringify({ blocks: notes.blocks || [] }).replace(/</g, '\\u003c') %></script>
   <script src="/js/main.js"></script>
   <script src="/js/admin-eisenkind.js"></script>
 </body>

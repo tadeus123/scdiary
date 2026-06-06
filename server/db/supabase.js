@@ -658,9 +658,16 @@ async function updateBookReadingTime(bookId, { audio_duration_minutes }) {
 const EISENKIND_DEFAULT_HEADLINE =
   'How to make humanoid robots that we love and that spread love?';
 
+const EISENKIND_BLOCK_TYPES = ['principle', 'question', 'note', 'quote', 'entry'];
+
 function isEisenkindHeadlineMissing(error) {
   const msg = error?.message || '';
   return error?.code === '42703' && /headline/i.test(msg);
+}
+
+function isEisenkindBlocksMissing(error) {
+  const msg = error?.message || '';
+  return error?.code === '42703' && /blocks/i.test(msg);
 }
 
 function isEisenkindTableMissing(error) {
@@ -678,7 +685,105 @@ function formatEisenkindError(error) {
   if (isEisenkindHeadlineMissing(error)) {
     return 'Column headline missing. Run server/scripts/add-eisenkind-headline-column.sql in Supabase SQL Editor.';
   }
+  if (isEisenkindBlocksMissing(error)) {
+    return 'Column blocks missing. Run server/scripts/add-eisenkind-blocks-column.sql in Supabase SQL Editor.';
+  }
   return error?.message || 'Failed to save notes';
+}
+
+function newEisenkindBlockId() {
+  return `b${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function legacyContentToBlocks(content) {
+  const trimmed = (content || '').trim();
+  if (!trimmed) return [];
+
+  return trimmed
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((text) => ({
+      id: newEisenkindBlockId(),
+      type: 'note',
+      text
+    }));
+}
+
+function parseBlocksFromContent(content) {
+  const trimmed = (content || '').trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed?.blocks)) {
+        return normalizeEisenkindBlocks(parsed.blocks);
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+function normalizeEisenkindBlocks(blocks) {
+  if (!Array.isArray(blocks)) return [];
+
+  return blocks
+    .map((block) => {
+      if (!block || typeof block.text !== 'string') return null;
+
+      const text = block.text.trim();
+      if (!text) return null;
+
+      const type = EISENKIND_BLOCK_TYPES.includes(block.type) ? block.type : 'note';
+      const normalized = {
+        id: typeof block.id === 'string' && block.id ? block.id : newEisenkindBlockId(),
+        type,
+        text
+      };
+
+      if (type === 'entry' && typeof block.date === 'string' && block.date.trim()) {
+        normalized.date = block.date.trim();
+      }
+
+      return normalized;
+    })
+    .filter(Boolean);
+}
+
+function resolveEisenkindBlocks({ blocks, content }) {
+  const fromBlocks = normalizeEisenkindBlocks(blocks);
+  if (fromBlocks.length) return fromBlocks;
+
+  const fromJsonContent = parseBlocksFromContent(content);
+  if (fromJsonContent?.length) return fromJsonContent;
+
+  return legacyContentToBlocks(content);
+}
+
+function formatEisenkindNotes(row) {
+  const headline = row?.headline || EISENKIND_DEFAULT_HEADLINE;
+  const blocks = resolveEisenkindBlocks({
+    blocks: row?.blocks,
+    content: row?.content
+  });
+
+  return {
+    headline,
+    blocks,
+    updated_at: row?.updated_at || null
+  };
+}
+
+function emptyEisenkindNotes() {
+  return {
+    headline: EISENKIND_DEFAULT_HEADLINE,
+    blocks: [],
+    updated_at: null
+  };
 }
 
 // Eisenkind notes (singleton document)
@@ -689,78 +794,56 @@ async function getEisenkindNotes() {
     const notesPath = path.join(__dirname, '../../data/eisenkind-notes.json');
     try {
       const data = JSON.parse(fs.readFileSync(notesPath, 'utf8'));
-      return {
-        headline: data.headline || EISENKIND_DEFAULT_HEADLINE,
-        content: data.content || '',
-        updated_at: data.updated_at || null
-      };
+      return formatEisenkindNotes(data);
     } catch {
-      return {
-        headline: EISENKIND_DEFAULT_HEADLINE,
-        content: '',
-        updated_at: null
-      };
+      return emptyEisenkindNotes();
     }
   }
 
   try {
     const { data, error } = await supabase
       .from('eisenkind_notes')
-      .select('headline, content, updated_at')
+      .select('headline, content, blocks, updated_at')
       .eq('id', 'main')
       .maybeSingle();
 
-    if (error && isEisenkindHeadlineMissing(error)) {
+    if (error && (isEisenkindHeadlineMissing(error) || isEisenkindBlocksMissing(error))) {
       const { data: legacy, error: legacyError } = await supabase
         .from('eisenkind_notes')
-        .select('content, updated_at')
+        .select('headline, content, updated_at')
         .eq('id', 'main')
         .maybeSingle();
 
       if (!legacyError) {
-        return {
-          headline: EISENKIND_DEFAULT_HEADLINE,
-          content: legacy?.content || '',
-          updated_at: legacy?.updated_at || null
-        };
+        return formatEisenkindNotes(legacy);
       }
     }
 
     if (error) {
       console.error('Error fetching eisenkind notes:', error);
-      return {
-        headline: EISENKIND_DEFAULT_HEADLINE,
-        content: '',
-        updated_at: null
-      };
+      return emptyEisenkindNotes();
     }
 
-    return {
-      headline: data?.headline || EISENKIND_DEFAULT_HEADLINE,
-      content: data?.content || '',
-      updated_at: data?.updated_at || null
-    };
+    return formatEisenkindNotes(data);
   } catch (error) {
     console.error('Error fetching eisenkind notes:', error);
-    return {
-      headline: EISENKIND_DEFAULT_HEADLINE,
-      content: '',
-      updated_at: null
-    };
+    return emptyEisenkindNotes();
   }
 }
 
-async function updateEisenkindNotes({ headline, content }) {
+async function updateEisenkindNotes({ headline, blocks }) {
   let resolvedHeadline = headline;
   if (typeof resolvedHeadline !== 'string') {
     const current = await getEisenkindNotes();
     resolvedHeadline = current.headline;
   }
 
+  const normalizedBlocks = normalizeEisenkindBlocks(blocks);
   const payload = {
     id: 'main',
     headline: (resolvedHeadline || '').trim() || EISENKIND_DEFAULT_HEADLINE,
-    content: content || '',
+    blocks: normalizedBlocks,
+    content: JSON.stringify({ blocks: normalizedBlocks }),
     updated_at: new Date().toISOString()
   };
 
@@ -771,8 +854,13 @@ async function updateEisenkindNotes({ headline, content }) {
     try {
       const dir = path.dirname(notesPath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(notesPath, JSON.stringify(payload, null, 2), 'utf8');
-      return { success: true, notes: payload };
+      const stored = {
+        headline: payload.headline,
+        blocks: payload.blocks,
+        updated_at: payload.updated_at
+      };
+      fs.writeFileSync(notesPath, JSON.stringify(stored, null, 2), 'utf8');
+      return { success: true, notes: stored };
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -782,8 +870,30 @@ async function updateEisenkindNotes({ headline, content }) {
     const { data, error } = await supabase
       .from('eisenkind_notes')
       .upsert(payload, { onConflict: 'id' })
-      .select('headline, content, updated_at')
+      .select('headline, content, blocks, updated_at')
       .single();
+
+    if (error && isEisenkindBlocksMissing(error)) {
+      const slimPayload = {
+        id: 'main',
+        headline: payload.headline,
+        content: payload.content,
+        updated_at: payload.updated_at
+      };
+      const { data: legacy, error: legacyError } = await supabase
+        .from('eisenkind_notes')
+        .upsert(slimPayload, { onConflict: 'id' })
+        .select('headline, content, updated_at')
+        .single();
+
+      if (!legacyError) {
+        return {
+          success: true,
+          notes: formatEisenkindNotes(legacy)
+        };
+      }
+      error = legacyError;
+    }
 
     if (error && isEisenkindHeadlineMissing(error)) {
       const slimPayload = {
@@ -800,11 +910,11 @@ async function updateEisenkindNotes({ headline, content }) {
       if (!legacyError) {
         return {
           success: true,
-          notes: {
+          notes: formatEisenkindNotes({
             headline: payload.headline,
             content: legacy.content,
             updated_at: legacy.updated_at
-          }
+          })
         };
       }
       error = legacyError;
@@ -815,7 +925,7 @@ async function updateEisenkindNotes({ headline, content }) {
       return { success: false, error: formatEisenkindError(error) };
     }
 
-    return { success: true, notes: data };
+    return { success: true, notes: formatEisenkindNotes(data) };
   } catch (error) {
     console.error('Error updating eisenkind notes:', error);
     return { success: false, error: error.message };

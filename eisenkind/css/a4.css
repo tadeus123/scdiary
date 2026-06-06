@@ -29,12 +29,217 @@
   text-wrap: balance;
 }
 
-.eisenkind-a4-body p {
-  margin: 0 0 clamp(1rem, 3vw, 1.35rem);
+.eisenkind-a4-body {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.35rem, 4vw, 2rem);
 }
 
-.eisenkind-a4-body p:last-child {
-  margin-bottom: 0;
+.eisenkind-block {
+  margin: 0;
+}
+
+.eisenkind-block-text {
+  margin: 0;
+}
+
+.eisenkind-block-date-label {
+  display: block;
+  margin: 0 0 0.45rem;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(26, 26, 26, 0.45);
+}
+
+.eisenkind-block--principle .eisenkind-block-text {
+  font-size: clamp(1.02rem, 2.2vw + 0.7rem, 1.12rem);
+  font-weight: 500;
+  line-height: 1.55;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.eisenkind-block--question .eisenkind-block-text {
+  font-style: italic;
+  color: var(--a4-accent);
+  line-height: 1.5;
+  text-wrap: balance;
+}
+
+.eisenkind-block--note .eisenkind-block-text {
+  font-size: clamp(0.92rem, 1.8vw + 0.65rem, 1rem);
+  line-height: 1.85;
+  opacity: 0.92;
+}
+
+.eisenkind-block--quote {
+  padding-left: 1rem;
+  border-left: 2px solid rgba(193, 106, 40, 0.45);
+}
+
+.eisenkind-block--quote .eisenkind-block-text {
+  font-style: italic;
+  line-height: 1.7;
+}
+
+.eisenkind-block--entry {
+  padding-top: clamp(0.75rem, 2vw, 1rem);
+  border-top: 1px solid rgba(26, 26, 26, 0.08);
+}
+
+.eisenkind-block--entry:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.eisenkind-block--entry .eisenkind-block-text {
+  line-height: 1.8;
+}
+
+/* Admin block editor */
+.eisenkind-blocks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: clamp(1rem, 3vw, 1.5rem) 0 0.75rem;
+}
+
+.eisenkind-blocks-header .eisenkind-field-label {
+  margin: 0;
+}
+
+.eisenkind-add-block-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.eisenkind-add-block-btn,
+.eisenkind-block-move,
+.eisenkind-block-remove {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.72rem;
+  line-height: 1;
+  border: none;
+  background: transparent;
+  color: rgba(26, 26, 26, 0.55);
+  cursor: pointer;
+  padding: 0.35rem 0.45rem;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.eisenkind-add-block-btn:hover,
+.eisenkind-block-move:hover,
+.eisenkind-block-remove:hover {
+  color: var(--a4-accent);
+}
+
+.eisenkind-block-type-select,
+.eisenkind-block-date {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.68rem;
+  color: rgba(26, 26, 26, 0.7);
+  border: none;
+  background: rgba(26, 26, 26, 0.05);
+  border-radius: 3px;
+  padding: 0.3rem 0.45rem;
+}
+
+.eisenkind-block-date {
+  color-scheme: light;
+}
+
+.eisenkind-blocks-editor {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 3vw, 1.35rem);
+}
+
+.eisenkind-blocks-empty {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.75rem;
+  opacity: 0.45;
+  font-style: italic;
+}
+
+.eisenkind-block-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.eisenkind-block-row-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.eisenkind-block-row-toolbar .eisenkind-block-move,
+.eisenkind-block-row-toolbar .eisenkind-block-remove {
+  margin-left: auto;
+}
+
+.eisenkind-block-row-toolbar .eisenkind-block-remove {
+  margin-left: 0;
+}
+
+.eisenkind-block--preview {
+  padding: 0;
+}
+
+.eisenkind-block--preview .eisenkind-block-text {
+  display: block;
+  width: 100%;
+  min-height: 3rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  resize: none;
+  overflow: hidden;
+  outline: none;
+}
+
+.eisenkind-block--preview.eisenkind-block--principle .eisenkind-block-text {
+  font-weight: 500;
+  text-align: center;
+}
+
+.eisenkind-block--preview.eisenkind-block--question .eisenkind-block-text {
+  font-style: italic;
+  color: var(--a4-accent);
+}
+
+.eisenkind-block--preview.eisenkind-block--note .eisenkind-block-text {
+  opacity: 0.92;
+}
+
+.eisenkind-block--preview.eisenkind-block--quote {
+  padding-left: 1rem;
+  border-left: 2px solid rgba(193, 106, 40, 0.45);
+}
+
+.eisenkind-block--preview.eisenkind-block--quote .eisenkind-block-text {
+  font-style: italic;
+}
+
+.eisenkind-block--preview.eisenkind-block--entry {
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(26, 26, 26, 0.08);
+}
+
+.eisenkind-block--preview.eisenkind-block--entry:first-child {
+  padding-top: 0;
+  border-top: none;
 }
 
 /* Admin editable sheet */

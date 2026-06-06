@@ -13,23 +13,49 @@
   let cache = null;
   let fetchPromise = null;
 
+  function formatEntryDate(value) {
+    if (!value) return '';
+    const date = new Date(`${value}T12:00:00`);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  }
+
   function applyNotes(notes) {
     if (!notes) return;
     headlineEl.textContent = notes.headline || DEFAULT_HEADLINE;
-    renderBody(notes.content);
+    renderBlocks(notes.blocks || []);
   }
 
-  function renderBody(text) {
+  function renderBlocks(blocks) {
     notesBody.innerHTML = '';
-    const trimmed = (text || '').trim();
-    if (!trimmed) return;
 
-    trimmed.split(/\n{2,}/).forEach((block) => {
-      const paragraph = block.trim();
-      if (!paragraph) return;
-      const p = document.createElement('p');
-      p.textContent = paragraph;
-      notesBody.appendChild(p);
+    if (!Array.isArray(blocks) || !blocks.length) return;
+
+    blocks.forEach((block) => {
+      if (!block || typeof block.text !== 'string' || !block.text.trim()) return;
+
+      const type = block.type || 'note';
+      const article = document.createElement('article');
+      article.className = `eisenkind-block eisenkind-block--${type}`;
+
+      if (type === 'entry' && block.date) {
+        const dateEl = document.createElement('time');
+        dateEl.className = 'eisenkind-block-date-label';
+        dateEl.dateTime = block.date;
+        dateEl.textContent = formatEntryDate(block.date);
+        article.appendChild(dateEl);
+      }
+
+      const textEl = document.createElement('p');
+      textEl.className = 'eisenkind-block-text';
+      textEl.textContent = block.text.trim();
+      article.appendChild(textEl);
+
+      notesBody.appendChild(article);
     });
   }
 
@@ -43,7 +69,7 @@
         if (data.success) {
           cache = {
             headline: data.headline || DEFAULT_HEADLINE,
-            content: data.content || ''
+            blocks: Array.isArray(data.blocks) ? data.blocks : []
           };
         }
       } catch (error) {
