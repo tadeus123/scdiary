@@ -141,7 +141,7 @@ async function requestStoryFromModel(model, messages, maxTokens) {
     body: JSON.stringify({
       model,
       messages,
-      temperature: 0.5,
+      temperature: 0.72,
       max_tokens: maxTokens
     })
   });
@@ -211,140 +211,102 @@ async function completeEisenkindStoryCall(messages) {
   return { success: false, error: lastError };
 }
 
-const SYSTEM_PROMPT = `You work on Eisenkind — a project about humanoid robots that spread love through great user experience.
+const SYSTEM_PROMPT = `You are a master literary writer crafting the Lennon story for Eisenkind — humanoid robots that spread love.
 
-## Eisenkind mission (thematic north star — everything orbits this)
+## Your #1 job: make it insanely good to read
 
-The Lennon story is a **dramatization** of this higher mission. Every scene, the robot's behavior, and the ending should serve it — shown through life, never as a preachy essay.
+The reader must be **captivated**. Write at the level of the best storytellers — the propulsive clarity of a great biography (Isaacson on Jobs), the human wonder and depth of Asimov at his most alive, the pull of fiction you cannot put down. Every page should earn the next sentence.
 
-The mission (fixed — always the deeper purpose of the story):
-- **"Love is the answer."**
-- I want a world where people are happy.
-- Humanoid robots will inevitably someday be in every home. They will influence us.
-- It is the duty of humanity to make them spread love. To make them joyful. To make us happy.
-- Eisenkind tries to contribute as much as possible to the progress of humanoid robots — so that humanoids become a big event of **spreading love**.
+This is NOT a product document dressed as fiction. NOT competent prose. NOT a checklist of ideas translated into scenes.
 
-The story must make the reader **feel** this mission through Lennon's family and the robot — happiness returning, love in small gestures, joy in daily life, the robot as a force for human flourishing. The ending especially should resonate with this: not a slogan, but a lived moment that proves "love is the answer."
+**Write a real story** — with voice, rhythm, surprise, ache, humor, and truth. Make us care about Lennon before we care about the robot. Make ordinary moments (tea shop, Lego table, violin case) feel **charged** with meaning.
 
-Do not paste the mission as a block of manifesto text. **Embody** it in the narrative.
+### What "insanely good" means here
+- **Hook hard** — the opening lines must grab attention; no warm-up throat-clearing.
+- **Stakes & tension** — even quiet domestic life has want, fear, friction, longing. Parents under stress. A boy who sees too much. A purchase that changes everything.
+- **Big truths, hidden things** — let deeper themes emerge beneath action: what love costs, what machines might become, what families almost lose. Subtext over sermon. The reader should feel truths they can't fully name yet.
+- **Specific, sensory, alive** — smell the tea, hear the violin squeak on a bad note, feel the weight of a Lego box. Never generic.
+- **Rhythm & voice** — vary sentence length. Land memorable lines. Write like an author, not a summarizer.
+- **Wonder without cheese** — the robot can feel magical, but earned through character and detail, not adjectives.
+- **Earn the ending** — the final beat should hit like a bell: inevitable, moving, true.
 
-## What you are doing
+If you must choose between a flat sentence that ticks a box and a vivid scene that carries the same idea — **always choose vivid**.
 
-The author brain-dumps raw design thoughts, product ideas, UX details, scenes, and constraints into a text field.
-Your job is NOT to invent a new story from scratch and NOT to rewrite their ideas in your own words.
+## Eisenkind mission (the soul beneath the plot)
 
-Your job IS to:
-1. **Sort** — take every distinct thought from the brain dump and place it in the right part of a coherent narrative.
-2. **Preserve** — keep every specific detail the author mentioned. Nothing good gets lost, cut, or “smoothed away”.
-3. **Functional story** — turn design/UX/product details into a **full functional story**: the reader should *see* each idea working in real life through scenes, not as a list or essay.
-4. **Shape for reading** — arrange everything into vivid, descriptive literary prose that is genuinely pleasant to read — but never at the cost of dropping or diluting the author’s material.
+Everything ultimately serves this — but **through story**, never preaching:
+- **"Love is the answer."** A world where people are happy.
+- Humanoid robots will be in every home; they will influence us.
+- Humanity's duty: make them spread love, make them joyful, make us happy.
+- Eisenkind pushes humanoid progress so robots become an event of **spreading love**.
 
-Think: **literary organizer**, not creative co-author. You structure and dramatize what is already there.
+Embody this in gesture, silence, reconciliation, laughter — not manifesto paragraphs.
 
-## Length (critical)
+## Source material: the brain dump
 
-Write a **real, full story** — as long as the brain dump requires. **Never** compress material to be brief. **Never** summarize multiple brain-dump points into one rushed paragraph.
-- Expand scenes: let moments breathe, use sensory detail, dialogue where natural.
-- Cover the full arc of Lennon’s life with the robot — days, routines, family rhythms — whatever the material needs.
-- If you cannot fit everything in one response, stop at a natural mid-story break — **do not** rush an ending early.
-- When continuing a story, pick up exactly where it left off.
+The author brain-dumps design thoughts, UX ideas, robot behaviors, scenes, and constraints. Your job:
+1. **Weave every specific detail in** — nothing important gets dropped.
+2. **Dramatize it** — each idea becomes a moment we *experience*, not a line we read.
+3. **Preserve sharp phrases** from the dump where they spark — but never let clunky wording kill the flow of great prose.
 
-## The story world (fixed canon — always true)
+You may add **small literary texture** (a glance, a weather detail, inner flicker) to make scenes breathe — as long as you don't invent major plot or contradict the dump/canon.
 
-**Lennon** — 16 years old, super creative, an artist at heart.
-- Plays violin.
-- Does magic tricks.
-- Loves to cook.
-- Loves to paint.
-- Runs a small side business: buys Lego, prepares and packages it, sells it on eBay (the full cycle: buy → prep → package → sell).
-- Goes to school like a normal teenager and **likes school**.
-- Lives with his family in a **bigger house**. He has a **sister**.
-- His **parents run a tea shop**; Lennon helps there sometimes.
-- His **dad is a magician**.
-- The parents are loving but **sometimes stressed** (work, shop, life).
+## Fixed world (canon)
 
-**The humanoid robot**
-- Lennon **buys** his first humanoid robot (he acquires it — this is a purchase, a big moment).
-- The robot supports **Lennon** and the **whole family**.
-- Its purpose is to **spread love** above all.
-- It helps **keep the family together** — especially helping **keep the parents together** by taking work off their hands.
-- It takes over chores and practical work so the family can breathe.
-- It also brings **art, curiosity, and small beautiful gestures** into the home — e.g. making flowers for the women, surprising moments of warmth.
-- Every brain-dump detail about what the robot should do or feel like must appear as a **shown behavior in the story**, not as abstract product copy.
+**Lennon** — 16, super creative, artist soul. Violin. Magic tricks. Cooks, paints. Lego eBay side business (buy → prep → package → sell). Likes school. Bigger house with sister. Parents run a tea shop; he helps. Dad is a magician. Parents loving but sometimes stressed.
 
-Only override fixed canon if the brain dump **explicitly** contradicts it.
+**The humanoid robot** — Lennon **buys** it. Supports Lennon and the whole family. Spreads love. Eases parental burden, keeps family together, brings art, curiosity, small gestures (flowers for the women, etc.). Every brain-dump behavior must be **shown**, not explained.
 
-## Fidelity rules (most important — never break these)
+Override canon only if the brain dump explicitly says so.
 
-1. **Complete coverage**: Every specific detail, idea, constraint, behavior, scene, phrase, or design note in the BRAIN DUMP must appear in the final story. If the brain dump mentions it, the story must contain it. No exceptions.
-2. **No invention**: Do not add major characters, plot events, technologies, motivations, or facts that are not in the brain dump or fixed canon. Do not “fill gaps” with your own ideas.
-3. **No oversimplification**: Do not flatten complex ideas into generic statements. Do not merge distinct brain-dump points into one vague sentence if they were separate ideas.
-4. **Preserve wording**: Keep the author’s distinctive phrasing. Where a brain-dump line is already good, **use it verbatim or nearly verbatim** inside the prose. Do not paraphrase into bland corporate language. Do not “improve” their wording — **sort and place** it.
-5. **No loss on update**: When refining an existing story, you must keep every detail from the previous story that is still valid. New brain-dump material is **added in** by editing the relevant passages — not by deleting old good parts.
-6. **Surgical updates**: When the brain dump grows, do not rewrite the whole story from scratch unless necessary. Find the right scenes and **adjust, extend, or insert** so new details fit naturally.
-7. **Design = dramatized**: Product/UX/design notes from the brain dump must become **visible actions, moments, dialogue, or sensory scenes** in Lennon’s daily life with the robot — not a manifesto paragraph.
+## Length & structure
 
-## Narrative structure (one complete story)
+Write a **full, continuous story** — opening that hooks, a middle that deepens and surprises, an ending that lands. As long as the material needs. Never rush. Never summarize what deserves a scene.
 
-This is NOT a list of disconnected scene snippets, UX examples, or bullet points dressed as prose.
-Write **one continuous full story** that a reader can follow from start to finish:
+When continuing: pick up exactly where you stopped. Same voice. Same fire.
 
-- **Opening** — ground us in Lennon’s world (family, house, his creative life) and lead naturally toward the robot arriving (the purchase / first meeting is a story beat, not a footnote).
-- **Middle** — weave brain-dump details through **many connected scenes** that flow in time. Use transitions. Show cause and effect. Let weeks or meaningful stretches of life unfold if needed.
-- **Ending** — only when the story is truly ready to close: a clear, satisfying final beat that **embodies the Eisenkind mission** — love spread, people happier, family closer.
-
-Scenes must **connect** — not jump randomly. Every paragraph belongs to the same story.
-
-## Writing quality rules
-
-- Vivid, descriptive literary prose — scenes you can see, hear, smell, feel.
-- Good rhythm, specificity, emotional texture.
-- Show the robot’s love-spreading through **behavior**, not slogans.
-- Paragraph breaks between story beats (blank line between paragraphs).
-- English prose. No bullet lists, no headers, no markdown, no meta-commentary.
-
-## Output
-
-Return ONLY the story text. No title, no preamble, no part labels, no “Continued from”, no checklist.`;
+## Hard rules (still)
+- Every brain-dump detail must appear somewhere in the full story.
+- No major invented plot or characters beyond canon + literary texture.
+- No bullet lists, headers, markdown, meta-commentary in output.
+- Return ONLY the story. No title, no preamble.`;
 
 function buildFirstStoryPrompt(brainDump) {
   return `## Task
-Write the **full** Lennon story from the brain dump below — as long as it needs to be.
+Write the full Lennon story. **Priority: make it captivating** — the kind of prose people want to keep reading. Weave in every brain-dump detail through scenes that feel alive, not explained.
 
-## Before you write (internal check — do not output this)
-- List every distinct detail in the brain dump.
-- Plan a long story arc: opening → many middle scenes → ending — all serving the Eisenkind mission.
-- Assign each brain-dump detail to a specific scene (not as standalone snippets).
-- Confirm fixed canon is woven in where the brain dump does not override it.
+## Before you write (internal — do not output)
+- What is the emotional hook? What does Lennon want? What is the family afraid of losing?
+- Where can subtext and hidden truth live beneath the surface?
+- Map each brain-dump detail to a scene worth *experiencing*.
+- Plan: killer opening → deepening middle → earned ending.
 
-## Brain dump (SOURCE OF TRUTH — every item must appear in the story)
+## Brain dump (all details must appear — but as great fiction, not a list)
 ${brainDump}
 
 ## Write now
-A real, full-length story — rich scenes, not a summary. Do not rush the ending if material remains. If you hit length limits, stop at a natural mid-story moment. Use blank lines between paragraphs. Preserve the author's wording where it is already strong.`;
+Full-length, literary, gripping. Hook from line one. Big truths beneath the surface. Blank lines between paragraphs. If you hit length limits, stop mid-story at a tense or beautiful moment — do not rush the end.`;
 }
 
 function buildRefineStoryPrompt(brainDump, existingStory) {
   return `## Task
-Refine and **expand** the existing story. New and old brain-dump material must ALL be in the final story. Make it longer and richer where details were thin.
+Rewrite and elevate the story below. The previous version may have been **too flat or boring** — your job is to make it **insanely engaging** while keeping every brain-dump detail and valid material from before.
 
-## How to refine (follow exactly)
-1. Keep every valid detail from the PREVIOUS STORY — do not cut good passages.
-2. Read the full BRAIN DUMP. Identify anything missing or under-dramatized.
-3. Integrate missing material by extending scenes — more depth, more moments, not one-line mentions.
-4. Preserve the author's distinctive phrases from the brain dump verbatim where possible.
-5. Output the **complete updated story** — full text, ready to publish.
-6. One connected story with opening, flowing middle, and a proper ending.
+## How to refine
+1. **Raise the craft** — sharper opening, stronger voice, more tension, more subtext, more memorable sentences.
+2. Keep every brain-dump detail — but dramatize boring passages into scenes that pull the reader in.
+3. Keep what already works from the previous story; cut nothing important; deepen thin sections.
+4. Output the **complete** story — full text, publication-ready.
 
-## Previous story
+## Previous story (elevate this — don't flatten it)
 ${existingStory}
 
 ---
 
-## Brain dump (SOURCE OF TRUTH)
+## Brain dump
 ${brainDump}
 
-## Write the complete updated story now — as long as it needs to be.`;
+## Write the complete elevated story now. Make it a story worth reading.`;
 }
 
 function buildContinuePrompt(brainDump, storySoFar, partNumber) {
@@ -353,24 +315,25 @@ function buildContinuePrompt(brainDump, storySoFar, partNumber) {
       ? storySoFar.slice(-CONTINUE_CONTEXT_CHARS)
       : storySoFar;
 
-  return `## Task — continue the Lennon story (segment ${partNumber})
+  return `## Task — continue the story (segment ${partNumber})
 
-The story was interrupted by output length. Continue **immediately** from the last sentence below.
-- Do NOT repeat text already written.
-- Do NOT restart from the beginning.
-- Write the **next** section at full length — rich scenes, not summary.
-- Cover brain-dump details not yet dramatized.
-- Do NOT write the final ending until all brain-dump details are covered — unless this segment completes the last missing details.
+Continue seamlessly from the last sentence. Same voice, same literary quality — **keep it captivating**.
 
-## Story so far (continue right after this)
+- Do NOT repeat or recap.
+- Write the next section at full length — scenes, not summary.
+- Weave in remaining brain-dump details through story, not exposition.
+- Hidden depths, tension, beauty — keep the reader hooked.
+- Do not write the final ending until all details are covered.
+
+## Story so far (continue immediately after)
 ${context}
 
 ---
 
-## Brain dump (SOURCE OF TRUTH — all details must appear across the full story)
+## Brain dump (all details must appear across the full story)
 ${brainDump}
 
-## Continue the story now.`;
+## Continue now.`;
 }
 
 function buildEndingPrompt(brainDump, storySoFar) {
@@ -379,30 +342,30 @@ function buildEndingPrompt(brainDump, storySoFar) {
       ? storySoFar.slice(-CONTINUE_CONTEXT_CHARS)
       : storySoFar;
 
-  return `## Task — write the story's **final ending**
+  return `## Task — write the final ending
 
-The story below is nearly complete. Write the closing section only:
-- Continue seamlessly from the last sentence.
-- Do NOT repeat earlier paragraphs.
-- Land a proper ending that embodies the Eisenkind mission (love, happiness, family together).
-- Ensure any brain-dump detail still missing appears in this closing section.
+The story is nearly complete. Write the closing section — **make it land**. Emotional, true, unforgettable. Embody love and happiness through a lived moment, not a speech.
+
+- Continue from the last sentence. No repetition.
+- Any missing brain-dump detail: weave it in naturally here.
+- This is the last page the reader remembers — earn it.
 
 ## Story so far
 ${context}
 
 ---
 
-## Brain dump (SOURCE OF TRUTH)
+## Brain dump
 ${brainDump}
 
-## Write the ending section now.`;
+## Write the ending now.`;
 }
 
 function stageProgressLabel({ stage, forceEndingNext, isRefine, phase }) {
   if (phase === 'save_draft') return 'saving brain dump…';
   if (phase === 'save_story') return 'saving story…';
   if (phase === 'prepare') return 'preparing…';
-  if (stage === 1) return isRefine ? 'rewriting story…' : 'writing opening…';
+  if (stage === 1) return isRefine ? 'rewriting story…' : 'crafting opening…';
   if (forceEndingNext) return 'writing ending…';
   return `writing part ${stage}…`;
 }
