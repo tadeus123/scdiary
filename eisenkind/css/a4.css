@@ -496,7 +496,9 @@
   z-index: 1;
   width: max(0.75rem, calc((100vw - min(210mm, calc(100vw - 2.5rem))) / 2));
   cursor: pointer;
-  background: rgba(26, 26, 26, 0.28);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(26, 26, 26, 0.2);
 }
 
 .eisenkind-overlay-side:first-of-type {
@@ -508,7 +510,7 @@
 }
 
 [data-theme="dark"] .eisenkind-overlay-side {
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.45);
 }
 
 .eisenkind-overlay-center {
@@ -710,5 +712,10 @@ body.eisenkind-overlay-open {
 @media (prefers-reduced-motion: reduce) {
   .eisenkind-overlay-close {
     transition: none;
+  }
+
+  .eisenkind-overlay-side {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
