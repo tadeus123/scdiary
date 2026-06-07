@@ -11,7 +11,7 @@ const {
   updateEisenkindNotes,
   isConfigured
 } = require('../db/supabase');
-const { generateEisenkindStory } = require('../services/eisenkind-story');
+const { generateEisenkindStory, runStoryStep } = require('../services/eisenkind-story');
 
 // Admin password (in production, use environment variable)
 // WARNING: Never hardcode passwords in production!
@@ -177,6 +177,94 @@ router.put('/eisenkind/notes', isAuthenticated, async (req, res) => {
   }
 });
 
+router.post('/eisenkind/generate-story/step', isAuthenticated, async (req, res) => {
+  if (!isConfigured()) {
+    return res.status(503).json({
+      error:
+        'Supabase is not configured on the server. Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel environment variables.'
+    });
+  }
+
+  try {
+    const {
+      action,
+      brain_dump,
+      headline,
+      beat_sheet,
+      story_so_far,
+      stage,
+      force_ending,
+      existing_story
+    } = req.body;
+
+    if (!action || !['plan', 'write'].includes(action)) {
+      return res.status(400).json({ error: 'action must be "plan" or "write"' });
+    }
+
+    const notes = await getEisenkindNotes();
+    const brainDump =
+      typeof brain_dump === 'string' ? brain_dump : notes.brain_dump;
+
+    if (typeof brain_dump === 'string' || typeof headline === 'string') {
+      const saveDraft = await updateEisenkindNotes({
+        brain_dump: typeof brain_dump === 'string' ? brain_dump : undefined,
+        headline: typeof headline === 'string' ? headline : undefined
+      });
+      if (!saveDraft.success) {
+        return res.status(500).json({ error: saveDraft.error || 'Failed to save brain dump' });
+      }
+    }
+
+    const step = await runStoryStep({
+      action,
+      brainDump,
+      existingStory: typeof existing_story === 'string' ? existing_story : '',
+      beatSheet: typeof beat_sheet === 'string' ? beat_sheet : '',
+      storySoFar: typeof story_so_far === 'string' ? story_so_far : '',
+      stage: typeof stage === 'number' ? stage : 1,
+      forceEndingNext: Boolean(force_ending)
+    });
+
+    if (!step.success) {
+      return res.status(500).json({ error: step.error || 'Story step failed' });
+    }
+
+    if (action === 'write' && step.story) {
+      const saved = await updateEisenkindNotes({
+        story: step.story,
+        story_updated_at: step.done ? new Date().toISOString() : notes.story_updated_at
+      });
+      if (!saved.success) {
+        return res.status(500).json({ error: saved.error || 'Failed to save story' });
+      }
+
+      return res.json({
+        success: true,
+        done: step.done,
+        notes: saved.notes,
+        beatSheet: step.beatSheet,
+        story: step.story,
+        stage: step.stage,
+        forceEndingNext: step.forceEndingNext,
+        label: step.label,
+        percent: step.done ? 100 : step.percent,
+        storyChars: step.storyChars
+      });
+    }
+
+    res.json({
+      success: true,
+      done: false,
+      beatSheet: step.beatSheet,
+      label: step.label,
+      percent: step.percent
+    });
+  } catch (error) {
+    console.error('Eisenkind story step error:', error);
+    res.status(500).json({ error: error.message || 'Story step failed' });
+  }
+});
+
 router.post('/eisenkind/generate-story', isAuthenticated, async (req, res) => {
   if (!isConfigured()) {
     return res.status(503).json({
@@ -185,6 +273,7 @@ router.post('/eisenkind/generate-story', isAuthenticated, async (req, res) => {
     });
   }
 
+  try {
   const useStream = req.query.stream === '1';
   const startedAt = Date.now();
   const notes = await getEisenkindNotes();
@@ -273,6 +362,17 @@ router.post('/eisenkind/generate-story', isAuthenticated, async (req, res) => {
   }
 
   res.json({ success: true, notes: saved.notes });
+  } catch (error) {
+    console.error('Eisenkind generate-story stream error:', error);
+    const useStream = req.query.stream === '1';
+    if (useStream && !res.headersSent) {
+      res.write(`${JSON.stringify({ type: 'error', error: error.message || 'Story generation failed' })}\n`);
+      return res.end();
+    }
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message || 'Story generation failed' });
+    }
+  }
 });
 
 module.exports = router;

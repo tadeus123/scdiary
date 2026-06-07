@@ -549,4 +549,129 @@ async function generateEisenkindStory({ brainDump, existingStory, onProgress }) 
   }
 }
 
-module.exports = { generateEisenkindStory };
+/** One step per HTTP request — avoids serverless timeouts on long stories. */
+async function runStoryStep({
+  action,
+  brainDump,
+  existingStory = '',
+  beatSheet = '',
+  storySoFar = '',
+  stage = 1,
+  forceEndingNext = false
+}) {
+  if (!OPENAI_API_KEY) {
+    return { success: false, error: 'OpenAI API key not configured. Set OPENAI_API_KEY.' };
+  }
+
+  const trimmedDump = (brainDump || '').trim();
+  if (!trimmedDump) {
+    return { success: false, error: 'Brain dump is empty. Add some notes first.' };
+  }
+
+  const fitted = fitPromptToBudget({
+    brainDump: trimmedDump,
+    existingStory: (existingStory || '').trim()
+  });
+
+  if (action === 'plan') {
+    const sheet = await generateBeatSheet(fitted.brainDump, fitted.existingStory || undefined);
+    return {
+      success: true,
+      action: 'plan',
+      beatSheet: sheet,
+      done: false,
+      label: stageProgressLabel({ phase: 'plan', stage: 1 }),
+      percent: stageProgressPercent({ phase: 'plan', stage: 1 })
+    };
+  }
+
+  if (action !== 'write') {
+    return { success: false, error: 'Unknown story step action.' };
+  }
+
+  const priorStory = storySoFar.trim();
+  const isRefine = Boolean(fitted.existingStory) && stage === 1 && !priorStory;
+  let story = priorStory;
+  const sheet = beatSheet || '';
+
+  const writeCallOptions = {
+    temperature: 0.76,
+    frequencyPenalty: 0.14,
+    presencePenalty: 0.1
+  };
+  const continueCallOptions = {
+    temperature: 0.68,
+    frequencyPenalty: 0.1,
+    presencePenalty: 0.06
+  };
+
+  let userPrompt;
+  let callOptions = writeCallOptions;
+
+  if (stage === 1 && !forceEndingNext) {
+    userPrompt = isRefine
+      ? buildRefineStoryPrompt(fitted.brainDump, fitted.existingStory, sheet)
+      : buildFirstStoryPrompt(fitted.brainDump, sheet);
+  } else if (forceEndingNext) {
+    userPrompt = buildEndingPrompt(fitted.brainDump, story, sheet);
+    callOptions = { ...writeCallOptions, temperature: 0.72 };
+  } else {
+    userPrompt = buildContinuePrompt(fitted.brainDump, story, stage, sheet);
+    callOptions = continueCallOptions;
+  }
+
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'user', content: userPrompt }
+  ];
+
+  const stageLabel = stageProgressLabel({ stage, forceEndingNext, isRefine, phase: 'writing' });
+  console.log(`📝 Eisenkind story step: stage ${stage}, ending=${forceEndingNext}`);
+
+  const result = await completeEisenkindStoryCall(messages, callOptions);
+  if (!result.success) return result;
+
+  story = stage === 1 && !priorStory ? result.story : mergeStoryContinuation(priorStory, result.story);
+
+  let nextStage = stage;
+  let nextForceEnding = forceEndingNext;
+  let done = false;
+
+  if (
+    shouldContinueWriting({
+      finishReason: result.finishReason,
+      story,
+      brainDump: fitted.brainDump,
+      stage,
+      forceEndingNext
+    })
+  ) {
+    nextStage = stage + 1;
+  } else if (!forceEndingNext && storyLikelyNeedsEnding(story, stage) && stage < MAX_STORY_STAGES) {
+    nextStage = stage + 1;
+    nextForceEnding = true;
+  } else {
+    done = true;
+  }
+
+  return {
+    success: true,
+    action: 'write',
+    story,
+    beatSheet: sheet,
+    stage: nextStage,
+    forceEndingNext: nextForceEnding,
+    done,
+    storyChars: story.length,
+    label: stageLabel,
+    percent: stageProgressPercent({
+      phase: 'writing',
+      stage,
+      stageComplete: true,
+      maxStages: MAX_STORY_STAGES
+    }),
+    model: result.model
+  };
+}
+
+module.exports = { generateEisenkindStory, runStoryStep };

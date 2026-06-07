@@ -93,66 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
     progressTimer = null;
   }
 
-  function handleStreamEvent(event) {
-    if (event.type === 'progress') {
-      lastProgressLabel = event.label || lastProgressLabel;
-      updateGenerationProgress(event.percent, lastProgressLabel, event.elapsedMs);
-      return null;
-    }
-
-    if (event.type === 'complete') {
-      updateGenerationProgress(100, 'done', event.elapsedMs);
-      return event;
-    }
-
-    if (event.type === 'error') {
-      throw new Error(event.error || 'Story generation failed');
-    }
-
-    return null;
-  }
-
-  async function readStreamResponse(response) {
-    if (!response.body) {
-      throw new Error('Streaming not supported in this browser.');
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let completeEvent = null;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        const event = JSON.parse(trimmed);
-        const result = handleStreamEvent(event);
-        if (result?.type === 'complete') completeEvent = result;
-      }
-    }
-
-    const tail = buffer.trim();
-    if (tail) {
-      const event = JSON.parse(tail);
-      const result = handleStreamEvent(event);
-      if (result?.type === 'complete') completeEvent = result;
-    }
-
-    if (!completeEvent) {
-      throw new Error('Story generation ended without a result.');
-    }
-
-    return completeEvent;
-  }
-
   function setStatus(text, kind) {
     statusEl.textContent = text;
     statusEl.dataset.kind = kind || '';
@@ -190,8 +130,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  async function postStoryStep(body) {
+    const response = await fetch('/admin/eisenkind/generate-story/step', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || `Step failed (${response.status})`);
+    }
+
+    return data;
+  }
+
+  async function tryRecoverSavedStory() {
+    try {
+      const response = await fetch('/api/eisenkind/notes');
+      const data = await response.json();
+      if (data.success && typeof data.story === 'string' && data.story.trim()) {
+        return data;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+
   async function saveDraft() {
-    if (saving) return;
+    if (saving || generating) return;
     saving = true;
     setStatus('saving…', 'pending');
 
@@ -244,41 +212,75 @@ document.addEventListener('DOMContentLoaded', () => {
     updateGenerationProgress(0, 'starting…', 0);
     startProgressClock();
 
+    const existingStoryForRefine = story.trim();
+    let beatSheet = '';
+    let storySoFar = '';
+    let stage = 1;
+    let forceEnding = false;
     let succeeded = false;
 
     try {
-      const response = await fetch('/admin/eisenkind/generate-story?stream=1', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          headline: headlineInput.value,
-          brain_dump: brainDumpInput.value
-        })
+      const plan = await postStoryStep({
+        action: 'plan',
+        headline: headlineInput.value,
+        brain_dump: brainDumpInput.value
       });
 
-      if (!response.ok && response.headers.get('content-type')?.includes('application/json')) {
-        const data = await response.json();
-        throw new Error(data.error || `Generation failed (${response.status})`);
+      beatSheet = plan.beatSheet || '';
+      updateGenerationProgress(plan.percent || 8, plan.label || 'planning story arc…', Date.now() - generationStartedAt);
+
+      while (true) {
+        const step = await postStoryStep({
+          action: 'write',
+          headline: headlineInput.value,
+          brain_dump: brainDumpInput.value,
+          beat_sheet: beatSheet,
+          story_so_far: storySoFar,
+          stage,
+          force_ending: forceEnding,
+          existing_story: stage === 1 && !storySoFar ? existingStoryForRefine : ''
+        });
+
+        storySoFar = step.story || storySoFar;
+        updateGenerationProgress(
+          step.percent || Number(progressTrack.getAttribute('aria-valuenow') || 0),
+          step.label || lastProgressLabel,
+          Date.now() - generationStartedAt
+        );
+
+        if (step.done) {
+          story = step.notes?.story || storySoFar;
+          storyUpdatedAt = step.notes?.story_updated_at || null;
+          renderStoryPreview(story);
+          succeeded = true;
+          updateGenerationProgress(100, 'done', Date.now() - generationStartedAt);
+          setStatus('story updated', 'ok');
+          window.setTimeout(() => {
+            if (statusEl.dataset.kind === 'ok') setStatus('');
+          }, 3000);
+          break;
+        }
+
+        stage = step.stage || stage + 1;
+        forceEnding = Boolean(step.forceEndingNext);
       }
-
-      if (!response.ok) {
-        throw new Error(`Generation failed (${response.status})`);
-      }
-
-      const data = await readStreamResponse(response);
-      succeeded = true;
-
-      story = data.notes?.story || '';
-      storyUpdatedAt = data.notes?.story_updated_at || null;
-      renderStoryPreview(story);
-      setStatus('story updated', 'ok');
-      window.setTimeout(() => {
-        if (statusEl.dataset.kind === 'ok') setStatus('');
-      }, 3000);
     } catch (error) {
       console.error('Error generating eisenkind story:', error);
-      const msg = error.message || 'generation failed';
-      setStatus(msg.length > 100 ? `${msg.slice(0, 97)}…` : msg, 'error');
+
+      const recovered = await tryRecoverSavedStory();
+      if (recovered?.story?.trim()) {
+        story = recovered.story;
+        storyUpdatedAt = recovered.story_updated_at || null;
+        renderStoryPreview(story);
+        setStatus('interrupted — partial story recovered. Run generate again to continue.', 'error');
+      } else {
+        const msg = error.message || 'generation failed';
+        const friendly =
+          /failed to fetch|network|suspended/i.test(msg)
+            ? 'connection lost — keep this tab open and try again'
+            : msg;
+        setStatus(friendly.length > 100 ? `${friendly.slice(0, 97)}…` : friendly, 'error');
+      }
     } finally {
       generating = false;
       generateBtn.disabled = false;
