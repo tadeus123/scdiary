@@ -35,25 +35,7 @@
   gap: clamp(1.1rem, 3vw, 1.5rem);
 }
 
-/* Story text — diary-style paragraphs (public + admin preview) */
-.eisenkind-story-content,
-.eisenkind-story {
-  text-align: left;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(1rem, 2vw + 0.85rem, 1.05rem);
-  line-height: 1.9;
-  text-wrap: pretty;
-}
-
-.eisenkind-story-content p,
-.eisenkind-story-paragraph {
-  margin: 0 0 1.2rem;
-}
-
-.eisenkind-story-content p:last-child,
-.eisenkind-story-paragraph:last-child {
-  margin-bottom: 0;
-}
+/* Story text uses .body from style.css (same as main Eisenkind page) */
 
 /* Admin brain dump + story sections */
 .eisenkind-section-header {
@@ -462,14 +444,12 @@
 
 .eisenkind-admin-preview {
   width: 100%;
-  margin: 0;
-  padding: clamp(1.5rem, 4vw, 2rem) clamp(1.25rem, 3.5vw, 1.75rem);
+  max-width: 640px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 2rem) max(1.25rem, env(safe-area-inset-right)) clamp(1.5rem, 4vw, 2rem) max(1.25rem, env(safe-area-inset-left));
   background-color: var(--a4-bg);
   color: var(--a4-text);
-  box-shadow:
-    0 4px 24px rgba(26, 26, 26, 0.12),
-    0 0 0 1px rgba(26, 26, 26, 0.06);
-  border-radius: 4px;
+  font-family: Georgia, "Times New Roman", serif;
 }
 
 .eisenkind-a4-input::placeholder {
@@ -494,7 +474,7 @@
   top: 0;
   bottom: 0;
   z-index: 1;
-  width: max(0.75rem, calc((100vw - min(210mm, calc(100vw - 2.5rem))) / 2));
+  width: max(0.75rem, calc((100vw - min(640px, calc(100vw - 2.5rem))) / 2));
   cursor: pointer;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -516,18 +496,17 @@
 .eisenkind-overlay-center {
   position: relative;
   z-index: 2;
-  width: min(210mm, calc(100vw - 2.5rem));
+  width: min(640px, calc(100vw - 2.5rem));
   max-height: 100dvh;
   margin: 0 auto;
   padding:
-    clamp(2.5rem, 6vw, 3rem)
-    clamp(1.25rem, 3.5vw, 2rem)
-    clamp(2rem, 5vw, 3rem);
+    calc(clamp(2.5rem, 6vw, 3rem) + env(safe-area-inset-top))
+    max(1.25rem, env(safe-area-inset-right))
+    calc(clamp(2rem, 5vw, 3rem) + env(safe-area-inset-bottom))
+    max(1.25rem, env(safe-area-inset-left));
   background-color: var(--a4-bg);
   color: var(--a4-text);
-  box-shadow:
-    0 4px 24px rgba(26, 26, 26, 0.12),
-    0 0 0 1px rgba(26, 26, 26, 0.06);
+  font-family: Georgia, "Times New Roman", serif;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -679,37 +658,23 @@ body.eisenkind-overlay-open {
 
 @media (max-width: 768px) {
   .eisenkind-overlay-side {
-    width: max(0.5rem, calc((100vw - min(210mm, calc(100vw - 3rem))) / 2));
+    width: max(0.5rem, calc((100vw - min(640px, calc(100vw - 3rem))) / 2));
   }
 
   .eisenkind-overlay-center {
-    width: min(210mm, calc(100vw - 3rem));
+    width: min(640px, calc(100vw - 3rem));
     padding-left: max(1rem, env(safe-area-inset-left));
     padding-right: max(1rem, env(safe-area-inset-right));
-  }
-
-  .eisenkind-story-content,
-  .eisenkind-story {
-    font-size: 1rem;
-    line-height: 1.85;
-  }
-
-  .eisenkind-story-content p,
-  .eisenkind-story-paragraph {
-    margin-bottom: 1.1rem;
   }
 }
 
 @media (max-width: 480px) {
   .eisenkind-overlay-center {
-    width: min(210mm, calc(100vw - 2.75rem));
-    padding: 2.5rem 1rem 2rem;
-  }
-
-  .eisenkind-story-content,
-  .eisenkind-story {
-    font-size: 0.98rem;
-    line-height: 1.8;
+    width: min(640px, calc(100vw - 2rem));
+    padding-top: calc(2.5rem + env(safe-area-inset-top));
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom));
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
   }
 }
 
