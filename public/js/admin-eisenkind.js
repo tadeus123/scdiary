@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (!storyInput || !storyPreview || !saveBtn || !statusEl) return;
 
-  let saveTimer = null;
   let saving = false;
 
   function setStatus(text, kind) {
@@ -63,25 +62,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function scheduleSave() {
-    window.clearTimeout(saveTimer);
-    saveTimer = window.setTimeout(saveStory, 1200);
-  }
-
   storyInput.addEventListener('input', () => {
     renderPreview(storyInput.value);
-    scheduleSave();
   });
 
-  storyInput.addEventListener('blur', () => {
-    window.clearTimeout(saveTimer);
-    saveStory();
-  });
-
-  saveBtn.addEventListener('click', () => {
-    window.clearTimeout(saveTimer);
-    saveStory();
-  });
+  saveBtn.addEventListener('click', saveStory);
 
   renderPreview(storyInput.value);
 });
