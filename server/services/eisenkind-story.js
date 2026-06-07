@@ -232,6 +232,23 @@ This is NOT a product document dressed as fiction. NOT competent prose. NOT a ch
 
 If you must choose between a flat sentence that ticks a box and a vivid scene that carries the same idea — **always choose vivid**.
 
+## Emotional truth (non-negotiable — this must move the reader)
+
+The story must be **truly emotional** — not sentimental on the surface, but **earned** in the gut. The reader should laugh, ache, and cry. All of it real.
+
+### Make them feel everything
+- **Tears of joy** — moments so full of love, relief, or beauty that the chest tightens: parents softening, a small reconciliation, the robot doing something unexpectedly perfect, Lennon seen and understood, the family whole again for a breath.
+- **Tears of sadness** — the cost of stress, almost-lost connection, loneliness before the robot, fear of change, a parent breaking down quietly, Lennon trying to hold too much. Let grief have room. Don't rush past it to get to the happy robot.
+- **Stupid, warm humor** — the ridiculous truth of living with robots: literal misunderstandings, over-helpfulness gone wrong, a humanoid trying too hard, physical comedy that isn't mean, family laughing until they cry at something that shouldn't be that funny. Humor makes the love land harder.
+
+### How to do emotion right
+- **Earn it** — emotion comes from specific moments, not adjectives. Show the dad's hands shaking. Show the sister rolling her eyes then secretly caring.
+- **Contrast** — joy hits harder after sadness; laughter after tension. Move through the full range across the story.
+- **Never cheesy** — no melodrama, no "and then everyone hugged" unless the scene truly earns it. Quiet devastation and quiet joy both count.
+- **The robot is funny AND holy** — it can be clumsy and sublime in the same week. That duality is human.
+
+If the reader finishes dry-eyed and unsmiling, you have failed — even if every brain-dump detail is present.
+
 ## Eisenkind mission (the soul beneath the plot)
 
 Everything ultimately serves this — but **through story**, never preaching:
@@ -277,15 +294,16 @@ Write the full Lennon story. **Priority: make it captivating** — the kind of p
 
 ## Before you write (internal — do not output)
 - What is the emotional hook? What does Lennon want? What is the family afraid of losing?
+- Where will the reader **laugh** (stupid robot moments)? Where will they **hurt**? Where will joy **break them open**?
 - Where can subtext and hidden truth live beneath the surface?
 - Map each brain-dump detail to a scene worth *experiencing*.
-- Plan: killer opening → deepening middle → earned ending.
+- Plan: killer opening → deepening middle with emotional range → earned ending that moves the reader.
 
 ## Brain dump (all details must appear — but as great fiction, not a list)
 ${brainDump}
 
 ## Write now
-Full-length, literary, gripping. Hook from line one. Big truths beneath the surface. Blank lines between paragraphs. If you hit length limits, stop mid-story at a tense or beautiful moment — do not rush the end.`;
+Full-length, literary, gripping — **truly emotional**. Joy that brings tears. Sadness that lands. Stupid robot humor that makes the family laugh. Hook from line one. Blank lines between paragraphs. If you hit length limits, stop mid-story at a tense or beautiful moment — do not rush the end.`;
 }
 
 function buildRefineStoryPrompt(brainDump, existingStory) {
@@ -293,10 +311,11 @@ function buildRefineStoryPrompt(brainDump, existingStory) {
 Rewrite and elevate the story below. The previous version may have been **too flat or boring** — your job is to make it **insanely engaging** while keeping every brain-dump detail and valid material from before.
 
 ## How to refine
-1. **Raise the craft** — sharper opening, stronger voice, more tension, more subtext, more memorable sentences.
-2. Keep every brain-dump detail — but dramatize boring passages into scenes that pull the reader in.
-3. Keep what already works from the previous story; cut nothing important; deepen thin sections.
-4. Output the **complete** story — full text, publication-ready.
+1. **Raise the craft AND the emotion** — sharper opening, stronger voice, more tension, more subtext, moments that make the reader laugh or cry.
+2. Add **robot absurdity** where flat — literal jokes, warm stupidity, physical comedy. Add **sadness** where rushed. Add **joy** where thin.
+3. Keep every brain-dump detail — dramatize boring passages into scenes that pull the reader in.
+4. Keep what already works; cut nothing important; deepen thin sections.
+5. Output the **complete** story — full text, publication-ready.
 
 ## Previous story (elevate this — don't flatten it)
 ${existingStory}
@@ -322,7 +341,7 @@ Continue seamlessly from the last sentence. Same voice, same literary quality �
 - Do NOT repeat or recap.
 - Write the next section at full length — scenes, not summary.
 - Weave in remaining brain-dump details through story, not exposition.
-- Hidden depths, tension, beauty — keep the reader hooked.
+- **Keep the emotional range alive** — stupid humor, quiet sadness, joy that hurts. Same voice. Same fire.
 - Do not write the final ending until all details are covered.
 
 ## Story so far (continue immediately after)
@@ -344,11 +363,11 @@ function buildEndingPrompt(brainDump, storySoFar) {
 
   return `## Task — write the final ending
 
-The story is nearly complete. Write the closing section — **make it land**. Emotional, true, unforgettable. Embody love and happiness through a lived moment, not a speech.
+The story is nearly complete. Write the closing section — **make it land in the chest**. Joy that could make someone cry. Emotional truth, not a speech. Embody love through a lived moment.
 
 - Continue from the last sentence. No repetition.
 - Any missing brain-dump detail: weave it in naturally here.
-- This is the last page the reader remembers — earn it.
+- This is the last page the reader remembers — earn it with feeling.
 
 ## Story so far
 ${context}
