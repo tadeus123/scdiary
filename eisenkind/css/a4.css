@@ -532,14 +532,25 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(193, 106, 40, 0.28) transparent;
 }
 
 .eisenkind-overlay-center::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
+  width: 4px;
+}
+
+.eisenkind-overlay-center::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.eisenkind-overlay-center::-webkit-scrollbar-thumb {
+  background: rgba(193, 106, 40, 0.22);
+  border-radius: 2px;
+}
+
+.eisenkind-overlay-center::-webkit-scrollbar-thumb:hover {
+  background: rgba(193, 106, 40, 0.38);
 }
 
 .eisenkind-overlay-close {
