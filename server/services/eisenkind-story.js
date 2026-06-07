@@ -2,14 +2,15 @@ require('dotenv').config();
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-/** Best-first chain; env override is tried first, then fallbacks. */
 const EISENKIND_MODEL_CHAIN = ['gpt-4.1', 'gpt-4o', 'gpt-4o-mini'];
 
 const OUTPUT_TOKEN_FLOOR = 2048;
 const OUTPUT_TOKEN_CEILING = 8192;
+const BEAT_SHEET_MAX_TOKENS = 1200;
 const TPM_BUDGET_TOKENS = 28000;
 const MAX_STORY_STAGES = 6;
-const CONTINUE_CONTEXT_CHARS = 14000;
+const CONTINUE_CONTEXT_CHARS = 12000;
+const OPENING_ANCHOR_CHARS = 3200;
 
 function estimateTokens(text) {
   return Math.ceil((text || '').length / 4);
@@ -31,7 +32,7 @@ ${trimmed.slice(-tailChars)}`;
 
 function fitPromptToBudget({ brainDump, existingStory }) {
   const systemTokens = estimateTokens(SYSTEM_PROMPT);
-  const templateOverhead = 800;
+  const templateOverhead = 900;
   const outputReserve = OUTPUT_TOKEN_CEILING;
   let budget = TPM_BUDGET_TOKENS - systemTokens - templateOverhead - outputReserve;
 
@@ -58,10 +59,10 @@ function fitPromptToBudget({ brainDump, existingStory }) {
   return { brainDump: dump, existingStory: story, trimmed };
 }
 
-function computeMaxOutputTokens(messages) {
+function computeMaxOutputTokens(messages, ceiling = OUTPUT_TOKEN_CEILING) {
   const inputTokens = messages.reduce((sum, message) => sum + estimateTokens(message.content), 0);
   const available = TPM_BUDGET_TOKENS - inputTokens - 300;
-  return Math.min(OUTPUT_TOKEN_CEILING, Math.max(OUTPUT_TOKEN_FLOOR, available));
+  return Math.min(ceiling, Math.max(OUTPUT_TOKEN_FLOOR, available));
 }
 
 function getEisenkindModelChain() {
@@ -108,6 +109,15 @@ function mergeStoryContinuation(existing, continuation) {
   return `${base}\n\n${next}`;
 }
 
+function buildStoryContextForContinue(storySoFar) {
+  const text = (storySoFar || '').trim();
+  if (text.length <= CONTINUE_CONTEXT_CHARS) return text;
+
+  const opening = text.slice(0, OPENING_ANCHOR_CHARS).trimEnd();
+  const recent = text.slice(-(CONTINUE_CONTEXT_CHARS - OPENING_ANCHOR_CHARS - 80)).trimStart();
+  return `${opening}\n\n[…story continues…]\n\n${recent}`;
+}
+
 function shouldContinueWriting({ finishReason, story, brainDump, stage, forceEndingNext }) {
   if (stage >= MAX_STORY_STAGES) return false;
   if (forceEndingNext) return false;
@@ -116,22 +126,32 @@ function shouldContinueWriting({ finishReason, story, brainDump, stage, forceEnd
   const dumpLen = (brainDump || '').length;
   const storyLen = (story || '').length;
 
-  if (dumpLen > 1200 && storyLen < dumpLen * 1.2 && stage < 3) return true;
-  if (dumpLen > 3000 && storyLen < dumpLen * 1.8 && stage < 4) return true;
+  if (dumpLen > 800 && storyLen < Math.max(3500, dumpLen * 1.4) && stage < 4) return true;
+  if (dumpLen > 2500 && storyLen < dumpLen * 2 && stage < 5) return true;
 
   return false;
 }
 
-function needsFinalEnding(story) {
+function storyLikelyNeedsEnding(story, stage) {
   const text = (story || '').trim();
-  if (text.length < 800) return true;
-  const tail = text.slice(-1200).toLowerCase();
-  return !/(finally|at last|that evening|that night|years later|the end|went to bed|goodnight|good night|held each other|together again|love is|happier|at peace)/.test(
-    tail
-  );
+  if (text.length < 1200) return true;
+  if (stage <= 1 && text.length > 2500) return true;
+
+  const tail = text.slice(-900);
+  const endsMidAction = /[,—–-]\s*$/.test(tail) || /\b(and|but|when|as|while)\s*$/.test(tail.toLowerCase());
+  if (endsMidAction) return true;
+
+  return text.length > 4500 && stage < MAX_STORY_STAGES;
 }
 
-async function requestStoryFromModel(model, messages, maxTokens) {
+async function requestStoryFromModel(model, messages, options = {}) {
+  const {
+    maxTokens = OUTPUT_TOKEN_CEILING,
+    temperature = 0.74,
+    frequencyPenalty = 0.12,
+    presencePenalty = 0.08
+  } = options;
+
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -141,8 +161,10 @@ async function requestStoryFromModel(model, messages, maxTokens) {
     body: JSON.stringify({
       model,
       messages,
-      temperature: 0.72,
-      max_tokens: maxTokens
+      temperature,
+      max_tokens: maxTokens,
+      frequency_penalty: frequencyPenalty,
+      presence_penalty: presencePenalty
     })
   });
 
@@ -167,9 +189,9 @@ async function requestStoryFromModel(model, messages, maxTokens) {
   };
 }
 
-async function completeEisenkindStoryCall(messages) {
+async function completeEisenkindStoryCall(messages, callOptions = {}) {
   const models = getEisenkindModelChain();
-  const maxTokens = computeMaxOutputTokens(messages);
+  const maxTokens = computeMaxOutputTokens(messages, callOptions.maxTokensCeiling);
   const tokenTiers = [maxTokens, Math.max(OUTPUT_TOKEN_FLOOR, Math.floor(maxTokens / 2))];
   let lastError = 'No OpenAI models available for Eisenkind story generation.';
 
@@ -178,7 +200,12 @@ async function completeEisenkindStoryCall(messages) {
 
     for (let tierIndex = 0; tierIndex < tokenTiers.length; tierIndex += 1) {
       const tokens = tokenTiers[tierIndex];
-      const result = await requestStoryFromModel(model, messages, tokens);
+      const result = await requestStoryFromModel(model, messages, {
+        maxTokens: tokens,
+        temperature: callOptions.temperature,
+        frequencyPenalty: callOptions.frequencyPenalty,
+        presencePenalty: callOptions.presencePenalty
+      });
 
       if (result.ok) {
         return {
@@ -211,194 +238,182 @@ async function completeEisenkindStoryCall(messages) {
   return { success: false, error: lastError };
 }
 
-const SYSTEM_PROMPT = `You are a master literary writer crafting the Lennon story for Eisenkind — humanoid robots that spread love.
+const SYSTEM_PROMPT = `You write the Lennon story for Eisenkind — fiction so good the reader forgets they're reading "content."
 
-## Your #1 job: make it insanely good to read
+WHEN RULES CONFLICT, obey this order:
+1. **Grip** — propulsive, literary, can't-put-down prose (Isaacson clarity + Asimov heart + real emotional truth)
+2. **Feeling** — joy that hurts, grief that lingers, warm stupid laughter at robot absurdity
+3. **Arc** — one story: hook → deepening life → earned ending
+4. **Brain dump** — every author detail appears inside scenes, never as a list
+5. **Canon & mission** — shown in gesture, never preached
 
-The reader must be **captivated**. Write at the level of the best storytellers — the propulsive clarity of a great biography (Isaacson on Jobs), the human wonder and depth of Asimov at his most alive, the pull of fiction you cannot put down. Every page should earn the next sentence.
+CRAFT:
+- Open mid-motion or mid-feeling. No throat-clearing.
+- Scene by scene: want, obstacle, choice, consequence. Let tea shops and Lego tables feel mythic because we care.
+- Subtext > explanation. Big truths hide under small actions.
+- Concrete senses always. Vary rhythm. Land lines that stick.
+- Dialogue sparse but alive when it appears.
 
-This is NOT a product document dressed as fiction. NOT competent prose. NOT a checklist of ideas translated into scenes.
+EMOTION (required range across the full story):
+- Tears of joy (relief, reunion, beauty, being seen)
+- Tears of sadness (stress, almost-loss, loneliness, parents breaking)
+- Stupid robot humor (literal, over-eager, physical, loving — family laughing until they cry)
 
-**Write a real story** — with voice, rhythm, surprise, ache, humor, and truth. Make us care about Lennon before we care about the robot. Make ordinary moments (tea shop, Lego table, violin case) feel **charged** with meaning.
+CANON: Lennon, 16, artist — violin, magic, cook, paint, Lego eBay (buy/prep/ship/sell), likes school, sister, bigger house, parents' tea shop (dad magician), parents stressed but loving. He **buys** a humanoid robot that supports the family, spreads love, lightens load, makes flowers, brings art and curiosity.
 
-### What "insanely good" means here
-- **Hook hard** — the opening lines must grab attention; no warm-up throat-clearing.
-- **Stakes & tension** — even quiet domestic life has want, fear, friction, longing. Parents under stress. A boy who sees too much. A purchase that changes everything.
-- **Big truths, hidden things** — let deeper themes emerge beneath action: what love costs, what machines might become, what families almost lose. Subtext over sermon. The reader should feel truths they can't fully name yet.
-- **Specific, sensory, alive** — smell the tea, hear the violin squeak on a bad note, feel the weight of a Lego box. Never generic.
-- **Rhythm & voice** — vary sentence length. Land memorable lines. Write like an author, not a summarizer.
-- **Wonder without cheese** — the robot can feel magical, but earned through character and detail, not adjectives.
-- **Earn the ending** — the final beat should hit like a bell: inevitable, moving, true.
+MISSION (embodied only): Love is the answer. Robots in every home must spread joy and love.
 
-If you must choose between a flat sentence that ticks a box and a vivid scene that carries the same idea — **always choose vivid**.
+NEVER: product copy, feature tours, generic adjectives, melodrama, recap paragraphs, markdown, meta notes.
 
-## Emotional truth (non-negotiable — this must move the reader)
+OUTPUT: Story prose only. Blank line between paragraphs.`;
 
-The story must be **truly emotional** — not sentimental on the surface, but **earned** in the gut. The reader should laugh, ache, and cry. All of it real.
+const BEAT_SHEET_SYSTEM = `You are a story architect. Output a beat sheet ONLY — not the story. Each beat is one vivid line: what happens + what we feel. 10–16 beats. Cover every brain-dump detail. Arc must include: hook, family strain, robot purchase/arrival, comedy, deepening bond, a low moment, lift, final image that moves the reader.`;
 
-### Make them feel everything
-- **Tears of joy** — moments so full of love, relief, or beauty that the chest tightens: parents softening, a small reconciliation, the robot doing something unexpectedly perfect, Lennon seen and understood, the family whole again for a breath.
-- **Tears of sadness** — the cost of stress, almost-lost connection, loneliness before the robot, fear of change, a parent breaking down quietly, Lennon trying to hold too much. Let grief have room. Don't rush past it to get to the happy robot.
-- **Stupid, warm humor** — the ridiculous truth of living with robots: literal misunderstandings, over-helpfulness gone wrong, a humanoid trying too hard, physical comedy that isn't mean, family laughing until they cry at something that shouldn't be that funny. Humor makes the love land harder.
+function buildBeatSheetPrompt(brainDump, existingStory) {
+  if (existingStory) {
+    return `Plan an elevated version of this story. Keep all valid material; make the arc more gripping and emotional.
 
-### How to do emotion right
-- **Earn it** — emotion comes from specific moments, not adjectives. Show the dad's hands shaking. Show the sister rolling her eyes then secretly caring.
-- **Contrast** — joy hits harder after sadness; laughter after tension. Move through the full range across the story.
-- **Never cheesy** — no melodrama, no "and then everyone hugged" unless the scene truly earns it. Quiet devastation and quiet joy both count.
-- **The robot is funny AND holy** — it can be clumsy and sublime in the same week. That duality is human.
+EXISTING STORY (for reference — do not rewrite, only plan):
+${existingStory.slice(0, 8000)}${existingStory.length > 8000 ? '\n[…truncated…]' : ''}
 
-If the reader finishes dry-eyed and unsmiling, you have failed — even if every brain-dump detail is present.
+BRAIN DUMP (every detail must map to a beat):
+${brainDump}
 
-## Eisenkind mission (the soul beneath the plot)
+Output the beat sheet now.`;
+  }
 
-Everything ultimately serves this — but **through story**, never preaching:
-- **"Love is the answer."** A world where people are happy.
-- Humanoid robots will be in every home; they will influence us.
-- Humanity's duty: make them spread love, make them joyful, make us happy.
-- Eisenkind pushes humanoid progress so robots become an event of **spreading love**.
+  return `Plan the full Lennon story from this brain dump.
 
-Embody this in gesture, silence, reconciliation, laughter — not manifesto paragraphs.
+BRAIN DUMP:
+${brainDump}
 
-## Source material: the brain dump
+Output the beat sheet now.`;
+}
 
-The author brain-dumps design thoughts, UX ideas, robot behaviors, scenes, and constraints. Your job:
-1. **Weave every specific detail in** — nothing important gets dropped.
-2. **Dramatize it** — each idea becomes a moment we *experience*, not a line we read.
-3. **Preserve sharp phrases** from the dump where they spark — but never let clunky wording kill the flow of great prose.
+function beatSheetBlock(beatSheet) {
+  if (!beatSheet?.trim()) return '';
+  return `## Story architecture (follow this arc — dramatize each beat fully)
+${beatSheet.trim()}
 
-You may add **small literary texture** (a glance, a weather detail, inner flicker) to make scenes breathe — as long as you don't invent major plot or contradict the dump/canon.
+`;
+}
 
-## Fixed world (canon)
+function buildFirstStoryPrompt(brainDump, beatSheet) {
+  return `${beatSheetBlock(beatSheet)}## Task
+Write the Lennon story. Make it **unputdownable** — literary, emotional, funny, true.
 
-**Lennon** — 16, super creative, artist soul. Violin. Magic tricks. Cooks, paints. Lego eBay side business (buy → prep → package → sell). Likes school. Bigger house with sister. Parents run a tea shop; he helps. Dad is a magician. Parents loving but sometimes stressed.
+Write beats 1–${beatSheet ? 'through mid-arc' : 'as far as depth allows'} in full scene-level prose. Do not summarize. If you cannot reach the ending yet, stop on a strong story beat — not a cliffhanger gimmick.
 
-**The humanoid robot** — Lennon **buys** it. Supports Lennon and the whole family. Spreads love. Eases parental burden, keeps family together, brings art, curiosity, small gestures (flowers for the women, etc.). Every brain-dump behavior must be **shown**, not explained.
-
-Override canon only if the brain dump explicitly says so.
-
-## Length & structure
-
-Write a **full, continuous story** — opening that hooks, a middle that deepens and surprises, an ending that lands. As long as the material needs. Never rush. Never summarize what deserves a scene.
-
-When continuing: pick up exactly where you stopped. Same voice. Same fire.
-
-## Hard rules (still)
-- Every brain-dump detail must appear somewhere in the full story.
-- No major invented plot or characters beyond canon + literary texture.
-- No bullet lists, headers, markdown, meta-commentary in output.
-- Return ONLY the story. No title, no preamble.`;
-
-function buildFirstStoryPrompt(brainDump) {
-  return `## Task
-Write the full Lennon story. **Priority: make it captivating** — the kind of prose people want to keep reading. Weave in every brain-dump detail through scenes that feel alive, not explained.
-
-## Before you write (internal — do not output)
-- What is the emotional hook? What does Lennon want? What is the family afraid of losing?
-- Where will the reader **laugh** (stupid robot moments)? Where will they **hurt**? Where will joy **break them open**?
-- Where can subtext and hidden truth live beneath the surface?
-- Map each brain-dump detail to a scene worth *experiencing*.
-- Plan: killer opening → deepening middle with emotional range → earned ending that moves the reader.
-
-## Brain dump (all details must appear — but as great fiction, not a list)
+## Brain dump (every detail must appear across the full story)
 ${brainDump}
 
 ## Write now
-Full-length, literary, gripping — **truly emotional**. Joy that brings tears. Sadness that lands. Stupid robot humor that makes the family laugh. Hook from line one. Blank lines between paragraphs. If you hit length limits, stop mid-story at a tense or beautiful moment — do not rush the end.`;
+Hook immediately. Laugh / ache / wonder in balance. Blank lines between paragraphs.`;
 }
 
-function buildRefineStoryPrompt(brainDump, existingStory) {
-  return `## Task
-Rewrite and elevate the story below. The previous version may have been **too flat or boring** — your job is to make it **insanely engaging** while keeping every brain-dump detail and valid material from before.
+function buildRefineStoryPrompt(brainDump, existingStory, beatSheet) {
+  return `${beatSheetBlock(beatSheet)}## Task
+Rewrite the story below into something **much more engaging** — same facts, higher craft, deeper feeling. The reader should cry, laugh, and keep turning pages.
 
-## How to refine
-1. **Raise the craft AND the emotion** — sharper opening, stronger voice, more tension, more subtext, moments that make the reader laugh or cry.
-2. Add **robot absurdity** where flat — literal jokes, warm stupidity, physical comedy. Add **sadness** where rushed. Add **joy** where thin.
-3. Keep every brain-dump detail — dramatize boring passages into scenes that pull the reader in.
-4. Keep what already works; cut nothing important; deepen thin sections.
-5. Output the **complete** story — full text, publication-ready.
+Elevate: voice, openings, pacing, subtext, robot comedy, family pain, final resonance. Keep every brain-dump detail and every good moment from before — but **never** stay boring where a scene could breathe.
 
-## Previous story (elevate this — don't flatten it)
+## Previous story
 ${existingStory}
-
----
 
 ## Brain dump
 ${brainDump}
 
-## Write the complete elevated story now. Make it a story worth reading.`;
+## Write the complete elevated story.`;
 }
 
-function buildContinuePrompt(brainDump, storySoFar, partNumber) {
-  const context =
-    storySoFar.length > CONTINUE_CONTEXT_CHARS
-      ? storySoFar.slice(-CONTINUE_CONTEXT_CHARS)
-      : storySoFar;
+function buildContinuePrompt(brainDump, storySoFar, partNumber, beatSheet) {
+  const context = buildStoryContextForContinue(storySoFar);
 
-  return `## Task — continue the story (segment ${partNumber})
+  return `${beatSheetBlock(beatSheet)}## Task — continue (segment ${partNumber})
 
-Continue seamlessly from the last sentence. Same voice, same literary quality — **keep it captivating**.
+Pick up **exactly** after the last sentence. Same voice as the opening. No recap.
 
-- Do NOT repeat or recap.
-- Write the next section at full length — scenes, not summary.
-- Weave in remaining brain-dump details through story, not exposition.
-- **Keep the emotional range alive** — stupid humor, quiet sadness, joy that hurts. Same voice. Same fire.
-- Do not write the final ending until all details are covered.
-
-## Story so far (continue immediately after)
-${context}
-
----
-
-## Brain dump (all details must appear across the full story)
-${brainDump}
-
-## Continue now.`;
-}
-
-function buildEndingPrompt(brainDump, storySoFar) {
-  const context =
-    storySoFar.length > CONTINUE_CONTEXT_CHARS
-      ? storySoFar.slice(-CONTINUE_CONTEXT_CHARS)
-      : storySoFar;
-
-  return `## Task — write the final ending
-
-The story is nearly complete. Write the closing section — **make it land in the chest**. Joy that could make someone cry. Emotional truth, not a speech. Embody love through a lived moment.
-
-- Continue from the last sentence. No repetition.
-- Any missing brain-dump detail: weave it in naturally here.
-- This is the last page the reader remembers — earn it with feeling.
+Write the next long section in full scenes. More emotion, more specificity, more stupid robot grace. Cover remaining brain-dump beats not yet dramatized. Do not end the story until those beats are lived — unless this segment reaches the final beats.
 
 ## Story so far
 ${context}
 
----
+## Brain dump
+${brainDump}
+
+## Continue.`;
+}
+
+function buildEndingPrompt(brainDump, storySoFar, beatSheet) {
+  const context = buildStoryContextForContinue(storySoFar);
+
+  return `${beatSheetBlock(beatSheet)}## Task — final ending
+
+Write the closing movement. Continue from the last sentence. Land emotion in the chest — joy, love, wholeness — through a **specific** final image, not a speech.
+
+Tie remaining brain-dump threads. This is the page the reader remembers.
+
+## Story so far
+${context}
 
 ## Brain dump
 ${brainDump}
 
-## Write the ending now.`;
+## Write the ending.`;
 }
 
 function stageProgressLabel({ stage, forceEndingNext, isRefine, phase }) {
+  if (phase === 'plan') return 'planning story arc…';
   if (phase === 'save_draft') return 'saving brain dump…';
   if (phase === 'save_story') return 'saving story…';
   if (phase === 'prepare') return 'preparing…';
-  if (stage === 1) return isRefine ? 'rewriting story…' : 'crafting opening…';
+  if (stage === 1) return isRefine ? 'rewriting story…' : 'writing opening…';
   if (forceEndingNext) return 'writing ending…';
   return `writing part ${stage}…`;
 }
 
 function stageProgressPercent({ phase, stage, maxStages, stageComplete }) {
   if (phase === 'prepare') return 2;
-  if (phase === 'save_draft') return 5;
+  if (phase === 'plan') return 6;
+  if (phase === 'save_draft') return 8;
   if (phase === 'save_story') return 96;
   if (phase === 'complete') return 100;
 
-  const base = 8;
-  const span = 84;
-  const ratio = stageComplete ? stage / maxStages : (stage - 1) / maxStages + 0.08;
+  const base = 10;
+  const span = 82;
+  const ratio = stageComplete ? stage / maxStages : (stage - 1) / maxStages + 0.06;
   return Math.min(94, Math.round(base + ratio * span));
+}
+
+async function generateBeatSheet(brainDump, existingStory, onProgress) {
+  const messages = [
+    { role: 'system', content: BEAT_SHEET_SYSTEM },
+    { role: 'user', content: buildBeatSheetPrompt(brainDump, existingStory) }
+  ];
+
+  if (onProgress) {
+    onProgress({
+      phase: 'plan',
+      stage: 1,
+      stageComplete: false,
+      label: stageProgressLabel({ phase: 'plan', stage: 1 }),
+      percent: stageProgressPercent({ phase: 'plan', stage: 1 })
+    });
+  }
+
+  const result = await completeEisenkindStoryCall(messages, {
+    maxTokensCeiling: BEAT_SHEET_MAX_TOKENS,
+    temperature: 0.45,
+    frequencyPenalty: 0,
+    presencePenalty: 0
+  });
+
+  if (!result.success) {
+    console.warn('⚠️ Beat sheet generation failed, continuing without plan:', result.error);
+    return '';
+  }
+
+  return result.story;
 }
 
 async function generateStoryInStages(brainDump, existingStory, onProgress) {
@@ -421,17 +436,34 @@ async function generateStoryInStages(brainDump, existingStory, onProgress) {
 
   report({ phase: 'prepare', stage: 1, stageComplete: false, label: stageProgressLabel({ phase: 'prepare', stage: 1 }) });
 
+  const beatSheet = await generateBeatSheet(brainDump, existingStory, report);
+
+  const writeCallOptions = {
+    temperature: 0.76,
+    frequencyPenalty: 0.14,
+    presencePenalty: 0.1
+  };
+
+  const continueCallOptions = {
+    temperature: 0.68,
+    frequencyPenalty: 0.1,
+    presencePenalty: 0.06
+  };
+
   while (stage <= MAX_STORY_STAGES) {
     let userPrompt;
+    let callOptions = writeCallOptions;
 
     if (stage === 1) {
       userPrompt = isRefine
-        ? buildRefineStoryPrompt(brainDump, existingStory)
-        : buildFirstStoryPrompt(brainDump);
+        ? buildRefineStoryPrompt(brainDump, existingStory, beatSheet)
+        : buildFirstStoryPrompt(brainDump, beatSheet);
     } else if (forceEndingNext) {
-      userPrompt = buildEndingPrompt(brainDump, story);
+      userPrompt = buildEndingPrompt(brainDump, story, beatSheet);
+      callOptions = { ...writeCallOptions, temperature: 0.72 };
     } else {
-      userPrompt = buildContinuePrompt(brainDump, story, stage);
+      userPrompt = buildContinuePrompt(brainDump, story, stage, beatSheet);
+      callOptions = continueCallOptions;
     }
 
     const messages = [
@@ -443,7 +475,7 @@ async function generateStoryInStages(brainDump, existingStory, onProgress) {
     report({ phase: 'writing', stage, stageComplete: false, label: stageLabel });
 
     console.log(`📝 Eisenkind story stage ${stage}/${MAX_STORY_STAGES}…`);
-    const result = await completeEisenkindStoryCall(messages);
+    const result = await completeEisenkindStoryCall(messages, callOptions);
 
     if (!result.success) {
       return result;
@@ -477,7 +509,7 @@ async function generateStoryInStages(brainDump, existingStory, onProgress) {
       continue;
     }
 
-    if (!forceEndingNext && needsFinalEnding(story) && stage < MAX_STORY_STAGES) {
+    if (!forceEndingNext && storyLikelyNeedsEnding(story, stage) && stage < MAX_STORY_STAGES) {
       forceEndingNext = true;
       stage += 1;
       continue;
