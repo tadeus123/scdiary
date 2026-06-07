@@ -22,7 +22,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const paragraph = block.trim();
       if (!paragraph) return;
       const p = document.createElement('p');
-      p.className = 'eisenkind-story-paragraph';
       p.textContent = paragraph;
       storyPreview.appendChild(p);
     });

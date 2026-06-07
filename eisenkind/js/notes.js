@@ -2,7 +2,7 @@
   const overlay = document.getElementById('eisenkind-overlay');
   const openBtn = document.getElementById('eisenkind-motto-open');
   const notesBody = document.getElementById('eisenkind-notes-body');
-  const sides = overlay ? overlay.querySelectorAll('[data-eisenkind-close]') : [];
+  const closeTargets = overlay ? overlay.querySelectorAll('[data-eisenkind-close]') : [];
 
   if (!overlay || !openBtn || !notesBody) return;
 
@@ -11,8 +11,6 @@
 
   function renderStory(story) {
     notesBody.innerHTML = '';
-    notesBody.className = 'eisenkind-a4-body eisenkind-story';
-
     const trimmed = (story || '').trim();
     if (!trimmed) return;
 
@@ -20,7 +18,6 @@
       const paragraph = block.trim();
       if (!paragraph) return;
       const p = document.createElement('p');
-      p.className = 'eisenkind-story-paragraph';
       p.textContent = paragraph;
       notesBody.appendChild(p);
     });
@@ -78,8 +75,8 @@
     openOverlay();
   });
 
-  sides.forEach((side) => {
-    side.addEventListener('click', closeOverlay);
+  closeTargets.forEach((el) => {
+    el.addEventListener('click', closeOverlay);
   });
 
   document.addEventListener('keydown', (e) => {
