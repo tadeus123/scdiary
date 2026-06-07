@@ -581,6 +581,8 @@
 
 body.eisenkind-overlay-open {
   overflow: hidden;
+  position: fixed;
+  width: 100%;
 }
 
 body.eisenkind-overlay-open .page,
@@ -682,21 +684,24 @@ body.eisenkind-overlay-open .site-aside {
 
 @media (max-width: 768px) {
   .eisenkind-overlay-side {
-    width: max(0.5rem, calc((100vw - min(640px, calc(100vw - 3rem))) / 2));
+    display: none;
   }
 
   .eisenkind-overlay-center {
-    width: min(640px, calc(100vw - 3rem));
-    padding-left: max(1rem, env(safe-area-inset-left));
-    padding-right: max(1rem, env(safe-area-inset-right));
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: none;
+    transform: none;
+    padding-top: calc(2.5rem + env(safe-area-inset-top));
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom));
+    padding-left: max(1.25rem, env(safe-area-inset-left));
+    padding-right: max(1.25rem, env(safe-area-inset-right));
   }
 }
 
 @media (max-width: 480px) {
   .eisenkind-overlay-center {
-    width: min(640px, calc(100vw - 2rem));
-    padding-top: calc(2.5rem + env(safe-area-inset-top));
-    padding-bottom: calc(2rem + env(safe-area-inset-bottom));
     padding-left: max(1rem, env(safe-area-inset-left));
     padding-right: max(1rem, env(safe-area-inset-right));
   }
