@@ -35,7 +35,20 @@
   gap: clamp(1.1rem, 3vw, 1.5rem);
 }
 
-/* Story text uses .body from style.css (same as main Eisenkind page) */
+/* Story text — same reading style as main Eisenkind .body */
+.eisenkind-story-text {
+  font-size: clamp(1rem, 2vw + 0.85rem, 1.08rem);
+  line-height: 1.9;
+  text-wrap: pretty;
+}
+
+.eisenkind-story-text p {
+  margin-bottom: clamp(1.25rem, 4vw, 1.75rem);
+}
+
+.eisenkind-story-text p:last-child {
+  margin-bottom: 0;
+}
 
 /* Admin brain dump + story sections */
 .eisenkind-section-header {
@@ -494,11 +507,15 @@
 }
 
 .eisenkind-overlay-center {
-  position: relative;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 50%;
   z-index: 2;
   width: min(640px, calc(100vw - 2.5rem));
-  max-height: 100dvh;
-  margin: 0 auto;
+  height: 100dvh;
+  margin: 0;
+  transform: translateX(-50%);
   padding:
     calc(clamp(2.5rem, 6vw, 3rem) + env(safe-area-inset-top))
     max(1.25rem, env(safe-area-inset-right))
@@ -507,6 +524,7 @@
   background-color: var(--a4-bg);
   color: var(--a4-text);
   font-family: Georgia, "Times New Roman", serif;
+  isolation: isolate;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -563,6 +581,12 @@
 
 body.eisenkind-overlay-open {
   overflow: hidden;
+}
+
+body.eisenkind-overlay-open .page,
+body.eisenkind-overlay-open .site-header,
+body.eisenkind-overlay-open .site-aside {
+  visibility: hidden;
 }
 
 /* Admin page layout */
@@ -675,6 +699,11 @@ body.eisenkind-overlay-open {
     padding-bottom: calc(2rem + env(safe-area-inset-bottom));
     padding-left: max(1rem, env(safe-area-inset-left));
     padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .eisenkind-story-text {
+    font-size: 1rem;
+    line-height: 1.85;
   }
 }
 
