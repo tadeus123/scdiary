@@ -1,23 +1,13 @@
 (function () {
   const overlay = document.getElementById('eisenkind-overlay');
   const openBtn = document.getElementById('eisenkind-motto-open');
-  const headlineEl = document.getElementById('eisenkind-a4-headline');
   const notesBody = document.getElementById('eisenkind-notes-body');
   const sides = overlay ? overlay.querySelectorAll('[data-eisenkind-close]') : [];
 
-  if (!overlay || !openBtn || !headlineEl || !notesBody) return;
-
-  const DEFAULT_HEADLINE =
-    'How to make humanoid robots that we love and that spread love?';
+  if (!overlay || !openBtn || !notesBody) return;
 
   let cache = null;
   let fetchPromise = null;
-
-  function applyNotes(notes) {
-    if (!notes) return;
-    headlineEl.textContent = notes.headline || DEFAULT_HEADLINE;
-    renderStory(notes.story || '');
-  }
 
   function renderStory(story) {
     notesBody.innerHTML = '';
@@ -44,13 +34,10 @@
         const response = await fetch('/api/eisenkind/notes');
         const data = await response.json();
         if (data.success) {
-          cache = {
-            headline: data.headline || DEFAULT_HEADLINE,
-            story: typeof data.story === 'string' ? data.story : ''
-          };
+          cache = typeof data.story === 'string' ? data.story : '';
         }
       } catch (error) {
-        console.error('Error loading eisenkind notes:', error);
+        console.error('Error loading eisenkind story:', error);
       } finally {
         fetchPromise = null;
       }
@@ -66,7 +53,7 @@
     }
 
     if (cache) {
-      applyNotes(cache);
+      renderStory(cache);
     }
 
     overlay.classList.add('is-open');
@@ -74,8 +61,8 @@
     document.body.classList.add('eisenkind-overlay-open');
 
     fetchNotes().then((fresh) => {
-      if (fresh && overlay.classList.contains('is-open')) {
-        applyNotes(fresh);
+      if (typeof fresh === 'string' && overlay.classList.contains('is-open')) {
+        renderStory(fresh);
       }
     });
   }

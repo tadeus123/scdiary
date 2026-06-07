@@ -48,21 +48,20 @@ app.get('/office', (req, res) => {
   res.render('office');
 });
 
-// Eisenkind notes (public read)
+// Eisenkind story (public read)
 const { getEisenkindNotes } = require('./db/supabase');
 app.get('/api/eisenkind/notes', async (req, res) => {
   try {
     const notes = await getEisenkindNotes();
     res.json({
       success: true,
-      headline: notes.headline,
       story: notes.story,
       story_updated_at: notes.story_updated_at,
       updated_at: notes.updated_at
     });
   } catch (error) {
-    console.error('Error loading eisenkind notes:', error);
-    res.status(500).json({ success: false, content: '', error: 'Failed to load notes' });
+    console.error('Error loading eisenkind story:', error);
+    res.status(500).json({ success: false, story: '', error: 'Failed to load story' });
   }
 });
 

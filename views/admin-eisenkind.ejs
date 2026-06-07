@@ -2,82 +2,54 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>eisenkind admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>eisenkind</title>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/eisenkind/css/a4.css">
 </head>
-<body class="eisenkind-admin-page">
+<body>
   <a href="/admin" class="corner-btn-left" aria-label="Back to Admin"></a>
 
-  <div class="eisenkind-admin-wrap">
-    <div class="eisenkind-admin-toolbar">
-      <h1 class="eisenkind-admin-title">eisenkind</h1>
-      <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme" type="button">
-        <svg class="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <circle cx="12" cy="12" r="5"></circle>
-          <line x1="12" y1="6.5" x2="12" y2="3"></line>
-          <line x1="17.5" y1="12" x2="21" y2="12"></line>
-          <line x1="12" y1="17.5" x2="12" y2="21"></line>
-          <line x1="6.5" y1="12" x2="3" y2="12"></line>
-          <line x1="16.96" y1="7.04" x2="19.07" y2="4.93"></line>
-          <line x1="16.96" y1="16.96" x2="19.07" y2="19.07"></line>
-          <line x1="7.04" y1="16.96" x2="4.93" y2="19.07"></line>
-          <line x1="7.04" y1="7.04" x2="4.93" y2="4.93"></line>
-        </svg>
-      </button>
-      <div class="eisenkind-toolbar-status">
-        <div id="eisenkind-gen-progress" class="eisenkind-gen-progress" hidden aria-hidden="true">
-          <div
-            id="eisenkind-gen-progress-track"
-            class="eisenkind-gen-progress-track"
-            role="progressbar"
-            aria-valuemin="0"
-            aria-valuemax="100"
-            aria-valuenow="0"
-          >
-            <div id="eisenkind-gen-progress-bar" class="eisenkind-gen-progress-bar"></div>
-          </div>
-        </div>
+  <div class="container">
+    <nav>
+      <div class="nav-left">
+        <span class="site-title">eisenkind</span>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme" type="button">
+          <svg class="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="6.5" x2="12" y2="3"></line>
+            <line x1="17.5" y1="12" x2="21" y2="12"></line>
+            <line x1="12" y1="17.5" x2="12" y2="21"></line>
+            <line x1="6.5" y1="12" x2="3" y2="12"></line>
+            <line x1="16.96" y1="7.04" x2="19.07" y2="4.93"></line>
+            <line x1="16.96" y1="16.96" x2="19.07" y2="19.07"></line>
+            <line x1="7.04" y1="16.96" x2="4.93" y2="19.07"></line>
+            <line x1="7.04" y1="7.04" x2="4.93" y2="4.93"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="nav-right">
         <span id="save-status" class="eisenkind-save-status" aria-live="polite"></span>
       </div>
-    </div>
+    </nav>
 
-    <article class="eisenkind-a4 eisenkind-a4--editable">
-      <label class="eisenkind-field-label" for="eisenkind-headline-input">headline</label>
-      <textarea
-        id="eisenkind-headline-input"
-        class="eisenkind-a4-input eisenkind-a4-input--headline"
-        rows="2"
-        spellcheck="true"
-        aria-label="Headline"
-      ><%= notes.headline %></textarea>
-
-      <div class="eisenkind-section-header">
-        <label class="eisenkind-field-label" for="eisenkind-brain-dump-input">brain dump</label>
-        <button type="button" id="eisenkind-generate-story" class="eisenkind-generate-btn">generate story</button>
+    <main>
+      <div class="new-entry-box">
+        <textarea
+          id="eisenkind-story-input"
+          placeholder="paste or write the story here…"
+          spellcheck="true"
+          autofocus
+        ><%= notes.story %></textarea>
+        <button type="button" class="btn" id="save-btn">save</button>
       </div>
-      <p class="eisenkind-section-hint">Dump raw ideas. AI plans the arc, then writes a full Lennon story — gripping, emotional, funny — with every detail woven in.</p>
-      <textarea
-        id="eisenkind-brain-dump-input"
-        class="eisenkind-a4-input eisenkind-a4-input--brain-dump"
-        placeholder="Robot should help package Lego orders before school… Dad stressed about tea shop inventory… violin practice in the evening…"
-        spellcheck="true"
-        aria-label="Brain dump"
-      ><%= notes.brain_dump %></textarea>
 
-      <div class="eisenkind-story-preview-wrap">
-        <div class="eisenkind-section-header">
-          <span class="eisenkind-field-label">story preview</span>
-          <span id="story-updated-label" class="eisenkind-story-meta"></span>
-        </div>
-        <div id="eisenkind-story-preview" class="eisenkind-a4-body eisenkind-story" aria-live="polite"></div>
-        <p id="eisenkind-story-empty" class="eisenkind-story-empty">No story yet. Add a brain dump and click generate story.</p>
-      </div>
-    </article>
+      <article class="eisenkind-a4 eisenkind-admin-preview">
+        <div id="eisenkind-story-preview" class="eisenkind-a4-body eisenkind-story"></div>
+      </article>
+    </main>
   </div>
 
-  <script type="application/json" id="eisenkind-initial-data"><%- JSON.stringify({ story: notes.story || '', story_updated_at: notes.story_updated_at || null }).replace(/</g, '\\u003c') %></script>
   <script src="/js/main.js"></script>
   <script src="/js/admin-eisenkind.js"></script>
 </body>

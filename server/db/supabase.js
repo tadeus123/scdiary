@@ -1014,12 +1014,178 @@ async function updateEisenkindNotes(updates = {}) {
   }
 }
 
+const EISENKIND_VERSIONS_LOCAL_PATH = require('path').join(
+  __dirname,
+  '../../data/eisenkind-story-versions.json'
+);
+
+function isEisenkindVersionsTableMissing(error) {
+  const msg = error?.message || '';
+  return (
+    error?.code === '42P01' ||
+    (/relation/i.test(msg) && /eisenkind_story_versions/i.test(msg) && /does not exist/i.test(msg))
+  );
+}
+
+function formatEisenkindStoryVersion(row) {
+  return {
+    id: Number(row?.id),
+    story: typeof row?.story === 'string' ? row.story : '',
+    created_at: row?.created_at || null
+  };
+}
+
+function readLocalEisenkindStoryVersions() {
+  const fs = require('fs');
+  try {
+    const data = JSON.parse(fs.readFileSync(EISENKIND_VERSIONS_LOCAL_PATH, 'utf8'));
+    if (!Array.isArray(data?.versions)) return [];
+    return data.versions
+      .map((row) => formatEisenkindStoryVersion(row))
+      .filter((row) => Number.isFinite(row.id) && row.id > 0)
+      .sort((a, b) => a.id - b.id);
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalEisenkindStoryVersions(versions) {
+  const fs = require('fs');
+  const path = require('path');
+  const dir = path.dirname(EISENKIND_VERSIONS_LOCAL_PATH);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(
+    EISENKIND_VERSIONS_LOCAL_PATH,
+    JSON.stringify({ versions }, null, 2),
+    'utf8'
+  );
+}
+
+async function listEisenkindStoryVersionsMeta() {
+  if (!supabase) {
+    return readLocalEisenkindStoryVersions().map(({ id, created_at }) => ({ id, created_at }));
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('eisenkind_story_versions')
+      .select('id, created_at')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      if (isEisenkindVersionsTableMissing(error)) return [];
+      console.error('Error listing eisenkind story versions:', error);
+      return [];
+    }
+
+    return (data || []).map((row) => ({
+      id: Number(row.id),
+      created_at: row.created_at || null
+    }));
+  } catch (error) {
+    console.error('Error listing eisenkind story versions:', error);
+    return [];
+  }
+}
+
+async function getEisenkindStoryVersionById(versionId) {
+  const id = Number(versionId);
+  if (!Number.isFinite(id) || id <= 0) return null;
+
+  if (!supabase) {
+    const match = readLocalEisenkindStoryVersions().find((row) => row.id === id);
+    return match || null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('eisenkind_story_versions')
+      .select('id, story, created_at')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      if (isEisenkindVersionsTableMissing(error)) return null;
+      console.error('Error fetching eisenkind story version:', error);
+      return null;
+    }
+
+    return data ? formatEisenkindStoryVersion(data) : null;
+  } catch (error) {
+    console.error('Error fetching eisenkind story version:', error);
+    return null;
+  }
+}
+
+async function appendEisenkindStoryVersion(story) {
+  const trimmed = (story || '').trim();
+  if (!trimmed) return { success: false, skipped: true };
+
+  const versions = await listEisenkindStoryVersionsMeta();
+  if (versions.length) {
+    const latest = await getEisenkindStoryVersionById(versions[versions.length - 1].id);
+    if (latest?.story?.trim() === trimmed) {
+      return { success: true, skipped: true, version: latest };
+    }
+  }
+
+  const createdAt = new Date().toISOString();
+
+  if (!supabase) {
+    const local = readLocalEisenkindStoryVersions();
+    const nextId = local.reduce((max, row) => Math.max(max, row.id), 0) + 1;
+    const version = { id: nextId, story: trimmed, created_at: createdAt };
+    writeLocalEisenkindStoryVersions([...local, version]);
+    return { success: true, version };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('eisenkind_story_versions')
+      .insert({ story: trimmed, created_at: createdAt })
+      .select('id, story, created_at')
+      .single();
+
+    if (error) {
+      if (isEisenkindVersionsTableMissing(error)) {
+        return {
+          success: false,
+          error:
+            'Table eisenkind_story_versions missing. Run server/scripts/create-eisenkind-story-versions-table.sql in Supabase SQL Editor.'
+        };
+      }
+      console.error('Error saving eisenkind story version:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, version: formatEisenkindStoryVersion(data) };
+  } catch (error) {
+    console.error('Error saving eisenkind story version:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function ensureEisenkindStoryVersionsBootstrapped() {
+  const versions = await listEisenkindStoryVersionsMeta();
+  if (versions.length) return versions;
+
+  const notes = await getEisenkindNotes();
+  if (!notes.story?.trim()) return versions;
+
+  await appendEisenkindStoryVersion(notes.story);
+  return listEisenkindStoryVersionsMeta();
+}
+
 module.exports = {
   getEntries,
   createEntry,
   deleteEntry,
   getEisenkindNotes,
   updateEisenkindNotes,
+  listEisenkindStoryVersionsMeta,
+  getEisenkindStoryVersionById,
+  appendEisenkindStoryVersion,
+  ensureEisenkindStoryVersionsBootstrapped,
   getGoals,
   createGoal,
   updateGoal,

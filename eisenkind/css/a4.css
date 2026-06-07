@@ -117,6 +117,60 @@
   border-top: 1px solid rgba(26, 26, 26, 0.08);
 }
 
+.eisenkind-story-preview-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.eisenkind-story-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.eisenkind-story-nav[hidden] {
+  display: none;
+}
+
+.eisenkind-story-nav-btn {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.78rem;
+  line-height: 1;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  border: 1px solid rgba(26, 26, 26, 0.12);
+  border-radius: 2px;
+  background: rgba(26, 26, 26, 0.03);
+  color: rgba(26, 26, 26, 0.55);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.eisenkind-story-nav-btn:hover:not(:disabled) {
+  color: var(--a4-accent);
+  border-color: rgba(193, 106, 40, 0.4);
+  background: rgba(193, 106, 40, 0.06);
+}
+
+.eisenkind-story-nav-btn:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+
+.eisenkind-story-nav-label {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.02em;
+  color: rgba(26, 26, 26, 0.42);
+  min-width: 4.5rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .eisenkind-story-meta {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 0.62rem;
@@ -400,6 +454,21 @@
   min-height: 12rem;
 }
 
+.eisenkind-a4-input--story {
+  min-height: 70vh;
+  line-height: 1.65;
+}
+
+.eisenkind-admin-preview {
+  width: 100%;
+  margin: 0;
+  padding: clamp(1.5rem, 4vw, 2.25rem) clamp(1.25rem, 3.5vw, 2rem);
+  background-color: var(--a4-bg);
+  box-shadow:
+    0 4px 24px rgba(26, 26, 26, 0.12),
+    0 0 0 1px rgba(26, 26, 26, 0.06);
+}
+
 .eisenkind-a4-input::placeholder {
   color: rgba(26, 26, 26, 0.35);
   font-style: italic;
@@ -492,9 +561,9 @@ body.eisenkind-overlay-open {
 .eisenkind-admin-toolbar {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.75rem;
   margin-bottom: 1.25rem;
-  flex-wrap: wrap;
 }
 
 .eisenkind-admin-title {

@@ -11,7 +11,6 @@ const {
   updateEisenkindNotes,
   isConfigured
 } = require('../db/supabase');
-const { generateEisenkindStory, runStoryStep } = require('../services/eisenkind-story');
 
 // Admin password (in production, use environment variable)
 // WARNING: Never hardcode passwords in production!
@@ -148,7 +147,7 @@ router.get('/eisenkind', isAuthenticated, async (req, res) => {
 });
 
 router.put('/eisenkind/notes', isAuthenticated, async (req, res) => {
-  const { headline, brain_dump } = req.body;
+  const { story } = req.body;
 
   if (!isConfigured()) {
     return res.status(503).json({
@@ -157,221 +156,22 @@ router.put('/eisenkind/notes', isAuthenticated, async (req, res) => {
     });
   }
 
-  if (brain_dump !== undefined && typeof brain_dump !== 'string') {
-    return res.status(400).json({ error: 'Brain dump must be a string' });
-  }
-  if (headline !== undefined && typeof headline !== 'string') {
-    return res.status(400).json({ error: 'Headline must be a string' });
+  if (story !== undefined && typeof story !== 'string') {
+    return res.status(400).json({ error: 'Story must be a string' });
   }
 
   const updates = {};
-  if (typeof headline === 'string') updates.headline = headline;
-  if (typeof brain_dump === 'string') updates.brain_dump = brain_dump;
+  if (typeof story === 'string') {
+    updates.story = story;
+    updates.story_updated_at = new Date().toISOString();
+  }
 
   const result = await updateEisenkindNotes(updates);
 
   if (result.success) {
     res.json({ success: true, notes: result.notes });
   } else {
-    res.status(500).json({ error: result.error || 'Failed to save notes' });
-  }
-});
-
-router.post('/eisenkind/generate-story/step', isAuthenticated, async (req, res) => {
-  if (!isConfigured()) {
-    return res.status(503).json({
-      error:
-        'Supabase is not configured on the server. Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel environment variables.'
-    });
-  }
-
-  try {
-    const {
-      action,
-      brain_dump,
-      headline,
-      beat_sheet,
-      story_so_far,
-      stage,
-      force_ending,
-      existing_story
-    } = req.body;
-
-    if (!action || !['plan', 'write'].includes(action)) {
-      return res.status(400).json({ error: 'action must be "plan" or "write"' });
-    }
-
-    const notes = await getEisenkindNotes();
-    const brainDump =
-      typeof brain_dump === 'string' ? brain_dump : notes.brain_dump;
-
-    if (typeof brain_dump === 'string' || typeof headline === 'string') {
-      const saveDraft = await updateEisenkindNotes({
-        brain_dump: typeof brain_dump === 'string' ? brain_dump : undefined,
-        headline: typeof headline === 'string' ? headline : undefined
-      });
-      if (!saveDraft.success) {
-        return res.status(500).json({ error: saveDraft.error || 'Failed to save brain dump' });
-      }
-    }
-
-    const step = await runStoryStep({
-      action,
-      brainDump,
-      existingStory: typeof existing_story === 'string' ? existing_story : '',
-      beatSheet: typeof beat_sheet === 'string' ? beat_sheet : '',
-      storySoFar: typeof story_so_far === 'string' ? story_so_far : '',
-      stage: typeof stage === 'number' ? stage : 1,
-      forceEndingNext: Boolean(force_ending)
-    });
-
-    if (!step.success) {
-      return res.status(500).json({ error: step.error || 'Story step failed' });
-    }
-
-    if (action === 'write' && step.story) {
-      const saved = await updateEisenkindNotes({
-        story: step.story,
-        story_updated_at: step.done ? new Date().toISOString() : notes.story_updated_at
-      });
-      if (!saved.success) {
-        return res.status(500).json({ error: saved.error || 'Failed to save story' });
-      }
-
-      return res.json({
-        success: true,
-        done: step.done,
-        notes: saved.notes,
-        beatSheet: step.beatSheet,
-        story: step.story,
-        stage: step.stage,
-        forceEndingNext: step.forceEndingNext,
-        label: step.label,
-        percent: step.done ? 100 : step.percent,
-        storyChars: step.storyChars
-      });
-    }
-
-    res.json({
-      success: true,
-      done: false,
-      beatSheet: step.beatSheet,
-      label: step.label,
-      percent: step.percent
-    });
-  } catch (error) {
-    console.error('Eisenkind story step error:', error);
-    res.status(500).json({ error: error.message || 'Story step failed' });
-  }
-});
-
-router.post('/eisenkind/generate-story', isAuthenticated, async (req, res) => {
-  if (!isConfigured()) {
-    return res.status(503).json({
-      error:
-        'Supabase is not configured on the server. Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel environment variables.'
-    });
-  }
-
-  try {
-  const useStream = req.query.stream === '1';
-  const startedAt = Date.now();
-  const notes = await getEisenkindNotes();
-  const brainDump =
-    typeof req.body?.brain_dump === 'string' ? req.body.brain_dump : notes.brain_dump;
-
-  const sendEvent = (payload) => {
-    if (!useStream) return;
-    res.write(`${JSON.stringify({ ...payload, elapsedMs: Date.now() - startedAt })}\n`);
-  };
-
-  if (useStream) {
-    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-    if (typeof res.flushHeaders === 'function') res.flushHeaders();
-  }
-
-  if (typeof req.body?.brain_dump === 'string') {
-    sendEvent({
-      type: 'progress',
-      phase: 'save_draft',
-      label: 'saving brain dump…',
-      percent: 5
-    });
-
-    const saveDraft = await updateEisenkindNotes({
-      brain_dump: req.body.brain_dump,
-      headline: typeof req.body?.headline === 'string' ? req.body.headline : undefined
-    });
-    if (!saveDraft.success) {
-      if (useStream) {
-        sendEvent({ type: 'error', error: saveDraft.error || 'Failed to save brain dump' });
-        return res.end();
-      }
-      return res.status(500).json({ error: saveDraft.error || 'Failed to save brain dump' });
-    }
-  }
-
-  const generated = await generateEisenkindStory({
-    brainDump,
-    existingStory: notes.story,
-    onProgress: (progress) => {
-      sendEvent({ type: 'progress', ...progress });
-    }
-  });
-
-  if (!generated.success) {
-    if (useStream) {
-      sendEvent({ type: 'error', error: generated.error || 'Story generation failed' });
-      return res.end();
-    }
-    return res.status(500).json({ error: generated.error || 'Story generation failed' });
-  }
-
-  sendEvent({
-    type: 'progress',
-    phase: 'save_story',
-    label: 'saving story…',
-    percent: 96
-  });
-
-  const saved = await updateEisenkindNotes({
-    story: generated.story,
-    story_updated_at: new Date().toISOString()
-  });
-
-  if (!saved.success) {
-    if (useStream) {
-      sendEvent({ type: 'error', error: saved.error || 'Failed to save story' });
-      return res.end();
-    }
-    return res.status(500).json({ error: saved.error || 'Failed to save story' });
-  }
-
-  if (useStream) {
-    sendEvent({
-      type: 'complete',
-      success: true,
-      notes: saved.notes,
-      stages: generated.stages,
-      percent: 100
-    });
-    return res.end();
-  }
-
-  res.json({ success: true, notes: saved.notes });
-  } catch (error) {
-    console.error('Eisenkind generate-story stream error:', error);
-    const useStream = req.query.stream === '1';
-    if (useStream && !res.headersSent) {
-      res.write(`${JSON.stringify({ type: 'error', error: error.message || 'Story generation failed' })}\n`);
-      return res.end();
-    }
-    if (!res.headersSent) {
-      res.status(500).json({ error: error.message || 'Story generation failed' });
-    }
+    res.status(500).json({ error: result.error || 'Failed to save story' });
   }
 });
 
