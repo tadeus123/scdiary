@@ -1,10 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <circle cx="16" cy="16" r="14" fill="#D8D8D8"/>
-  <circle cx="16" cy="16" r="14" fill="none" stroke="#9A9A9A" stroke-width="1.5"/>
-  <ellipse cx="16" cy="16" rx="5" ry="14" fill="none" stroke="#9A9A9A" stroke-width="1"/>
-  <path d="M2 16 H30" stroke="#9A9A9A" stroke-width="1"/>
-  <path d="M4 10 Q12 8 16 10 T28 10" fill="none" stroke="#9A9A9A" stroke-width="1"/>
-  <path d="M4 22 Q12 24 16 22 T28 22" fill="none" stroke="#9A9A9A" stroke-width="1"/>
-  <path d="M10 3 Q14 12 10 16 Q6 20 8 29" fill="#B0B0B0"/>
-  <path d="M18 4 Q22 10 20 16 Q18 22 24 28" fill="#B0B0B0"/>
+  <circle cx="16" cy="16" r="14" fill="none" stroke="#A8A8A8" stroke-width="1.5"/>
+  <path fill="#6B6B6B" d="M16 3.2C10.8 3.2 6.2 6.8 4.8 12c-.6 2.2-.2 4.6 1.1 6.4-1.4 1.8-2 4.2-1.6 6.6 1 3.8 4.6 6.4 8.7 6.8-1.8-2.4-2.6-5.4-2.2-8.4.3-2.2 1.4-4.2 3-5.6C13.6 6.8 14.4 4.6 16 3.2z"/>
+  <path fill="#6B6B6B" d="M16 3.2c5.2 0 9.8 3.6 11.2 8.8.6 2.2.2 4.6-1.1 6.4 1.4 1.8 2 4.2 1.6 6.6-1 3.8-4.6 6.4-8.7 6.8 1.8-2.4 2.6-5.4 2.2-8.4-.3-2.2-1.4-4.2-3-5.6 1.4-1.4 2.2-3.6 2.2-5.8 0-2.2-.8-4.2-2.4-5.8C18.4 4.6 17.4 3.2 16 3.2z"/>
 </svg>
