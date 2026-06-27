@@ -1,6 +1,7 @@
 # Generate favicon PNGs with auto-fitted Georgia "T".
 param(
-  [double]$FillRatio = 0.86,
+  [double]$FillRatio = 0.9,
+  [double]$YShiftRatio = 0.06,
   [int]$Red = 148,
   [int]$Green = 30,
   [int]$Blue = 47
@@ -22,7 +23,7 @@ function Get-FittedFontSize([System.Drawing.Graphics]$gfx, [int]$canvas, [double
   return $best
 }
 
-function New-TBitmap([int]$size, [int]$red, [int]$green, [int]$blue, [double]$ratio) {
+function New-TBitmap([int]$size, [int]$red, [int]$green, [int]$blue, [double]$ratio, [double]$yShiftRatio) {
   $bmp = New-Object System.Drawing.Bitmap $size, $size
   $gfx = [System.Drawing.Graphics]::FromImage($bmp)
   $gfx.Clear([System.Drawing.Color]::Transparent)
@@ -35,10 +36,11 @@ function New-TBitmap([int]$size, [int]$red, [int]$green, [int]$blue, [double]$ra
   $sf = New-Object System.Drawing.StringFormat
   $sf.Alignment = [System.Drawing.StringAlignment]::Center
   $sf.LineAlignment = [System.Drawing.StringAlignment]::Center
-  $rect = New-Object System.Drawing.RectangleF 0, 0, $size, $size
+  $yShift = [Math]::Round($size * $yShiftRatio)
+  $rect = New-Object System.Drawing.RectangleF 0, $yShift, $size, ($size - $yShift)
   $gfx.DrawString("T", $font, $brush, $rect, $sf)
 
-  Write-Host "  ${size}px -> font ${fontSize}px"
+  Write-Host "  ${size}px -> font ${fontSize}px, y+${yShift}px"
 
   $font.Dispose()
   $brush.Dispose()
@@ -48,8 +50,8 @@ function New-TBitmap([int]$size, [int]$red, [int]$green, [int]$blue, [double]$ra
 
 $public = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) "public"
 
-$b32 = New-TBitmap 32 $Red $Green $Blue $FillRatio
-$b16 = New-TBitmap 16 $Red $Green $Blue $FillRatio
+$b32 = New-TBitmap 32 $Red $Green $Blue $FillRatio $YShiftRatio
+$b16 = New-TBitmap 16 $Red $Green $Blue $FillRatio $YShiftRatio
 
 $b32.Save((Join-Path $public "favicon-32.png"), [System.Drawing.Imaging.ImageFormat]::Png)
 $b16.Save((Join-Path $public "favicon-16.png"), [System.Drawing.Imaging.ImageFormat]::Png)
@@ -57,4 +59,4 @@ $b16.Save((Join-Path $public "favicon-16.png"), [System.Drawing.Imaging.ImageFor
 $b32.Dispose()
 $b16.Dispose()
 
-Write-Output "Wrote favicons (fill=$FillRatio, color=rgb($Red,$Green,$Blue))"
+Write-Output "Wrote favicons (fill=$FillRatio, yShift=$YShiftRatio, color=rgb($Red,$Green,$Blue))"
