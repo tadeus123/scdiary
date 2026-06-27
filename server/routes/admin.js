@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
-const { marked } = require('marked');
+const { renderDiaryHtml } = require('../utils/diary-markdown');
 const {
   getEntries,
   createEntry,
@@ -104,7 +104,7 @@ router.post('/entry', isAuthenticated, async (req, res) => {
     id: Date.now().toString(),
     timestamp: timestamp || new Date().toISOString(), // Use client timestamp if provided
     content: content,
-    html: marked(content)
+    html: renderDiaryHtml(content)
   };
   
   const result = await createEntry(newEntry);

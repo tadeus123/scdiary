@@ -329,7 +329,7 @@ nav a:hover:not(.site-title) {
   padding: 0;
   border-radius: 0;
   overflow: visible;
-  margin: 0;
+  margin: 0 0 clamp(1.25rem, 4vw, 1.75rem);
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
@@ -344,21 +344,8 @@ nav a:hover:not(.site-title) {
   white-space: pre-wrap;
 }
 
-/* Heading + fenced arrow (``` ↓ ```) — inline like "Title ↓ detail" */
-.entry-content p:has(+ pre) {
-  display: inline;
+.entry-content pre:last-child {
   margin-bottom: 0;
-}
-
-.entry-content p:has(+ pre) + pre {
-  display: inline;
-  margin-left: 0.25em;
-}
-
-.entry-content p:has(+ pre) + pre::after {
-  content: "";
-  display: block;
-  margin-bottom: clamp(1.25rem, 4vw, 1.75rem);
 }
 
 .empty-state {

@@ -12,7 +12,16 @@ const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
+const { renderDiaryHtml } = require('../utils/diary-markdown');
+
 // Database helper functions
+function withRenderedHtml(entry) {
+  return {
+    ...entry,
+    html: entry.content ? renderDiaryHtml(entry.content) : entry.html
+  };
+}
+
 async function getEntries() {
   if (!supabase) {
     // Fallback to file storage if Supabase not configured
@@ -21,7 +30,7 @@ async function getEntries() {
     const entriesPath = path.join(__dirname, '../../data/entries.json');
     try {
       const data = fs.readFileSync(entriesPath, 'utf8');
-      return JSON.parse(data);
+      return JSON.parse(data).map(withRenderedHtml);
     } catch (error) {
       return [];
     }
@@ -38,7 +47,7 @@ async function getEntries() {
       return [];
     }
 
-    return data || [];
+    return (data || []).map(withRenderedHtml);
   } catch (error) {
     console.error('Error fetching entries:', error);
     return [];
