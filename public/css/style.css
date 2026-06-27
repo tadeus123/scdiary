@@ -325,16 +325,40 @@ nav a:hover:not(.site-title) {
 }
 
 .entry-content pre {
-  background-color: var(--entry-bg);
-  padding: 1rem;
-  border-radius: 5px;
-  overflow-x: auto;
-  margin: 1.5rem 0;
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  overflow: visible;
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: pre-wrap;
 }
 
 .entry-content pre code {
+  font-family: inherit;
+  font-size: inherit;
   background: none;
   padding: 0;
+  white-space: pre-wrap;
+}
+
+/* Heading + fenced arrow (``` ↓ ```) — inline like "Title ↓ detail" */
+.entry-content p:has(+ pre) {
+  display: inline;
+  margin-bottom: 0;
+}
+
+.entry-content p:has(+ pre) + pre {
+  display: inline;
+  margin-left: 0.25em;
+}
+
+.entry-content p:has(+ pre) + pre::after {
+  content: "";
+  display: block;
+  margin-bottom: clamp(1.25rem, 4vw, 1.75rem);
 }
 
 .empty-state {
