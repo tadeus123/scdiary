@@ -32,12 +32,18 @@ const causeIndex = path.join(causeDir, 'index.html');
 if (!fs.existsSync(causeIndex)) {
   console.warn('Cause app not built — run: npm run build:cause');
 }
-app.get(['/cause', '/cause/'], (req, res) => {
+const sendCauseIndex = (req, res) => {
+  res.set('Cache-Control', 'no-cache');
   res.sendFile(causeIndex);
-});
-app.use('/cause', express.static(causeDir));
-app.get('/cause/*', (req, res) => {
-  res.sendFile(causeIndex);
+};
+app.get(['/cause', '/cause/'], sendCauseIndex);
+app.use('/cause', express.static(causeDir, { index: false }));
+app.get('/cause/*', (req, res, next) => {
+  // Missing hashed assets must 404 — returning index.html breaks JS module loading.
+  if (/\.[a-z0-9]+$/i.test(req.path)) {
+    return res.status(404).send('Not found');
+  }
+  sendCauseIndex(req, res);
 });
 app.get(['/tademehl/cause', '/tademehl/cause/'], (req, res) => {
   res.redirect(301, '/cause');

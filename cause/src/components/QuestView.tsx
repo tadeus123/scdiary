@@ -6,22 +6,35 @@ import { GraphCanvas } from './GraphCanvas';
 export function QuestView() {
   const [graph, setGraph] = useState<QuestGraph>(createDefaultGraph);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const saveTimer = useRef<number | null>(null);
 
   const reload = () => {
     fetchGraph()
-      .then(setGraph)
-      .catch((error) => console.error(error));
+      .then((loaded) => {
+        setGraph(loaded);
+        setLoadError(null);
+      })
+      .catch((error) => {
+        console.error(error);
+        setLoadError('Could not load map. Try refreshing the page.');
+      });
   };
 
   useEffect(() => {
     let cancelled = false;
     fetchGraph()
       .then((loaded) => {
-        if (!cancelled) setGraph(loaded);
+        if (!cancelled) {
+          setGraph(loaded);
+          setLoadError(null);
+        }
       })
       .catch((error) => {
-        if (!cancelled) console.error(error);
+        if (!cancelled) {
+          console.error(error);
+          setLoadError('Could not load map. Try refreshing the page.');
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -47,6 +60,14 @@ export function QuestView() {
     return (
       <div className="map-fullscreen map-fullscreen--loading">
         <p className="map-header__title">Loading…</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="map-fullscreen map-fullscreen--loading">
+        <p className="map-header__title">{loadError}</p>
       </div>
     );
   }
