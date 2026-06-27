@@ -1,5 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <circle cx="16" cy="16" r="14" fill="none" stroke="#A8A8A8" stroke-width="1.5"/>
-  <path fill="#6B6B6B" d="M16 3.2C10.8 3.2 6.2 6.8 4.8 12c-.6 2.2-.2 4.6 1.1 6.4-1.4 1.8-2 4.2-1.6 6.6 1 3.8 4.6 6.4 8.7 6.8-1.8-2.4-2.6-5.4-2.2-8.4.3-2.2 1.4-4.2 3-5.6C13.6 6.8 14.4 4.6 16 3.2z"/>
-  <path fill="#6B6B6B" d="M16 3.2c5.2 0 9.8 3.6 11.2 8.8.6 2.2.2 4.6-1.1 6.4 1.4 1.8 2 4.2 1.6 6.6-1 3.8-4.6 6.4-8.7 6.8 1.8-2.4 2.6-5.4 2.2-8.4-.3-2.2-1.4-4.2-3-5.6 1.4-1.4 2.2-3.6 2.2-5.8 0-2.2-.8-4.2-2.4-5.8C18.4 4.6 17.4 3.2 16 3.2z"/>
+  <rect width="32" height="32" fill="#050505"/>
+  <defs>
+    <linearGradient id="beam" x1="32" y1="0" x2="6" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff" stop-opacity="0.9"/>
+      <stop offset="55%" stop-color="#fff" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0.06"/>
+    </linearGradient>
+    <radialGradient id="pool" cx="9" cy="29" r="7" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="28" cy="4" r="7" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff"/>
+      <stop offset="45%" stop-color="#fff" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <polygon points="32,0 32,16 7,32 0,32" fill="url(#beam)"/>
+  <ellipse cx="9" cy="29" rx="7" ry="2.2" fill="url(#pool)"/>
+  <path fill="#050505" d="M8.2 20.8c.3-.5.9-.5 1.2 0l.2.4c.4.2.7.6.8 1l.2 1.6c0 .4-.3.8-.8.9H7.8c-.5 0-.8-.3-.8-.8l.2-1.7c.1-.4.4-.7.8-.9l.2-.5z"/>
+  <circle cx="28" cy="4" r="6" fill="url(#glow)"/>
+  <circle cx="28" cy="4" r="2.4" fill="#fff"/>
 </svg>
