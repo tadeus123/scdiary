@@ -5,7 +5,13 @@
       "src": "server/server.js",
       "use": "@vercel/node",
       "config": {
-        "maxDuration": 300
+        "maxDuration": 300,
+        "includeFiles": [
+          "cause/dist/**",
+          "eisenkind/**",
+          "views/**",
+          "public/**"
+        ]
       }
     }
   ],
