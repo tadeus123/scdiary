@@ -7,6 +7,11 @@ node_modules/
 ENV_VARS.txt
 data/eisenkind-notes.json
 data/cause-graph.json
+data/cause-graph-recovered.json
+data/cause-raw-value.bin
+data/ldb-copy/
+data/ldb-copy2/
+data/ldb-copy3/
 data/time-capsules-backup.json
 server/scripts/time-capsules-messages.js
 cause/node_modules/
