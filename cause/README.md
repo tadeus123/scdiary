@@ -1,23 +1,30 @@
-# Humanoid Quest
+# Cause Effect Map
 
-A Duolingo-style level map for building a personal humanoid factory — from zero to 1,000,000 humanoids per year.
+Interactive cause-and-effect graph at `/cause` on tademehl.com. Edit points and connections in the admin view; the map syncs to Supabase.
 
-## Run
+## Run (standalone)
 
 ```bash
+cd cause
 npm install
 npm run dev
 ```
 
-Open the URL shown in the terminal (usually `http://localhost:5173`).
+Open `http://localhost:5180/cause`.
 
-## How it works
+## Run (with diary server)
 
-- Click any unlocked level to see what you need to do to progress
-- Mark levels complete to unlock the next stage
-- Progress is saved in your browser (localStorage)
-- Some levels have **OR** paths — multiple realistic ways to unlock the next stage
+From the repo root:
 
-## The Journey
+```bash
+npm start
+```
 
-**38 levels** across 7 zones, from "The Red Light" (day zero, no money) to **The Million Homes Factory** (end boss).
+Open `http://localhost:3000/cause`.
+
+## Routes
+
+- `/cause` — read-only quest view
+- `/cause/admin` — edit graph, positions, and connections
+
+Graph data is stored in Supabase (`cause_graph` table) via `GET/PUT /api/cause/graph`.
