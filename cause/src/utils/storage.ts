@@ -2,6 +2,7 @@ import { QuestGraph } from '../types';
 import { reconcileGraphConditions, applyPointCondition } from './mentions';
 
 const STORAGE_KEY = 'quest-builder-graph';
+const CACHE_KEY = 'cause-graph-cache-v1';
 const API_URL = '/api/cause/graph';
 
 export function createDefaultGraph(): QuestGraph {
@@ -40,6 +41,29 @@ function isDefaultGraph(graph: QuestGraph): boolean {
   return titles[0] === 'POINT A' && titles[1] === 'POINT B';
 }
 
+function readCachedGraph(): QuestGraph | null {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (raw) return normalizeGraph(JSON.parse(raw));
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function cacheGraph(graph: QuestGraph): void {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify(graph));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Instant paint: last fetched graph from this tab, or empty canvas. */
+export function getInitialGraph(): QuestGraph {
+  return readCachedGraph() ?? { points: [], edges: [] };
+}
+
 function readLocalGraph(): QuestGraph | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -62,6 +86,7 @@ export async function fetchGraph(): Promise<QuestGraph> {
   }
 
   let graph = normalizeGraph(payload.graph);
+  cacheGraph(graph);
 
   const localGraph = readLocalGraph();
   if (localGraph && isDefaultGraph(graph) && !isDefaultGraph(localGraph)) {
@@ -84,6 +109,8 @@ export async function persistGraph(graph: QuestGraph): Promise<void> {
     const payload = await response.json().catch(() => ({}));
     throw new Error(payload.error || `Failed to save graph (${response.status})`);
   }
+
+  cacheGraph(normalizeGraph(graph));
 }
 
 /** @deprecated Use fetchGraph() — kept for typing during initial render only */

@@ -1,46 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
 import { QuestGraph } from '../types';
-import { createDefaultGraph, fetchGraph, persistGraph } from '../utils/storage';
+import { getInitialGraph, fetchGraph, persistGraph } from '../utils/storage';
 import { GraphCanvas } from './GraphCanvas';
 
 export function QuestView() {
-  const [graph, setGraph] = useState<QuestGraph>(createDefaultGraph);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [graph, setGraph] = useState<QuestGraph>(getInitialGraph);
   const saveTimer = useRef<number | null>(null);
-
-  const reload = () => {
-    fetchGraph()
-      .then((loaded) => {
-        setGraph(loaded);
-        setLoadError(null);
-      })
-      .catch((error) => {
-        console.error(error);
-        setLoadError('Could not load map. Try refreshing the page.');
-      });
-  };
+  const graphRef = useRef(graph);
+  graphRef.current = graph;
 
   useEffect(() => {
     let cancelled = false;
     fetchGraph()
       .then((loaded) => {
-        if (!cancelled) {
-          setGraph(loaded);
-          setLoadError(null);
-        }
+        if (!cancelled) setGraph(loaded);
       })
-      .catch((error) => {
-        if (!cancelled) {
-          console.error(error);
-          setLoadError('Could not load map. Try refreshing the page.');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      .catch((error) => console.error(error));
 
-    const onFocus = () => reload();
+    const onFocus = () => {
+      fetchGraph()
+        .then((loaded) => setGraph(loaded))
+        .catch((error) => console.error(error));
+    };
     window.addEventListener('focus', onFocus);
     return () => {
       cancelled = true;
@@ -56,22 +37,6 @@ export function QuestView() {
     }, 400);
   };
 
-  if (loading) {
-    return (
-      <div className="map-fullscreen map-fullscreen--loading">
-        <p className="map-header__title">Loading…</p>
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="map-fullscreen map-fullscreen--loading">
-        <p className="map-header__title">{loadError}</p>
-      </div>
-    );
-  }
-
   return (
     <div className="map-fullscreen">
       <nav className="map-header" aria-label="Site">
@@ -81,7 +46,7 @@ export function QuestView() {
         graph={graph}
         mode="view"
         onPositionsChange={(positions) => {
-          scheduleSave({ ...graph, positions });
+          scheduleSave({ ...graphRef.current, positions });
         }}
       />
     </div>

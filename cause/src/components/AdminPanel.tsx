@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { QuestGraph, QuestPoint, UnlockEdge } from '../types';
-import { createDefaultGraph, fetchGraph, persistGraph, newId } from '../utils/storage';
+import { getInitialGraph, fetchGraph, persistGraph, newId } from '../utils/storage';
 import { applyPointRename, applyPointCondition, reconcileConditionWithEdges, removeMentionFromCondition } from '../utils/mentions';
 import { GraphCanvas } from './GraphCanvas';
 import { ConditionInput } from './ConditionInput';
@@ -44,9 +44,8 @@ function PointNameInput({
 }
 
 export function AdminPanel() {
-  const [graph, setGraph] = useState<QuestGraph>(createDefaultGraph);
+  const [graph, setGraph] = useState<QuestGraph>(getInitialGraph);
   const [selection, setSelection] = useState<Selection>(null);
-  const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -68,9 +67,6 @@ export function AdminPanel() {
           setLoadFailed(true);
           setSaveError('Could not load graph from server.');
         }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
@@ -78,7 +74,7 @@ export function AdminPanel() {
   }, []);
 
   useEffect(() => {
-    if (loading || loadFailed) return;
+    if (loadFailed) return;
     if (skipSave.current) {
       skipSave.current = false;
       return;
@@ -99,7 +95,7 @@ export function AdminPanel() {
     }, 400);
 
     return () => window.clearTimeout(timer);
-  }, [graph, loading, loadFailed]);
+  }, [graph, loadFailed]);
 
   const updatePoint = (id: string, patch: Partial<QuestPoint>) => {
     setGraph((g) => ({
@@ -207,14 +203,6 @@ export function AdminPanel() {
   const edgeTo = selectedEdge
     ? graph.points.find((p) => p.id === selectedEdge.toId)
     : null;
-
-  if (loading) {
-    return (
-      <div className="map-fullscreen map-fullscreen--loading">
-        <p className="map-header__title">Loading…</p>
-      </div>
-    );
-  }
 
   return (
     <div className="admin">
