@@ -1185,6 +1185,125 @@ async function ensureEisenkindStoryVersionsBootstrapped() {
   return listEisenkindStoryVersionsMeta();
 }
 
+const CAUSE_DEFAULT_GRAPH = {
+  points: [
+    { id: 'a', title: 'POINT A', description: '', condition: '' },
+    { id: 'b', title: 'POINT B', description: '', condition: '@POINT A' }
+  ],
+  edges: []
+};
+
+function normalizeCauseGraph(graph) {
+  if (!graph || typeof graph !== 'object') {
+    return { ...CAUSE_DEFAULT_GRAPH, positions: undefined };
+  }
+
+  return {
+    points: Array.isArray(graph.points)
+      ? graph.points.map((p) => ({
+          id: String(p.id ?? ''),
+          title: String(p.title ?? '').toUpperCase(),
+          description: String(p.description ?? ''),
+          condition: String(p.condition ?? '')
+        }))
+      : CAUSE_DEFAULT_GRAPH.points,
+    edges: Array.isArray(graph.edges)
+      ? graph.edges.map((e) => ({
+          id: String(e.id ?? ''),
+          fromId: String(e.fromId ?? ''),
+          toId: String(e.toId ?? ''),
+          unlockCondition: String(e.unlockCondition ?? '')
+        }))
+      : [],
+    positions:
+      graph.positions && typeof graph.positions === 'object'
+        ? graph.positions
+        : undefined
+  };
+}
+
+async function getCauseGraph() {
+  if (!supabase) {
+    const fs = require('fs');
+    const path = require('path');
+    const graphPath = path.join(__dirname, '../../data/cause-graph.json');
+    try {
+      const data = JSON.parse(fs.readFileSync(graphPath, 'utf8'));
+      return normalizeCauseGraph(data);
+    } catch {
+      return normalizeCauseGraph(CAUSE_DEFAULT_GRAPH);
+    }
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('cause_graph')
+      .select('graph, updated_at')
+      .eq('id', 'main')
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching cause graph:', error);
+      return normalizeCauseGraph(CAUSE_DEFAULT_GRAPH);
+    }
+
+    if (!data?.graph) {
+      return normalizeCauseGraph(CAUSE_DEFAULT_GRAPH);
+    }
+
+    return normalizeCauseGraph(data.graph);
+  } catch (error) {
+    console.error('Error fetching cause graph:', error);
+    return normalizeCauseGraph(CAUSE_DEFAULT_GRAPH);
+  }
+}
+
+async function saveCauseGraph(graph) {
+  const normalized = normalizeCauseGraph(graph);
+  const now = new Date().toISOString();
+  const payload = {
+    id: 'main',
+    graph: normalized,
+    updated_at: now
+  };
+
+  if (!supabase) {
+    const fs = require('fs');
+    const path = require('path');
+    const graphPath = path.join(__dirname, '../../data/cause-graph.json');
+    try {
+      const dir = path.dirname(graphPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(graphPath, JSON.stringify(normalized, null, 2), 'utf8');
+      return { success: true, graph: normalized, updated_at: now };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('cause_graph')
+      .upsert(payload, { onConflict: 'id' })
+      .select('graph, updated_at')
+      .single();
+
+    if (error) {
+      console.error('Error saving cause graph:', error);
+      return { success: false, error: error.message };
+    }
+
+    return {
+      success: true,
+      graph: normalizeCauseGraph(data.graph),
+      updated_at: data.updated_at
+    };
+  } catch (error) {
+    console.error('Error saving cause graph:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   getEntries,
   createEntry,
@@ -1212,6 +1331,8 @@ module.exports = {
   rebuildAllConnections,
   updateBookCategory,
   updateBookReadingTime,
+  getCauseGraph,
+  saveCauseGraph,
   isConfigured: () => supabase !== null
 };
 

@@ -320,6 +320,17 @@ body {
   pointer-events: auto;
 }
 
+.map-fullscreen--loading {
+  align-items: center;
+  justify-content: center;
+}
+
+.admin__error {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #b45309;
+}
+
 .map-fullscreen .graph-canvas {
   flex: 1;
   min-height: 0;

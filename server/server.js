@@ -66,7 +66,7 @@ app.get('/office', (req, res) => {
 });
 
 // Eisenkind story (public read)
-const { getEisenkindNotes } = require('./db/supabase');
+const { getEisenkindNotes, getCauseGraph, saveCauseGraph } = require('./db/supabase');
 app.get('/api/eisenkind/notes', async (req, res) => {
   try {
     const notes = await getEisenkindNotes();
@@ -79,6 +79,36 @@ app.get('/api/eisenkind/notes', async (req, res) => {
   } catch (error) {
     console.error('Error loading eisenkind story:', error);
     res.status(500).json({ success: false, story: '', error: 'Failed to load story' });
+  }
+});
+
+// Cause effect map graph (public read/write via API)
+app.get('/api/cause/graph', async (req, res) => {
+  try {
+    const graph = await getCauseGraph();
+    res.json({ success: true, graph });
+  } catch (error) {
+    console.error('Error loading cause graph:', error);
+    res.status(500).json({ success: false, error: 'Failed to load cause graph' });
+  }
+});
+
+app.put('/api/cause/graph', async (req, res) => {
+  try {
+    const { graph } = req.body || {};
+    if (!graph || typeof graph !== 'object') {
+      return res.status(400).json({ success: false, error: 'Missing graph payload' });
+    }
+
+    const result = await saveCauseGraph(graph);
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error saving cause graph:', error);
+    res.status(500).json({ success: false, error: 'Failed to save cause graph' });
   }
 });
 

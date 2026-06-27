@@ -1,20 +1,55 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { QuestGraph } from '../types';
-import { loadGraph, saveGraph } from '../utils/storage';
+import { createDefaultGraph, fetchGraph, persistGraph } from '../utils/storage';
 import { GraphCanvas } from './GraphCanvas';
 
 export function QuestView() {
-  const [graph, setGraph] = useState<QuestGraph>(loadGraph);
+  const [graph, setGraph] = useState<QuestGraph>(createDefaultGraph);
+  const [loading, setLoading] = useState(true);
+  const saveTimer = useRef<number | null>(null);
+
+  const reload = () => {
+    fetchGraph()
+      .then(setGraph)
+      .catch((error) => console.error(error));
+  };
 
   useEffect(() => {
-    const refresh = () => setGraph(loadGraph());
-    window.addEventListener('focus', refresh);
-    window.addEventListener('storage', refresh);
+    let cancelled = false;
+    fetchGraph()
+      .then((loaded) => {
+        if (!cancelled) setGraph(loaded);
+      })
+      .catch((error) => {
+        if (!cancelled) console.error(error);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    const onFocus = () => reload();
+    window.addEventListener('focus', onFocus);
     return () => {
-      window.removeEventListener('focus', refresh);
-      window.removeEventListener('storage', refresh);
+      cancelled = true;
+      window.removeEventListener('focus', onFocus);
     };
   }, []);
+
+  const scheduleSave = (updated: QuestGraph) => {
+    setGraph(updated);
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      persistGraph(updated).catch((error) => console.error(error));
+    }, 400);
+  };
+
+  if (loading) {
+    return (
+      <div className="map-fullscreen map-fullscreen--loading">
+        <p className="map-header__title">Loading…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="map-fullscreen">
@@ -25,9 +60,7 @@ export function QuestView() {
         graph={graph}
         mode="view"
         onPositionsChange={(positions) => {
-          const updated = { ...graph, positions };
-          setGraph(updated);
-          saveGraph(updated);
+          scheduleSave({ ...graph, positions });
         }}
       />
     </div>

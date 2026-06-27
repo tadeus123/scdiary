@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { QuestGraph, QuestPoint, UnlockEdge } from '../types';
-import { loadGraph, saveGraph, newId } from '../utils/storage';
+import { createDefaultGraph, fetchGraph, persistGraph, newId } from '../utils/storage';
 import { applyPointRename, applyPointCondition, reconcileConditionWithEdges, removeMentionFromCondition } from '../utils/mentions';
 import { GraphCanvas } from './GraphCanvas';
 import { ConditionInput } from './ConditionInput';
@@ -44,12 +44,43 @@ function PointNameInput({
 }
 
 export function AdminPanel() {
-  const [graph, setGraph] = useState<QuestGraph>(loadGraph);
+  const [graph, setGraph] = useState<QuestGraph>(createDefaultGraph);
   const [selection, setSelection] = useState<Selection>(null);
+  const [loading, setLoading] = useState(true);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    saveGraph(graph);
-  }, [graph]);
+    let cancelled = false;
+    fetchGraph()
+      .then((loaded) => {
+        if (!cancelled) setGraph(loaded);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.error(error);
+          setSaveError('Could not load graph from server.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (loading) return;
+
+    const timer = window.setTimeout(() => {
+      persistGraph(graph).catch((error) => {
+        console.error(error);
+        setSaveError('Could not save changes.');
+      });
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [graph, loading]);
 
   const updatePoint = (id: string, patch: Partial<QuestPoint>) => {
     setGraph((g) => ({
@@ -59,17 +90,7 @@ export function AdminPanel() {
   };
 
   const updatePointCondition = (id: string, condition: string) => {
-    setGraph((g) => {
-      const prev = g.points.find((p) => p.id === id)?.condition ?? '';
-      const next = applyPointCondition(g, id, condition);
-      const applied = next.points.find((p) => p.id === id)?.condition ?? '';
-      if (applied !== condition || applied.length < condition.length) {
-        // #region agent log
-        fetch('http://127.0.0.1:7907/ingest/d5d54c4d-9320-4e06-bb7b-878d017e5208',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'187000'},body:JSON.stringify({sessionId:'187000',location:'AdminPanel.tsx:updatePointCondition',message:'condition transformed by applyPointCondition',data:{incomingLen:condition.length,appliedLen:applied.length,prevLen:prev.length,incomingPreview:condition.slice(0,120),appliedPreview:applied.slice(0,120),sameAsIncoming:applied===condition},timestamp:Date.now(),hypothesisId:'E',runId:'pre-fix'})}).catch(()=>{});
-        // #endregion
-      }
-      return next;
-    });
+    setGraph((g) => applyPointCondition(g, id, condition));
   };
 
   useEffect(() => {
@@ -168,11 +189,20 @@ export function AdminPanel() {
     ? graph.points.find((p) => p.id === selectedEdge.toId)
     : null;
 
+  if (loading) {
+    return (
+      <div className="map-fullscreen map-fullscreen--loading">
+        <p className="map-header__title">Loading…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="admin">
       <header className="admin__header">
         <div className="admin__brand">
           <h1 className="admin__title">Cause Effect Map</h1>
+          {saveError && <p className="admin__error">{saveError}</p>}
         </div>
         <div className="admin__actions">
           <button type="button" className="btn btn--secondary btn--compact" onClick={addPoint}>
