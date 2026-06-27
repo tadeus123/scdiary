@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>favicon preview</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 2rem;
+      font-family: system-ui, sans-serif;
+      background: #1a1a1a;
+      color: #e2e8f0;
+    }
+    h1 { font-size: 1.1rem; font-weight: 500; margin: 0 0 1.5rem; }
+    section { margin-bottom: 2rem; }
+    h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin: 0 0 0.75rem; }
+    .sizes { display: flex; gap: 2rem; align-items: flex-end; }
+    .size { text-align: center; font-size: 0.7rem; color: #94a3b8; }
+    .size img { display: block; margin: 0 auto 0.4rem; image-rendering: pixelated; }
+    .tabs { display: flex; gap: 0; }
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 1rem 0.55rem 0.75rem;
+      font-size: 0.8rem;
+      border-radius: 8px 8px 0 0;
+    }
+    .tab.dark { background: #2d2d2d; color: #e2e8f0; }
+    .tab.light { background: #e8e0d4; color: #1a1a1a; }
+    .tab img { width: 16px; height: 16px; image-rendering: pixelated; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(8, 16px);
+      gap: 4px;
+      padding: 1rem;
+      background: #2d2d2d;
+      border-radius: 8px;
+      width: fit-content;
+    }
+    .grid img { width: 16px; height: 16px; image-rendering: pixelated; }
+  </style>
+</head>
+<body>
+  <h1>Favicon preview</h1>
+
+  <section>
+    <h2>Actual pixels</h2>
+    <div class="sizes">
+      <div class="size"><img src="/favicon-16.png?v=1" width="16" height="16" alt="">16×16</div>
+      <div class="size"><img src="/favicon-32.png?v=1" width="32" height="32" alt="">32×32</div>
+      <div class="size"><img src="/favicon-32.png?v=1" width="64" height="64" alt="">64×64 (2×)</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Tab mockups</h2>
+    <div class="tabs">
+      <div class="tab dark"><img src="/favicon-16.png?v=1" alt="">digital diary</div>
+      <div class="tab dark"><img src="/favicon-16.png?v=1" alt="">Cause Effect Map</div>
+      <div class="tab light"><img src="/favicon-16.png?v=1" alt="">digital diary</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Repeated 16px (spot blur / artifacts)</h2>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <script>
+    const grid = document.getElementById('grid');
+    for (let i = 0; i < 32; i++) {
+      const img = document.createElement('img');
+      img.src = '/favicon-16.png?v=' + Date.now();
+      grid.appendChild(img);
+    }
+  </script>
+</body>
+</html>
