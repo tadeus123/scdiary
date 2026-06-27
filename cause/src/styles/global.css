@@ -331,6 +331,16 @@ body {
   color: #b45309;
 }
 
+.admin__status {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-muted, #6b5c4d);
+}
+
+.admin__status--saved {
+  color: #4a7c59;
+}
+
 .map-fullscreen .graph-canvas {
   flex: 1;
   min-height: 0;

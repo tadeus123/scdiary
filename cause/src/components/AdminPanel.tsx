@@ -47,17 +47,25 @@ export function AdminPanel() {
   const [graph, setGraph] = useState<QuestGraph>(createDefaultGraph);
   const [selection, setSelection] = useState<Selection>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const skipSave = useRef(true);
 
   useEffect(() => {
     let cancelled = false;
     fetchGraph()
       .then((loaded) => {
-        if (!cancelled) setGraph(loaded);
+        if (cancelled) return;
+        skipSave.current = true;
+        setGraph(loaded);
+        setLoadFailed(false);
+        setSaveError(null);
       })
       .catch((error) => {
         if (!cancelled) {
           console.error(error);
+          setLoadFailed(true);
           setSaveError('Could not load graph from server.');
         }
       })
@@ -70,17 +78,28 @@ export function AdminPanel() {
   }, []);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || loadFailed) return;
+    if (skipSave.current) {
+      skipSave.current = false;
+      return;
+    }
 
+    setSaveState('saving');
     const timer = window.setTimeout(() => {
-      persistGraph(graph).catch((error) => {
-        console.error(error);
-        setSaveError('Could not save changes.');
-      });
+      persistGraph(graph)
+        .then(() => {
+          setSaveState('saved');
+          setSaveError(null);
+        })
+        .catch((error) => {
+          console.error(error);
+          setSaveState('idle');
+          setSaveError('Could not save changes.');
+        });
     }, 400);
 
     return () => window.clearTimeout(timer);
-  }, [graph, loading]);
+  }, [graph, loading, loadFailed]);
 
   const updatePoint = (id: string, patch: Partial<QuestPoint>) => {
     setGraph((g) => ({
@@ -202,6 +221,8 @@ export function AdminPanel() {
       <header className="admin__header">
         <div className="admin__brand">
           <h1 className="admin__title">Cause Effect Map</h1>
+          {saveState === 'saving' && <p className="admin__status">Saving…</p>}
+          {saveState === 'saved' && !saveError && <p className="admin__status admin__status--saved">Saved</p>}
           {saveError && <p className="admin__error">{saveError}</p>}
         </div>
         <div className="admin__actions">
