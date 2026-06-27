@@ -26,6 +26,19 @@ app.get(['/tademehl/eisenkind', '/tademehl/eisenkind/'], (req, res) => {
   res.redirect(301, '/eisenkind');
 });
 
+// Cause effect map (Vite/React SPA) at /cause
+const causeDir = path.join(__dirname, '../cause/dist');
+app.get(['/cause', '/cause/'], (req, res) => {
+  res.sendFile(path.join(causeDir, 'index.html'));
+});
+app.use('/cause', express.static(causeDir));
+app.get('/cause/*', (req, res) => {
+  res.sendFile(path.join(causeDir, 'index.html'));
+});
+app.get(['/tademehl/cause', '/tademehl/cause/'], (req, res) => {
+  res.redirect(301, '/cause');
+});
+
 // View engine setup
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));

@@ -5,7 +5,9 @@
   "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js",
-    "dev": "node server/server.js"
+    "dev": "node server/server.js",
+    "build:cause": "npm install --prefix cause && npm run build --prefix cause",
+    "vercel-build": "npm run build:cause"
   },
   "keywords": [
     "diary",
