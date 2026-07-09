@@ -7,8 +7,17 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
 
+const { getSeoForPath, getCanonicalUrl, getPersonSchema, buildSitemapXml } = require('./utils/seo');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+app.locals.getCanonicalUrl = getCanonicalUrl;
+app.locals.getPersonSchema = getPersonSchema;
+app.use((req, res, next) => {
+  res.locals.seo = getSeoForPath(req.path);
+  next();
+});
 
 // Middleware
 app.use(bodyParser.json());
@@ -56,6 +65,11 @@ app.set('views', path.join(__dirname, '../views'));
 // Import routes
 const diaryRoutes = require('./routes/diary');
 const adminRoutes = require('./routes/admin');
+
+app.get('/sitemap.xml', (req, res) => {
+  res.type('application/xml');
+  res.send(buildSitemapXml());
+});
 
 // Use routes
 app.use('/', diaryRoutes);

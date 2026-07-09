@@ -1,0 +1,31 @@
+<% const canonical = getCanonicalUrl(seo.path); %>
+<title><%= seo.title %></title>
+<% if (seo.description) { %>
+<meta name="description" content="<%= seo.description %>">
+<% } %>
+<meta name="author" content="Tade Mehl">
+<% if (seo.googleSiteVerification) { %>
+<meta name="google-site-verification" content="<%= seo.googleSiteVerification %>">
+<% } %>
+<link rel="canonical" href="<%= canonical %>">
+<% if (seo.noindex) { %>
+<meta name="robots" content="noindex, nofollow">
+<% } else { %>
+<meta name="robots" content="index, follow">
+<% } %>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Tade Mehl">
+<meta property="og:title" content="<%= seo.title %>">
+<% if (seo.description) { %>
+<meta property="og:description" content="<%= seo.description %>">
+<% } %>
+<meta property="og:url" content="<%= canonical %>">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="<%= seo.title %>">
+<% if (seo.description) { %>
+<meta name="twitter:description" content="<%= seo.description %>">
+<% } %>
+<% if (seo.includePersonSchema) { %>
+<script type="application/ld+json"><%- JSON.stringify(getPersonSchema()) %></script>
+<% } %>
