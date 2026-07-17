@@ -1,9 +1,7 @@
-# Generate larger favicon PNGs from locked 16/32 T PNGs.
-# Do NOT regenerate favicon-16.png or favicon-32.png — locked at commit 72d8e0f.
-
+# Generate favicon PNGs: large Georgia "T" in #941E2F, shifted down for tab alignment.
 param(
-  [double]$FillRatio = 0.9,
-  [double]$YShiftRatio = 0.06,
+  [double]$FillRatio = 0.96,
+  [double]$YShiftRatio = 0.09,
   [int]$Red = 148,
   [int]$Green = 30,
   [int]$Blue = 47
@@ -13,7 +11,7 @@ Add-Type -AssemblyName System.Drawing
 
 function Get-FittedFontSize([System.Drawing.Graphics]$gfx, [int]$canvas, [double]$ratio) {
   $best = 10
-  for ($fs = 10; $fs -le 120; $fs++) {
+  for ($fs = 10; $fs -le 160; $fs++) {
     $font = New-Object System.Drawing.Font("Georgia", $fs, [System.Drawing.FontStyle]::Regular, [System.Drawing.GraphicsUnit]::Pixel)
     $size = $gfx.MeasureString("T", $font)
     $font.Dispose()
@@ -29,12 +27,12 @@ function New-TBitmap([int]$size, [int]$red, [int]$green, [int]$blue, [double]$ra
   $bmp = New-Object System.Drawing.Bitmap $size, $size
   $gfx = [System.Drawing.Graphics]::FromImage($bmp)
   $gfx.Clear([System.Drawing.Color]::Transparent)
-  $gfx.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::ClearTypeGridFit
+  $gfx.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAlias
   $gfx.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
 
   $fontSize = Get-FittedFontSize $gfx $size $ratio
   $font = New-Object System.Drawing.Font("Georgia", $fontSize, [System.Drawing.FontStyle]::Regular, [System.Drawing.GraphicsUnit]::Pixel)
-  $brush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb($red, $green, $blue))
+  $brush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, $red, $green, $blue))
   $sf = New-Object System.Drawing.StringFormat
   $sf.Alignment = [System.Drawing.StringAlignment]::Center
   $sf.LineAlignment = [System.Drawing.StringAlignment]::Center
@@ -52,16 +50,14 @@ function New-TBitmap([int]$size, [int]$red, [int]$green, [int]$blue, [double]$ra
 
 $public = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) "public"
 
-$b48 = New-TBitmap 48 $Red $Green $Blue $FillRatio $YShiftRatio
-$b180 = New-TBitmap 180 $Red $Green $Blue $FillRatio $YShiftRatio
+foreach ($canvas in @(16, 32, 48, 180)) {
+  $bmp = New-TBitmap $canvas $Red $Green $Blue $FillRatio $YShiftRatio
+  $outName = if ($canvas -eq 180) { "apple-touch-icon.png" } elseif ($canvas -eq 48) { "favicon-48.png" } else { "favicon-$canvas.png" }
+  $bmp.Save((Join-Path $public $outName), [System.Drawing.Imaging.ImageFormat]::Png)
+  $bmp.Dispose()
+}
 
-$b48.Save((Join-Path $public "favicon-48.png"), [System.Drawing.Imaging.ImageFormat]::Png)
-$b180.Save((Join-Path $public "apple-touch-icon.png"), [System.Drawing.Imaging.ImageFormat]::Png)
-
-$b48.Dispose()
-$b180.Dispose()
-
-Write-Output "Wrote favicon-48.png and apple-touch-icon.png (16/32 PNGs are locked)"
+Write-Output "Wrote favicon PNGs (fill=$FillRatio, yShift=$YShiftRatio, color=#941E2F)"
 
 node (Join-Path (Split-Path $PSScriptRoot -Parent) "scripts/verify-favicon.js")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
