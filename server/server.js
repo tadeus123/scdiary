@@ -28,7 +28,7 @@ app.use(cookieParser());
 
 const publicDir = path.join(__dirname, '../public');
 const faviconRoutes = [
-  ['/favicon.ico', 'favicon-32.png', 'image/png'],
+  ['/favicon.ico', 'favicon-48.png', 'image/png'],
   ['/favicon-16.png', 'favicon-16.png', 'image/png'],
   ['/favicon-32.png', 'favicon-32.png', 'image/png'],
   ['/favicon-48.png', 'favicon-48.png', 'image/png'],
@@ -172,11 +172,13 @@ app.get('/api/corner-images', (req, res) => {
   }
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🌟 Digital diary server running on http://localhost:${PORT}`);
-  console.log(`📝 Admin panel available at http://localhost:${PORT}/admin`);
-});
+// Start server locally; Vercel invokes the exported app directly.
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🌟 Digital diary server running on http://localhost:${PORT}`);
+    console.log(`📝 Admin panel available at http://localhost:${PORT}/admin`);
+  });
+}
 
 module.exports = app;
 

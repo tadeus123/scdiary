@@ -32,10 +32,11 @@ const { categorizeBook } = require('../services/categorization');
 const { calculateSimilarity } = require('../services/similarity');
 
 // Initialize Supabase client for storage
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabase = supabaseUrl && supabaseKey
+  ? createClient(supabaseUrl, supabaseKey)
+  : null;
 
 // Configure multer for memory storage (Vercel-compatible)
 const upload = multer({ 
@@ -124,6 +125,10 @@ router.get('/api/books', async (req, res) => {
 // API: Add new book
 router.post('/api/books', upload.single('cover'), async (req, res) => {
   try {
+    if (!supabase) {
+      return res.status(503).json({ success: false, error: 'Supabase is not configured on the server.' });
+    }
+
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'Cover image is required' });
     }
@@ -332,7 +337,7 @@ router.delete('/api/books/:id', async (req, res) => {
     
     if (result.success) {
       // Delete image from Supabase Storage
-      if (book.cover_image_url && book.cover_image_url.includes('supabase')) {
+      if (book.cover_image_url && book.cover_image_url.includes('supabase') && supabase) {
         const fileName = book.cover_image_url.split('/').pop();
         await supabase.storage.from('book-covers').remove([fileName]);
       }
