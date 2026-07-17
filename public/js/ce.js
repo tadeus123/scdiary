@@ -112,11 +112,6 @@ function renderCategories(categories) {
       openCategory(button, { closeOthers: isMobileLayout() });
     });
   });
-
-  const firstCategory = container.querySelector('.ce-category-header');
-  if (firstCategory) {
-    openCategory(firstCategory);
-  }
 }
 
 async function loadCompanyEducation() {
