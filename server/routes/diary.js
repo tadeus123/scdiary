@@ -20,6 +20,7 @@ const {
   getCeCategories,
   getOrCreateCeCategory,
   getCeData,
+  updateCeCategoryOrder,
   addCeVideo,
   isConfigured
 } = require('../db/supabase');
@@ -491,6 +492,40 @@ router.get('/api/ce/categories', async (req, res) => {
     res.json({ success: true, categories });
   } catch (error) {
     console.error('Error fetching CE categories:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.put('/api/ce/categories/order', async (req, res) => {
+  try {
+    if (!isConfigured()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Supabase is not configured on the server.'
+      });
+    }
+
+    const { categoryIds } = req.body;
+
+    if (!Array.isArray(categoryIds) || categoryIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'categoryIds must be a non-empty array'
+      });
+    }
+
+    const result = await updateCeCategoryOrder(categoryIds);
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        error: result.error || 'Failed to update category order'
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating CE category order:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

@@ -1313,6 +1313,7 @@ async function getCeCategories() {
     const { data, error } = await supabase
       .from('ce_categories')
       .select('*')
+      .order('sort_order', { ascending: true })
       .order('name', { ascending: true });
 
     if (error) {
@@ -1325,6 +1326,22 @@ async function getCeCategories() {
     console.error('Error fetching CE categories:', error);
     return [];
   }
+}
+
+async function getNextCeCategorySortOrder() {
+  const { data, error } = await supabase
+    .from('ce_categories')
+    .select('sort_order')
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching CE category sort order:', error);
+    return 0;
+  }
+
+  return data ? data.sort_order + 1 : 0;
 }
 
 async function getOrCreateCeCategory(name) {
@@ -1354,9 +1371,11 @@ async function getOrCreateCeCategory(name) {
       return { success: true, category: existing, created: false };
     }
 
+    const sortOrder = await getNextCeCategorySortOrder();
+
     const { data, error } = await supabase
       .from('ce_categories')
-      .insert([{ name: trimmedName }])
+      .insert([{ name: trimmedName, sort_order: sortOrder }])
       .select()
       .single();
 
@@ -1379,7 +1398,7 @@ async function getCeData() {
 
   try {
     const [categoriesResult, videosResult] = await Promise.all([
-      supabase.from('ce_categories').select('*').order('name', { ascending: true }),
+      supabase.from('ce_categories').select('*').order('sort_order', { ascending: true }).order('name', { ascending: true }),
       supabase.from('ce_videos').select('*').order('created_at', { ascending: true })
     ]);
 
@@ -1403,6 +1422,38 @@ async function getCeData() {
   } catch (error) {
     console.error('Error fetching CE data:', error);
     return [];
+  }
+}
+
+async function updateCeCategoryOrder(orderedIds) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+    return { success: false, error: 'Category order is required' };
+  }
+
+  try {
+    const updates = orderedIds.map((id, index) =>
+      supabase
+        .from('ce_categories')
+        .update({ sort_order: index })
+        .eq('id', id)
+    );
+
+    const results = await Promise.all(updates);
+    const failed = results.find((result) => result.error);
+
+    if (failed?.error) {
+      console.error('Error updating CE category order:', failed.error);
+      return { success: false, error: failed.error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating CE category order:', error);
+    return { success: false, error: error.message };
   }
 }
 
@@ -1463,6 +1514,7 @@ module.exports = {
   getCeCategories,
   getOrCreateCeCategory,
   getCeData,
+  updateCeCategoryOrder,
   addCeVideo,
   isConfigured: () => supabase !== null
 };
