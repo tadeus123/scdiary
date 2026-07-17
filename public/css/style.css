@@ -1797,13 +1797,6 @@ body.corner-page {
   border-radius: 12px;
   background-color: var(--entry-bg);
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.ce-category:has(.ce-category-header.is-open) {
-  border-color: rgba(193, 106, 40, 0.35);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
 }
 
 .ce-category-header {
@@ -1820,18 +1813,8 @@ body.corner-page {
   font-size: 1.08rem;
   text-align: left;
   cursor: pointer;
-  transition: background-color 0.2s ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-}
-
-.ce-category-header:hover,
-.ce-category-header.is-open {
-  background-color: rgba(193, 106, 40, 0.08);
-}
-
-.ce-category-header:active {
-  background-color: rgba(193, 106, 40, 0.14);
 }
 
 .ce-category-header:focus-visible {
