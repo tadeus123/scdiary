@@ -1380,7 +1380,7 @@ async function getCeData() {
   try {
     const [categoriesResult, videosResult] = await Promise.all([
       supabase.from('ce_categories').select('*').order('name', { ascending: true }),
-      supabase.from('ce_videos').select('*').order('created_at', { ascending: false })
+      supabase.from('ce_videos').select('*').order('created_at', { ascending: true })
     ]);
 
     if (categoriesResult.error) {

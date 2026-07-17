@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS ce_videos (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ce_categories_name_lower ON ce_categories (lower(trim(name)));
 CREATE INDEX IF NOT EXISTS idx_ce_videos_category_id ON ce_videos(category_id);
-CREATE INDEX IF NOT EXISTS idx_ce_videos_created_at ON ce_videos(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ce_videos_created_at ON ce_videos(created_at ASC);
 
 ALTER TABLE ce_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ce_videos ENABLE ROW LEVEL SECURITY;
