@@ -7,13 +7,14 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
 
-const { getSeoForPath, getCanonicalUrl, getPersonSchema, buildSitemapXml } = require('./utils/seo');
+const { getSeoForPath, getCanonicalUrl, getPersonSchema, buildSitemapXml, SITE_URL } = require('./utils/seo');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.locals.getCanonicalUrl = getCanonicalUrl;
 app.locals.getPersonSchema = getPersonSchema;
+app.locals.SITE_URL = SITE_URL;
 app.use((req, res, next) => {
   res.locals.seo = getSeoForPath(req.path);
   next();

@@ -4,9 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <%- include('partials/seo-head') %>
-  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
-  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png">
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -33,6 +30,7 @@
     </nav>
 
     <main>
+      <p class="site-intro">Personal diary of Tade Mehl. Notes on robotics, startups, and building things people love.</p>
       <div class="entries">
         <% if (entries.length === 0) { %>
           <div class="empty-state">

@@ -4,9 +4,10 @@ const GOOGLE_SITE_VERIFICATION = 'd4WLzoBzgHWWVP0CMIKncQP3WKHJY1kq8iPlbfwar4M';
 const PAGES = {
   '/': {
     title: 'Tade Mehl — diary',
-    description: 'Personal diary of Tade Mehl. Thoughts on robotics, startups, and life.',
+    description: 'Personal diary of Tade Mehl. Notes on robotics, startups, and building things people love.',
     includePersonSchema: true,
     googleSiteVerification: GOOGLE_SITE_VERIFICATION,
+    ogImage: '/og-image.png',
   },
   '/bookshelf': {
     title: 'Tade Mehl — bookshelf',
@@ -58,6 +59,7 @@ function getSeoForPath(pathname) {
     noindex: false,
     includePersonSchema: Boolean(page.includePersonSchema),
     googleSiteVerification: page.googleSiteVerification || null,
+    ogImage: page.ogImage || null,
   };
 }
 
@@ -75,6 +77,7 @@ function getPersonSchema() {
         name: 'Tade Mehl',
         alternateName: ['Tadeus Mehl', 'Tadeus Jonathan Mehl', 'tademehl'],
         url: `${SITE_URL}/`,
+        description: 'Founder and builder working on robotics, startups, and products people love.',
         sameAs: [
           'https://www.linkedin.com/in/tadeusmehl',
           'https://github.com/tadeus123',

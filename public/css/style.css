@@ -204,6 +204,15 @@ nav a:hover:not(.site-title) {
   gap: 3rem;
 }
 
+.site-intro {
+  max-width: 36rem;
+  margin: 0 0 2.5rem;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--text-color);
+  opacity: 0.85;
+}
+
 .entry {
   padding: 2rem 0;
   border-bottom: 1px solid var(--border-color);
