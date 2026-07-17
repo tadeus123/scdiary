@@ -1,0 +1,41 @@
+---
+description: Favicon must always be the red Georgia T — never the corner triangle
+alwaysApply: true
+---
+
+# Favicon: Red Georgia T Only
+
+The site favicon is a **burgundy Georgia serif "T"** (`#941E2F`), never the cream/orange corner-triangle UI motif.
+
+## Never change without explicit user request
+
+Do **not** edit, regenerate, reorder, or replace any file in `public/favicon*`, `public/apple-touch-icon.png`, or `views/partials/seo-head.ejs` favicon links unless the user explicitly asks.
+
+## Forbidden icon
+
+The corner-triangle favicon (cream `#EFE8DC` + orange `#C16A28` wedge) must never appear in favicon assets. It is a **navigation UI element**, not the tab icon.
+
+## Required assets (all must show the red T)
+
+- `public/favicon.svg` — Georgia `T` text, `#941E2F`
+- `public/favicon-16.png`, `favicon-32.png`, `favicon-48.png`
+- `public/favicon.ico` — built from T PNGs via `server/scripts/generate-favicon-ico.js`
+- `public/apple-touch-icon.png`
+
+## If favicons must be regenerated
+
+Run:
+
+```bash
+npm run generate:favicon
+```
+
+Then confirm:
+
+```bash
+npm run verify:favicon
+```
+
+## New pages
+
+All pages must include favicons only through `views/partials/seo-head.ejs`. Do not add separate favicon links unless updating that partial for the whole site.

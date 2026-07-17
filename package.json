@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node server/server.js",
     "dev": "node server/server.js",
-    "build:cause": "npm run build --prefix cause"
+    "build:cause": "npm run build --prefix cause",
+    "generate:favicon": "powershell -ExecutionPolicy Bypass -File server/scripts/generate-favicon.ps1",
+    "verify:favicon": "node server/scripts/verify-favicon.js"
   },
   "keywords": [
     "diary",

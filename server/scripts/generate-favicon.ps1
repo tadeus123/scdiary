@@ -66,3 +66,7 @@ $b48.Dispose()
 $b180.Dispose()
 
 Write-Output "Wrote favicon PNGs (fill=$FillRatio, yShift=$YShiftRatio, color=rgb($Red,$Green,$Blue))"
+
+node (Join-Path (Split-Path $PSScriptRoot -Parent) "scripts/generate-favicon-ico.js")
+node (Join-Path (Split-Path $PSScriptRoot -Parent) "scripts/verify-favicon.js")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
