@@ -1,7 +1,7 @@
 # Generate favicon PNGs: large Georgia "T" in #941E2F, tab-cap height.
 param(
   [double]$HeightRatio = 1.02,
-  [double]$YShiftRatio = 0.07,
+  [double]$YShiftRatio = 0.04,
   [int]$Red = 148,
   [int]$Green = 30,
   [int]$Blue = 47
