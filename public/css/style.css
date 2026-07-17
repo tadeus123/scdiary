@@ -2198,6 +2198,43 @@ body.corner-page {
 .ce-category-sort-name {
   flex: 1;
   font-size: 1rem;
+  min-width: 0;
+}
+
+.ce-category-sort-open {
+  color: var(--accent-color);
+  font-size: 1.25rem;
+  line-height: 1;
+  opacity: 0.65;
+  flex-shrink: 0;
+}
+
+.ce-move-btn {
+  flex-shrink: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--entry-bg);
+  color: var(--accent-color);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  touch-action: manipulation;
+}
+
+.ce-move-btn:hover {
+  background-color: rgba(193, 106, 40, 0.08);
+  border-color: var(--accent-color);
+}
+
+.ce-move-btn:active {
+  background-color: rgba(193, 106, 40, 0.16);
 }
 
 .ce-category-sort-empty {
@@ -2323,6 +2360,140 @@ body.corner-page {
   .ce-category-sort-list,
   .ce-video-sort-list {
     max-width: 100%;
+  }
+
+  .admin-ce-page .container {
+    padding: 1.25rem 0.875rem 2.5rem;
+  }
+
+  .admin-ce-page .site-title {
+    font-size: 1.35rem;
+    line-height: 1.25;
+  }
+
+  .admin-ce-page nav {
+    margin-bottom: 1.75rem;
+  }
+
+  .admin-ce-page .add-book-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .admin-ce-page .add-book-section h2 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .admin-ce-page .book-form {
+    max-width: 100%;
+    gap: 1.25rem;
+  }
+
+  .admin-ce-page .book-form input[type="text"],
+  .admin-ce-page .book-form input[type="url"] {
+    font-size: 16px;
+    min-height: 48px;
+    padding: 0.875rem;
+    width: 100%;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+  }
+
+  .admin-ce-page .book-form .btn {
+    width: 100%;
+    align-self: stretch;
+    min-height: 48px;
+  }
+
+  .admin-ce-page .form-hint {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 0.75rem;
+  }
+
+  .admin-ce-page .cover-preview img {
+    max-width: 100%;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+  }
+
+  .admin-ce-page .ce-category-sort-item,
+  .admin-ce-page .ce-video-sort-item {
+    min-height: 56px;
+    padding: 0.75rem;
+    gap: 0.5rem;
+    touch-action: manipulation;
+  }
+
+  .admin-ce-page .ce-category-sort-handle {
+    display: none;
+  }
+
+  .admin-ce-page .ce-move-btn {
+    display: inline-flex;
+  }
+
+  .admin-ce-page .ce-category-sort-name {
+    font-size: 1.05rem;
+    padding: 0.35rem 0;
+  }
+
+  .admin-ce-page .ce-category-sort-open {
+    font-size: 1.4rem;
+    padding: 0.25rem 0.15rem;
+  }
+
+  .admin-ce-page .ce-category-videos-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .admin-ce-page .ce-category-videos-header h2 {
+    font-size: 1.25rem;
+  }
+
+  .admin-ce-page .ce-category-videos-header .btn-secondary {
+    width: 100%;
+    min-height: 48px;
+    font-size: 1rem;
+  }
+
+  .admin-ce-page .ce-video-sort-item {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .admin-ce-page .ce-video-sort-title {
+    flex: 1 1 8rem;
+    min-width: 0;
+    font-size: 1rem;
+    line-height: 1.4;
+  }
+
+  .admin-ce-page .ce-video-sort-thumb {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    margin-top: 0.35rem;
+  }
+
+  .admin-ce-page .ce-video-sort-delete {
+    min-height: 44px;
+    min-width: 72px;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.9rem;
+    margin-left: auto;
+  }
+
+  .admin-ce-page .ce-category-videos-panel {
+    scroll-margin-top: 1rem;
   }
 }
 

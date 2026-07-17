@@ -61,6 +61,8 @@ let draggedSortItem = null;
 let draggedVideoItem = null;
 let activeCategoryId = null;
 let activeCategoryName = '';
+let categoryDragMoved = false;
+let videoDragMoved = false;
 
 function getSortListIds() {
   return Array.from(document.querySelectorAll('#ce-category-sort-list .ce-category-sort-item'))
@@ -91,12 +93,45 @@ async function saveCategoryOrder() {
   }
 }
 
+function moveListItem(item, direction) {
+  if (!item || !item.parentNode) return false;
+
+  if (direction === 'up' && item.previousElementSibling) {
+    item.parentNode.insertBefore(item, item.previousElementSibling);
+    return true;
+  }
+
+  if (direction === 'down' && item.nextElementSibling) {
+    item.parentNode.insertBefore(item.nextElementSibling, item);
+    return true;
+  }
+
+  return false;
+}
+
+function initMoveButtons(listSelector, onMove) {
+  document.querySelectorAll(`${listSelector} .ce-move-btn`).forEach((button) => {
+    button.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const item = button.closest('.ce-category-sort-item, .ce-video-sort-item');
+      const direction = button.dataset.direction;
+
+      if (moveListItem(item, direction)) {
+        onMove();
+      }
+    });
+  });
+}
+
 function initCategorySortDragDrop() {
   const list = document.getElementById('ce-category-sort-list');
 
   list.querySelectorAll('.ce-category-sort-item').forEach((item) => {
     item.addEventListener('dragstart', () => {
       draggedSortItem = item;
+      categoryDragMoved = false;
       item.classList.add('dragging');
     });
 
@@ -112,6 +147,7 @@ function initCategorySortDragDrop() {
       e.preventDefault();
       if (!draggedSortItem || draggedSortItem === item) return;
 
+      categoryDragMoved = true;
       item.classList.add('drag-over');
       const rect = item.getBoundingClientRect();
       const insertAfter = e.clientY > rect.top + rect.height / 2;
@@ -133,11 +169,17 @@ function initCategorySortDragDrop() {
       saveCategoryOrder();
     });
 
-    item.addEventListener('dblclick', (e) => {
-      e.preventDefault();
+    item.addEventListener('click', (e) => {
+      if (e.target.closest('.ce-move-btn, .ce-category-sort-handle')) return;
+      if (categoryDragMoved) {
+        categoryDragMoved = false;
+        return;
+      }
       openCategoryVideos(item.dataset.id, item.dataset.name);
     });
   });
+
+  initMoveButtons('#ce-category-sort-list', saveCategoryOrder);
 }
 
 function renderCategorySortList(categories) {
@@ -156,7 +198,10 @@ function renderCategorySortList(categories) {
       data-name="${escapeHtml(category.name)}"
     >
       <span class="ce-category-sort-handle" aria-hidden="true">≡</span>
+      <button type="button" class="ce-move-btn" data-direction="up" aria-label="Move ${escapeHtml(category.name)} up">↑</button>
+      <button type="button" class="ce-move-btn" data-direction="down" aria-label="Move ${escapeHtml(category.name)} down">↓</button>
       <span class="ce-category-sort-name">${escapeHtml(category.name)}</span>
+      <span class="ce-category-sort-open" aria-hidden="true">›</span>
     </li>
   `).join('');
 
@@ -186,7 +231,7 @@ async function saveVideoOrder() {
     if (data.success) {
       showMessage('Video order saved', 'success', 'video-message');
     } else {
-      showMessage(data.error || 'Failed to save video order', 'error', 'video-message');
+      showMessage(data.error || 'Failed to save order', 'error', 'video-message');
     }
   } catch (error) {
     console.error('Error saving video order:', error);
@@ -200,6 +245,7 @@ function initVideoSortDragDrop() {
   list.querySelectorAll('.ce-video-sort-item').forEach((item) => {
     item.addEventListener('dragstart', () => {
       draggedVideoItem = item;
+      videoDragMoved = false;
       item.classList.add('dragging');
     });
 
@@ -215,6 +261,7 @@ function initVideoSortDragDrop() {
       e.preventDefault();
       if (!draggedVideoItem || draggedVideoItem === item) return;
 
+      videoDragMoved = true;
       item.classList.add('drag-over');
       const rect = item.getBoundingClientRect();
       const insertAfter = e.clientY > rect.top + rect.height / 2;
@@ -271,6 +318,8 @@ function initVideoSortDragDrop() {
       }
     });
   });
+
+  initMoveButtons('#ce-category-videos-list', saveVideoOrder);
 }
 
 function renderCategoryVideos(videos) {
@@ -288,6 +337,8 @@ function renderCategoryVideos(videos) {
       data-id="${escapeHtml(video.id)}"
     >
       <span class="ce-category-sort-handle" aria-hidden="true">≡</span>
+      <button type="button" class="ce-move-btn" data-direction="up" aria-label="Move video up">↑</button>
+      <button type="button" class="ce-move-btn" data-direction="down" aria-label="Move video down">↓</button>
       <img
         class="ce-video-sort-thumb"
         src="${escapeHtml(video.thumbnail_url)}"

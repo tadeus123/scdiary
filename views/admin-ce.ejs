@@ -6,7 +6,7 @@
   <%- include('partials/seo-head') %>
   <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
+<body class="admin-ce-page">
   <a href="/admin" class="corner-btn-left" aria-label="Back to Admin"></a>
 
   <div class="container">
@@ -58,7 +58,7 @@
 
     <div class="add-book-section">
       <h2>category order</h2>
-      <p class="form-hint">Drag categories to set the order shown on /ce. Double-click a category to manage its videos.</p>
+      <p class="form-hint">Tap a category to manage its videos. Drag to reorder on desktop, or use ↑ ↓ on phone.</p>
       <ul id="ce-category-sort-list" class="ce-category-sort-list"></ul>
       <div id="sort-message" class="form-message"></div>
     </div>
@@ -68,7 +68,7 @@
         <h2 id="ce-category-videos-title">videos</h2>
         <button type="button" id="ce-category-videos-close" class="btn btn-secondary">Close</button>
       </div>
-      <p class="form-hint">Drag videos to set display order. Click delete to remove a video.</p>
+      <p class="form-hint">Drag videos to reorder on desktop, or use ↑ ↓ on phone. Tap delete to remove a video.</p>
       <ul id="ce-category-videos-list" class="ce-video-sort-list"></ul>
       <div id="video-message" class="form-message"></div>
     </div>
