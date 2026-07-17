@@ -65,4 +65,4 @@ $b16.Dispose()
 $b48.Dispose()
 $b180.Dispose()
 
-Write-Output "Wrote favicon-16.png, favicon-32.png, favicon-48.png, apple-touch-icon.png (fill=$FillRatio, yShift=$YShiftRatio, color=rgb($Red,$Green,$Blue))"
+Write-Output "Wrote favicon PNGs (fill=$FillRatio, yShift=$YShiftRatio, color=rgb($Red,$Green,$Blue))"
