@@ -1811,7 +1811,8 @@ body.corner-page {
 }
 
 .ce-category-content {
-  padding: 0 1.25rem 1.25rem;
+  padding: 1.25rem;
+  border-top: 1px solid var(--border-color);
 }
 
 .ce-video-grid {
@@ -1895,7 +1896,7 @@ body.corner-page {
   }
 
   .ce-category-content {
-    padding: 0 1rem 1rem;
+    padding: 1rem;
   }
 }
 
