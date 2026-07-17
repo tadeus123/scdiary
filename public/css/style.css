@@ -1935,6 +1935,115 @@ body.corner-page {
   padding: 0.5rem 0;
 }
 
+.ce-category-sort-item.is-selected {
+  border-color: var(--accent-color);
+  background-color: rgba(193, 106, 40, 0.12);
+}
+
+.ce-category-videos-panel.hidden {
+  display: none;
+}
+
+.ce-category-videos-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.ce-category-videos-header h2 {
+  margin: 0;
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+.btn-secondary:hover {
+  background-color: rgba(193, 106, 40, 0.08);
+  border-color: var(--accent-color);
+}
+
+.ce-video-sort-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-width: 700px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ce-video-sort-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background-color: var(--entry-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: grab;
+  user-select: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.ce-video-sort-item:hover {
+  background-color: rgba(193, 106, 40, 0.08);
+}
+
+.ce-video-sort-item.dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+
+.ce-video-sort-item.drag-over {
+  border-color: var(--accent-color);
+}
+
+.ce-video-sort-thumb {
+  width: 72px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background-color: var(--border-color);
+}
+
+.ce-video-sort-title {
+  flex: 1;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.ce-video-sort-delete {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--accent-color);
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.ce-video-sort-delete:hover {
+  background-color: rgba(148, 30, 47, 0.08);
+  border-color: #941E2F;
+  color: #941E2F;
+}
+
+.ce-video-sort-empty {
+  opacity: 0.6;
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
 @media (max-width: 768px) {
   .ce-page {
     max-width: 100%;

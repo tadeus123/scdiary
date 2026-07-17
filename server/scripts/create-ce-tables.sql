@@ -14,12 +14,14 @@ CREATE TABLE IF NOT EXISTS ce_videos (
   category_id UUID NOT NULL REFERENCES ce_categories(id) ON DELETE CASCADE,
   custom_title TEXT NOT NULL,
   thumbnail_url TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ce_categories_name_lower ON ce_categories (lower(trim(name)));
 CREATE INDEX IF NOT EXISTS idx_ce_categories_sort_order ON ce_categories(sort_order);
 CREATE INDEX IF NOT EXISTS idx_ce_videos_category_id ON ce_videos(category_id);
+CREATE INDEX IF NOT EXISTS idx_ce_videos_category_sort_order ON ce_videos(category_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_ce_videos_created_at ON ce_videos(created_at ASC);
 
 ALTER TABLE ce_categories ENABLE ROW LEVEL SECURITY;

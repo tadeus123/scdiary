@@ -58,9 +58,19 @@
 
     <div class="add-book-section">
       <h2>category order</h2>
-      <p class="form-hint">Drag categories to set the order shown on /ce</p>
+      <p class="form-hint">Drag categories to set the order shown on /ce. Double-click a category to manage its videos.</p>
       <ul id="ce-category-sort-list" class="ce-category-sort-list"></ul>
       <div id="sort-message" class="form-message"></div>
+    </div>
+
+    <div id="ce-category-videos-panel" class="add-book-section ce-category-videos-panel hidden">
+      <div class="ce-category-videos-header">
+        <h2 id="ce-category-videos-title">videos</h2>
+        <button type="button" id="ce-category-videos-close" class="btn btn-secondary">Close</button>
+      </div>
+      <p class="form-hint">Drag videos to set display order. Click delete to remove a video.</p>
+      <ul id="ce-category-videos-list" class="ce-video-sort-list"></ul>
+      <div id="video-message" class="form-message"></div>
     </div>
   </div>
 

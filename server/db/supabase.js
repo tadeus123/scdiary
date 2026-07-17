@@ -1391,6 +1391,48 @@ async function getOrCreateCeCategory(name) {
   }
 }
 
+async function getCeVideosByCategory(categoryId) {
+  if (!supabase) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('ce_videos')
+      .select('*')
+      .eq('category_id', categoryId)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching CE videos:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching CE videos:', error);
+    return [];
+  }
+}
+
+async function getNextCeVideoSortOrder(categoryId) {
+  const { data, error } = await supabase
+    .from('ce_videos')
+    .select('sort_order')
+    .eq('category_id', categoryId)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching CE video sort order:', error);
+    return 0;
+  }
+
+  return data ? data.sort_order + 1 : 0;
+}
+
 async function getCeData() {
   if (!supabase) {
     return [];
@@ -1399,7 +1441,7 @@ async function getCeData() {
   try {
     const [categoriesResult, videosResult] = await Promise.all([
       supabase.from('ce_categories').select('*').order('sort_order', { ascending: true }).order('name', { ascending: true }),
-      supabase.from('ce_videos').select('*').order('created_at', { ascending: true })
+      supabase.from('ce_videos').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: true })
     ]);
 
     if (categoriesResult.error) {
@@ -1457,15 +1499,82 @@ async function updateCeCategoryOrder(orderedIds) {
   }
 }
 
+async function updateCeVideoOrder(categoryId, orderedIds) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  if (!categoryId) {
+    return { success: false, error: 'Category id is required' };
+  }
+
+  if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+    return { success: false, error: 'Video order is required' };
+  }
+
+  try {
+    const updates = orderedIds.map((id, index) =>
+      supabase
+        .from('ce_videos')
+        .update({ sort_order: index })
+        .eq('id', id)
+        .eq('category_id', categoryId)
+    );
+
+    const results = await Promise.all(updates);
+    const failed = results.find((result) => result.error);
+
+    if (failed?.error) {
+      console.error('Error updating CE video order:', failed.error);
+      return { success: false, error: failed.error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating CE video order:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function deleteCeVideo(videoId) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  if (!videoId) {
+    return { success: false, error: 'Video id is required' };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('ce_videos')
+      .delete()
+      .eq('id', videoId);
+
+    if (error) {
+      console.error('Error deleting CE video:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting CE video:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 async function addCeVideo(videoData) {
   if (!supabase) {
     return { success: false, error: 'Supabase not configured' };
   }
 
   try {
+    const sortOrder = await getNextCeVideoSortOrder(videoData.category_id);
+    const payload = { ...videoData, sort_order: sortOrder };
+
     const { data, error } = await supabase
       .from('ce_videos')
-      .insert([videoData])
+      .insert([payload])
       .select()
       .single();
 
@@ -1514,7 +1623,10 @@ module.exports = {
   getCeCategories,
   getOrCreateCeCategory,
   getCeData,
+  getCeVideosByCategory,
   updateCeCategoryOrder,
+  updateCeVideoOrder,
+  deleteCeVideo,
   addCeVideo,
   isConfigured: () => supabase !== null
 };

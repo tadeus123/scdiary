@@ -20,7 +20,10 @@ const {
   getCeCategories,
   getOrCreateCeCategory,
   getCeData,
+  getCeVideosByCategory,
   updateCeCategoryOrder,
+  updateCeVideoOrder,
+  deleteCeVideo,
   addCeVideo,
   isConfigured
 } = require('../db/supabase');
@@ -526,6 +529,78 @@ router.put('/api/ce/categories/order', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error updating CE category order:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/api/ce/categories/:categoryId/videos', async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const videos = await getCeVideosByCategory(categoryId);
+    res.json({ success: true, videos });
+  } catch (error) {
+    console.error('Error fetching CE category videos:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.put('/api/ce/categories/:categoryId/videos/order', async (req, res) => {
+  try {
+    if (!isConfigured()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Supabase is not configured on the server.'
+      });
+    }
+
+    const { categoryId } = req.params;
+    const { videoIds } = req.body;
+
+    if (!Array.isArray(videoIds) || videoIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'videoIds must be a non-empty array'
+      });
+    }
+
+    const result = await updateCeVideoOrder(categoryId, videoIds);
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        error: result.error || 'Failed to update video order'
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating CE video order:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.delete('/api/ce/videos/:videoId', async (req, res) => {
+  try {
+    if (!isConfigured()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Supabase is not configured on the server.'
+      });
+    }
+
+    const { videoId } = req.params;
+    const result = await deleteCeVideo(videoId);
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        error: result.error || 'Failed to delete video'
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting CE video:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
