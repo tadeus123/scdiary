@@ -4,9 +4,10 @@ const crypto = require('crypto');
 
 const publicDir = path.join(__dirname, '../../public');
 
+// Locked tab icons from commit 72d8e0f (Georgia T — the Eisenkind reference look).
 const CANONICAL_SHA1 = {
-  'favicon-16.png': '5f297e74b7ae756da19c5f6654ad83fd308ad3eb',
-  'favicon-32.png': '2270dfcaaf38355e3b13a9b930bb2356bc6900d9'
+  'favicon-16.png': '0bb9664acfd6151bd3fb071b5c8c155473c0b59d',
+  'favicon-32.png': '83974d1eccdbdf7fd9972c86ab9694f8e02245d4'
 };
 
 const forbiddenPatterns = [
@@ -33,7 +34,7 @@ function verifyFavicons() {
     const fullPath = path.join(publicDir, file);
     const hash = sha1File(fullPath);
     if (hash !== expectedHash) {
-      errors.push(`${file}: hash mismatch (expected locked Georgia T from 515ea9f)`);
+      errors.push(`${file}: hash mismatch (expected locked Georgia T from 72d8e0f)`);
     }
   }
 

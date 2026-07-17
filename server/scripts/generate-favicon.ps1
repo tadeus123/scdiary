@@ -1,5 +1,5 @@
 # Generate larger favicon PNGs from locked 16/32 T PNGs.
-# Do NOT regenerate favicon-16.png or favicon-32.png — those are canonical tab icons.
+# Do NOT regenerate favicon-16.png or favicon-32.png — locked at commit 72d8e0f.
 
 param(
   [double]$FillRatio = 0.9,
