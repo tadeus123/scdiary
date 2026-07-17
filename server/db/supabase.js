@@ -1304,6 +1304,132 @@ async function saveCauseGraph(graph) {
   }
 }
 
+async function getCeCategories() {
+  if (!supabase) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('ce_categories')
+      .select('*')
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching CE categories:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching CE categories:', error);
+    return [];
+  }
+}
+
+async function getOrCreateCeCategory(name) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  const trimmedName = (name || '').trim();
+  if (!trimmedName) {
+    return { success: false, error: 'Category name is required' };
+  }
+
+  try {
+    const { data: existing, error: fetchError } = await supabase
+      .from('ce_categories')
+      .select('*')
+      .ilike('name', trimmedName)
+      .limit(1)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('Error fetching CE category:', fetchError);
+      return { success: false, error: fetchError.message };
+    }
+
+    if (existing) {
+      return { success: true, category: existing, created: false };
+    }
+
+    const { data, error } = await supabase
+      .from('ce_categories')
+      .insert([{ name: trimmedName }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating CE category:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, category: data, created: true };
+  } catch (error) {
+    console.error('Error resolving CE category:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function getCeData() {
+  if (!supabase) {
+    return [];
+  }
+
+  try {
+    const [categoriesResult, videosResult] = await Promise.all([
+      supabase.from('ce_categories').select('*').order('name', { ascending: true }),
+      supabase.from('ce_videos').select('*').order('created_at', { ascending: false })
+    ]);
+
+    if (categoriesResult.error) {
+      console.error('Error fetching CE categories:', categoriesResult.error);
+      return [];
+    }
+
+    if (videosResult.error) {
+      console.error('Error fetching CE videos:', videosResult.error);
+      return [];
+    }
+
+    const categories = categoriesResult.data || [];
+    const videos = videosResult.data || [];
+
+    return categories.map((category) => ({
+      ...category,
+      videos: videos.filter((video) => video.category_id === category.id)
+    }));
+  } catch (error) {
+    console.error('Error fetching CE data:', error);
+    return [];
+  }
+}
+
+async function addCeVideo(videoData) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('ce_videos')
+      .insert([videoData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding CE video:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, video: data };
+  } catch (error) {
+    console.error('Error adding CE video:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   getEntries,
   createEntry,
@@ -1333,6 +1459,11 @@ module.exports = {
   updateBookReadingTime,
   getCauseGraph,
   saveCauseGraph,
+  // Company Education functions
+  getCeCategories,
+  getOrCreateCeCategory,
+  getCeData,
+  addCeVideo,
   isConfigured: () => supabase !== null
 };
 

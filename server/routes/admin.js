@@ -140,6 +140,11 @@ router.get('/bookshelf', isAuthenticated, (req, res) => {
   res.render('admin-bookshelf');
 });
 
+// Company Education admin page
+router.get('/ce', isAuthenticated, (req, res) => {
+  res.render('admin-ce');
+});
+
 // Eisenkind notes admin page
 router.get('/eisenkind', isAuthenticated, async (req, res) => {
   const notes = await getEisenkindNotes();

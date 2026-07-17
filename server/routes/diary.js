@@ -16,8 +16,14 @@ const {
   deleteConnection,
   autoConnectBook,
   rebuildAllConnections,
-  updateBookCategory
+  updateBookCategory,
+  getCeCategories,
+  getOrCreateCeCategory,
+  getCeData,
+  addCeVideo,
+  isConfigured
 } = require('../db/supabase');
+const { parseYouTubeUrl } = require('../utils/youtube');
 const { categorizeBook } = require('../services/categorization');
 const { calculateSimilarity } = require('../services/similarity');
 
@@ -60,6 +66,11 @@ router.get('/api/entries', async (req, res) => {
 // Bookshelf page
 router.get('/bookshelf', (req, res) => {
   res.render('bookshelf');
+});
+
+// Company Education page
+router.get('/ce', (req, res) => {
+  res.render('ce');
 });
 
 // API: Get all books and connections
@@ -453,6 +464,102 @@ router.get('/api/books/total-reading-time', async (req, res) => {
     });
   } catch (error) {
     console.error('Error calculating reading time:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Company Education API
+router.get('/api/ce', async (req, res) => {
+  try {
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+
+    const categories = await getCeData();
+    res.json({ success: true, categories });
+  } catch (error) {
+    console.error('Error fetching CE data:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/api/ce/categories', async (req, res) => {
+  try {
+    const categories = await getCeCategories();
+    res.json({ success: true, categories });
+  } catch (error) {
+    console.error('Error fetching CE categories:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/api/ce/videos', async (req, res) => {
+  try {
+    if (!isConfigured()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Supabase is not configured on the server.'
+      });
+    }
+
+    const { youtubeUrl, category, title } = req.body;
+
+    if (!youtubeUrl || !category || !title) {
+      return res.status(400).json({
+        success: false,
+        error: 'YouTube link, category, and title are required'
+      });
+    }
+
+    const parsed = parseYouTubeUrl(youtubeUrl);
+    if (!parsed) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid YouTube URL'
+      });
+    }
+
+    const trimmedTitle = String(title).trim();
+    if (!trimmedTitle) {
+      return res.status(400).json({
+        success: false,
+        error: 'Title is required'
+      });
+    }
+
+    const categoryResult = await getOrCreateCeCategory(category);
+    if (!categoryResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: categoryResult.error || 'Failed to resolve category'
+      });
+    }
+
+    const videoResult = await addCeVideo({
+      youtube_url: parsed.url,
+      youtube_video_id: parsed.videoId,
+      category_id: categoryResult.category.id,
+      custom_title: trimmedTitle,
+      thumbnail_url: parsed.thumbnailUrl
+    });
+
+    if (!videoResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: videoResult.error || 'Failed to save video'
+      });
+    }
+
+    res.json({
+      success: true,
+      video: videoResult.video,
+      category: categoryResult.category,
+      categoryCreated: categoryResult.created
+    });
+  } catch (error) {
+    console.error('Error saving CE video:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

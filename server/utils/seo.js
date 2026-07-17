@@ -20,9 +20,13 @@ const PAGES = {
     title: 'Tade Mehl — corner',
     description: 'Corner — Tade Mehl.',
   },
+  '/ce': {
+    title: 'Tade Mehl — company education',
+    description: 'Company education videos curated by Tade Mehl.',
+  },
 };
 
-const SITEMAP_PATHS = ['/', '/bookshelf', '/eisenkind', '/cause', '/office', '/corner'];
+const SITEMAP_PATHS = ['/', '/bookshelf', '/eisenkind', '/cause', '/office', '/corner', '/ce'];
 
 function normalizePath(pathname) {
   if (!pathname || pathname === '/') return '/';

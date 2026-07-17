@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <%- include('partials/seo-head') %>
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <a href="/admin" class="corner-btn-left" aria-label="Back to Admin"></a>
+
+  <div class="container">
+    <nav>
+      <div class="nav-left">
+        <h1 class="site-title">company education admin</h1>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+          <svg class="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="6.5" x2="12" y2="3"></line>
+            <line x1="17.5" y1="12" x2="21" y2="12"></line>
+            <line x1="12" y1="17.5" x2="12" y2="21"></line>
+            <line x1="6.5" y1="12" x2="3" y2="12"></line>
+            <line x1="16.96" y1="7.04" x2="19.07" y2="4.93"></line>
+            <line x1="16.96" y1="16.96" x2="19.07" y2="19.07"></line>
+            <line x1="7.04" y1="16.96" x2="4.93" y2="19.07"></line>
+            <line x1="7.04" y1="7.04" x2="4.93" y2="4.93"></line>
+          </svg>
+        </button>
+      </div>
+    </nav>
+
+    <div class="add-book-section">
+      <h2>add new video</h2>
+      <form id="ce-form" class="book-form">
+        <div class="form-group">
+          <label for="youtubeUrl">YouTube link</label>
+          <input type="url" id="youtubeUrl" name="youtubeUrl" placeholder="https://www.youtube.com/watch?v=..." required>
+          <div id="youtube-preview" class="cover-preview hidden">
+            <img id="youtube-preview-img" src="" alt="YouTube thumbnail preview">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="category">Category</label>
+          <input type="text" id="category" name="category" list="category-options" placeholder="Select or type a category" required>
+          <datalist id="category-options"></datalist>
+        </div>
+
+        <div class="form-group">
+          <label for="title">Custom title</label>
+          <input type="text" id="title" name="title" required>
+        </div>
+
+        <button type="submit" class="btn">Add Video</button>
+        <div id="form-message" class="form-message"></div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/main.js"></script>
+  <script src="/js/admin-ce.js"></script>
+</body>
+</html>
