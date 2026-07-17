@@ -1,11 +1,23 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const publicDir = path.join(__dirname, '../../public');
+
+// Locked canonical tab icons (commit 515ea9f) — do not regenerate 16/32 PNGs.
+const CANONICAL_SHA1 = {
+  'favicon-16.png': '5f297e74b7ae756da19c5f6654ad83fd308ad3eb',
+  'favicon-32.png': '2270dfcaaf38355e3b13a9b930bb2356bc6900d9'
+};
+
 const forbiddenPatterns = [
   { file: 'favicon.svg', pattern: /M32 0H18L32 14Z/, reason: 'corner triangle in favicon.svg' },
   { file: 'favicon.svg', pattern: /<rect width="32" height="32" fill="#EFE8DC"\/>/, reason: 'cream corner icon in favicon.svg' }
 ];
+
+function sha1File(filePath) {
+  return crypto.createHash('sha1').update(fs.readFileSync(filePath)).digest('hex');
+}
 
 function extractPngsFromIco(buf) {
   const pngSig = Buffer.from([0x89, 0x50, 0x4E, 0x47]);
@@ -21,7 +33,6 @@ function extractPngsFromIco(buf) {
 }
 
 function pngHasTriangleColors(png) {
-  // Triangle favicon uses cream #EFE8DC (239,232,220) and orange #C16A28 (193,106,40)
   let cream = 0;
   let orange = 0;
   for (let i = 0; i < png.length - 3; i += 4) {
@@ -45,9 +56,12 @@ function verifyFavicons() {
     }
   }
 
-  const svg = fs.readFileSync(path.join(publicDir, 'favicon.svg'), 'utf8');
-  if (!svg.includes('>T</text>')) {
-    errors.push('favicon.svg: must contain Georgia T letter');
+  for (const [file, expectedHash] of Object.entries(CANONICAL_SHA1)) {
+    const fullPath = path.join(publicDir, file);
+    const hash = sha1File(fullPath);
+    if (hash !== expectedHash) {
+      errors.push(`${file}: hash mismatch (expected locked Georgia T from 515ea9f)`);
+    }
   }
 
   const ico = fs.readFileSync(path.join(publicDir, 'favicon.ico'));
@@ -58,7 +72,7 @@ function verifyFavicons() {
     errors.push('favicon.ico: contains corner-triangle icon (must be red T only)');
   }
 
-  for (const size of [16, 32, 48]) {
+  for (const size of [48]) {
     const pngPath = path.join(publicDir, `favicon-${size}.png`);
     if (!fs.existsSync(pngPath)) {
       errors.push(`favicon-${size}.png: missing`);
@@ -71,11 +85,11 @@ function verifyFavicons() {
     process.exit(1);
   }
 
-  console.log('Favicon verification passed: red Georgia T on all assets.');
+  console.log('Favicon verification passed: locked red Georgia T tab icons.');
 }
 
 if (require.main === module) {
   verifyFavicons();
 }
 
-module.exports = { verifyFavicons };
+module.exports = { verifyFavicons, CANONICAL_SHA1 };

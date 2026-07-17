@@ -7,7 +7,7 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
 
-const { getSeoForPath, getCanonicalUrl, getPersonSchema, buildSitemapXml, SITE_URL } = require('./utils/seo');
+const { getSeoForPath, getCanonicalUrl, getPersonSchema, buildSitemapXml, SITE_URL, FAVICON_VERSION } = require('./utils/seo');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,6 +15,7 @@ const PORT = process.env.PORT || 3000;
 app.locals.getCanonicalUrl = getCanonicalUrl;
 app.locals.getPersonSchema = getPersonSchema;
 app.locals.SITE_URL = SITE_URL;
+app.locals.FAVICON_VERSION = FAVICON_VERSION;
 app.use((req, res, next) => {
   res.locals.seo = getSeoForPath(req.path);
   next();
@@ -24,7 +25,24 @@ app.use((req, res, next) => {
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, '../public')));
+
+const publicDir = path.join(__dirname, '../public');
+const faviconRoutes = [
+  ['/favicon.ico', 'image/x-icon'],
+  ['/favicon-16.png', 'image/png'],
+  ['/favicon-32.png', 'image/png'],
+  ['/favicon-48.png', 'image/png'],
+  ['/apple-touch-icon.png', 'image/png']
+];
+for (const [route, mimeType] of faviconRoutes) {
+  app.get(route, (req, res) => {
+    res.type(mimeType);
+    res.set('Cache-Control', 'public, max-age=604800');
+    res.sendFile(path.join(publicDir, path.basename(route)));
+  });
+}
+
+app.use(express.static(publicDir));
 
 // Eisenkind static site at /eisenkind
 const eisenkindDir = path.join(__dirname, '../eisenkind');

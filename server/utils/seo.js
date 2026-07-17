@@ -1,5 +1,6 @@
 const SITE_URL = 'https://www.tademehl.com';
 const GOOGLE_SITE_VERIFICATION = 'd4WLzoBzgHWWVP0CMIKncQP3WKHJY1kq8iPlbfwar4M';
+const FAVICON_VERSION = '4';
 
 const PAGES = {
   '/': {
@@ -115,6 +116,7 @@ function buildSitemapXml() {
 
 module.exports = {
   SITE_URL,
+  FAVICON_VERSION,
   getSeoForPath,
   getCanonicalUrl,
   getPersonSchema,

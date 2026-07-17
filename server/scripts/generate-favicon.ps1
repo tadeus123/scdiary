@@ -1,4 +1,6 @@
-# Generate favicon PNGs with auto-fitted Georgia "T".
+# Generate larger favicon PNGs and favicon.ico from locked 16/32 T PNGs.
+# Do NOT regenerate favicon-16.png or favicon-32.png — those are canonical tab icons.
+
 param(
   [double]$FillRatio = 0.9,
   [double]$YShiftRatio = 0.06,
@@ -50,22 +52,16 @@ function New-TBitmap([int]$size, [int]$red, [int]$green, [int]$blue, [double]$ra
 
 $public = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) "public"
 
-$b32 = New-TBitmap 32 $Red $Green $Blue $FillRatio $YShiftRatio
-$b16 = New-TBitmap 16 $Red $Green $Blue $FillRatio $YShiftRatio
 $b48 = New-TBitmap 48 $Red $Green $Blue $FillRatio $YShiftRatio
 $b180 = New-TBitmap 180 $Red $Green $Blue $FillRatio $YShiftRatio
 
-$b32.Save((Join-Path $public "favicon-32.png"), [System.Drawing.Imaging.ImageFormat]::Png)
-$b16.Save((Join-Path $public "favicon-16.png"), [System.Drawing.Imaging.ImageFormat]::Png)
 $b48.Save((Join-Path $public "favicon-48.png"), [System.Drawing.Imaging.ImageFormat]::Png)
 $b180.Save((Join-Path $public "apple-touch-icon.png"), [System.Drawing.Imaging.ImageFormat]::Png)
 
-$b32.Dispose()
-$b16.Dispose()
 $b48.Dispose()
 $b180.Dispose()
 
-Write-Output "Wrote favicon PNGs (fill=$FillRatio, yShift=$YShiftRatio, color=rgb($Red,$Green,$Blue))"
+Write-Output "Wrote favicon-48.png and apple-touch-icon.png (16/32 PNGs are locked)"
 
 node (Join-Path (Split-Path $PSScriptRoot -Parent) "scripts/generate-favicon-ico.js")
 node (Join-Path (Split-Path $PSScriptRoot -Parent) "scripts/verify-favicon.js")

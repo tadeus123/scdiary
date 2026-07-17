@@ -38,4 +38,6 @@ npm run verify:favicon
 
 ## New pages
 
-All pages must include favicons only through `views/partials/seo-head.ejs`. Do not add separate favicon links unless updating that partial for the whole site.
+All pages must include favicons only through `views/partials/seo-head.ejs` (which includes `favicon-links.ejs`). Do not add separate favicon links unless updating those partials for the whole site.
+
+**Do not link `favicon.svg` in HTML.** Browsers render SVG favicons at a different size than the locked PNG tab icons. Tab icons must use the PNG/ICO assets only.
