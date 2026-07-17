@@ -1,4 +1,4 @@
-# Generate larger favicon PNGs and favicon.ico from locked 16/32 T PNGs.
+# Generate larger favicon PNGs from locked 16/32 T PNGs.
 # Do NOT regenerate favicon-16.png or favicon-32.png — those are canonical tab icons.
 
 param(
@@ -63,6 +63,5 @@ $b180.Dispose()
 
 Write-Output "Wrote favicon-48.png and apple-touch-icon.png (16/32 PNGs are locked)"
 
-node (Join-Path (Split-Path $PSScriptRoot -Parent) "scripts/generate-favicon-ico.js")
 node (Join-Path (Split-Path $PSScriptRoot -Parent) "scripts/verify-favicon.js")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

@@ -28,17 +28,17 @@ app.use(cookieParser());
 
 const publicDir = path.join(__dirname, '../public');
 const faviconRoutes = [
-  ['/favicon.ico', 'image/x-icon'],
-  ['/favicon-16.png', 'image/png'],
-  ['/favicon-32.png', 'image/png'],
-  ['/favicon-48.png', 'image/png'],
-  ['/apple-touch-icon.png', 'image/png']
+  ['/favicon.ico', 'favicon-32.png', 'image/png'],
+  ['/favicon-16.png', 'favicon-16.png', 'image/png'],
+  ['/favicon-32.png', 'favicon-32.png', 'image/png'],
+  ['/favicon-48.png', 'favicon-48.png', 'image/png'],
+  ['/apple-touch-icon.png', 'apple-touch-icon.png', 'image/png']
 ];
-for (const [route, mimeType] of faviconRoutes) {
+for (const [route, fileName, mimeType] of faviconRoutes) {
   app.get(route, (req, res) => {
     res.type(mimeType);
     res.set('Cache-Control', 'public, max-age=604800');
-    res.sendFile(path.join(publicDir, path.basename(route)));
+    res.sendFile(path.join(publicDir, fileName));
   });
 }
 
