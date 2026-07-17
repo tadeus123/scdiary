@@ -91,6 +91,38 @@
   opacity: 1;
 }
 
+/* Corner button - bottom left */
+.corner-btn-bottom-left {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  z-index: 1000;
+  margin: 0;
+  padding: 0;
+}
+
+.corner-btn-bottom-left::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  background-color: var(--accent-color);
+  clip-path: polygon(0 20px, 0 0, 20px 20px);
+  opacity: 0.4;
+  filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.15));
+  margin: 0;
+  padding: 0;
+  transition: opacity 0.2s ease;
+}
+
+.corner-btn-bottom-left:hover::before {
+  opacity: 1;
+}
+
 /* Bookshelf text link - bottom left */
 .bookshelf-text {
   position: fixed;
@@ -1718,20 +1750,6 @@ body.corner-page {
    COMPANY EDUCATION STYLES
    ======================================== */
 
-.admin-nav-link {
-  font-size: 0.9rem;
-  color: var(--text-color);
-  text-decoration: none;
-  opacity: 0.6;
-  margin-right: 1rem;
-  transition: opacity 0.2s ease, color 0.2s ease;
-}
-
-.admin-nav-link:hover {
-  opacity: 1;
-  color: var(--accent-color);
-}
-
 .ce-page {
   max-width: 1100px;
 }
@@ -1866,10 +1884,6 @@ body.corner-page {
 
   .ce-category-content {
     padding: 0 1rem 1rem;
-  }
-
-  .admin-nav-link {
-    display: none;
   }
 }
 

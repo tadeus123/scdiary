@@ -10,6 +10,7 @@
   <% if (authenticated) { %>
     <a href="/admin/eisenkind" class="corner-btn-left" aria-label="Eisenkind notes"></a>
     <a href="/admin/bookshelf" class="corner-btn" aria-label="Manage Bookshelf"></a>
+    <a href="/admin/ce" class="corner-btn-bottom-left" aria-label="Company Education admin"></a>
   <% } %>
   
   <div class="container">
@@ -32,7 +33,6 @@
       </div>
       <div class="nav-right">
         <% if (authenticated) { %>
-          <a href="/admin/ce" class="admin-nav-link">company education</a>
           <a href="#" class="logout-link" onclick="logout(event)">logout</a>
         <% } %>
       </div>
