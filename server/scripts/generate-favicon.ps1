@@ -36,11 +36,14 @@ function New-TBitmap([int]$size, [int]$red, [int]$green, [int]$blue, [double]$ra
   $sf = New-Object System.Drawing.StringFormat
   $sf.Alignment = [System.Drawing.StringAlignment]::Center
   $sf.LineAlignment = [System.Drawing.StringAlignment]::Center
+
+  # Shift the full-size glyph down without shrinking the draw area (avoids clipping).
   $yShift = [Math]::Round($size * $yShiftRatio)
-  $rect = New-Object System.Drawing.RectangleF 0, $yShift, $size, ($size - $yShift)
+  $gfx.TranslateTransform(0, $yShift)
+  $rect = New-Object System.Drawing.RectangleF 0, 0, $size, $size
   $gfx.DrawString("T", $font, $brush, $rect, $sf)
 
-  Write-Host "  ${size}px -> font ${fontSize}px, y+${yShift}px"
+  Write-Host "  ${size}px -> font ${fontSize}px, translate y+${yShift}px"
 
   $font.Dispose()
   $brush.Dispose()

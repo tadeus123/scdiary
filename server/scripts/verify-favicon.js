@@ -6,8 +6,8 @@ const publicDir = path.join(__dirname, '../../public');
 
 // Locked tab icons: large Georgia T, #941E2F, shifted down for tab alignment.
 const CANONICAL_SHA1 = {
-  'favicon-16.png': '0f7fc490088304e86d112fcce02aa73be2bc07bc',
-  'favicon-32.png': '0cc07196929ce205a50ccaa54a1a6153476c2ea3'
+  'favicon-16.png': '213334de66ed91417eeba664c1d70f87def79506',
+  'favicon-32.png': '21afbae306533db99c7e073d766dd49f6c97eb9f'
 };
 
 const forbiddenPatterns = [
