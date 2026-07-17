@@ -1,6 +1,6 @@
 const SITE_URL = 'https://www.tademehl.com';
 const GOOGLE_SITE_VERIFICATION = 'd4WLzoBzgHWWVP0CMIKncQP3WKHJY1kq8iPlbfwar4M';
-const FAVICON_VERSION = '8';
+const FAVICON_VERSION = '9';
 
 const PAGES = {
   '/': {
