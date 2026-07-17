@@ -90,11 +90,6 @@ function renderCategories(categories) {
                     loading="lazy"
                     decoding="async"
                   >
-                  <span class="ce-video-play" aria-hidden="true">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M8 5v14l11-7z"/>
-                    </svg>
-                  </span>
                 </div>
                 <h3 class="ce-video-title">${escapeHtml(video.custom_title)}</h3>
               </a>
