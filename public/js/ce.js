@@ -4,6 +4,16 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+function openCategory(button) {
+  const content = button.nextElementSibling;
+  const icon = button.querySelector('.ce-folder-icon');
+
+  button.setAttribute('aria-expanded', 'true');
+  content.hidden = false;
+  icon.textContent = '▼';
+  button.classList.add('is-open');
+}
+
 function renderCategories(categories) {
   const container = document.getElementById('ce-categories');
   const emptyState = document.getElementById('ce-empty');
@@ -73,6 +83,11 @@ function renderCategories(categories) {
       button.classList.toggle('is-open', !expanded);
     });
   });
+
+  const firstCategory = container.querySelector('.ce-category-header');
+  if (firstCategory) {
+    openCategory(firstCategory);
+  }
 }
 
 async function loadCompanyEducation() {
