@@ -4,29 +4,56 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-function openCategory(button) {
+function isMobileLayout() {
+  return window.matchMedia('(max-width: 768px)').matches;
+}
+
+function setPanelState(state) {
+  document.getElementById('ce-loading').classList.toggle('hidden', state !== 'loading');
+  document.getElementById('ce-categories').classList.toggle('hidden', state !== 'content');
+  document.getElementById('ce-empty').classList.toggle('hidden', state !== 'empty');
+  document.getElementById('ce-error').classList.toggle('hidden', state !== 'error');
+}
+
+function closeCategory(button) {
+  const content = button.nextElementSibling;
+  const icon = button.querySelector('.ce-folder-icon');
+
+  button.setAttribute('aria-expanded', 'false');
+  content.classList.remove('is-open');
+  icon.textContent = '▶';
+  button.classList.remove('is-open');
+}
+
+function openCategory(button, { closeOthers = false } = {}) {
+  if (closeOthers) {
+    document.querySelectorAll('.ce-category-header.is-open').forEach((openButton) => {
+      if (openButton !== button) {
+        closeCategory(openButton);
+      }
+    });
+  }
+
   const content = button.nextElementSibling;
   const icon = button.querySelector('.ce-folder-icon');
 
   button.setAttribute('aria-expanded', 'true');
-  content.hidden = false;
+  content.classList.add('is-open');
   icon.textContent = '▼';
   button.classList.add('is-open');
 }
 
 function renderCategories(categories) {
   const container = document.getElementById('ce-categories');
-  const emptyState = document.getElementById('ce-empty');
-
   const categoriesWithVideos = categories.filter((category) => category.videos.length > 0);
 
   if (categoriesWithVideos.length === 0) {
     container.innerHTML = '';
-    emptyState.classList.remove('hidden');
+    setPanelState('empty');
     return;
   }
 
-  emptyState.classList.add('hidden');
+  setPanelState('content');
   container.innerHTML = categoriesWithVideos.map((category, index) => `
     <section class="ce-category">
       <button
@@ -45,27 +72,34 @@ function renderCategories(categories) {
         id="ce-category-${index}"
         role="region"
         aria-labelledby="ce-category-toggle-${index}"
-        hidden
       >
-        <div class="ce-video-grid">
-          ${category.videos.map((video) => `
-            <a
-              class="ce-video-card"
-              href="${escapeHtml(video.youtube_url)}"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div class="ce-video-thumb-wrap">
-                <img
-                  class="ce-video-thumb"
-                  src="${escapeHtml(video.thumbnail_url)}"
-                  alt=""
-                  loading="lazy"
-                >
-              </div>
-              <h3 class="ce-video-title">${escapeHtml(video.custom_title)}</h3>
-            </a>
-          `).join('')}
+        <div class="ce-category-content-inner">
+          <div class="ce-video-grid">
+            ${category.videos.map((video) => `
+              <a
+                class="ce-video-card"
+                href="${escapeHtml(video.youtube_url)}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div class="ce-video-thumb-wrap">
+                  <img
+                    class="ce-video-thumb"
+                    src="${escapeHtml(video.thumbnail_url)}"
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                  >
+                  <span class="ce-video-play" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8 5v14l11-7z"/>
+                    </svg>
+                  </span>
+                </div>
+                <h3 class="ce-video-title">${escapeHtml(video.custom_title)}</h3>
+              </a>
+            `).join('')}
+          </div>
         </div>
       </div>
     </section>
@@ -74,13 +108,13 @@ function renderCategories(categories) {
   container.querySelectorAll('.ce-category-header').forEach((button) => {
     button.addEventListener('click', () => {
       const expanded = button.getAttribute('aria-expanded') === 'true';
-      const content = button.nextElementSibling;
-      const icon = button.querySelector('.ce-folder-icon');
 
-      button.setAttribute('aria-expanded', String(!expanded));
-      content.hidden = expanded;
-      icon.textContent = expanded ? '▶' : '▼';
-      button.classList.toggle('is-open', !expanded);
+      if (expanded) {
+        closeCategory(button);
+        return;
+      }
+
+      openCategory(button, { closeOthers: isMobileLayout() });
     });
   });
 
@@ -91,18 +125,21 @@ function renderCategories(categories) {
 }
 
 async function loadCompanyEducation() {
+  setPanelState('loading');
+
   try {
     const response = await fetch(`/api/ce?t=${Date.now()}`, { cache: 'no-cache' });
     const data = await response.json();
 
     if (!data.success) {
-      console.error('Failed to load company education data');
+      setPanelState('error');
       return;
     }
 
     renderCategories(data.categories || []);
   } catch (error) {
     console.error('Error loading company education:', error);
+    setPanelState('error');
   }
 }
 

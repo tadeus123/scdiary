@@ -29,10 +29,20 @@
       </div>
     </nav>
 
-    <main>
-      <div id="ce-categories" class="ce-categories"></div>
-      <div id="ce-empty" class="empty-state hidden">
+    <main class="ce-main">
+      <div id="ce-loading" class="ce-loading" aria-live="polite">
+        <div class="ce-loading-pulse"></div>
+        <p>loading videos…</p>
+      </div>
+
+      <div id="ce-categories" class="ce-categories hidden" aria-label="Video categories"></div>
+
+      <div id="ce-empty" class="ce-empty hidden">
         <p>no videos yet.</p>
+      </div>
+
+      <div id="ce-error" class="ce-error hidden">
+        <p>couldn't load videos. please refresh.</p>
       </div>
     </main>
   </div>
