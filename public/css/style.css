@@ -1870,9 +1870,15 @@ body.corner-page {
   touch-action: manipulation;
 }
 
+.ce-video-card:hover,
+.ce-video-card:active,
+.ce-video-card:focus,
 .ce-video-card:focus-visible {
-  outline: 2px solid var(--accent-color);
-  outline-offset: 4px;
+  color: var(--text-color);
+  outline: none;
+  box-shadow: none;
+  transform: none;
+  opacity: 1;
 }
 
 .ce-video-thumb-wrap {
@@ -1880,6 +1886,7 @@ body.corner-page {
   aspect-ratio: 16 / 9;
   background-color: rgba(0, 0, 0, 0.06);
   overflow: hidden;
+  border-radius: 0;
 }
 
 .ce-video-thumb {
@@ -1887,6 +1894,16 @@ body.corner-page {
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: 0;
+}
+
+.ce-video-card:hover .ce-video-thumb,
+.ce-video-card:active .ce-video-thumb,
+.ce-video-card:focus .ce-video-thumb,
+.ce-video-card:focus-visible .ce-video-thumb {
+  transform: none;
+  opacity: 1;
+  filter: none;
 }
 
 .ce-video-title {
