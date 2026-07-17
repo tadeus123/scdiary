@@ -1,4 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <rect width="32" height="32" fill="#EFE8DC"/>
-  <path d="M32 0H18L32 14Z" fill="#C16A28"/>
+  <text
+    x="16"
+    y="23.5"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="26"
+    fill="#941E2F"
+    text-anchor="middle"
+  >T</text>
 </svg>

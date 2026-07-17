@@ -52,11 +52,17 @@ $public = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) "pub
 
 $b32 = New-TBitmap 32 $Red $Green $Blue $FillRatio $YShiftRatio
 $b16 = New-TBitmap 16 $Red $Green $Blue $FillRatio $YShiftRatio
+$b48 = New-TBitmap 48 $Red $Green $Blue $FillRatio $YShiftRatio
+$b180 = New-TBitmap 180 $Red $Green $Blue $FillRatio $YShiftRatio
 
 $b32.Save((Join-Path $public "favicon-32.png"), [System.Drawing.Imaging.ImageFormat]::Png)
 $b16.Save((Join-Path $public "favicon-16.png"), [System.Drawing.Imaging.ImageFormat]::Png)
+$b48.Save((Join-Path $public "favicon-48.png"), [System.Drawing.Imaging.ImageFormat]::Png)
+$b180.Save((Join-Path $public "apple-touch-icon.png"), [System.Drawing.Imaging.ImageFormat]::Png)
 
 $b32.Dispose()
 $b16.Dispose()
+$b48.Dispose()
+$b180.Dispose()
 
-Write-Output "Wrote favicons (fill=$FillRatio, yShift=$YShiftRatio, color=rgb($Red,$Green,$Blue))"
+Write-Output "Wrote favicon-16.png, favicon-32.png, favicon-48.png, apple-touch-icon.png (fill=$FillRatio, yShift=$YShiftRatio, color=rgb($Red,$Green,$Blue))"
