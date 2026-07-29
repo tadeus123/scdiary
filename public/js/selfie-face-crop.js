@@ -114,16 +114,16 @@
     if (face) {
       const faceSize = Math.max(face.width, face.height);
       centerX = face.x + face.width / 2;
-      // Bias a bit below face center so a bit of shoulders stay in frame
-      centerY = face.y + face.height * 0.62;
-      // Face ~52% of tile height → tighter head/upper-body framing
-      cropH = faceSize / 0.52;
+      // Slightly below face center — just a hint of shoulders
+      centerY = face.y + face.height * 0.58;
+      // Face ~70% of tile height → passport-style headshot
+      cropH = faceSize / 0.7;
       cropW = cropH * TILE_ASPECT;
     } else {
-      // Fallback: tighter upper-body window
+      // Fallback: tight upper portrait window
       centerX = imgW / 2;
-      centerY = imgH * 0.34;
-      cropH = Math.min(imgH, imgW / TILE_ASPECT) * 0.72;
+      centerY = imgH * 0.3;
+      cropH = Math.min(imgH, imgW / TILE_ASPECT) * 0.55;
       cropW = cropH * TILE_ASPECT;
     }
 
@@ -133,8 +133,8 @@
 
     let left = centerX - cropW / 2;
     let top = face
-      ? centerY - cropH * 0.46
-      : centerY - cropH * 0.42;
+      ? centerY - cropH * 0.48
+      : centerY - cropH * 0.4;
 
     left = Math.max(0, Math.min(left, imgW - cropW));
     top = Math.max(0, Math.min(top, imgH - cropH));
