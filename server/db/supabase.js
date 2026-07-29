@@ -1590,6 +1590,30 @@ async function addCeVideo(videoData) {
   }
 }
 
+// Corner selfie wall (years 1–100)
+async function getCornerSelfies() {
+  if (!supabase) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('corner_selfies')
+      .select('year, image_url, updated_at')
+      .order('year', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching corner selfies:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching corner selfies:', error);
+    return [];
+  }
+}
+
 module.exports = {
   getEntries,
   createEntry,
@@ -1628,6 +1652,8 @@ module.exports = {
   updateCeVideoOrder,
   deleteCeVideo,
   addCeVideo,
+  // Corner selfie wall
+  getCornerSelfies,
   isConfigured: () => supabase !== null
 };
 

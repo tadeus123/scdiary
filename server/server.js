@@ -105,7 +105,7 @@ app.get('/office', (req, res) => {
 });
 
 // Eisenkind story (public read)
-const { getEisenkindNotes, getCauseGraph, saveCauseGraph } = require('./db/supabase');
+const { getEisenkindNotes, getCauseGraph, saveCauseGraph, getCornerSelfies } = require('./db/supabase');
 app.get('/api/eisenkind/notes', async (req, res) => {
   try {
     const notes = await getEisenkindNotes();
@@ -148,6 +148,17 @@ app.put('/api/cause/graph', async (req, res) => {
   } catch (error) {
     console.error('Error saving cause graph:', error);
     res.status(500).json({ success: false, error: 'Failed to save cause graph' });
+  }
+});
+
+// Corner selfie wall (public read)
+app.get('/api/corner/selfies', async (req, res) => {
+  try {
+    const selfies = await getCornerSelfies();
+    res.json({ success: true, selfies });
+  } catch (error) {
+    console.error('Error loading corner selfies:', error);
+    res.status(500).json({ success: false, selfies: [], error: 'Failed to load selfies' });
   }
 });
 

@@ -889,6 +889,21 @@ body.corner-page {
   opacity: 0.4;
   line-height: 1;
   user-select: none;
+  position: relative;
+  z-index: 1;
+}
+
+.selfie-tile img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.selfie-tile.has-image .selfie-tile-number {
+  opacity: 0;
 }
 
 /* Responsive adjustments */
