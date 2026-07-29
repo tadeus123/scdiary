@@ -6,9 +6,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let activeYear = null;
 
-  // Vercel serverless body limit is ~4.5MB; keep uploads safely under that.
-  const MAX_EDGE = 1400;
-  const JPEG_QUALITY = 0.84;
+  // Light client compress only (AI passport crop happens on the server).
+  // Vercel serverless body limit is ~4.5MB.
+  const MAX_EDGE = 1800;
+  const JPEG_QUALITY = 0.88;
   const MAX_UPLOAD_BYTES = 3.5 * 1024 * 1024;
 
   function setTileImage(tile, url) {
@@ -23,7 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
         img.decoding = 'async';
         tile.insertBefore(img, tile.firstChild);
       }
-      img.src = url;
+      // Cache-bust so re-uploads show immediately
+      img.src = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
       tile.classList.add('has-image');
       if (deleteBtn) deleteBtn.hidden = false;
     } else {
@@ -45,16 +47,64 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function prepareSelfieFile(file) {
-    if (!window.SelfieFaceCrop || typeof window.SelfieFaceCrop.cropPortraitSelfie !== 'function') {
-      throw new Error('Face crop helper failed to load. Refresh and try again.');
+  function loadImageElement(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Could not read image'));
+      };
+      img.src = url;
+    });
+  }
+
+  async function compressForUpload(file) {
+    if (!file.type.startsWith('image/')) {
+      throw new Error('Please choose an image file');
     }
 
-    return window.SelfieFaceCrop.cropPortraitSelfie(file, {
-      maxEdge: MAX_EDGE,
-      quality: JPEG_QUALITY,
-      maxBytes: MAX_UPLOAD_BYTES
-    });
+    const img = await loadImageElement(file);
+    const scale = Math.min(1, MAX_EDGE / Math.max(img.naturalWidth, img.naturalHeight));
+    const width = Math.max(1, Math.round(img.naturalWidth * scale));
+    const height = Math.max(1, Math.round(img.naturalHeight * scale));
+
+    // Already small enough and not huge dimensions — keep original
+    if (
+      file.size <= MAX_UPLOAD_BYTES &&
+      scale === 1 &&
+      file.type === 'image/jpeg'
+    ) {
+      return file;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, width, height);
+
+    let quality = JPEG_QUALITY;
+    let blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+
+    while (blob && blob.size > MAX_UPLOAD_BYTES && quality > 0.5) {
+      quality -= 0.08;
+      blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+    }
+
+    if (!blob) {
+      throw new Error('Could not compress image');
+    }
+
+    if (blob.size > MAX_UPLOAD_BYTES) {
+      throw new Error('Image is still too large after compression. Try a smaller photo.');
+    }
+
+    return new File([blob], 'year-selfie.jpg', { type: 'image/jpeg' });
   }
 
   async function loadSelfies() {
@@ -81,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tile.classList.add('is-uploading');
 
     try {
-      const prepared = await prepareSelfieFile(file);
+      const prepared = await compressForUpload(file);
       const formData = new FormData();
       formData.append('selfie', prepared);
 
