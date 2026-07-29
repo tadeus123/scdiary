@@ -114,16 +114,16 @@
     if (face) {
       const faceSize = Math.max(face.width, face.height);
       centerX = face.x + face.width / 2;
-      // Bias a bit below face center so shoulders stay in frame
-      centerY = face.y + face.height * 0.55;
-      // Face ~36% of tile height → consistent head size across tiles
-      cropH = faceSize / 0.36;
+      // Bias a bit below face center so a bit of shoulders stay in frame
+      centerY = face.y + face.height * 0.62;
+      // Face ~52% of tile height → tighter head/upper-body framing
+      cropH = faceSize / 0.52;
       cropW = cropH * TILE_ASPECT;
     } else {
-      // Fallback: upper-body biased portrait window
+      // Fallback: tighter upper-body window
       centerX = imgW / 2;
-      centerY = imgH * 0.38;
-      cropH = Math.min(imgH, imgW / TILE_ASPECT) * 0.92;
+      centerY = imgH * 0.34;
+      cropH = Math.min(imgH, imgW / TILE_ASPECT) * 0.72;
       cropW = cropH * TILE_ASPECT;
     }
 
@@ -133,8 +133,8 @@
 
     let left = centerX - cropW / 2;
     let top = face
-      ? centerY - cropH * 0.42
-      : centerY - cropH * 0.45;
+      ? centerY - cropH * 0.46
+      : centerY - cropH * 0.42;
 
     left = Math.max(0, Math.min(left, imgW - cropW));
     top = Math.max(0, Math.min(top, imgH - cropH));
