@@ -15,14 +15,17 @@
   <a href="/" class="corner-btn-left" aria-label="Back to Diary"></a>
   <a href="/bookshelf" class="bookshelf-text">show me your bookshelf and I know who you are...</a>
   
-  <div class="corner-gallery">
-    <div class="corner-image-stack" id="corner-image-stack">
-      <!-- Images will be loaded dynamically -->
+  <div class="selfie-wall" aria-label="Selfie wall — years 1 to 100">
+    <div class="selfie-wall-grid">
+      <% for (let i = 1; i <= 100; i++) { %>
+        <div class="selfie-tile" data-year="<%= i %>">
+          <span class="selfie-tile-number"><%= i %></span>
+        </div>
+      <% } %>
     </div>
   </div>
   
   <script src="/js/main.js"></script>
-  <script src="/js/corner.js"></script>
   
   <!-- Speculation Rules API for instant navigation -->
   <script type="speculationrules">
