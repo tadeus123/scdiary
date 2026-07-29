@@ -108,36 +108,53 @@
   function computePortraitCrop(imgW, imgH, face) {
     let cropH;
     let cropW;
-    let centerX;
-    let centerY;
+    let left;
+    let top;
 
     if (face) {
-      const faceSize = Math.max(face.width, face.height);
-      centerX = face.x + face.width / 2;
-      // Slightly below face center — just a hint of shoulders
-      centerY = face.y + face.height * 0.58;
-      // Face ~70% of tile height → passport-style headshot
-      cropH = faceSize / 0.7;
+      // Detectors usually miss hair — pad above face box so full hair stays in frame
+      const hairPad = face.height * 0.48;
+      const shoulderPad = face.height * 0.26;
+      const sidePad = Math.max(face.width * 0.2, face.height * 0.12);
+
+      const headLeft = face.x - sidePad;
+      const headRight = face.x + face.width + sidePad;
+      const headTop = face.y - hairPad;
+      const headBottom = face.y + face.height + shoulderPad;
+
+      const headW = headRight - headLeft;
+      const headH = headBottom - headTop;
+      const headCx = (headLeft + headRight) / 2;
+
+      // Passport-style: extended head (hair→shoulders) fills most of the tile
+      cropH = Math.max(headH / 0.9, (headW / TILE_ASPECT) / 0.9);
       cropW = cropH * TILE_ASPECT;
+
+      const fit = Math.min(1, imgW / cropW, imgH / cropH);
+      cropW *= fit;
+      cropH *= fit;
+
+      left = headCx - cropW / 2;
+      // Keep a little air above the hairline
+      top = headTop - cropH * 0.05;
+
+      left = Math.max(0, Math.min(left, imgW - cropW));
+      top = Math.max(0, Math.min(top, imgH - cropH));
+
+      // If bottom clamp ate into the hair, nudge up as much as image allows
+      const hairInside = headTop >= top && headTop <= top + cropH * 0.2;
+      if (!hairInside && headTop > 0) {
+        top = Math.max(0, Math.min(headTop - cropH * 0.05, imgH - cropH));
+      }
     } else {
       // Fallback: tight upper portrait window
-      centerX = imgW / 2;
-      centerY = imgH * 0.3;
       cropH = Math.min(imgH, imgW / TILE_ASPECT) * 0.55;
       cropW = cropH * TILE_ASPECT;
+      left = (imgW - cropW) / 2;
+      top = imgH * 0.06;
+      left = Math.max(0, Math.min(left, imgW - cropW));
+      top = Math.max(0, Math.min(top, imgH - cropH));
     }
-
-    const fit = Math.min(1, imgW / cropW, imgH / cropH);
-    cropW *= fit;
-    cropH *= fit;
-
-    let left = centerX - cropW / 2;
-    let top = face
-      ? centerY - cropH * 0.48
-      : centerY - cropH * 0.4;
-
-    left = Math.max(0, Math.min(left, imgW - cropW));
-    top = Math.max(0, Math.min(top, imgH - cropH));
 
     return {
       left: Math.round(left),
