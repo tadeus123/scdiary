@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <%- include('partials/seo-head') %>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="corner-page admin-corner-page">
+  <a href="/admin" class="corner-btn-left" aria-label="Back to Admin"></a>
+
+  <div class="selfie-wall" aria-label="Selfie wall admin — years 1 to 100">
+    <div class="selfie-wall-grid">
+      <% for (let i = 1; i <= 100; i++) { %>
+        <div class="selfie-tile" data-year="<%= i %>" role="button" tabindex="0" aria-label="Upload selfie for year <%= i %>">
+          <span class="selfie-tile-number"><%= i %></span>
+          <button type="button" class="selfie-tile-delete" aria-label="Delete year <%= i %> selfie" hidden>×</button>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <input type="file" id="selfie-file-input" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
+
+  <script src="/js/main.js"></script>
+  <script src="/js/admin-corner.js"></script>
+</body>
+</html>

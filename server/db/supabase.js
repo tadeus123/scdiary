@@ -1614,6 +1614,85 @@ async function getCornerSelfies() {
   }
 }
 
+async function getCornerSelfie(year) {
+  if (!supabase) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('corner_selfies')
+      .select('year, image_url, updated_at')
+      .eq('year', year)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching corner selfie:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error fetching corner selfie:', error);
+    return null;
+  }
+}
+
+async function upsertCornerSelfie(year, imageUrl) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('corner_selfies')
+      .upsert(
+        {
+          year,
+          image_url: imageUrl,
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: 'year' }
+      )
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error upserting corner selfie:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, selfie: data };
+  } catch (error) {
+    console.error('Error upserting corner selfie:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function deleteCornerSelfie(year) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const existing = await getCornerSelfie(year);
+    const { error } = await supabase
+      .from('corner_selfies')
+      .delete()
+      .eq('year', year);
+
+    if (error) {
+      console.error('Error deleting corner selfie:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, selfie: existing };
+  } catch (error) {
+    console.error('Error deleting corner selfie:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   getEntries,
   createEntry,
@@ -1654,6 +1733,9 @@ module.exports = {
   addCeVideo,
   // Corner selfie wall
   getCornerSelfies,
+  getCornerSelfie,
+  upsertCornerSelfie,
+  deleteCornerSelfie,
   isConfigured: () => supabase !== null
 };
 

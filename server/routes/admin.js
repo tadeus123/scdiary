@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+const path = require('path');
+const multer = require('multer');
+const { createClient } = require('@supabase/supabase-js');
 const { renderDiaryHtml } = require('../utils/diary-markdown');
 const {
   getEntries,
@@ -9,6 +12,9 @@ const {
   deleteEntry,
   getEisenkindNotes,
   updateEisenkindNotes,
+  getCornerSelfie,
+  upsertCornerSelfie,
+  deleteCornerSelfie,
   isConfigured
 } = require('../db/supabase');
 
@@ -17,6 +23,35 @@ const {
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || null;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
 const AUTH_SECRET = process.env.SESSION_SECRET || 'diary-secret-key-change-in-production';
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabase = supabaseUrl && supabaseKey
+  ? createClient(supabaseUrl, supabaseKey)
+  : null;
+
+const selfieUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter(req, file, cb) {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (mimetype && extname) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
+
+function storagePathFromPublicUrl(url, bucket) {
+  if (!url || typeof url !== 'string') return null;
+  const marker = `/object/public/${bucket}/`;
+  const idx = url.indexOf(marker);
+  if (idx === -1) return null;
+  return decodeURIComponent(url.slice(idx + marker.length).split('?')[0]);
+}
 
 if (!ADMIN_PASSWORD_HASH && !ADMIN_PASSWORD) {
   console.error('⚠️  WARNING: ADMIN_PASSWORD or ADMIN_PASSWORD_HASH must be set in environment variables!');
@@ -143,6 +178,103 @@ router.get('/bookshelf', isAuthenticated, (req, res) => {
 // Company Education admin page
 router.get('/ce', isAuthenticated, (req, res) => {
   res.render('admin-ce');
+});
+
+// Corner selfie wall admin page
+router.get('/corner', isAuthenticated, (req, res) => {
+  res.render('admin-corner');
+});
+
+router.post('/corner/selfie/:year', isAuthenticated, (req, res) => {
+  selfieUpload.single('selfie')(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, error: err.message || 'Upload failed' });
+    }
+
+    try {
+      if (!supabase || !isConfigured()) {
+        return res.status(503).json({ success: false, error: 'Supabase is not configured on the server.' });
+      }
+
+      const year = parseInt(req.params.year, 10);
+      if (!Number.isInteger(year) || year < 1 || year > 100) {
+        return res.status(400).json({ success: false, error: 'Year must be between 1 and 100' });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ success: false, error: 'Image is required' });
+      }
+
+      const existing = await getCornerSelfie(year);
+      const fileExt = path.extname(req.file.originalname).toLowerCase() || '.jpg';
+      const fileName = `year-${year}-${Date.now()}${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('corner-selfies')
+        .upload(fileName, req.file.buffer, {
+          contentType: req.file.mimetype,
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Corner selfie upload error:', uploadError);
+        return res.status(500).json({ success: false, error: 'Failed to upload image: ' + uploadError.message });
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('corner-selfies')
+        .getPublicUrl(fileName);
+
+      const result = await upsertCornerSelfie(year, urlData.publicUrl);
+      if (!result.success) {
+        await supabase.storage.from('corner-selfies').remove([fileName]);
+        return res.status(500).json({ success: false, error: result.error || 'Failed to save selfie' });
+      }
+
+      if (existing && existing.image_url) {
+        const oldPath = storagePathFromPublicUrl(existing.image_url, 'corner-selfies');
+        if (oldPath) {
+          await supabase.storage.from('corner-selfies').remove([oldPath]);
+        }
+      }
+
+      res.json({ success: true, selfie: result.selfie });
+    } catch (error) {
+      console.error('Error uploading corner selfie:', error);
+      res.status(500).json({ success: false, error: error.message || 'Failed to upload selfie' });
+    }
+  });
+});
+
+router.delete('/corner/selfie/:year', isAuthenticated, async (req, res) => {
+  try {
+    if (!supabase || !isConfigured()) {
+      return res.status(503).json({ success: false, error: 'Supabase is not configured on the server.' });
+    }
+
+    const year = parseInt(req.params.year, 10);
+    if (!Number.isInteger(year) || year < 1 || year > 100) {
+      return res.status(400).json({ success: false, error: 'Year must be between 1 and 100' });
+    }
+
+    const result = await deleteCornerSelfie(year);
+    if (!result.success) {
+      return res.status(500).json({ success: false, error: result.error || 'Failed to delete selfie' });
+    }
+
+    if (result.selfie && result.selfie.image_url) {
+      const oldPath = storagePathFromPublicUrl(result.selfie.image_url, 'corner-selfies');
+      if (oldPath) {
+        await supabase.storage.from('corner-selfies').remove([oldPath]);
+      }
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting corner selfie:', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to delete selfie' });
+  }
 });
 
 // Eisenkind notes admin page
