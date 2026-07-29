@@ -6,6 +6,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let activeYear = null;
 
+  // Vercel serverless body limit is ~4.5MB; keep uploads safely under that.
+  const MAX_EDGE = 1600;
+  const JPEG_QUALITY = 0.82;
+  const MAX_UPLOAD_BYTES = 3.5 * 1024 * 1024;
+
   function setTileImage(tile, url) {
     const year = tile.dataset.year;
     let img = tile.querySelector('img');
@@ -28,10 +33,82 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  async function parseJsonResponse(response) {
+    const text = await response.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      if (response.status === 413 || /entity too large/i.test(text)) {
+        throw new Error('Image is too large. Try a smaller photo.');
+      }
+      throw new Error(text.trim().slice(0, 120) || `Upload failed (${response.status})`);
+    }
+  }
+
+  function loadImageElement(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Could not read image'));
+      };
+      img.src = url;
+    });
+  }
+
+  async function compressImage(file) {
+    if (!file.type.startsWith('image/')) {
+      throw new Error('Please choose an image file');
+    }
+
+    // Already small enough — keep original
+    if (file.size <= MAX_UPLOAD_BYTES && file.type !== 'image/heic' && file.type !== 'image/heif') {
+      // Still downscale very large dimensions for faster uploads
+      const img = await loadImageElement(file);
+      if (img.naturalWidth <= MAX_EDGE && img.naturalHeight <= MAX_EDGE && file.size <= 2 * 1024 * 1024) {
+        return file;
+      }
+    }
+
+    const img = await loadImageElement(file);
+    const scale = Math.min(1, MAX_EDGE / Math.max(img.naturalWidth, img.naturalHeight));
+    const width = Math.max(1, Math.round(img.naturalWidth * scale));
+    const height = Math.max(1, Math.round(img.naturalHeight * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, width, height);
+
+    let quality = JPEG_QUALITY;
+    let blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+
+    while (blob && blob.size > MAX_UPLOAD_BYTES && quality > 0.45) {
+      quality -= 0.1;
+      blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+    }
+
+    if (!blob) {
+      throw new Error('Could not compress image');
+    }
+
+    if (blob.size > MAX_UPLOAD_BYTES) {
+      throw new Error('Image is still too large after compression. Try a smaller photo.');
+    }
+
+    return new File([blob], `year-selfie.jpg`, { type: 'image/jpeg' });
+  }
+
   async function loadSelfies() {
     try {
       const response = await fetch('/api/corner/selfies');
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       if (!data.success || !Array.isArray(data.selfies)) return;
 
       data.selfies.forEach((selfie) => {
@@ -51,15 +128,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     tile.classList.add('is-uploading');
 
-    const formData = new FormData();
-    formData.append('selfie', file);
-
     try {
+      const compressed = await compressImage(file);
+      const formData = new FormData();
+      formData.append('selfie', compressed);
+
       const response = await fetch(`/admin/corner/selfie/${year}`, {
         method: 'POST',
         body: formData
       });
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
 
       if (!response.ok || !data.success) {
         throw new Error(data.error || 'Upload failed');
@@ -84,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const response = await fetch(`/admin/corner/selfie/${year}`, {
         method: 'DELETE'
       });
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
 
       if (!response.ok || !data.success) {
         throw new Error(data.error || 'Delete failed');
