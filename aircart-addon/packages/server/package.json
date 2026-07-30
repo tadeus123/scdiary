@@ -1,0 +1,23 @@
+{
+  "name": "@web-native-agent/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@a2a-js/sdk": "^1.0.0",
+    "@web-native-agent/core": "file:../core",
+    "express": "^5.1.0",
+    "uuid": "^11.1.0"
+  },
+  "peerDependencies": {
+    "express": "^4.21.2 || ^5.1.0"
+  }
+}

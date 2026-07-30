@@ -26,6 +26,10 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// AirCart sidecar proxy (additive — only four agent paths; see aircart-addon/)
+const { createAircartProxy } = require('./aircart-proxy');
+app.use(createAircartProxy());
+
 const publicDir = path.join(__dirname, '../public');
 const faviconRoutes = [
   ['/favicon.ico', 'favicon-48.png', 'image/png'],

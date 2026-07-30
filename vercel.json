@@ -2,6 +2,20 @@
   "version": 2,
   "builds": [
     {
+      "src": "aircart-addon/server.js",
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 60,
+        "includeFiles": [
+          "aircart-addon/dist/**",
+          "aircart-addon/packages/**/dist/**",
+          "aircart-addon/packages/**/package.json",
+          "aircart-addon/package.json",
+          "aircart-addon/node_modules/**"
+        ]
+      }
+    },
+    {
       "src": "server/server.js",
       "use": "@vercel/node",
       "config": {
@@ -17,9 +31,24 @@
   ],
   "routes": [
     {
+      "src": "/\\.well-known/agent-card\\.json$",
+      "dest": "/aircart-addon/server.js"
+    },
+    {
+      "src": "/a2a/v1(/.*)?$",
+      "dest": "/aircart-addon/server.js"
+    },
+    {
+      "src": "/agent/status\\.json$",
+      "dest": "/aircart-addon/server.js"
+    },
+    {
+      "src": "/agent/?$",
+      "dest": "/aircart-addon/server.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "/server/server.js"
     }
   ]
 }
-

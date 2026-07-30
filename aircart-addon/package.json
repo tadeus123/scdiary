@@ -1,0 +1,28 @@
+{
+  "name": "aircart-addon",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Isolated AirCart agent sidecar for tademehl.com (additive; does not replace the main site)",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "dev": "tsx src/main.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@a2a-js/sdk": "^1.0.0",
+    "@web-native-agent/adapter-function": "file:./packages/adapter-function",
+    "@web-native-agent/core": "file:./packages/core",
+    "@web-native-agent/server": "file:./packages/server",
+    "express": "^5.1.0",
+    "uuid": "^11.1.0",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.15.30",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.3"
+  }
+}

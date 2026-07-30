@@ -1,0 +1,51 @@
+import { z } from "zod";
+export declare const quotationArtifactSchema: z.ZodObject<{
+    currency: z.ZodString;
+    quantity: z.ZodNumber;
+    material: z.ZodString;
+    dimensions: z.ZodString;
+    tolerance: z.ZodString;
+    finish: z.ZodString;
+    destination: z.ZodString;
+    targetDate: z.ZodString;
+    unitPrice: z.ZodNumber;
+    toolingPrice: z.ZodNumber;
+    leadTimeDays: z.ZodNumber;
+    binding: z.ZodLiteral<false>;
+    assumptions: z.ZodArray<z.ZodString, "many">;
+    conditions: z.ZodArray<z.ZodString, "many">;
+}, "strip", z.ZodTypeAny, {
+    currency: string;
+    quantity: number;
+    material: string;
+    dimensions: string;
+    tolerance: string;
+    finish: string;
+    destination: string;
+    targetDate: string;
+    unitPrice: number;
+    toolingPrice: number;
+    leadTimeDays: number;
+    binding: false;
+    assumptions: string[];
+    conditions: string[];
+}, {
+    currency: string;
+    quantity: number;
+    material: string;
+    dimensions: string;
+    tolerance: string;
+    finish: string;
+    destination: string;
+    targetDate: string;
+    unitPrice: number;
+    toolingPrice: number;
+    leadTimeDays: number;
+    binding: false;
+    assumptions: string[];
+    conditions: string[];
+}>;
+export type QuotationArtifact = z.infer<typeof quotationArtifactSchema>;
+export declare const requiredQuoteFields: readonly ["quantity", "material", "dimensions", "tolerance", "finish", "destination", "targetDate"];
+export type RequiredQuoteField = (typeof requiredQuoteFields)[number];
+//# sourceMappingURL=quote.d.ts.map
