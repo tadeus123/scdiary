@@ -12,6 +12,8 @@ const DEFAULT_UPSTREAM = 'https://airsup-peach.vercel.app';
 const AIRSUP_PATHS = [
   (p) => p === '/.well-known/agent-card.json',
   (p) => p === '/.well-known/agent.json',
+  (p) => p === '/llms.txt',
+  (p) => p === '/agent-sitemap.xml',
   (p) => p === '/a2a/v1' || p.startsWith('/a2a/v1/'),
   (p) => p === '/agent',
   (p) => p === '/agent/status.json',

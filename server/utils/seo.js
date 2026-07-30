@@ -106,6 +106,20 @@ function buildSitemapXml() {
     return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <priority>${priority}</priority>\n  </url>`;
   });
 
+  // Additive Airsup / Supi discovery URLs (machine-only; no page content changes)
+  const discoveryLocs = [
+    `${SITE_URL}/agent`,
+    `${SITE_URL}/llms.txt`,
+    `${SITE_URL}/.well-known/agent-card.json`,
+    `${SITE_URL}/.well-known/agent.json`,
+    `${SITE_URL}/agent-sitemap.xml`,
+  ];
+  for (const loc of discoveryLocs) {
+    urls.push(
+      `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <priority>0.3</priority>\n  </url>`
+    );
+  }
+
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',

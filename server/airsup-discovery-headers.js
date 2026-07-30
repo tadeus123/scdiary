@@ -1,9 +1,13 @@
 /**
- * Additive invisible Airsup discovery Link header on HTML responses only.
+ * Additive invisible Airsup discovery Link headers on HTML responses only.
  * Does not modify response bodies or unrelated headers.
  */
-const SERVICE_META_LINK =
-  '<https://tademehl.com/.well-known/agent-card.json>; rel="service-meta"; type="application/json"';
+const DISCOVERY_LINKS = [
+  '</agent>; rel="service"',
+  '</.well-known/agent-card.json>; rel="service-desc"; type="application/json"',
+  '</.well-known/agent-card.json>; rel="service-meta"; type="application/json"',
+  '</llms.txt>; rel="alternate"; type="text/plain"'
+];
 
 function createServiceMetaLinkHeader() {
   return function serviceMetaLinkHeader(req, res, next) {
@@ -12,13 +16,14 @@ function createServiceMetaLinkHeader() {
       try {
         if (!res.headersSent) {
           const contentType = String(res.getHeader('content-type') || '');
-          const existingLink = String(res.getHeader('link') || '');
-          if (
-            contentType.includes('text/html') &&
-            !existingLink.includes('rel="service-meta"') &&
-            !existingLink.includes("rel='service-meta'")
-          ) {
-            res.append('Link', SERVICE_META_LINK);
+          if (contentType.includes('text/html')) {
+            const existingLink = String(res.getHeader('link') || '');
+            for (const link of DISCOVERY_LINKS) {
+              const relMatch = link.match(/rel="([^"]+)"/);
+              const rel = relMatch ? relMatch[1] : '';
+              if (rel && existingLink.includes(`rel="${rel}"`)) continue;
+              res.append('Link', link);
+            }
           }
         }
       } catch (_) {
@@ -30,4 +35,4 @@ function createServiceMetaLinkHeader() {
   };
 }
 
-module.exports = { createServiceMetaLinkHeader, SERVICE_META_LINK };
+module.exports = { createServiceMetaLinkHeader, DISCOVERY_LINKS };
