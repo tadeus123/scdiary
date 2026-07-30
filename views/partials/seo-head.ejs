@@ -8,7 +8,8 @@
 <meta name="google-site-verification" content="<%= seo.googleSiteVerification %>">
 <% } %>
 <link rel="canonical" href="<%= canonical %>">
-<link rel="alternate" type="application/json" href="/.well-known/agent-card.json" title="Supi">
+<link rel="service-meta" type="application/json" href="/.well-known/agent-card.json" />
+<link rel="alternate" type="application/json" href="/.well-known/agent-card.json" title="Supi for Tademehl" />
 <%- include('favicon-links') %>
 <% if (seo.noindex) { %>
 <meta name="robots" content="noindex, nofollow">

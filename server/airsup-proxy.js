@@ -1,5 +1,5 @@
 /**
- * Additive Airsup proxy — only the listed paths.
+ * Additive Airsup / Supi discovery proxy — only the listed paths.
  * Upstream: https://airsup-peach.vercel.app
  * Does not alter any other site routes or behavior.
  */
@@ -11,6 +11,8 @@ const DEFAULT_UPSTREAM = 'https://airsup-peach.vercel.app';
 
 const AIRSUP_PATHS = [
   (p) => p === '/.well-known/agent-card.json',
+  (p) => p === '/.well-known/agent.json',
+  (p) => p === '/a2a/v1' || p.startsWith('/a2a/v1/'),
   (p) => p === '/agent',
   (p) => p === '/agent/status.json',
   (p) => p === '/agent/chat',
@@ -34,25 +36,28 @@ function shouldProxy(pathname) {
   return AIRSUP_PATHS.some((test) => test(pathname));
 }
 
+function normalizePathname(pathname) {
+  if (pathname.length > 1 && pathname.endsWith('/')) {
+    return pathname.slice(0, -1);
+  }
+  return pathname || '/';
+}
+
 function createAirsupProxy() {
   const upstream = (process.env.AIRSUP_UPSTREAM || DEFAULT_UPSTREAM).replace(/\/$/, '');
 
   return function airsupProxy(req, res, next) {
-    const pathname = (req.path || req.url.split('?')[0]).replace(/\/$/, '') || '/';
-    // Allow /agent with or without trailing slash
-    const normalized =
-      pathname === '/agent/' ? '/agent' : pathname;
+    const rawPath = (req.path || req.url.split('?')[0]) || '/';
+    const pathname = normalizePathname(rawPath);
 
-    if (!shouldProxy(normalized) && !shouldProxy(pathname)) {
+    if (!shouldProxy(pathname)) {
       return next();
     }
-
-    const pathToUse = shouldProxy(normalized) ? normalized : pathname;
 
     let target;
     try {
       const search = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
-      target = new URL(pathToUse + search, upstream + '/');
+      target = new URL(pathname + search, upstream + '/');
     } catch (err) {
       return next(err);
     }
@@ -92,7 +97,6 @@ function createAirsupProxy() {
       }
     });
 
-    // body-parser may already have consumed the stream
     if (req.method === 'GET' || req.method === 'HEAD') {
       proxyReq.end();
       return;

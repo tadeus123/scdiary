@@ -25,6 +25,10 @@ app.use((req, res, next) => {
 const { createAirsupProxy } = require('./airsup-proxy');
 app.use(createAirsupProxy());
 
+// Invisible Airsup discovery Link header on HTML pages only
+const { createServiceMetaLinkHeader } = require('./airsup-discovery-headers');
+app.use(createServiceMetaLinkHeader());
+
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
