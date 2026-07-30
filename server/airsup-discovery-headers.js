@@ -1,8 +1,12 @@
 /**
  * Additive invisible Airsup discovery Link headers on HTML responses only.
  * Does not modify response bodies or unrelated headers.
+ *
+ * REVERT: delete this file and remove its require/use from server/server.js
+ * (see airsup/REVERT.md).
  */
 const DISCOVERY_LINKS = [
+  '</supi>; rel="service"',
   '</agent>; rel="service"',
   '</.well-known/agent-card.json>; rel="service-desc"; type="application/json"',
   '</.well-known/agent-card.json>; rel="service-meta"; type="application/json"',
@@ -19,9 +23,8 @@ function createServiceMetaLinkHeader() {
           if (contentType.includes('text/html')) {
             const existingLink = String(res.getHeader('link') || '');
             for (const link of DISCOVERY_LINKS) {
-              const relMatch = link.match(/rel="([^"]+)"/);
-              const rel = relMatch ? relMatch[1] : '';
-              if (rel && existingLink.includes(`rel="${rel}"`)) continue;
+              // Allow multiple rel="service" entries (/supi and /agent)
+              if (existingLink.includes(link)) continue;
               res.append('Link', link);
             }
           }

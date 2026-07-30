@@ -21,13 +21,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Airsup proxy (additive — only agent discovery/chat paths)
+// AIRSUP-BEGIN discovery proxy + Link headers — see airsup/REVERT.md
 const { createAirsupProxy } = require('./airsup-proxy');
 app.use(createAirsupProxy());
 
-// Invisible Airsup discovery Link header on HTML pages only
 const { createServiceMetaLinkHeader } = require('./airsup-discovery-headers');
 app.use(createServiceMetaLinkHeader());
+// AIRSUP-END
 
 // Middleware
 app.use(bodyParser.json());

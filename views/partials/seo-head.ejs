@@ -8,10 +8,12 @@
 <meta name="google-site-verification" content="<%= seo.googleSiteVerification %>">
 <% } %>
 <link rel="canonical" href="<%= canonical %>">
+<%# AIRSUP-BEGIN discovery head links — see airsup/REVERT.md %>
 <link rel="service-meta" type="application/json" href="/.well-known/agent-card.json" />
 <link rel="alternate" type="application/json" href="/.well-known/agent-card.json" title="Supi for Tademehl" />
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt" />
-<link rel="service" href="/agent" title="Supi for Tademehl" />
+<link rel="service" href="/supi" title="Supi for Tademehl" />
+<%# AIRSUP-END %>
 <%- include('favicon-links') %>
 <% if (seo.noindex) { %>
 <meta name="robots" content="noindex, nofollow">

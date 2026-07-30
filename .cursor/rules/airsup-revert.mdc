@@ -1,0 +1,16 @@
+---
+description: When user asks to revert Airsup/Supi discovery, run the one-command revert
+alwaysApply: true
+---
+
+# Airsup / Supi revert
+
+If the user asks to **revert**, **remove**, or **uninstall** Airsup / Supi / agent discovery on tademehl.com:
+
+1. Read and follow `airsup/REVERT.md`
+2. Run: `node airsup/revert-airsup.js`
+3. Review the git diff (only Airsup markers/files should change)
+4. Commit and push to `origin main` (project rule), unless the user says not to
+5. Verify homepage has no Supi logo and key pages still work
+
+Do not invent a different revert path. Do not leave orphaned `AIRSUP-BEGIN` blocks.

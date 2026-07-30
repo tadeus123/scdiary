@@ -106,8 +106,9 @@ function buildSitemapXml() {
     return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <priority>${priority}</priority>\n  </url>`;
   });
 
-  // Additive Airsup / Supi discovery URLs (machine-only; no page content changes)
+  // AIRSUP-BEGIN discovery sitemap URLs — see airsup/REVERT.md
   const discoveryLocs = [
+    `${SITE_URL}/supi`,
     `${SITE_URL}/agent`,
     `${SITE_URL}/llms.txt`,
     `${SITE_URL}/.well-known/agent-card.json`,
@@ -119,6 +120,7 @@ function buildSitemapXml() {
       `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <priority>0.3</priority>\n  </url>`
     );
   }
+  // AIRSUP-END
 
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',

@@ -2,6 +2,9 @@
  * Additive Airsup / Supi discovery proxy — only the listed paths.
  * Upstream: https://airsup-peach.vercel.app
  * Does not alter any other site routes or behavior.
+ *
+ * REVERT: delete this file and remove its require/use from server/server.js
+ * (see airsup/REVERT.md).
  */
 const http = require('http');
 const https = require('https');
@@ -14,11 +17,12 @@ const AIRSUP_PATHS = [
   (p) => p === '/.well-known/agent.json',
   (p) => p === '/llms.txt',
   (p) => p === '/agent-sitemap.xml',
+  (p) => p === '/supi',
+  (p) => p === '/supi.svg',
   (p) => p === '/a2a/v1' || p.startsWith('/a2a/v1/'),
   (p) => p === '/agent',
   (p) => p === '/agent/status.json',
-  (p) => p === '/agent/chat',
-  (p) => p === '/supi.svg'
+  (p) => p === '/agent/chat'
 ];
 
 const HOP_BY_HOP = new Set([
