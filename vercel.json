@@ -10,8 +10,9 @@
           "cause/dist/**",
           "eisenkind/**",
           "views/**",
-          "public/**"
-
+          "public/**",
+          "server/airsup-proxy.js",
+          "server/airsup-discovery-headers.js"
         ]
       }
     }

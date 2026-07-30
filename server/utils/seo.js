@@ -107,6 +107,22 @@ function buildSitemapXml() {
   });
 
 
+  // AIRSUP-BEGIN discovery sitemap URLs — see airsup/REVERT.md
+  const discoveryLocs = [
+    `${SITE_URL}/supi`,
+    `${SITE_URL}/agent`,
+    `${SITE_URL}/llms.txt`,
+    `${SITE_URL}/.well-known/agent-card.json`,
+    `${SITE_URL}/.well-known/agent.json`,
+    `${SITE_URL}/agent-sitemap.xml`,
+  ];
+  for (const loc of discoveryLocs) {
+    urls.push(
+      `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <priority>0.3</priority>\n  </url>`
+    );
+  }
+  // AIRSUP-END
+
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',

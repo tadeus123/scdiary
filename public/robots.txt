@@ -1,5 +1,19 @@
+# AIRSUP-BEGIN discovery bots — see airsup/REVERT.md
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+# AIRSUP-END
+
 User-agent: *
 Allow: /
 Disallow: /admin
 
 Sitemap: https://www.tademehl.com/sitemap.xml
+# AIRSUP-BEGIN
+Sitemap: https://tademehl.com/agent-sitemap.xml
+# AIRSUP-END
