@@ -21,14 +21,14 @@ app.use((req, res, next) => {
   next();
 });
 
+// Airsup proxy (additive — only agent discovery/chat paths)
+const { createAirsupProxy } = require('./airsup-proxy');
+app.use(createAirsupProxy());
+
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
-
-// AirCart sidecar proxy (additive — only four agent paths; see aircart-addon/)
-const { createAircartProxy } = require('./aircart-proxy');
-app.use(createAircartProxy());
 
 const publicDir = path.join(__dirname, '../public');
 const faviconRoutes = [
