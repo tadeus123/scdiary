@@ -15,6 +15,9 @@ const {
   getCornerSelfie,
   upsertCornerSelfie,
   deleteCornerSelfie,
+  getKindHours,
+  addKindHours,
+  deleteKindHours,
   isConfigured
 } = require('../db/supabase');
 const { cropSelfieWithAi } = require('../services/selfie-crop');
@@ -289,7 +292,8 @@ router.delete('/corner/selfie/:year', isAuthenticated, async (req, res) => {
 // Eisenkind notes admin page
 router.get('/eisenkind', isAuthenticated, async (req, res) => {
   const notes = await getEisenkindNotes();
-  res.render('admin-eisenkind', { notes });
+  const kindHours = await getKindHours();
+  res.render('admin-eisenkind', { notes, kindHours });
 });
 
 router.put('/eisenkind/notes', isAuthenticated, async (req, res) => {
@@ -318,6 +322,49 @@ router.put('/eisenkind/notes', isAuthenticated, async (req, res) => {
     res.json({ success: true, notes: result.notes });
   } else {
     res.status(500).json({ error: result.error || 'Failed to save story' });
+  }
+});
+
+router.post('/eisenkind/hours', isAuthenticated, async (req, res) => {
+  if (!isConfigured()) {
+    return res.status(503).json({
+      success: false,
+      error: 'Supabase is not configured on the server.'
+    });
+  }
+
+  const hours = Number(req.body.hours);
+  const dateLogged = req.body.dateLogged || req.body.date_logged;
+
+  if (!Number.isFinite(hours) || hours <= 0) {
+    return res.status(400).json({ success: false, error: 'Hours must be a positive number' });
+  }
+
+  if (!dateLogged || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateLogged))) {
+    return res.status(400).json({ success: false, error: 'Please select a valid date' });
+  }
+
+  const result = await addKindHours(hours, dateLogged);
+  if (result.success) {
+    res.json({ success: true, entry: result.entry });
+  } else {
+    res.status(500).json({ success: false, error: result.error || 'Failed to add hours' });
+  }
+});
+
+router.delete('/eisenkind/hours/:id', isAuthenticated, async (req, res) => {
+  if (!isConfigured()) {
+    return res.status(503).json({
+      success: false,
+      error: 'Supabase is not configured on the server.'
+    });
+  }
+
+  const result = await deleteKindHours(req.params.id);
+  if (result.success) {
+    res.json({ success: true });
+  } else {
+    res.status(500).json({ success: false, error: result.error || 'Failed to delete entry' });
   }
 });
 
