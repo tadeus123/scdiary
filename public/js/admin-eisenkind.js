@@ -124,10 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (hoursForm && hoursInput && dateInput) {
-    if (!dateInput.value) {
-      dateInput.value = new Date().toISOString().slice(0, 10);
-    }
-
     hoursForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const hours = Number(hoursInput.value);
@@ -139,6 +135,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (!dateLogged) {
         showHoursMessage('Please select a date', 'error');
+        return;
+      }
+
+      // Accept any calendar date (past or future) — same as bookshelf Date Read
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateLogged)) {
+        showHoursMessage('Please enter a valid date', 'error');
         return;
       }
 
@@ -161,6 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         showHoursMessage('Hours added', 'success');
         hoursInput.value = '';
+        dateInput.value = '';
         await refreshHoursList();
         window.setTimeout(() => showHoursMessage(''), 2000);
       } catch (error) {
