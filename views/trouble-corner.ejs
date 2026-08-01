@@ -5,6 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <%- include('partials/seo-head') %>
   <link rel="stylesheet" href="/css/style.css">
+  <%
+    const cornerSelfies = (typeof selfies !== 'undefined' && Array.isArray(selfies))
+      ? selfies.filter((s) => s && s.image_url)
+      : [];
+    let cornerStorageOrigin = '';
+    try {
+      if (cornerSelfies[0] && cornerSelfies[0].image_url) {
+        cornerStorageOrigin = new URL(cornerSelfies[0].image_url).origin;
+      }
+    } catch (e) {}
+  %>
+  <% if (cornerStorageOrigin) { %>
+  <link rel="preconnect" href="<%= cornerStorageOrigin %>" crossorigin>
+  <link rel="dns-prefetch" href="<%= cornerStorageOrigin %>">
+  <% } %>
+  <% cornerSelfies.forEach((selfie) => { %>
+  <link rel="preload" as="image" href="<%= selfie.image_url %>">
+  <% }) %>
   
   <!-- Prerender entire bookshelf page for instant loading -->
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
@@ -15,7 +33,7 @@
   <a href="/" class="corner-btn-left" aria-label="Back to Diary"></a>
   <a href="/bookshelf" class="bookshelf-text">show me your bookshelf and I know who you are...</a>
   
-  <div class="selfie-wall" aria-label="Selfie wall — Lebensjahre 0 to 99">
+  <div class="selfie-wall is-loading" aria-label="Selfie wall — Lebensjahre 0 to 99">
     <div class="selfie-wall-grid">
       <% for (let i = 0; i <= 99; i++) { %>
         <div class="selfie-tile" data-year="<%= i %>">
@@ -32,6 +50,10 @@
       <figcaption id="selfie-lightbox-caption" class="selfie-lightbox-caption"></figcaption>
     </figure>
   </div>
+
+  <script>
+    window.__cornerSelfies__ = <%- JSON.stringify(cornerSelfies.map((s) => ({ year: s.year, image_url: s.image_url }))) %>;
+  </script>
   
   <script src="/js/main.js"></script>
   <script src="/js/corner.js"></script>

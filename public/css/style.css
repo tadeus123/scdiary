@@ -155,6 +155,40 @@
   opacity: 1;
 }
 
+/* Admin main panel: room for bottom corner links + larger tap targets */
+body.admin-page .container {
+  padding-bottom: 4rem;
+}
+
+body.admin-page .entries {
+  padding-bottom: 2.5rem;
+}
+
+body.admin-page .corner-btn-bottom-left,
+body.admin-page .corner-btn-bottom-right {
+  width: 44px;
+  height: 44px;
+  z-index: 1100;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Keep the visible triangle at 20px in the true corner */
+body.admin-page .corner-btn-bottom-left::before,
+body.admin-page .corner-btn-bottom-right::before {
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 768px) {
+  body.admin-page .container {
+    padding-bottom: 4.5rem;
+  }
+
+  body.admin-page .entries {
+    padding-bottom: 3rem;
+  }
+}
+
 .hidden {
   display: none !important;
 }
@@ -951,6 +985,15 @@ body.corner-page {
 
 .selfie-tile.has-image .selfie-tile-number {
   display: none;
+}
+
+.selfie-wall.is-loading .selfie-tile img {
+  opacity: 0;
+}
+
+.selfie-wall.is-ready .selfie-tile img {
+  opacity: 1;
+  transition: opacity 0.18s ease;
 }
 
 .corner-page:not(.admin-corner-page) .selfie-tile.is-clickable {

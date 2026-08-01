@@ -6,7 +6,7 @@
   <%- include('partials/seo-head') %>
   <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
+<body<% if (authenticated) { %> class="admin-page"<% } %>>
   <% if (authenticated) { %>
     <a href="/admin/eisenkind" class="corner-btn-left" aria-label="Eisenkind notes"></a>
     <a href="/admin/bookshelf" class="corner-btn" aria-label="Manage Bookshelf"></a>

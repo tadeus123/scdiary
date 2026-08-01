@@ -101,9 +101,17 @@ app.get('/sitemap.xml', (req, res) => {
 app.use('/', diaryRoutes);
 app.use('/admin', adminRoutes);
 
-// Corner route
-app.get('/corner', (req, res) => {
-  res.render('trouble-corner', { goals: [] });
+const { getEisenkindNotes, getCauseGraph, saveCauseGraph, getCornerSelfies } = require('./db/supabase');
+
+// Corner route — selfies embedded so images can start loading with the page
+app.get('/corner', async (req, res) => {
+  let selfies = [];
+  try {
+    selfies = await getCornerSelfies();
+  } catch (error) {
+    console.error('Error loading corner selfies for page:', error);
+  }
+  res.render('trouble-corner', { goals: [], selfies });
 });
 
 // Office route
@@ -112,7 +120,6 @@ app.get('/office', (req, res) => {
 });
 
 // Eisenkind story (public read)
-const { getEisenkindNotes, getCauseGraph, saveCauseGraph, getCornerSelfies } = require('./db/supabase');
 app.get('/api/eisenkind/notes', async (req, res) => {
   try {
     const notes = await getEisenkindNotes();
@@ -162,6 +169,7 @@ app.put('/api/cause/graph', async (req, res) => {
 app.get('/api/corner/selfies', async (req, res) => {
   try {
     const selfies = await getCornerSelfies();
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
     res.json({ success: true, selfies });
   } catch (error) {
     console.error('Error loading corner selfies:', error);
