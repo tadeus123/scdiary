@@ -22,6 +22,32 @@
 
   <input type="file" id="selfie-file-input" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
 
+  <div id="selfie-crop-modal" class="selfie-crop-modal" hidden>
+    <div class="selfie-crop-sheet" role="dialog" aria-modal="true" aria-labelledby="selfie-crop-title">
+      <div class="selfie-crop-header">
+        <h2 id="selfie-crop-title">Crop year <span id="selfie-crop-year">1</span></h2>
+        <p class="selfie-crop-hint">Drag to move · pinch or slider to zoom</p>
+      </div>
+
+      <div class="selfie-crop-stage">
+        <div class="selfie-crop-viewport" id="selfie-crop-viewport">
+          <img id="selfie-crop-image" alt="" draggable="false">
+        </div>
+      </div>
+
+      <div class="selfie-crop-zoom">
+        <button type="button" id="selfie-crop-zoom-out" class="selfie-crop-zoom-btn" aria-label="Zoom out">−</button>
+        <input type="range" id="selfie-crop-zoom" class="selfie-crop-zoom-range" min="1" max="4" step="0.01" value="1" aria-label="Zoom">
+        <button type="button" id="selfie-crop-zoom-in" class="selfie-crop-zoom-btn" aria-label="Zoom in">+</button>
+      </div>
+
+      <div class="selfie-crop-actions">
+        <button type="button" id="selfie-crop-cancel" class="selfie-crop-btn selfie-crop-btn-secondary">Cancel</button>
+        <button type="button" id="selfie-crop-confirm" class="selfie-crop-btn selfie-crop-btn-primary">Use photo</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/js/main.js"></script>
   <script src="/js/admin-corner.js"></script>
 </body>

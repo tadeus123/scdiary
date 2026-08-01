@@ -20,8 +20,6 @@ const {
   deleteKindHours,
   isConfigured
 } = require('../db/supabase');
-const { cropSelfieWithAi } = require('../services/selfie-crop');
-
 // Admin password (in production, use environment variable)
 // WARNING: Never hardcode passwords in production!
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || null;
@@ -211,20 +209,21 @@ router.post('/corner/selfie/:year', isAuthenticated, (req, res) => {
 
       const existing = await getCornerSelfie(year);
 
-      let cropped;
-      try {
-        cropped = await cropSelfieWithAi(req.file.buffer);
-      } catch (cropError) {
-        console.error('Selfie AI crop error:', cropError);
-        return res.status(500).json({ success: false, error: 'Failed to crop image: ' + cropError.message });
-      }
-
-      const fileName = `year-${year}-${Date.now()}${cropped.extension}`;
+      // Client already cropped to the tile frame; store as uploaded.
+      const contentType = req.file.mimetype || 'image/jpeg';
+      const extension = contentType.includes('png')
+        ? '.png'
+        : contentType.includes('webp')
+          ? '.webp'
+          : contentType.includes('gif')
+            ? '.gif'
+            : '.jpg';
+      const fileName = `year-${year}-${Date.now()}${extension}`;
 
       const { error: uploadError } = await supabase.storage
         .from('corner-selfies')
-        .upload(fileName, cropped.buffer, {
-          contentType: cropped.contentType,
+        .upload(fileName, req.file.buffer, {
+          contentType,
           cacheControl: '3600',
           upsert: false
         });
