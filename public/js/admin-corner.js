@@ -419,7 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   confirmBtn.addEventListener('click', async () => {
     const year = activeYear;
-    if (!year) return;
+    if (!Number.isInteger(year)) return;
 
     confirmBtn.disabled = true;
     cancelBtn.disabled = true;
@@ -484,7 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
   fileInput.addEventListener('change', () => {
     const file = fileInput.files && fileInput.files[0];
     const year = activeYear;
-    if (!file || !year) return;
+    if (!file || !Number.isInteger(year)) return;
 
     if (!file.type.startsWith('image/')) {
       alert('Please choose an image file');
