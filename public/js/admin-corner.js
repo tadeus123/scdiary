@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (url) {
       if (!img) {
         img = document.createElement('img');
-        img.alt = `Year ${year}`;
+        img.alt = `Age ${year}`;
         img.decoding = 'async';
         tile.insertBefore(img, tile.firstChild);
       }

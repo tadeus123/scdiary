@@ -881,7 +881,7 @@ body.corner-page {
   -webkit-text-size-adjust: 100%;
 }
 
-/* Selfie wall — 100 portrait tiles, years 1–100 */
+/* Selfie wall — 100 portrait tiles, Lebensjahre 0–99 */
 .selfie-wall {
   --wall-pad-top: max(1.75rem, env(safe-area-inset-top, 0px) + 1.25rem);
   --wall-pad-right: max(0.75rem, env(safe-area-inset-right, 0px) + 0.5rem);
@@ -954,7 +954,7 @@ body.corner-page {
 }
 
 .corner-page:not(.admin-corner-page) .selfie-tile.is-clickable {
-  cursor: zoom-in;
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -982,7 +982,7 @@ body.selfie-lightbox-open {
   box-sizing: border-box;
   opacity: 0;
   transition: opacity 0.22s ease;
-  cursor: zoom-out;
+  cursor: default;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -1040,7 +1040,7 @@ body.selfie-lightbox-open {
   object-fit: contain;
   border-radius: 2px;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
-  cursor: zoom-out;
+  cursor: default;
   user-select: none;
   -webkit-user-select: none;
 }

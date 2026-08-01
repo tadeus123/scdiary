@@ -199,8 +199,8 @@ router.post('/corner/selfie/:year', isAuthenticated, (req, res) => {
       }
 
       const year = parseInt(req.params.year, 10);
-      if (!Number.isInteger(year) || year < 1 || year > 100) {
-        return res.status(400).json({ success: false, error: 'Year must be between 1 and 100' });
+      if (!Number.isInteger(year) || year < 0 || year > 99) {
+        return res.status(400).json({ success: false, error: 'Year must be between 0 and 99' });
       }
 
       if (!req.file) {
@@ -265,8 +265,8 @@ router.delete('/corner/selfie/:year', isAuthenticated, async (req, res) => {
     }
 
     const year = parseInt(req.params.year, 10);
-    if (!Number.isInteger(year) || year < 1 || year > 100) {
-      return res.status(400).json({ success: false, error: 'Year must be between 1 and 100' });
+    if (!Number.isInteger(year) || year < 0 || year > 99) {
+      return res.status(400).json({ success: false, error: 'Year must be between 0 and 99' });
     }
 
     const result = await deleteCornerSelfie(year);

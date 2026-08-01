@@ -1,4 +1,4 @@
-// Corner selfie wall — fill tiles + fullscreen lightbox for photos
+// Corner selfie wall — fill tiles + fullscreen lightbox (arrow keys: younger/older)
 document.addEventListener('DOMContentLoaded', async () => {
   const tiles = document.querySelectorAll('.selfie-tile[data-year]');
   if (!tiles.length) return;
@@ -8,19 +8,38 @@ document.addEventListener('DOMContentLoaded', async () => {
   const lightboxCaption = document.getElementById('selfie-lightbox-caption');
   const lightboxClose = document.getElementById('selfie-lightbox-close');
 
-  function openLightbox(url, year) {
-    if (!lightbox || !lightboxImage || !url) return;
+  /** @type {{ year: number, url: string }[]} */
+  let photoList = [];
+  let currentIndex = -1;
+
+  function ageLabel(year) {
+    return String(year);
+  }
+
+  function showLightboxPhoto(index) {
+    if (!lightbox || !lightboxImage || !photoList.length) return;
+    if (index < 0 || index >= photoList.length) return;
+
+    currentIndex = index;
+    const { year, url } = photoList[currentIndex];
 
     lightboxImage.src = url;
-    lightboxImage.alt = `Year ${year}`;
+    lightboxImage.alt = ageLabel(year);
     if (lightboxCaption) {
-      lightboxCaption.textContent = `Year ${year}`;
+      lightboxCaption.textContent = ageLabel(year);
     }
+  }
 
+  function openLightbox(year) {
+    if (!lightbox || !lightboxImage) return;
+
+    const index = photoList.findIndex((item) => item.year === year);
+    if (index < 0) return;
+
+    showLightboxPhoto(index);
     lightbox.hidden = false;
     document.body.classList.add('selfie-lightbox-open');
 
-    // Trigger enter animation on next frame
     requestAnimationFrame(() => {
       lightbox.classList.add('is-open');
     });
@@ -31,6 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     lightbox.classList.remove('is-open');
     document.body.classList.remove('selfie-lightbox-open');
+    currentIndex = -1;
 
     const finish = () => {
       lightbox.hidden = true;
@@ -41,7 +61,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (lightboxCaption) lightboxCaption.textContent = '';
     };
 
-    // Match CSS transition; fall back if transitionend never fires
     let done = false;
     const onEnd = (event) => {
       if (event.target !== lightbox) return;
@@ -58,29 +77,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 280);
   }
 
-  function wireTile(tile, url, year) {
+  function stepLightbox(delta) {
+    if (!lightbox || lightbox.hidden || currentIndex < 0 || !photoList.length) return;
+    const next = currentIndex + delta;
+    if (next < 0 || next >= photoList.length) return;
+    showLightboxPhoto(next);
+  }
+
+  function wireTile(tile, year) {
     tile.classList.add('has-image', 'is-clickable');
     tile.setAttribute('role', 'button');
     tile.setAttribute('tabindex', '0');
-    tile.setAttribute('aria-label', `View year ${year} selfie`);
+    tile.setAttribute('aria-label', `View age ${year}`);
 
     const open = (event) => {
       event.preventDefault();
-      openLightbox(url, year);
+      openLightbox(year);
     };
 
     tile.addEventListener('click', open);
     tile.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        openLightbox(url, year);
+        openLightbox(year);
       }
     });
   }
 
   if (lightbox) {
     lightbox.addEventListener('click', (event) => {
-      // Close when tapping backdrop or the photo itself
       if (
         event.target === lightbox ||
         event.target === lightboxImage ||
@@ -99,7 +124,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeLightbox();
+    if (!lightbox || lightbox.hidden) return;
+
+    if (event.key === 'Escape') {
+      closeLightbox();
+      return;
+    }
+
+    // Left = younger, right = older
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      stepLightbox(-1);
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      stepLightbox(1);
+    }
   });
 
   try {
@@ -108,17 +147,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (!data.success || !Array.isArray(data.selfies)) return;
 
-    data.selfies.forEach((selfie) => {
-      const year = Number(selfie.year);
-      const url = selfie.image_url;
-      if (!year || !url) return;
+    photoList = data.selfies
+      .map((selfie) => ({
+        year: Number(selfie.year),
+        url: selfie.image_url
+      }))
+      .filter((item) => Number.isInteger(item.year) && item.year >= 0 && item.url)
+      .sort((a, b) => a.year - b.year);
 
+    photoList.forEach(({ year, url }) => {
       const tile = document.querySelector(`.selfie-tile[data-year="${year}"]`);
       if (!tile || tile.querySelector('img')) return;
 
       const img = document.createElement('img');
       img.src = url;
-      img.alt = `Year ${year}`;
+      img.alt = ageLabel(year);
       img.loading = 'lazy';
       img.decoding = 'async';
       img.onerror = () => {
@@ -130,7 +173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       };
 
       tile.prepend(img);
-      wireTile(tile, url, year);
+      wireTile(tile, year);
     });
   } catch (error) {
     console.error('Error loading corner selfies:', error);

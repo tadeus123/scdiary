@@ -9,12 +9,12 @@
 <body class="corner-page admin-corner-page">
   <a href="/admin" class="corner-btn-left" aria-label="Back to Admin"></a>
 
-  <div class="selfie-wall" aria-label="Selfie wall admin — years 1 to 100">
+  <div class="selfie-wall" aria-label="Selfie wall admin — Lebensjahre 0 to 99">
     <div class="selfie-wall-grid">
-      <% for (let i = 1; i <= 100; i++) { %>
-        <div class="selfie-tile" data-year="<%= i %>" role="button" tabindex="0" aria-label="Upload selfie for year <%= i %>">
+      <% for (let i = 0; i <= 99; i++) { %>
+        <div class="selfie-tile" data-year="<%= i %>" role="button" tabindex="0" aria-label="Upload selfie for age <%= i %>">
           <span class="selfie-tile-number"><%= i %></span>
-          <button type="button" class="selfie-tile-delete" aria-label="Delete year <%= i %> selfie" hidden>×</button>
+          <button type="button" class="selfie-tile-delete" aria-label="Delete age <%= i %> selfie" hidden>×</button>
         </div>
       <% } %>
     </div>
@@ -25,7 +25,7 @@
   <div id="selfie-crop-modal" class="selfie-crop-modal" hidden>
     <div class="selfie-crop-sheet" role="dialog" aria-modal="true" aria-labelledby="selfie-crop-title">
       <div class="selfie-crop-header">
-        <h2 id="selfie-crop-title">Crop year <span id="selfie-crop-year">1</span></h2>
+        <h2 id="selfie-crop-title">Crop <span id="selfie-crop-year">0</span></h2>
         <p class="selfie-crop-hint">Drag to move · pinch or slider to zoom</p>
       </div>
 

@@ -1,4 +1,5 @@
--- Selfie wall for /corner: one optional image per year of life (1–100)
+-- Selfie wall for /corner: one optional image per Lebensjahr (0–99)
+-- Number N on a tile means ages N to N+1 (0 = first year of life).
 -- Safe to re-run. Does not modify any existing diary tables.
 
 CREATE TABLE IF NOT EXISTS public.corner_selfies (
@@ -6,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.corner_selfies (
   image_url TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT corner_selfies_year_range CHECK (year >= 1 AND year <= 100)
+  CONSTRAINT corner_selfies_year_range CHECK (year >= 0 AND year <= 99)
 );
 
 CREATE INDEX IF NOT EXISTS idx_corner_selfies_updated_at

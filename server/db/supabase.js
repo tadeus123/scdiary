@@ -1590,7 +1590,7 @@ async function addCeVideo(videoData) {
   }
 }
 
-// Corner selfie wall (years 1–100)
+// Corner selfie wall (Lebensjahre 0–99)
 async function getCornerSelfies() {
   if (!supabase) {
     return [];
