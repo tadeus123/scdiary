@@ -953,6 +953,127 @@ body.corner-page {
   display: none;
 }
 
+.corner-page:not(.admin-corner-page) .selfie-tile.is-clickable {
+  cursor: zoom-in;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.corner-page:not(.admin-corner-page) .selfie-tile.is-clickable:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+
+body.selfie-lightbox-open {
+  overflow: hidden;
+}
+
+.selfie-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top, 0px))
+    max(1rem, env(safe-area-inset-right, 0px))
+    max(1rem, env(safe-area-inset-bottom, 0px))
+    max(1rem, env(safe-area-inset-left, 0px));
+  background: rgba(10, 10, 10, 0.92);
+  box-sizing: border-box;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+  cursor: zoom-out;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.selfie-lightbox[hidden] {
+  display: none;
+}
+
+.selfie-lightbox.is-open {
+  opacity: 1;
+}
+
+.selfie-lightbox-close {
+  position: absolute;
+  top: max(0.65rem, env(safe-area-inset-top, 0px) + 0.35rem);
+  right: max(0.65rem, env(safe-area-inset-right, 0px) + 0.35rem);
+  z-index: 2;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.selfie-lightbox-close:hover {
+  color: #fff;
+}
+
+.selfie-lightbox-figure {
+  margin: 0;
+  max-width: min(100%, 92vw);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  transform: scale(0.96);
+  transition: transform 0.22s ease;
+}
+
+.selfie-lightbox.is-open .selfie-lightbox-figure {
+  transform: scale(1);
+}
+
+.selfie-lightbox-image {
+  display: block;
+  max-width: min(100%, 92vw);
+  max-height: calc(100dvh - 5.5rem);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 2px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  cursor: zoom-out;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.selfie-lightbox-caption {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+  user-select: none;
+}
+
+@media (max-width: 480px) {
+  .selfie-lightbox {
+    padding: max(0.75rem, env(safe-area-inset-top, 0px))
+      max(0.5rem, env(safe-area-inset-right, 0px))
+      max(0.75rem, env(safe-area-inset-bottom, 0px))
+      max(0.5rem, env(safe-area-inset-left, 0px));
+  }
+
+  .selfie-lightbox-image {
+    max-width: 96vw;
+    max-height: calc(100dvh - 4.75rem);
+  }
+
+  .selfie-lightbox-close {
+    width: 2.75rem;
+    height: 2.75rem;
+    font-size: 1.85rem;
+  }
+}
+
 .selfie-tile-delete {
   position: absolute;
   top: 1px;
