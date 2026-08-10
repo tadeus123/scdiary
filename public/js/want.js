@@ -30,6 +30,11 @@ const WANT_TREE = {
       text: 'it needs to be able to do any labour work that a human can do (so any human motion)',
       owner: 'tade',
       children: []
+    },
+    {
+      text: 'i want to manufacture it by myself (have my own hardware factory)',
+      owner: 'tade',
+      children: []
     }
   ]
 };
