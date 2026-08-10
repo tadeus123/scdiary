@@ -12,12 +12,12 @@ const WANT_TREE = {
       children: []
     },
     {
-      text: 'every person, at every age, can teach the machine skills of their own',
+      text: 'it can do all human motion needed to be useful and help with any given task',
       owner: 'tade',
       children: []
     },
     {
-      text: 'it can do all human motion needed to be useful and help with any given task',
+      text: 'every person, at every age, can teach the machine skills of their own',
       owner: 'tade',
       children: []
     },
