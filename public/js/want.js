@@ -22,7 +22,7 @@ const WANT_TREE = {
       children: []
     },
     {
-      text: 'i and families can buy it for 11k€',
+      text: 'i, creative individuals and families can buy it for 11k€',
       owner: 'tade',
       children: []
     }
