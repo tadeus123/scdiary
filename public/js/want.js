@@ -17,7 +17,7 @@ const WANT_TREE = {
       children: []
     },
     {
-      text: 'every person, at every age, can teach the machine skills of their own',
+      text: 'every person, at every age, can teach the machine their own unique skills',
       owner: 'tade',
       children: []
     },
