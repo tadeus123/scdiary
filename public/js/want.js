@@ -12,7 +12,7 @@ const WANT_TREE = {
       children: []
     },
     {
-      text: 'i can teach it my skills by showing once, then it does it correctly without me, in exactly my way',
+      text: 'i can teach it my skills by showing only once, then it does it correctly without me, in exactly my way',
       owner: 'tade',
       children: []
     },
