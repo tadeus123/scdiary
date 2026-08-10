@@ -2894,3 +2894,78 @@ body.selfie-crop-open {
   }
 }
 
+/* Want — requirements tree */
+.want-tree {
+  margin-top: 0.5rem;
+}
+
+.want-tree-list,
+.want-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.want-node {
+  position: relative;
+}
+
+.want-children {
+  margin-left: 1.25rem;
+  padding-left: 1.25rem;
+  border-left: 1px solid var(--border-color);
+}
+
+.want-children > .want-node {
+  padding-top: 1.5rem;
+}
+
+.want-children > .want-node::before {
+  content: '';
+  position: absolute;
+  top: 1.5rem;
+  left: -1.25rem;
+  width: 1.1rem;
+  height: 1px;
+  background: var(--border-color);
+  transform: translateY(0.85em);
+}
+
+.want-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  max-width: 36rem;
+}
+
+.want-text {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.55;
+  color: var(--text-color);
+}
+
+.want-owner {
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  color: var(--accent-color);
+  opacity: 0.85;
+}
+
+@media (max-width: 600px) {
+  .want-children {
+    margin-left: 0.75rem;
+    padding-left: 0.9rem;
+  }
+
+  .want-children > .want-node::before {
+    left: -0.9rem;
+    width: 0.75rem;
+  }
+
+  .want-text {
+    font-size: 1.05rem;
+  }
+}
+
