@@ -2894,9 +2894,30 @@ body.selfie-crop-open {
   }
 }
 
-/* Want — requirements tree */
+/* Want — requirements tree (centered, grows downward) */
+.want-page {
+  max-width: none;
+  min-height: calc(100vh - 0px);
+}
+
+.want-page nav {
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.want-main {
+  display: flex;
+  justify-content: center;
+  padding-top: 8vh;
+}
+
 .want-tree {
-  margin-top: 0.5rem;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  overflow-x: auto;
+  padding: 1rem 1rem 3rem;
 }
 
 .want-tree-list,
@@ -2906,37 +2927,27 @@ body.selfie-crop-open {
   padding: 0;
 }
 
+.want-tree-list {
+  display: flex;
+  justify-content: center;
+}
+
 .want-node {
   position: relative;
-}
-
-.want-children {
-  margin-left: 1.25rem;
-  padding-left: 1.25rem;
-  border-left: 1px solid var(--border-color);
-}
-
-.want-children > .want-node {
-  padding-top: 1.5rem;
-}
-
-.want-children > .want-node::before {
-  content: '';
-  position: absolute;
-  top: 1.5rem;
-  left: -1.25rem;
-  width: 1.1rem;
-  height: 1px;
-  background: var(--border-color);
-  transform: translateY(0.85em);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
 .want-entry {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.35rem;
-  max-width: 36rem;
+  max-width: 22rem;
+  position: relative;
+  z-index: 1;
 }
 
 .want-text {
@@ -2944,6 +2955,7 @@ body.selfie-crop-open {
   font-size: 1.15rem;
   line-height: 1.55;
   color: var(--text-color);
+  text-wrap: balance;
 }
 
 .want-owner {
@@ -2953,19 +2965,84 @@ body.selfie-crop-open {
   opacity: 0.85;
 }
 
+.want-children {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2rem;
+  position: relative;
+  margin-top: 2rem;
+  padding-top: 0;
+}
+
+/* Vertical stem from parent down to the children row */
+.want-children::before {
+  content: '';
+  position: absolute;
+  top: -2rem;
+  left: 50%;
+  width: 1px;
+  height: 2rem;
+  background: var(--border-color);
+  transform: translateX(-50%);
+}
+
+/* Horizontal bar across siblings */
+.want-children > .want-node::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.want-children > .want-node:first-child::before {
+  left: 50%;
+}
+
+.want-children > .want-node:last-child::before {
+  right: 50%;
+}
+
+.want-children > .want-node:only-child::before {
+  display: none;
+}
+
+/* Vertical drop from the bar into each child */
+.want-children > .want-node::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 1.25rem;
+  background: var(--border-color);
+  transform: translateX(-50%);
+}
+
+.want-children > .want-node {
+  padding-top: 1.25rem;
+}
+
 @media (max-width: 600px) {
   .want-children {
-    margin-left: 0.75rem;
-    padding-left: 0.9rem;
+    gap: 1.25rem;
+    margin-top: 1.75rem;
   }
 
-  .want-children > .want-node::before {
-    left: -0.9rem;
-    width: 0.75rem;
+  .want-children::before {
+    top: -1.75rem;
+    height: 1.75rem;
   }
 
   .want-text {
     font-size: 1.05rem;
+  }
+
+  .want-entry {
+    max-width: 16rem;
   }
 }
 
