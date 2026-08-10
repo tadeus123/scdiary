@@ -70,14 +70,47 @@ function renderWantNode(node) {
   return li;
 }
 
+function fitWantTree(viewport, scaleEl) {
+  scaleEl.style.transform = 'scale(1)';
+
+  const availableWidth = viewport.clientWidth;
+  const availableHeight = viewport.clientHeight;
+  const naturalWidth = scaleEl.scrollWidth;
+  const naturalHeight = scaleEl.scrollHeight;
+
+  if (!naturalWidth || !naturalHeight || !availableWidth || !availableHeight) {
+    return;
+  }
+
+  const scale = Math.min(
+    1,
+    availableWidth / naturalWidth,
+    availableHeight / naturalHeight
+  );
+
+  scaleEl.style.transform = `scale(${scale})`;
+}
+
 function initWantTree() {
   const root = document.getElementById('want-tree');
   if (!root) return;
 
+  const scaleEl = document.createElement('div');
+  scaleEl.className = 'want-tree-scale';
+
   const ul = document.createElement('ul');
   ul.className = 'want-tree-list';
   ul.appendChild(renderWantNode(WANT_TREE));
-  root.appendChild(ul);
+  scaleEl.appendChild(ul);
+  root.appendChild(scaleEl);
+
+  const refit = () => fitWantTree(root, scaleEl);
+  refit();
+  window.addEventListener('resize', refit);
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(refit);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', initWantTree);
