@@ -5,7 +5,33 @@
 const WANT_TREE = {
   text: 'i want to build a humanoid that i want',
   owner: 'tade',
-  children: []
+  children: [
+    {
+      text: 'it needs to cost max of 11k€',
+      owner: 'tade',
+      children: []
+    },
+    {
+      text: 'it needs to be teachable with my own skills and can do them then',
+      owner: 'tade',
+      children: []
+    },
+    {
+      text: 'it needs to be able to learn my way (when i show it a skill)',
+      owner: 'tade',
+      children: []
+    },
+    {
+      text: 'it needs to be an extension of me as a creative person',
+      owner: 'tade',
+      children: []
+    },
+    {
+      text: 'it needs to be able to do any labour work that a human can do (so any human motion)',
+      owner: 'tade',
+      children: []
+    }
+  ]
 };
 
 function renderWantNode(node) {
