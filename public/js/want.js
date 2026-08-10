@@ -12,11 +12,6 @@ const WANT_TREE = {
       children: []
     },
     {
-      text: 'high value for what i paid',
-      owner: 'tade',
-      children: []
-    },
-    {
       text: 'i can teach it a skill by showing once, then it does it correctly without me',
       owner: 'tade',
       children: []
