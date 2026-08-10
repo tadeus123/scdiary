@@ -23,7 +23,7 @@ const WANT_TREE = {
       ]
     },
     {
-      text: 'it needs to be able to do any labour work that a human can do (so any human motion)',
+      text: 'it can do all human motion needed to be useful and help with any given task',
       owner: 'tade',
       children: []
     },
