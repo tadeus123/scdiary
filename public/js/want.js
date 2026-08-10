@@ -28,6 +28,11 @@ const WANT_TREE = {
       children: []
     },
     {
+      text: 'it needs to be designed and care to spread optimism, confidence and love',
+      owner: 'tade',
+      children: []
+    },
+    {
       text: 'it is manufactured in our factory at 1 Million units a year +',
       owner: 'tade',
       children: [
