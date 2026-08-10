@@ -28,7 +28,7 @@ const WANT_TREE = {
       children: []
     },
     {
-      text: 'i want to manufacture it by myself (have my own hardware factory)',
+      text: 'it is manufactured in our factory at 1 Million a year +',
       owner: 'tade',
       children: []
     }
