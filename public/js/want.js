@@ -30,7 +30,13 @@ const WANT_TREE = {
     {
       text: 'it is manufactured in our factory at 1 Million a year +',
       owner: 'tade',
-      children: []
+      children: [
+        {
+          text: 'i manufacture the actuators by myself',
+          owner: 'tade',
+          children: []
+        }
+      ]
     }
   ]
 };
