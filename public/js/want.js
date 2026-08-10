@@ -14,13 +14,12 @@ const WANT_TREE = {
     {
       text: 'it needs to be an extension of me as a creative person',
       owner: 'tade',
-      children: [
-        {
-          text: 'i can teach it my skills by showing only once, then it does it correctly without me, in exactly my way',
-          owner: 'tade',
-          children: []
-        }
-      ]
+      children: []
+    },
+    {
+      text: 'i can teach it my skills by showing only once, then it does it correctly without me, in exactly my way',
+      owner: 'tade',
+      children: []
     },
     {
       text: 'it can do all human motion needed to be useful and help with any given task',
