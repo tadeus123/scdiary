@@ -7,7 +7,12 @@ const WANT_TREE = {
   owner: 'tade',
   children: [
     {
-      text: 'around 8–11k€ consumer purchase price — buyable for me and for families, high value',
+      text: 'around 8–11k€ consumer purchase price — buyable for me and for families',
+      owner: 'tade',
+      children: []
+    },
+    {
+      text: 'high value for what i paid',
       owner: 'tade',
       children: []
     },
