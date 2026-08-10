@@ -39,9 +39,9 @@ const WANT_TREE = {
   ]
 };
 
-function renderWantNode(node) {
+function renderWantNode(node, depth = 0) {
   const li = document.createElement('li');
-  li.className = 'want-node';
+  li.className = `want-node want-depth-${Math.min(depth, 4)}`;
 
   const entry = document.createElement('div');
   entry.className = 'want-entry';
@@ -62,7 +62,7 @@ function renderWantNode(node) {
     const ul = document.createElement('ul');
     ul.className = 'want-children';
     node.children.forEach((child) => {
-      ul.appendChild(renderWantNode(child));
+      ul.appendChild(renderWantNode(child, depth + 1));
     });
     li.appendChild(ul);
   }
