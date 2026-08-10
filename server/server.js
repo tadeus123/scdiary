@@ -119,6 +119,11 @@ app.get('/office', (req, res) => {
   res.render('office');
 });
 
+// Want route
+app.get('/want', (req, res) => {
+  res.render('want');
+});
+
 // Eisenkind story (public read)
 app.get('/api/eisenkind/notes', async (req, res) => {
   try {
