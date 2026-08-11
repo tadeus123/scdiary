@@ -25,7 +25,6 @@ const {
   updateCeVideoOrder,
   deleteCeVideo,
   addCeVideo,
-  getKindHours,
   isConfigured
 } = require('../db/supabase');
 const { parseYouTubeUrl } = require('../utils/youtube');
@@ -77,34 +76,6 @@ router.get('/bookshelf', (req, res) => {
 // Company Education page
 router.get('/ce', (req, res) => {
   res.render('ce');
-});
-
-// Kind hours tracking page
-router.get('/kind', (req, res) => {
-  res.render('kind');
-});
-
-// API: Get kind hours entries
-router.get('/api/kind/hours', async (req, res) => {
-  try {
-    res.set({
-      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    });
-
-    const entries = await getKindHours();
-    const totalHours = entries.reduce((sum, e) => sum + (Number(e.hours) || 0), 0);
-
-    res.json({
-      success: true,
-      entries,
-      totalHours: Math.round(totalHours * 100) / 100
-    });
-  } catch (error) {
-    console.error('Error fetching kind hours:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch kind hours' });
-  }
 });
 
 // API: Get all books and connections

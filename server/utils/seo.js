@@ -14,10 +14,6 @@ const PAGES = {
     title: 'Tade Mehl — bookshelf',
     description: 'Books read by Tade Mehl.',
   },
-  '/office': {
-    title: 'Tade Mehl — office',
-    description: 'Office — Tade Mehl.',
-  },
   '/want': {
     title: 'Tade Mehl — want',
     description: 'Want — Tade Mehl.',
@@ -31,13 +27,9 @@ const PAGES = {
     title: 'Tade Mehl — company education',
     description: 'Company education videos curated by Tade Mehl.',
   },
-  '/kind': {
-    title: 'Tade Mehl — kind',
-    description: 'Hours spent on kind, tracked over time by Tade Mehl.',
-  },
 };
 
-const SITEMAP_PATHS = ['/', '/bookshelf', '/eisenkind', '/cause', '/office', '/want', '/corner', '/ce', '/kind'];
+const SITEMAP_PATHS = ['/', '/bookshelf', '/eisenkind', '/cause', '/want', '/corner', '/ce'];
 
 function normalizePath(pathname) {
   if (!pathname || pathname === '/') return '/';
@@ -116,21 +108,6 @@ function buildSitemapXml() {
   });
 
 
-  // AIRSUP-BEGIN discovery sitemap URLs — see airsup/REVERT.md
-  const discoveryLocs = [
-    `${SITE_URL}/supi`,
-    `${SITE_URL}/agent`,
-    `${SITE_URL}/llms.txt`,
-    `${SITE_URL}/.well-known/agent-card.json`,
-    `${SITE_URL}/.well-known/agent.json`,
-    `${SITE_URL}/agent-sitemap.xml`,
-  ];
-  for (const loc of discoveryLocs) {
-    urls.push(
-      `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <priority>0.3</priority>\n  </url>`
-    );
-  }
-  // AIRSUP-END
 
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',

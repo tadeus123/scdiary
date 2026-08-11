@@ -1693,91 +1693,6 @@ async function deleteCornerSelfie(year) {
   }
 }
 
-// Kind hours tracking
-async function getKindHours() {
-  if (!supabase) {
-    console.warn('⚠️  Supabase not configured for kind hours');
-    return [];
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('kind_hours')
-      .select('*')
-      .order('date_logged', { ascending: true })
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching kind hours:', error);
-      return [];
-    }
-
-    return (data || []).map((row) => ({
-      ...row,
-      hours: Number(row.hours)
-    }));
-  } catch (error) {
-    console.error('Error fetching kind hours:', error);
-    return [];
-  }
-}
-
-async function addKindHours(hours, dateLogged) {
-  if (!supabase) {
-    return { success: false, error: 'Supabase not configured' };
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('kind_hours')
-      .insert({
-        hours,
-        date_logged: dateLogged
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error adding kind hours:', error);
-      return { success: false, error: error.message };
-    }
-
-    return {
-      success: true,
-      entry: {
-        ...data,
-        hours: Number(data.hours)
-      }
-    };
-  } catch (error) {
-    console.error('Error adding kind hours:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-async function deleteKindHours(id) {
-  if (!supabase) {
-    return { success: false, error: 'Supabase not configured' };
-  }
-
-  try {
-    const { error } = await supabase
-      .from('kind_hours')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error deleting kind hours:', error);
-      return { success: false, error: error.message };
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error deleting kind hours:', error);
-    return { success: false, error: error.message };
-  }
-}
-
 module.exports = {
   getEntries,
   createEntry,
@@ -1821,10 +1736,6 @@ module.exports = {
   getCornerSelfie,
   upsertCornerSelfie,
   deleteCornerSelfie,
-  // Kind hours tracking
-  getKindHours,
-  addKindHours,
-  deleteKindHours,
   isConfigured: () => supabase !== null
 };
 

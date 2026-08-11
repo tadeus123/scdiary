@@ -21,12 +21,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// AIRSUP-BEGIN discovery proxy + Link headers — see airsup/REVERT.md
-const { createAirsupProxy } = require('./airsup-proxy');
-app.use(createAirsupProxy());
-const { createServiceMetaLinkHeader } = require('./airsup-discovery-headers');
-app.use(createServiceMetaLinkHeader());
-// AIRSUP-END
 
 // Middleware
 app.use(bodyParser.json());
@@ -112,11 +106,6 @@ app.get('/corner', async (req, res) => {
     console.error('Error loading corner selfies for page:', error);
   }
   res.render('trouble-corner', { goals: [], selfies });
-});
-
-// Office route
-app.get('/office', (req, res) => {
-  res.render('office');
 });
 
 // Want route
