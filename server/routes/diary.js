@@ -78,9 +78,16 @@ router.get('/ce', (req, res) => {
   res.render('ce');
 });
 
-// Blank edu page
+// Edu episodes — data is embedded in the page so /edu is not a static folder
 router.get(['/edu', '/edu/'], (req, res) => {
-  res.render('edu');
+  let episodes = [];
+  try {
+    const episodesPath = path.join(__dirname, '../../public/edu-episodes.json');
+    episodes = JSON.parse(fs.readFileSync(episodesPath, 'utf8'));
+  } catch (error) {
+    console.error('Error loading edu episodes:', error);
+  }
+  res.render('edu', { episodes });
 });
 router.get(['/companyeducation', '/companyeducation/'], (req, res) => {
   res.redirect(301, '/edu');

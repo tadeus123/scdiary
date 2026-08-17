@@ -378,11 +378,14 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') saveProgress();
 });
 
-async function init() {
+function init() {
   try {
-    const response = await fetch(`/edu/episodes.json?t=${Date.now()}`, { cache: 'no-cache' });
-    if (!response.ok) throw new Error('Failed to load episodes');
-    episodes = await response.json();
+    const data = Array.isArray(window.EDU_EPISODES) ? window.EDU_EPISODES : [];
+    if (!data.length) {
+      list.innerHTML = '<p class="edu-empty">no episodes yet.</p>';
+      return;
+    }
+    episodes = data;
     renderEpisodes(episodes);
   } catch (error) {
     console.error('Error loading edu episodes:', error);

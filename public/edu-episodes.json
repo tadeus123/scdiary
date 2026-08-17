@@ -9,7 +9,7 @@
       { "url": "https://www.mckusick.com/" },
       { "url": "https://www.mckusick.com/history/", "label": "[video mentioned]" }
     ],
-    "image": "/edu/marshall-kirk-mckusick.jpg",
+    "image": "/media/edu/marshall-kirk-mckusick.jpg",
     "audio": "https://mvtrinbmwtpniavdcspk.supabase.co/storage/v1/object/public/edu/marshall-kirk-mckusick.mp3"
   }
 ]
