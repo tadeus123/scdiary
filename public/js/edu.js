@@ -44,6 +44,14 @@ function absoluteUrl(path) {
   return new URL(path, window.location.origin).href;
 }
 
+function hostLabel(url) {
+  try {
+    return new URL(url).host.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
 function episodeLinks(episode) {
   if (Array.isArray(episode.links) && episode.links.length) return episode.links;
   if (episode.url) return [{ url: episode.url }];
