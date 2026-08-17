@@ -28,6 +28,7 @@ const {
   isConfigured
 } = require('../db/supabase');
 const { parseYouTubeUrl } = require('../utils/youtube');
+const { sortedEpisodes, getEpisode, episodeLinks, episodeSeo } = require('../utils/edu-episodes');
 const { categorizeBook } = require('../services/categorization');
 const { calculateSimilarity } = require('../services/similarity');
 
@@ -80,14 +81,15 @@ router.get('/ce', (req, res) => {
 
 // Edu episodes — data is embedded in the page so /edu is not a static folder
 router.get(['/edu', '/edu/'], (req, res) => {
-  let episodes = [];
-  try {
-    const episodesPath = path.join(__dirname, '../../public/edu-episodes.json');
-    episodes = JSON.parse(fs.readFileSync(episodesPath, 'utf8'));
-  } catch (error) {
-    console.error('Error loading edu episodes:', error);
+  res.render('edu', { episodes: sortedEpisodes() });
+});
+router.get(['/edu/:id', '/edu/:id/'], (req, res) => {
+  const episode = getEpisode(req.params.id);
+  if (!episode) {
+    return res.redirect(302, '/edu');
   }
-  res.render('edu', { episodes });
+  res.locals.seo = episodeSeo(episode);
+  res.render('edu-episode', { episode, links: episodeLinks(episode) });
 });
 router.get(['/companyeducation', '/companyeducation/'], (req, res) => {
   res.redirect(301, '/edu');

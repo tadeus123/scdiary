@@ -6,7 +6,7 @@
   <%- include('partials/seo-head') %>
   <link rel="stylesheet" href="/css/style.css?v=edu16">
 </head>
-<body class="edu-page">
+<body class="edu-page edu-now">
   <a href="/" class="corner-btn-left" aria-label="Back to Diary"></a>
 
   <div class="container">
@@ -30,31 +30,41 @@
     </nav>
 
     <main>
-      <div id="edu-episodes" class="edu-episodes" aria-label="Episodes">
-        <% if (!(episodes || []).length) { %>
-          <p class="edu-empty">no episodes yet.</p>
-        <% } %>
-        <% (episodes || []).forEach((episode) => { %>
-          <article class="edu-track" data-episode-id="<%= episode.id %>">
-            <a class="edu-cover-link" href="/edu/<%= episode.id %>">
-              <img
-                class="edu-cover"
-                src="<%= episode.image %>"
-                alt="<%= episode.name %>"
-                width="800"
-                height="800"
-              >
-            </a>
-            <div class="edu-track-main">
-              <a class="edu-track-info" href="/edu/<%= episode.id %>">
-                <span class="edu-name"><%= episode.name %></span>
-                <span class="edu-born">born: <%= episode.born %></span>
-              </a>
-              <%- include('partials/edu-player') %>
+      <article class="edu-now-card" data-episode-id="<%= episode.id %>">
+        <div class="edu-now-hero">
+          <img
+            class="edu-now-cover"
+            src="<%= episode.image %>"
+            alt="<%= episode.name %>"
+            width="800"
+            height="800"
+            data-action="play"
+          >
+          <h1 class="edu-name"><%= episode.name %></h1>
+          <p class="edu-born">born: <%= episode.born %></p>
+          <%- include('partials/edu-player') %>
+        </div>
+        <div class="edu-now-copy">
+          <p class="edu-bio"><%= episode.bio %></p>
+          <% if (links && links.length) { %>
+            <div class="edu-links">
+              <% links.forEach((link) => { %>
+                <a class="edu-link" href="<%= link.url %>" target="_blank" rel="noopener noreferrer"><%= link.label %></a>
+              <% }) %>
             </div>
-          </article>
-        <% }) %>
-      </div>
+          <% } %>
+          <% if (episode.transcript && episode.transcript.length) { %>
+            <details class="edu-transcript is-current">
+              <summary class="edu-transcript-label">transcript</summary>
+              <div class="edu-transcript-body">
+                <% episode.transcript.forEach((para) => { %>
+                  <p><%= para %></p>
+                <% }) %>
+              </div>
+            </details>
+          <% } %>
+        </div>
+      </article>
     </main>
   </div>
 
@@ -66,7 +76,7 @@
     webkit-playsinline
   ></audio>
 
-  <script>window.EDU_EPISODES = <%- JSON.stringify(episodes || []) %>;</script>
+  <script>window.EDU_EPISODES = <%- JSON.stringify([episode]) %>;</script>
   <script src="/js/main.js"></script>
   <script src="/js/edu.js?v=edu16"></script>
 </body>

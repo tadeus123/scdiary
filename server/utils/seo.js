@@ -33,6 +33,8 @@ const PAGES = {
   },
 };
 
+const { loadEpisodes } = require('./edu-episodes');
+
 const SITEMAP_PATHS = ['/', '/bookshelf', '/eisenkind', '/cause', '/want', '/corner', '/ce', '/edu'];
 
 function normalizePath(pathname) {
@@ -105,9 +107,10 @@ function getPersonSchema() {
 
 function buildSitemapXml() {
   const lastmod = new Date().toISOString().slice(0, 10);
-  const urls = SITEMAP_PATHS.map((path) => {
+  const episodePaths = loadEpisodes().map((episode) => `/edu/${episode.id}`);
+  const urls = [...SITEMAP_PATHS, ...episodePaths].map((path) => {
     const loc = getCanonicalUrl(path);
-    const priority = path === '/' ? '1.0' : '0.7';
+    const priority = path === '/' ? '1.0' : path.startsWith('/edu/') ? '0.6' : '0.7';
     return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <priority>${priority}</priority>\n  </url>`;
   });
 

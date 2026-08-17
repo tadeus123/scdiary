@@ -1,30 +1,18 @@
 const SPEED_STEPS = [1, 1.25, 1.5, 1.75, 2, 2.5];
 const SKIP_SECONDS = 15;
 const SPEED_KEY = 'edu-speed';
+const ACTIVE_KEY = 'edu-active';
 const progressKey = (id) => `edu-progress:${id}`;
 
+const page = document.querySelector('.edu-page');
 const audio = document.getElementById('edu-audio');
-const list = document.getElementById('edu-episodes');
+const channel = 'BroadcastChannel' in window ? new BroadcastChannel('edu-player') : null;
 
 let episodes = [];
-let selectedId = null;
 let activeId = null;
 let seeking = false;
-
-function lastName(name) {
-  const parts = String(name || '').trim().split(/\s+/);
-  return parts[parts.length - 1] || name;
-}
-
-function sortedEpisodes() {
-  return [...episodes].sort((a, b) => lastName(a.name).localeCompare(lastName(b.name)) || a.name.localeCompare(b.name));
-}
-
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
+let applyingRemote = false;
+let lastWrite = 0;
 
 function formatTime(seconds) {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
@@ -58,42 +46,12 @@ function absoluteUrl(path) {
   return new URL(path, window.location.origin).href;
 }
 
-function hostLabel(url) {
-  try {
-    return new URL(url).host.replace(/^www\./, '');
-  } catch {
-    return url;
-  }
-}
-
-function episodeLinks(episode) {
-  if (Array.isArray(episode.links) && episode.links.length) return episode.links;
-  if (episode.url) return [{ url: episode.url }];
-  return [];
-}
-
-function linkLabel(link) {
-  return link.label || hostLabel(link.url);
-}
-
-function renderLinks(episode) {
-  const links = episodeLinks(episode);
-  if (!links.length) return '';
-  return `<div class="edu-links">${links.map((link) => `
-    <a class="edu-link" href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkLabel(link))}</a>
-  `).join('')}</div>`;
-}
-
 function getEpisode(id) {
   return episodes.find((episode) => episode.id === id);
 }
 
 function cardEl(id) {
-  return list.querySelector(`[data-episode-id="${id}"]`);
-}
-
-function hashId() {
-  return decodeURIComponent((location.hash || '').replace(/^#/, ''));
+  return page.querySelector(`[data-episode-id="${id}"]`);
 }
 
 function playIcon() {
@@ -104,8 +62,114 @@ function pauseIcon() {
   return `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="7" y="5" width="4" height="14" fill="currentColor"></rect><rect x="13" y="5" width="4" height="14" fill="currentColor"></rect></svg>`;
 }
 
+function readProgress(id) {
+  try {
+    const raw = localStorage.getItem(progressKey(id));
+    if (!raw) return { time: 0, duration: 0 };
+    if (/^\d+(\.\d+)?$/.test(raw)) {
+      return { time: parseFloat(raw), duration: 0 };
+    }
+    const parsed = JSON.parse(raw);
+    return {
+      time: Number(parsed.time) || 0,
+      duration: Number(parsed.duration) || 0,
+    };
+  } catch {
+    return { time: 0, duration: 0 };
+  }
+}
+
+function finished(time, duration) {
+  return duration > 10 && time >= duration - 2;
+}
+
+function writeProgress(id, time, duration) {
+  if (!id || applyingRemote) return;
+  const safeTime = Math.max(0, Math.floor(Number(time) || 0));
+  const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : readProgress(id).duration;
+  if (finished(safeTime, safeDuration)) {
+    localStorage.removeItem(progressKey(id));
+  } else {
+    localStorage.setItem(progressKey(id), JSON.stringify({
+      time: safeTime,
+      duration: safeDuration,
+      updated: Date.now(),
+    }));
+  }
+  localStorage.setItem(ACTIVE_KEY, id);
+}
+
+function saveProgress({ force = true } = {}) {
+  if (!activeId || !Number.isFinite(audio.currentTime) || applyingRemote) return;
+  const now = Date.now();
+  if (!force && now - lastWrite < 400) return;
+  lastWrite = now;
+  writeProgress(activeId, audio.currentTime, audio.duration);
+  publish({
+    type: 'progress',
+    id: activeId,
+    time: audio.currentTime,
+    duration: audio.duration,
+    playing: !audio.paused,
+  });
+}
+
+function restoreProgress(id) {
+  const stored = readProgress(id);
+  if (stored.time > 3 && !finished(stored.time, stored.duration || audio.duration)) {
+    audio.currentTime = stored.time;
+  }
+}
+
+function applyProgressUi(id, time, duration) {
+  const card = cardEl(id);
+  if (card) updateTimes(card, time, duration);
+}
+
+function paintSavedProgress() {
+  episodes.forEach((episode) => {
+    const stored = readProgress(episode.id);
+    if (stored.time || stored.duration) {
+      applyProgressUi(episode.id, stored.time, stored.duration);
+    }
+  });
+}
+
+function publish(message) {
+  if (!channel || applyingRemote) return;
+  channel.postMessage(message);
+}
+
+function applyRemote(message) {
+  if (!message || !message.id) return;
+  applyingRemote = true;
+  try {
+    if (message.type === 'play' && message.id !== undefined) {
+      if (activeId && activeId !== message.id && !audio.paused) {
+        audio.pause();
+      } else if (activeId === message.id && !audio.paused) {
+        audio.pause();
+      }
+    }
+    if (Number.isFinite(message.time)) {
+      applyProgressUi(message.id, message.time, message.duration);
+      if (activeId === message.id && audio.paused && Number.isFinite(audio.duration) && Math.abs(audio.currentTime - message.time) > 1) {
+        audio.currentTime = message.time;
+      }
+    }
+    if (message.type === 'ended') {
+      applyProgressUi(message.id, 0, message.duration || readProgress(message.id).duration);
+    }
+    if (message.speed != null) {
+      applySpeed(message.speed, { persist: false });
+    }
+  } finally {
+    applyingRemote = false;
+  }
+}
+
 function setPlayingUi(isPlaying) {
-  list.querySelectorAll('[data-episode-id]').forEach((card) => {
+  page.querySelectorAll('[data-episode-id]').forEach((card) => {
     const playing = isPlaying && card.dataset.episodeId === activeId;
     card.classList.toggle('is-playing', playing);
     const button = card.querySelector('.edu-play');
@@ -121,21 +185,9 @@ function updateTimes(card, current, duration) {
   const durationEl = card.querySelector('.edu-time-duration');
   const seek = card.querySelector('.edu-seek');
   if (currentEl) currentEl.textContent = formatTime(current);
-  if (durationEl) durationEl.textContent = formatTime(duration);
+  if (durationEl && duration) durationEl.textContent = formatTime(duration);
   if (seek && !seeking) {
     seek.value = duration ? String((current / duration) * 1000) : '0';
-  }
-}
-
-function saveProgress() {
-  if (!activeId || !Number.isFinite(audio.currentTime)) return;
-  localStorage.setItem(progressKey(activeId), String(Math.floor(audio.currentTime)));
-}
-
-function restoreProgress(id) {
-  const stored = parseFloat(localStorage.getItem(progressKey(id)));
-  if (Number.isFinite(stored) && stored > 3) {
-    audio.currentTime = stored;
   }
 }
 
@@ -156,6 +208,7 @@ function updateMediaSession(episode) {
   const seekBy = (offset) => {
     if (!Number.isFinite(audio.duration)) return;
     audio.currentTime = Math.min(audio.duration, Math.max(0, audio.currentTime + offset));
+    saveProgress();
   };
 
   navigator.mediaSession.setActionHandler('play', () => audio.play());
@@ -163,6 +216,7 @@ function updateMediaSession(episode) {
   navigator.mediaSession.setActionHandler('stop', () => {
     audio.pause();
     audio.currentTime = 0;
+    saveProgress();
   });
   navigator.mediaSession.setActionHandler('seekbackward', (details) => {
     seekBy(-(details.seekOffset || SKIP_SECONDS));
@@ -176,6 +230,7 @@ function updateMediaSession(episode) {
     } else if (Number.isFinite(details.seekTime)) {
       audio.currentTime = details.seekTime;
     }
+    saveProgress();
   });
 }
 
@@ -196,148 +251,27 @@ function applySpeed(speed, { persist = true } = {}) {
   const next = clampSpeed(speed);
   audio.playbackRate = next;
   if (persist) localStorage.setItem(SPEED_KEY, String(next));
-  list.querySelectorAll('.edu-speed').forEach((el) => {
+  page.querySelectorAll('.edu-speed').forEach((el) => {
     el.textContent = formatSpeed(next);
   });
-  list.querySelectorAll('.edu-speed-option').forEach((el) => {
+  page.querySelectorAll('.edu-speed-option').forEach((el) => {
     el.classList.toggle('is-active', Math.abs(parseFloat(el.dataset.speed) - next) < 0.01);
   });
   updatePositionState();
 }
 
 function closeSpeedMenus(exceptWrap = null) {
-  list.querySelectorAll('.edu-speed-wrap').forEach((wrap) => {
+  page.querySelectorAll('.edu-speed-wrap').forEach((wrap) => {
     if (wrap === exceptWrap) return;
     wrap.classList.remove('is-open');
     wrap.querySelector('.edu-speed')?.setAttribute('aria-expanded', 'false');
   });
 }
 
-function renderPlayer() {
-  return `
-    <div class="edu-player">
-      <button type="button" class="edu-play" data-action="play" aria-label="Play">${playIcon()}</button>
-      <span class="edu-time-current">0:00</span>
-      <input
-        class="edu-seek"
-        type="range"
-        min="0"
-        max="1000"
-        value="0"
-        step="1"
-        aria-label="Seek"
-      >
-      <span class="edu-time-duration">0:00</span>
-      <div class="edu-speed-wrap">
-        <button type="button" class="edu-speed" data-action="speed-toggle" aria-expanded="false" aria-label="Playback speed">1×</button>
-        <div class="edu-speed-menu" role="listbox" aria-label="Playback speed">
-          ${SPEED_STEPS.map((step) => `
-            <button
-              type="button"
-              class="edu-speed-option"
-              data-action="speed-set"
-              data-speed="${step}"
-              role="option"
-            >${formatSpeed(step)}</button>
-          `).join('')}
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function renderTrack(episode) {
-  const open = episode.id === selectedId;
-  return `
-    <article
-      class="edu-track${open ? ' is-open' : ''}"
-      data-episode-id="${escapeHtml(episode.id)}"
-    >
-      <img
-        class="edu-cover"
-        src="${escapeHtml(episode.image)}"
-        alt="${escapeHtml(episode.name)}"
-        width="800"
-        height="800"
-        data-action="play"
-      >
-      <div class="edu-track-main">
-        <button type="button" class="edu-track-info" data-action="open" aria-expanded="${open ? 'true' : 'false'}">
-          <span class="edu-name">${escapeHtml(episode.name)}</span>
-          <span class="edu-born">born: ${escapeHtml(String(episode.born))}</span>
-        </button>
-        ${renderPlayer()}
-        ${open ? `
-          <div class="edu-track-details">
-            <p class="edu-bio">${escapeHtml(episode.bio)}</p>
-            ${renderLinks(episode)}
-          </div>
-        ` : ''}
-      </div>
-    </article>
-  `;
-}
-
-function parkTranscripts() {
-  const main = document.querySelector('.edu-page main');
-  if (!main) return;
-  document.querySelectorAll('.edu-transcript').forEach((section) => {
-    main.appendChild(section);
-  });
-}
-
-function attachTranscripts() {
-  document.querySelectorAll('.edu-transcript').forEach((section) => {
-    const current = section.dataset.transcriptFor === selectedId;
-    section.classList.toggle('is-current', current);
-    if (current) {
-      const details = list.querySelector(`[data-episode-id="${selectedId}"] .edu-track-details`);
-      if (details) details.appendChild(section);
-    }
-  });
-}
-
-function restoreActiveUi() {
-  applySpeed(savedSpeed(), { persist: false });
-  attachTranscripts();
-  if (!activeId) return;
-  const card = cardEl(activeId);
-  if (!card) return;
-  updateTimes(card, audio.currentTime, audio.duration);
-  setPlayingUi(!audio.paused);
-}
-
-function render() {
-  const tracks = sortedEpisodes();
-  if (!tracks.length) {
-    parkTranscripts();
-    list.innerHTML = '<p class="edu-empty">no episodes yet.</p>';
-    return;
-  }
-
-  parkTranscripts();
-  list.innerHTML = tracks.map(renderTrack).join('');
-  restoreActiveUi();
-}
-
-function syncFromHash() {
-  const id = hashId();
-  selectedId = getEpisode(id) ? id : null;
-  render();
-}
-
-function toggleOpen(id) {
-  if (!getEpisode(id)) return;
-  selectedId = selectedId === id ? null : id;
-  const next = selectedId ? `#${encodeURIComponent(selectedId)}` : (location.pathname + location.search);
-  history.pushState(null, '', next);
-  render();
-}
-
 async function loadEpisode(episode, { autoplay = false, startTime = null } = {}) {
   const switching = activeId !== episode.id;
   activeId = episode.id;
-  list.querySelectorAll('[data-episode-id]').forEach((card) => {
+  page.querySelectorAll('[data-episode-id]').forEach((card) => {
     card.classList.toggle('is-active', card.dataset.episodeId === episode.id);
   });
 
@@ -350,8 +284,10 @@ async function loadEpisode(episode, { autoplay = false, startTime = null } = {})
     const onReady = () => {
       if (startTime == null) restoreProgress(episode.id);
       else audio.currentTime = startTime;
+      const stored = readProgress(episode.id);
       const card = cardEl(episode.id);
-      if (card) updateTimes(card, audio.currentTime, audio.duration);
+      if (card) updateTimes(card, audio.currentTime, audio.duration || stored.duration);
+      writeProgress(episode.id, audio.currentTime, audio.duration);
       updatePositionState();
     };
     if (audio.readyState >= 1) onReady();
@@ -367,150 +303,197 @@ async function loadEpisode(episode, { autoplay = false, startTime = null } = {})
   }
 }
 
-list.addEventListener('click', (event) => {
-  const speedSet = event.target.closest('[data-action="speed-set"]');
-  if (speedSet) {
-    applySpeed(parseFloat(speedSet.dataset.speed));
-    closeSpeedMenus();
-    return;
+function redirectLegacyHash() {
+  if (page.classList.contains('edu-now')) return false;
+  const id = decodeURIComponent((location.hash || '').replace(/^#/, ''));
+  if (id && getEpisode(id)) {
+    location.replace(`/edu/${encodeURIComponent(id)}`);
+    return true;
   }
+  return false;
+}
 
-  const speedToggle = event.target.closest('[data-action="speed-toggle"]');
-  if (speedToggle) {
-    const wrap = speedToggle.closest('.edu-speed-wrap');
-    const willOpen = !wrap.classList.contains('is-open');
-    closeSpeedMenus();
-    if (willOpen) {
-      wrap.classList.add('is-open');
-      speedToggle.setAttribute('aria-expanded', 'true');
+if (page && audio) {
+  page.addEventListener('click', (event) => {
+    if (event.target.closest('a.edu-cover-link, a.edu-track-info')) {
+      saveProgress();
     }
-    return;
-  }
 
-  closeSpeedMenus();
+    const speedSet = event.target.closest('[data-action="speed-set"]');
+    if (speedSet) {
+      applySpeed(parseFloat(speedSet.dataset.speed));
+      closeSpeedMenus();
+      publish({ type: 'speed', id: activeId, speed: savedSpeed() });
+      return;
+    }
 
-  const opener = event.target.closest('[data-action="open"]');
-  if (opener) {
-    const card = opener.closest('[data-episode-id]');
-    if (card) toggleOpen(card.dataset.episodeId);
-    return;
-  }
+    const speedToggle = event.target.closest('[data-action="speed-toggle"]');
+    if (speedToggle) {
+      const wrap = speedToggle.closest('.edu-speed-wrap');
+      const willOpen = !wrap.classList.contains('is-open');
+      closeSpeedMenus();
+      if (willOpen) {
+        wrap.classList.add('is-open');
+        speedToggle.setAttribute('aria-expanded', 'true');
+      }
+      return;
+    }
 
-  const cover = event.target.closest('.edu-cover');
-  const button = event.target.closest('[data-action]');
-  if (!cover && !button) return;
+    closeSpeedMenus();
 
-  const card = event.target.closest('[data-episode-id]');
-  const episode = getEpisode(card?.dataset.episodeId);
-  if (!episode) return;
+    const cover = event.target.closest('[data-action="play"].edu-now-cover, .edu-now-cover');
+    const button = event.target.closest('[data-action="play"]');
+    if (!cover && !button) return;
 
-  if (cover || button.dataset.action === 'play') {
+    const card = event.target.closest('[data-episode-id]');
+    const episode = getEpisode(card?.dataset.episodeId);
+    if (!episode) return;
+
     if (activeId === episode.id && !audio.paused) {
       audio.pause();
       return;
     }
     loadEpisode(episode, { autoplay: true });
-  }
-});
+  });
 
-document.addEventListener('click', (event) => {
-  if (event.target.closest('.edu-speed-wrap')) return;
-  closeSpeedMenus();
-});
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('.edu-speed-wrap')) return;
+    closeSpeedMenus();
+  });
 
-list.addEventListener('input', (event) => {
-  const card = event.target.closest('[data-episode-id]');
-  if (!card) return;
-  const episode = getEpisode(card.dataset.episodeId);
-  if (!episode) return;
-
-  if (event.target.classList.contains('edu-seek')) {
+  page.addEventListener('input', (event) => {
+    const card = event.target.closest('[data-episode-id]');
+    if (!card || !event.target.classList.contains('edu-seek')) return;
+    const episode = getEpisode(card.dataset.episodeId);
+    if (!episode) return;
     seeking = true;
-    const duration = audio.duration || 0;
+    const stored = readProgress(episode.id);
+    const duration = (activeId === episode.id && audio.duration) || stored.duration || 0;
     const next = (parseFloat(event.target.value) / 1000) * duration;
     card.querySelector('.edu-time-current').textContent = formatTime(next);
-  }
-});
+  });
 
-list.addEventListener('change', (event) => {
-  if (!event.target.classList.contains('edu-seek')) return;
-  const card = event.target.closest('[data-episode-id]');
-  const episode = getEpisode(card.dataset.episodeId);
-  if (!episode) return;
+  page.addEventListener('change', (event) => {
+    if (!event.target.classList.contains('edu-seek')) return;
+    const card = event.target.closest('[data-episode-id]');
+    const episode = getEpisode(card.dataset.episodeId);
+    if (!episode) return;
 
-  const ratio = parseFloat(event.target.value) / 1000;
-  const applySeek = () => {
-    if (Number.isFinite(audio.duration)) {
-      audio.currentTime = ratio * audio.duration;
+    const stored = readProgress(episode.id);
+    const duration = (activeId === episode.id && audio.duration) || stored.duration || 0;
+    const ratio = parseFloat(event.target.value) / 1000;
+    const nextTime = ratio * duration;
+
+    const applySeek = () => {
+      if (Number.isFinite(audio.duration)) {
+        audio.currentTime = ratio * audio.duration;
+      }
+      seeking = false;
+      saveProgress();
+    };
+
+    if (activeId !== episode.id || !audio.src) {
+      loadEpisode(episode, { startTime: nextTime }).then(() => {
+        seeking = false;
+        saveProgress();
+      });
+      return;
     }
-    seeking = false;
+
+    applySeek();
+  });
+
+  audio.addEventListener('play', () => {
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+    setPlayingUi(true);
     saveProgress();
-  };
-
-  if (activeId !== episode.id || !audio.src) {
-    loadEpisode(episode, { startTime: 0 }).then(() => {
-      if (audio.readyState >= 1) applySeek();
-      else audio.addEventListener('loadedmetadata', applySeek, { once: true });
+    publish({
+      type: 'play',
+      id: activeId,
+      time: audio.currentTime,
+      duration: audio.duration,
+      playing: true,
     });
-    return;
+  });
+
+  audio.addEventListener('pause', () => {
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+    setPlayingUi(false);
+    saveProgress();
+    publish({
+      type: 'pause',
+      id: activeId,
+      time: audio.currentTime,
+      duration: audio.duration,
+      playing: false,
+    });
+  });
+
+  audio.addEventListener('timeupdate', () => {
+    const card = cardEl(activeId);
+    if (card) updateTimes(card, audio.currentTime, audio.duration);
+    updatePositionState();
+    saveProgress({ force: false });
+  });
+
+  audio.addEventListener('loadedmetadata', () => {
+    const card = cardEl(activeId);
+    if (card) updateTimes(card, audio.currentTime, audio.duration);
+    writeProgress(activeId, audio.currentTime, audio.duration);
+    updatePositionState();
+  });
+
+  audio.addEventListener('ended', () => {
+    if (activeId) localStorage.removeItem(progressKey(activeId));
+    setPlayingUi(false);
+    const card = cardEl(activeId);
+    if (card) updateTimes(card, 0, audio.duration);
+    publish({ type: 'ended', id: activeId, time: 0, duration: audio.duration });
+  });
+
+  window.addEventListener('pagehide', () => saveProgress());
+  window.addEventListener('beforeunload', () => saveProgress());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') saveProgress();
+  });
+
+  if (channel) {
+    channel.addEventListener('message', (event) => applyRemote(event.data));
   }
 
-  applySeek();
-});
+  window.addEventListener('storage', (event) => {
+    if (event.key === SPEED_KEY) {
+      applySpeed(savedSpeed(), { persist: false });
+      return;
+    }
+    if (!event.key || !event.key.startsWith('edu-progress:')) return;
+    const id = event.key.slice('edu-progress:'.length);
+    const stored = readProgress(id);
+    applyProgressUi(id, stored.time, stored.duration);
+    if (activeId === id && audio.paused && stored.time && Math.abs(audio.currentTime - stored.time) > 1) {
+      applyingRemote = true;
+      audio.currentTime = stored.time;
+      applyingRemote = false;
+    }
+  });
 
-audio.addEventListener('play', () => {
-  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-  setPlayingUi(true);
-});
+  function init() {
+    try {
+      const data = Array.isArray(window.EDU_EPISODES) ? window.EDU_EPISODES : [];
+      episodes = data;
+      if (redirectLegacyHash()) return;
+      applySpeed(savedSpeed(), { persist: false });
+      paintSavedProgress();
 
-audio.addEventListener('pause', () => {
-  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
-  setPlayingUi(false);
-  saveProgress();
-});
-
-audio.addEventListener('timeupdate', () => {
-  const card = cardEl(activeId);
-  if (card) updateTimes(card, audio.currentTime, audio.duration);
-  updatePositionState();
-});
-
-audio.addEventListener('loadedmetadata', () => {
-  const card = cardEl(activeId);
-  if (card) updateTimes(card, audio.currentTime, audio.duration);
-  updatePositionState();
-});
-
-audio.addEventListener('ended', () => {
-  if (activeId) localStorage.removeItem(progressKey(activeId));
-  setPlayingUi(false);
-});
-
-setInterval(saveProgress, 5000);
-
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') saveProgress();
-});
-
-function init() {
-  try {
-    const data = Array.isArray(window.EDU_EPISODES) ? window.EDU_EPISODES : [];
-    episodes = data;
-    selectedId = getEpisode(hashId()) ? hashId() : null;
-    render();
-    window.addEventListener('hashchange', syncFromHash);
-    window.addEventListener('popstate', syncFromHash);
-    document.querySelector('.edu-page .site-title')?.addEventListener('click', (event) => {
-      if (!selectedId) return;
-      event.preventDefault();
-      selectedId = null;
-      history.pushState(null, '', location.pathname + location.search);
-      render();
-    });
-  } catch (error) {
-    console.error('Error loading edu episodes:', error);
-    list.innerHTML = '<p class="edu-empty">couldn’t load episodes. please refresh.</p>';
+      const nowCard = page.querySelector('.edu-now-card');
+      if (nowCard) {
+        const episode = getEpisode(nowCard.dataset.episodeId);
+        if (episode) loadEpisode(episode, { autoplay: false });
+      }
+    } catch (error) {
+      console.error('Error loading edu episodes:', error);
+    }
   }
+
+  init();
 }
-
-init();

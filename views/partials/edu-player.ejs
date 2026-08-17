@@ -1,0 +1,30 @@
+<div class="edu-player">
+  <button type="button" class="edu-play" data-action="play" aria-label="Play">
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><polygon points="8,5 20,12 8,19" fill="currentColor"></polygon></svg>
+  </button>
+  <span class="edu-time-current">0:00</span>
+  <input
+    class="edu-seek"
+    type="range"
+    min="0"
+    max="1000"
+    value="0"
+    step="1"
+    aria-label="Seek"
+  >
+  <span class="edu-time-duration">0:00</span>
+  <div class="edu-speed-wrap">
+    <button type="button" class="edu-speed" data-action="speed-toggle" aria-expanded="false" aria-label="Playback speed">1×</button>
+    <div class="edu-speed-menu" role="listbox" aria-label="Playback speed">
+      <% [1, 1.25, 1.5, 1.75, 2, 2.5].forEach((step) => { %>
+        <button
+          type="button"
+          class="edu-speed-option"
+          data-action="speed-set"
+          data-speed="<%= step %>"
+          role="option"
+        ><%= String(step).replace(/\.0+$/, '') %>×</button>
+      <% }) %>
+    </div>
+  </div>
+</div>
