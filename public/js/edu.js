@@ -181,9 +181,20 @@ function applySpeed(speed, { persist = true } = {}) {
   audio.playbackRate = next;
   if (persist) localStorage.setItem(SPEED_KEY, String(next));
   list.querySelectorAll('.edu-speed').forEach((el) => {
-    el.value = String(next);
+    el.textContent = formatSpeed(next);
+  });
+  list.querySelectorAll('.edu-speed-option').forEach((el) => {
+    el.classList.toggle('is-active', Math.abs(parseFloat(el.dataset.speed) - next) < 0.01);
   });
   updatePositionState();
+}
+
+function closeSpeedMenus(exceptWrap = null) {
+  list.querySelectorAll('.edu-speed-wrap').forEach((wrap) => {
+    if (wrap === exceptWrap) return;
+    wrap.classList.remove('is-open');
+    wrap.querySelector('.edu-speed')?.setAttribute('aria-expanded', 'false');
+  });
 }
 
 async function loadEpisode(episode, { autoplay = false, startTime = null } = {}) {
@@ -249,11 +260,20 @@ function renderEpisodes(items) {
           aria-label="Seek"
         >
         <span class="edu-time-duration">0:00</span>
-        <select class="edu-speed" aria-label="Playback speed">
-          ${SPEED_STEPS.map((step) => `
-            <option value="${step}">${formatSpeed(step)}</option>
-          `).join('')}
-        </select>
+        <div class="edu-speed-wrap">
+          <button type="button" class="edu-speed" data-action="speed-toggle" aria-expanded="false" aria-label="Playback speed">1×</button>
+          <div class="edu-speed-menu" role="listbox" aria-label="Playback speed">
+            ${SPEED_STEPS.map((step) => `
+              <button
+                type="button"
+                class="edu-speed-option"
+                data-action="speed-set"
+                data-speed="${step}"
+                role="option"
+              >${formatSpeed(step)}</button>
+            `).join('')}
+          </div>
+        </div>
       </div>
     </article>
   `).join('');
@@ -270,6 +290,27 @@ function attachTranscripts() {
 }
 
 list.addEventListener('click', (event) => {
+  const speedSet = event.target.closest('[data-action="speed-set"]');
+  if (speedSet) {
+    applySpeed(parseFloat(speedSet.dataset.speed));
+    closeSpeedMenus();
+    return;
+  }
+
+  const speedToggle = event.target.closest('[data-action="speed-toggle"]');
+  if (speedToggle) {
+    const wrap = speedToggle.closest('.edu-speed-wrap');
+    const willOpen = !wrap.classList.contains('is-open');
+    closeSpeedMenus();
+    if (willOpen) {
+      wrap.classList.add('is-open');
+      speedToggle.setAttribute('aria-expanded', 'true');
+    }
+    return;
+  }
+
+  closeSpeedMenus();
+
   const cover = event.target.closest('.edu-cover');
   const button = event.target.closest('[data-action]');
   if (!cover && !button) return;
@@ -287,6 +328,11 @@ list.addEventListener('click', (event) => {
   }
 });
 
+document.addEventListener('click', (event) => {
+  if (event.target.closest('.edu-speed-wrap')) return;
+  closeSpeedMenus();
+});
+
 list.addEventListener('input', (event) => {
   const card = event.target.closest('.edu-card');
   if (!card) return;
@@ -302,11 +348,6 @@ list.addEventListener('input', (event) => {
 });
 
 list.addEventListener('change', (event) => {
-  if (event.target.classList.contains('edu-speed')) {
-    applySpeed(parseFloat(event.target.value));
-    return;
-  }
-
   if (!event.target.classList.contains('edu-seek')) return;
   const card = event.target.closest('.edu-card');
   const episode = getEpisode(card.dataset.episodeId);
