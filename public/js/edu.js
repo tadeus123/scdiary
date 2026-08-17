@@ -364,6 +364,185 @@ function updatePositionState() {
   }
 }
 
+function concatBytes(parts) {
+  const total = parts.reduce((sum, part) => sum + part.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) {
+    out.set(part, offset);
+    offset += part.length;
+  }
+  return out;
+}
+
+function latin1Bytes(text) {
+  const bytes = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i += 1) bytes[i] = text.charCodeAt(i) & 0xff;
+  return bytes;
+}
+
+function utf16beBytes(text) {
+  const out = new Uint8Array(2 + text.length * 2);
+  out[0] = 0xfe;
+  out[1] = 0xff;
+  for (let i = 0; i < text.length; i += 1) {
+    const code = text.charCodeAt(i);
+    out[2 + i * 2] = (code >> 8) & 0xff;
+    out[3 + i * 2] = code & 0xff;
+  }
+  return out;
+}
+
+function u32be(value) {
+  return new Uint8Array([
+    (value >>> 24) & 0xff,
+    (value >>> 16) & 0xff,
+    (value >>> 8) & 0xff,
+    value & 0xff,
+  ]);
+}
+
+function synchsafe(value) {
+  return new Uint8Array([
+    (value >>> 21) & 0x7f,
+    (value >>> 14) & 0x7f,
+    (value >>> 7) & 0x7f,
+    value & 0x7f,
+  ]);
+}
+
+function id3Frame(id, body) {
+  return concatBytes([latin1Bytes(id), u32be(body.length), new Uint8Array([0, 0]), body]);
+}
+
+function id3TextFrame(id, value) {
+  return id3Frame(id, concatBytes([new Uint8Array([1]), utf16beBytes(String(value || ''))]));
+}
+
+function id3CoverFrame(jpeg) {
+  return id3Frame('APIC', concatBytes([
+    new Uint8Array([0]),
+    latin1Bytes('image/jpeg'),
+    new Uint8Array([0, 3, 0]),
+    jpeg,
+  ]));
+}
+
+function buildId3(frames) {
+  const body = concatBytes(frames);
+  return concatBytes([
+    latin1Bytes('ID3'),
+    new Uint8Array([3, 0, 0]),
+    synchsafe(body.length),
+    body,
+  ]);
+}
+
+function stripId3(bytes) {
+  if (bytes.length < 10 || bytes[0] !== 0x49 || bytes[1] !== 0x44 || bytes[2] !== 0x33) {
+    return bytes;
+  }
+  const size = ((bytes[6] & 0x7f) << 21) | ((bytes[7] & 0x7f) << 14) | ((bytes[8] & 0x7f) << 7) | (bytes[9] & 0x7f);
+  const skip = 10 + size + ((bytes[5] & 0x10) ? 10 : 0);
+  return bytes.subarray(Math.min(skip, bytes.length));
+}
+
+function mp3Filename(name) {
+  const safe = String(name || 'conversation').replace(/[<>:"/\\|?*\u0000-\u001f]+/g, '').trim();
+  return `${safe || 'conversation'}.mp3`;
+}
+
+function coverJpeg(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = () => {
+      const size = 512;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const context = canvas.getContext('2d');
+      const side = Math.min(image.naturalWidth, image.naturalHeight) || size;
+      const sx = (image.naturalWidth - side) / 2;
+      const sy = (image.naturalHeight - side) / 2;
+      context.drawImage(image, sx, sy, side, side, 0, 0, size, size);
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('cover'));
+          return;
+        }
+        blob.arrayBuffer().then((buffer) => resolve(new Uint8Array(buffer))).catch(reject);
+      }, 'image/jpeg', 0.88);
+    };
+    image.onerror = () => reject(new Error('cover'));
+    image.src = absoluteUrl(src);
+  });
+}
+
+async function saveMp3File(file) {
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  if (ios && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: file.name });
+      return;
+    } catch (error) {
+      if (error && error.name === 'AbortError') return;
+    }
+  }
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = file.name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function downloadEpisode(episode) {
+  if (!episode?.audio) return;
+  const buttons = page.querySelectorAll(`[data-episode-id="${episode.id}"] [data-action="download"]`);
+  if ([...buttons].some((button) => button.classList.contains('is-busy'))) return;
+  buttons.forEach((button) => {
+    button.classList.add('is-busy');
+    button.setAttribute('aria-busy', 'true');
+  });
+  try {
+    const [audioBuffer, cover] = await Promise.all([
+      fetch(episode.audio).then((response) => {
+        if (!response.ok) throw new Error('audio');
+        return response.arrayBuffer();
+      }),
+      coverJpeg(episode.image).catch(() => null),
+    ]);
+    const mpeg = stripId3(new Uint8Array(audioBuffer));
+    const frames = [
+      id3TextFrame('TIT2', episode.name),
+      id3TextFrame('TPE1', 'edu'),
+      id3TextFrame('TALB', 'edu'),
+    ];
+    if (cover) frames.push(id3CoverFrame(cover));
+    const tagged = concatBytes([buildId3(frames), mpeg]);
+    const file = new File([tagged], mp3Filename(episode.name), { type: 'audio/mpeg' });
+    await saveMp3File(file);
+  } catch (error) {
+    console.error('Could not download conversation:', error);
+    const link = document.createElement('a');
+    link.href = episode.audio;
+    link.download = mp3Filename(episode.name);
+    link.rel = 'noopener';
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  } finally {
+    buttons.forEach((button) => {
+      button.classList.remove('is-busy');
+      button.removeAttribute('aria-busy');
+    });
+  }
+}
+
 function applySpeed(speed, { persist = true } = {}) {
   const next = clampSpeed(speed);
   audio.playbackRate = next;
@@ -448,6 +627,16 @@ if (page && audio) {
         wrap.classList.add('is-open');
         speedToggle.setAttribute('aria-expanded', 'true');
       }
+      return;
+    }
+
+    const downloadBtn = event.target.closest('[data-action="download"]');
+    if (downloadBtn) {
+      event.preventDefault();
+      closeSpeedMenus();
+      const card = event.target.closest('[data-episode-id]');
+      const episode = getEpisode(card?.dataset.episodeId);
+      if (episode) downloadEpisode(episode);
       return;
     }
 
