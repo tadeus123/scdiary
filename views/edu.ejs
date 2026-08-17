@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <%- include('partials/seo-head') %>
-  <link rel="stylesheet" href="/css/style.css?v=edu9">
+  <link rel="stylesheet" href="/css/style.css?v=edu10">
 </head>
 <body class="edu-page">
   <a href="/" class="corner-btn-left" aria-label="Back to Diary"></a>
@@ -33,12 +33,14 @@
       <div id="edu-episodes" class="edu-episodes" aria-label="Episodes"></div>
       <% (episodes || []).forEach((episode) => { %>
         <% if (episode.transcript && episode.transcript.length) { %>
-          <section class="edu-transcript" data-transcript-for="<%= episode.id %>">
-            <h3 class="edu-transcript-label">transcript</h3>
-            <% episode.transcript.forEach((para) => { %>
-              <p><%= para %></p>
-            <% }) %>
-          </section>
+          <details class="edu-transcript" data-transcript-for="<%= episode.id %>">
+            <summary class="edu-transcript-label">transcript</summary>
+            <div class="edu-transcript-body">
+              <% episode.transcript.forEach((para) => { %>
+                <p><%= para %></p>
+              <% }) %>
+            </div>
+          </details>
         <% } %>
       <% }) %>
     </main>
@@ -54,6 +56,6 @@
 
   <script>window.EDU_EPISODES = <%- JSON.stringify(episodes || []) %>;</script>
   <script src="/js/main.js"></script>
-  <script src="/js/edu.js?v=edu9"></script>
+  <script src="/js/edu.js?v=edu10"></script>
 </body>
 </html>

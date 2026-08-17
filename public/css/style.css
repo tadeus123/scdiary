@@ -3246,7 +3246,30 @@ body.selfie-crop-open {
   font-size: 0.95rem;
   font-weight: 400;
   letter-spacing: 0.02em;
-  margin: 0 0 1rem;
+  margin: 0;
+  cursor: pointer;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.edu-transcript-label::-webkit-details-marker {
+  display: none;
+}
+
+.edu-transcript-label::before {
+  content: '▶';
+  font-size: 0.65rem;
+  line-height: 1;
+}
+
+.edu-transcript[open] .edu-transcript-label::before {
+  content: '▼';
+}
+
+.edu-transcript-body {
+  margin-top: 1rem;
 }
 
 .edu-transcript p {
