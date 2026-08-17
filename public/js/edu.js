@@ -1,5 +1,4 @@
 const SPEED_STEPS = [1, 1.25, 1.5, 1.75, 2, 2.5];
-const SKIP_SECONDS = 15;
 const SPEED_KEY = 'edu-speed';
 const ACTIVE_KEY = 'edu-active';
 const progressKey = (id) => `edu-progress:${id}`;
@@ -26,6 +25,8 @@ holdAudio.setAttribute('playsinline', '');
 holdAudio.setAttribute('webkit-playsinline', '');
 
 let lastLockLabel = '';
+let lastLockEpisodeId = '';
+let lastLockMetaAt = 0;
 
 function episodeDuration(id = activeId) {
   const episode = getEpisode(id);
@@ -281,65 +282,82 @@ function updateLockTimes() {
   if (!episode) return;
   const duration = mediaDuration();
   const label = duration ? `${formatTime(mediaTime())} / ${formatTime(duration)}` : 'edu';
-  if (label === lastLockLabel && navigator.mediaSession.metadata) return;
+  const sameEpisode = lastLockEpisodeId === episode.id && navigator.mediaSession.metadata;
+  if (sameEpisode && label === lastLockLabel) {
+    updatePositionState();
+    return;
+  }
+  // Rewriting metadata every second makes Android drop the seek bar.
+  if (sameEpisode && Date.now() - lastLockMetaAt < 5000) {
+    updatePositionState();
+    return;
+  }
+  lastLockEpisodeId = episode.id;
   lastLockLabel = label;
+  lastLockMetaAt = Date.now();
   navigator.mediaSession.metadata = new MediaMetadata({
     title: episode.name,
     artist: label,
     album: 'edu',
     artwork: sessionArtwork(episode),
   });
+  updatePositionState();
+}
+
+function bindSessionHandlers() {
+  if (!('mediaSession' in navigator)) return;
+
+  navigator.mediaSession.setActionHandler('play', () => audio.play());
+  navigator.mediaSession.setActionHandler('pause', () => audio.pause());
+  navigator.mediaSession.setActionHandler('seekto', (details) => {
+    const duration = mediaDuration();
+    if (!duration || !Number.isFinite(details.seekTime)) return;
+    const next = Math.min(duration, Math.max(0, details.seekTime));
+    if (details.fastSeek && 'fastSeek' in audio) audio.fastSeek(next);
+    else audio.currentTime = next;
+    saveProgress();
+    syncClock();
+  });
+
+  // Skip handlers make Android show ± buttons instead of a scrubber.
+  ['seekbackward', 'seekforward', 'previoustrack', 'nexttrack', 'stop'].forEach((action) => {
+    try {
+      navigator.mediaSession.setActionHandler(action, null);
+    } catch {
+      // Older browsers throw for unsupported action names.
+    }
+  });
 }
 
 function updateMediaSession(episode) {
   if (!('mediaSession' in navigator) || !episode) return;
   lastLockLabel = '';
+  lastLockEpisodeId = '';
+  lastLockMetaAt = 0;
+  bindSessionHandlers();
   updateLockTimes();
-
-  const seekBy = (offset) => {
-    const duration = mediaDuration();
-    if (!duration) return;
-    audio.currentTime = Math.min(duration, Math.max(0, mediaTime() + offset));
-    saveProgress();
-    syncClock();
-  };
-
-  navigator.mediaSession.setActionHandler('play', () => audio.play());
-  navigator.mediaSession.setActionHandler('pause', () => audio.pause());
-  navigator.mediaSession.setActionHandler('stop', () => {
-    audio.pause();
-    audio.currentTime = 0;
-    saveProgress();
-  });
-  navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-    seekBy(-(details.seekOffset || SKIP_SECONDS));
-  });
-  navigator.mediaSession.setActionHandler('seekforward', (details) => {
-    seekBy(details.seekOffset || SKIP_SECONDS);
-  });
-  navigator.mediaSession.setActionHandler('seekto', (details) => {
-    if (details.fastSeek && 'fastSeek' in audio) {
-      audio.fastSeek(details.seekTime);
-    } else if (Number.isFinite(details.seekTime)) {
-      audio.currentTime = details.seekTime;
-    }
-    saveProgress();
-    syncClock();
-  });
-  updatePositionState();
 }
 
 function updatePositionState() {
-  if (!('mediaSession' in navigator)) return;
+  if (!('mediaSession' in navigator) || typeof navigator.mediaSession.setPositionState !== 'function') return;
   const duration = mediaDuration();
-  if (!duration) return;
+  if (!Number.isFinite(duration) || duration <= 0) return;
   const position = Math.min(Math.max(0, mediaTime()), duration);
   const playbackRate = audio.paused ? 1 : (Number(audio.playbackRate) || 1);
+  const state = {
+    duration: Number(duration.toFixed(3)),
+    position: Number(Math.min(position, duration).toFixed(3)),
+    playbackRate: Number((playbackRate > 0 ? playbackRate : 1).toFixed(3)),
+  };
   try {
-    navigator.mediaSession.setPositionState({ duration, playbackRate, position });
+    navigator.mediaSession.setPositionState(state);
   } catch {
     try {
-      navigator.mediaSession.setPositionState({ duration, playbackRate: 1, position });
+      navigator.mediaSession.setPositionState({
+        duration: state.duration,
+        position: state.position,
+        playbackRate: 1,
+      });
     } catch {
       // Some browsers reject position updates while metadata is settling.
     }
@@ -505,10 +523,13 @@ if (page && audio) {
 
   audio.addEventListener('play', () => {
     stopHold();
+    bindSessionHandlers();
+    lastLockMetaAt = 0;
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
     setPlayingUi(true);
     applySpeed(savedSpeed(), { persist: false });
     startClock();
+    updateLockTimes();
     saveProgress();
     publish({
       type: 'play',
