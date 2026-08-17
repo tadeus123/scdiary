@@ -3,7 +3,7 @@
     "id": "marshall-kirk-mckusick",
     "name": "Marshall Kirk McKusick",
     "born": 1954,
-    "bio": "spent much of his early career at UC Berkeley’s Computer Systems Research Group. Built the BSD Fast File System, worked on FreeBSD, and still supports open source today.",
+    "bio": "worked on Berkeley’s branch of Unix, which originally came from Bell Labs. Built the BSD Fast File System and helped release 4.4BSD-Lite, whose descendants include FreeBSD and the BSD core inside macOS.",
     "url": "https://www.mckusick.com/",
     "links": [
       {
