@@ -3081,7 +3081,7 @@ body.selfie-crop-open {
   width: 5.5rem;
   height: 5.5rem;
   object-fit: cover;
-  object-position: 50% 18%;
+  object-position: 50% 50%;
   display: block;
   background: var(--entry-bg);
 }
@@ -3111,7 +3111,7 @@ body.selfie-crop-open {
   width: 220px;
   height: 220px;
   object-fit: cover;
-  object-position: 50% 18%;
+  object-position: 50% 50%;
   display: block;
   background: var(--entry-bg);
   cursor: pointer;
