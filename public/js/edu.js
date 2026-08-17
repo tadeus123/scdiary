@@ -44,12 +44,22 @@ function absoluteUrl(path) {
   return new URL(path, window.location.origin).href;
 }
 
-function hostLabel(url) {
-  try {
-    return new URL(url).host.replace(/^www\./, '');
-  } catch {
-    return url;
-  }
+function episodeLinks(episode) {
+  if (Array.isArray(episode.links) && episode.links.length) return episode.links;
+  if (episode.url) return [{ url: episode.url }];
+  return [];
+}
+
+function linkLabel(link) {
+  return link.label || hostLabel(link.url);
+}
+
+function renderLinks(episode) {
+  const links = episodeLinks(episode);
+  if (!links.length) return '';
+  return `<div class="edu-links">${links.map((link) => `
+    <a class="edu-link" href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkLabel(link))}</a>
+  `).join('')}</div>`;
 }
 
 function getEpisode(id) {
@@ -217,7 +227,7 @@ function renderEpisodes(items) {
         <h2 class="edu-name">${escapeHtml(episode.name)}</h2>
         <p class="edu-born">born: ${escapeHtml(String(episode.born))}</p>
         <p class="edu-bio">${escapeHtml(episode.bio)}</p>
-        ${episode.url ? `<a class="edu-link" href="${escapeHtml(episode.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(hostLabel(episode.url))}</a>` : ''}
+        ${renderLinks(episode)}
       </div>
       <div class="edu-player">
         <button type="button" class="edu-play" data-action="play" aria-label="Play">${playIcon()}</button>

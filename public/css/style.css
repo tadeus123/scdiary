@@ -3096,6 +3096,13 @@ body.selfie-crop-open {
   margin: 0 0 0.85rem;
 }
 
+.edu-links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
 .edu-link {
   color: var(--text-color);
   text-decoration: none;
