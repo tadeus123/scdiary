@@ -27,13 +27,13 @@ const PAGES = {
     title: 'Tade Mehl — company education',
     description: 'Company education videos curated by Tade Mehl.',
   },
-  '/companyeducation': {
-    title: 'Tade Mehl — company education',
-    description: 'Company education — Tade Mehl.',
+  '/edu': {
+    title: 'Tade Mehl — edu',
+    description: 'Edu — Tade Mehl.',
   },
 };
 
-const SITEMAP_PATHS = ['/', '/bookshelf', '/eisenkind', '/cause', '/want', '/corner', '/ce', '/companyeducation'];
+const SITEMAP_PATHS = ['/', '/bookshelf', '/eisenkind', '/cause', '/want', '/corner', '/ce', '/edu'];
 
 function normalizePath(pathname) {
   if (!pathname || pathname === '/') return '/';

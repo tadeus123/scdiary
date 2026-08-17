@@ -78,9 +78,12 @@ router.get('/ce', (req, res) => {
   res.render('ce');
 });
 
-// Blank company education page
+// Blank edu page
+router.get(['/edu', '/edu/'], (req, res) => {
+  res.render('edu');
+});
 router.get(['/companyeducation', '/companyeducation/'], (req, res) => {
-  res.render('companyeducation');
+  res.redirect(301, '/edu');
 });
 
 // API: Get all books and connections
