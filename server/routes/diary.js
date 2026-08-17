@@ -78,6 +78,11 @@ router.get('/ce', (req, res) => {
   res.render('ce');
 });
 
+// Blank company education page
+router.get(['/companyeducation', '/companyeducation/'], (req, res) => {
+  res.render('companyeducation');
+});
+
 // API: Get all books and connections
 router.get('/api/books', async (req, res) => {
   try {
