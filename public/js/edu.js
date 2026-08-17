@@ -1,6 +1,4 @@
-const SPEED_MIN = 1;
-const SPEED_MAX = 3;
-const SPEED_STEP = 0.1;
+const SPEED_STEPS = [1, 1.25, 1.5, 1.75, 2, 2.5, 3];
 const SKIP_SECONDS = 15;
 const SPEED_KEY = 'edu-speed';
 const progressKey = (id) => `edu-progress:${id}`;
@@ -30,9 +28,19 @@ function formatTime(seconds) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+function formatSpeed(speed) {
+  return `${Number(speed.toFixed(2)).toString().replace(/\.0+$/, '')}×`;
+}
+
 function clampSpeed(value) {
-  const snapped = Math.round(value / SPEED_STEP) * SPEED_STEP;
-  return Math.min(SPEED_MAX, Math.max(SPEED_MIN, Number(snapped.toFixed(1))));
+  const match = SPEED_STEPS.find((step) => Math.abs(step - value) < 0.01);
+  return match || 1;
+}
+
+function nextSpeed(value) {
+  const current = clampSpeed(value);
+  const index = SPEED_STEPS.indexOf(current);
+  return SPEED_STEPS[(index + 1) % SPEED_STEPS.length];
 }
 
 function savedSpeed() {
@@ -178,11 +186,9 @@ function applySpeed(speed, { persist = true } = {}) {
   const next = clampSpeed(speed);
   audio.playbackRate = next;
   if (persist) localStorage.setItem(SPEED_KEY, String(next));
-  list.querySelectorAll('.edu-speed-value').forEach((el) => {
-    el.textContent = `${next.toFixed(1).replace(/\.0$/, '')}×`;
-  });
   list.querySelectorAll('.edu-speed').forEach((el) => {
-    el.value = String(next);
+    el.textContent = formatSpeed(next);
+    el.setAttribute('aria-label', `Playback speed ${formatSpeed(next)}`);
   });
   updatePositionState();
 }
@@ -239,6 +245,7 @@ function renderEpisodes(items) {
       </div>
       <div class="edu-player">
         <button type="button" class="edu-play" data-action="play" aria-label="Play">${playIcon()}</button>
+        <button type="button" class="edu-speed" data-action="speed" aria-label="Playback speed 1×">1×</button>
         <div class="edu-progress">
           <input
             class="edu-seek"
@@ -253,22 +260,6 @@ function renderEpisodes(items) {
             <span class="edu-time-current">0:00</span>
             <span class="edu-time-duration">0:00</span>
           </div>
-        </div>
-        <div class="edu-transport">
-          <button type="button" class="edu-skip" data-action="back" aria-label="Back 15 seconds">−15s</button>
-          <label class="edu-speed-wrap">
-            <span class="edu-speed-value">1×</span>
-            <input
-              class="edu-speed"
-              type="range"
-              min="${SPEED_MIN}"
-              max="${SPEED_MAX}"
-              step="${SPEED_STEP}"
-              value="1"
-              aria-label="Playback speed"
-            >
-          </label>
-          <button type="button" class="edu-skip" data-action="forward" aria-label="Forward 15 seconds">+15s</button>
         </div>
       </div>
     </article>
@@ -286,6 +277,11 @@ list.addEventListener('click', (event) => {
   const episode = getEpisode(card.dataset.episodeId);
   if (!episode) return;
 
+  if (button.dataset.action === 'speed') {
+    applySpeed(nextSpeed(savedSpeed()));
+    return;
+  }
+
   if (cover || button.dataset.action === 'play') {
     if (activeId === episode.id && !audio.paused) {
       audio.pause();
@@ -294,17 +290,6 @@ list.addEventListener('click', (event) => {
     loadEpisode(episode, { autoplay: true });
     return;
   }
-
-  if (activeId !== episode.id) {
-    loadEpisode(episode);
-  }
-
-  if (button.dataset.action === 'back') {
-    audio.currentTime = Math.max(0, audio.currentTime - SKIP_SECONDS);
-  }
-  if (button.dataset.action === 'forward') {
-    audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + SKIP_SECONDS);
-  }
 });
 
 list.addEventListener('input', (event) => {
@@ -312,11 +297,6 @@ list.addEventListener('input', (event) => {
   if (!card) return;
   const episode = getEpisode(card.dataset.episodeId);
   if (!episode) return;
-
-  if (event.target.classList.contains('edu-speed')) {
-    applySpeed(parseFloat(event.target.value));
-    return;
-  }
 
   if (event.target.classList.contains('edu-seek')) {
     seeking = true;
