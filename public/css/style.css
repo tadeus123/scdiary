@@ -3175,58 +3175,30 @@ body.selfie-crop-open {
   cursor: pointer;
 }
 
-.edu-speed-wrap {
-  flex: 0 0 auto;
-  position: relative;
-}
-
 .edu-speed {
-  background: none;
+  flex: 0 0 auto;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
   border: none;
   color: var(--accent-color);
   font-family: inherit;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   cursor: pointer;
-  padding: 0.2rem 0.1rem;
-  min-width: 2.4rem;
+  padding: 0;
+  margin: 0;
+  min-width: 2.6rem;
   text-align: right;
+  text-align-last: right;
+  line-height: 1;
 }
 
 .edu-speed:hover {
   opacity: 0.7;
 }
 
-.edu-speed-menu {
-  display: none;
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 0.3rem);
-  flex-direction: column;
-  align-items: stretch;
-  background: var(--bg-color);
-  border: 1px solid var(--border-color);
-  z-index: 20;
-  min-width: 3.6rem;
-}
-
-.edu-speed-wrap.is-open .edu-speed-menu {
-  display: flex;
-}
-
-.edu-speed-option {
-  background: none;
-  border: none;
-  color: var(--text-color);
-  font-family: inherit;
-  font-size: 0.95rem;
-  cursor: pointer;
-  padding: 0.4rem 0.7rem;
-  text-align: right;
-}
-
-.edu-speed-option:hover,
-.edu-speed-option.is-active {
-  color: var(--accent-color);
+.edu-speed:focus {
+  outline: none;
 }
 
 .edu-seek::-webkit-slider-runnable-track {
