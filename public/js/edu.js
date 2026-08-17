@@ -17,6 +17,14 @@ let clockTimer = null;
 let pendingRestore = null;
 const tabId = Math.random().toString(36).slice(2);
 
+let lastLockLabel = '';
+
+function episodeDuration(id = activeId) {
+  const episode = getEpisode(id);
+  const stored = Number(episode?.duration);
+  return Number.isFinite(stored) && stored > 0 ? stored : 0;
+}
+
 function mediaDuration() {
   const duration = audio.duration;
   if (Number.isFinite(duration) && duration > 0) return duration;
@@ -24,7 +32,7 @@ function mediaDuration() {
     const end = audio.seekable.end(audio.seekable.length - 1);
     if (Number.isFinite(end) && end > 0) return end;
   }
-  return readProgress(activeId).duration || 0;
+  return readProgress(activeId).duration || episodeDuration() || 0;
 }
 
 function mediaTime() {
@@ -38,6 +46,7 @@ function syncClock() {
   const current = mediaTime();
   if (card) updateTimes(card, current, duration);
   updatePositionState();
+  updateLockTimes();
   if (!audio.paused) saveProgress({ force: false });
 }
 
@@ -225,19 +234,34 @@ function updateTimes(card, current, duration) {
   }
 }
 
-function updateMediaSession(episode) {
-  if (!('mediaSession' in navigator) || !episode) return;
-
+function sessionArtwork(episode) {
   const artworkSrc = absoluteUrl(episode.image);
+  return [
+    { src: artworkSrc, sizes: '512x512', type: 'image/jpeg' },
+    { src: artworkSrc, sizes: '800x800', type: 'image/jpeg' },
+  ];
+}
+
+function updateLockTimes() {
+  if (!('mediaSession' in navigator) || !activeId) return;
+  const episode = getEpisode(activeId);
+  if (!episode) return;
+  const duration = mediaDuration();
+  const label = duration ? `${formatTime(mediaTime())} / ${formatTime(duration)}` : 'edu';
+  if (label === lastLockLabel && navigator.mediaSession.metadata) return;
+  lastLockLabel = label;
   navigator.mediaSession.metadata = new MediaMetadata({
     title: episode.name,
-    artist: 'edu',
+    artist: label,
     album: 'edu',
-    artwork: [
-      { src: artworkSrc, sizes: '512x512', type: 'image/jpeg' },
-      { src: artworkSrc, sizes: '800x800', type: 'image/jpeg' },
-    ],
+    artwork: sessionArtwork(episode),
   });
+}
+
+function updateMediaSession(episode) {
+  if (!('mediaSession' in navigator) || !episode) return;
+  lastLockLabel = '';
+  updateLockTimes();
 
   const seekBy = (offset) => {
     const duration = mediaDuration();
@@ -267,20 +291,25 @@ function updateMediaSession(episode) {
       audio.currentTime = details.seekTime;
     }
     saveProgress();
+    syncClock();
   });
+  updatePositionState();
 }
 
 function updatePositionState() {
+  if (!('mediaSession' in navigator)) return;
   const duration = mediaDuration();
-  if (!('mediaSession' in navigator) || !duration) return;
+  if (!duration) return;
+  const position = Math.min(Math.max(0, mediaTime()), duration);
+  const playbackRate = audio.paused ? 1 : (Number(audio.playbackRate) || 1);
   try {
-    navigator.mediaSession.setPositionState({
-      duration,
-      playbackRate: audio.playbackRate || 1,
-      position: Math.min(mediaTime(), duration),
-    });
+    navigator.mediaSession.setPositionState({ duration, playbackRate, position });
   } catch {
-    // Some browsers reject position updates while metadata is settling.
+    try {
+      navigator.mediaSession.setPositionState({ duration, playbackRate: 1, position });
+    } catch {
+      // Some browsers reject position updates while metadata is settling.
+    }
   }
 }
 
