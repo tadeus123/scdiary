@@ -3351,22 +3351,24 @@ body.selfie-crop-open {
 }
 
 .edu-now-hero {
-  min-height: 100dvh;
+  height: 100svh;
   min-height: 100svh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 5.5rem 1.5rem 7.5rem;
+  box-sizing: border-box;
+  padding: 5rem 1.5rem calc(5.75rem + env(safe-area-inset-bottom));
 }
 
 .edu-now-cover {
-  width: min(86vw, 62vh, 520px);
-  height: min(86vw, 62vh, 520px);
+  width: min(86vw, calc(100svh - 18rem), 520px);
+  height: min(86vw, calc(100svh - 18rem), 520px);
   object-fit: cover;
   object-position: 50% 50%;
   display: block;
+  flex-shrink: 1;
   background: var(--entry-bg);
   cursor: pointer;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.16);
@@ -3374,7 +3376,7 @@ body.selfie-crop-open {
 
 .edu-now-hero .edu-name {
   font-size: 1.7rem;
-  margin: 1.5rem 0 0.35rem;
+  margin: 1.25rem 0 0.35rem;
 }
 
 .edu-now-hero .edu-born {
@@ -3383,25 +3385,26 @@ body.selfie-crop-open {
 }
 
 .edu-now-dock {
-  position: sticky;
+  position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
   z-index: 5;
   background: var(--bg-color);
-  padding: 0.85rem 1.5rem 0;
-  border-top: none;
+  padding: 0.75rem 1.5rem 0;
 }
 
 .edu-now-dock .edu-player {
   width: min(100%, 520px);
   margin: 0 auto;
-  padding-bottom: 0.85rem;
+  padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--border-color);
 }
 
 .edu-now-dock::after {
   content: "";
   display: block;
-  height: calc(0.45rem + env(safe-area-inset-bottom));
+  height: calc(0.35rem + env(safe-area-inset-bottom));
 }
 
 .edu-now .edu-play {
@@ -3420,7 +3423,7 @@ body.selfie-crop-open {
   gap: 0.85rem;
   width: 100%;
   max-width: 640px;
-  margin: 2.5rem auto 5rem;
+  margin: 2.5rem auto calc(7rem + env(safe-area-inset-bottom));
   padding: 0 1.5rem;
   text-align: left;
 }
@@ -3450,8 +3453,22 @@ body.selfie-crop-open {
     height: 40px;
   }
 
+  .edu-now-hero {
+    padding: 4.25rem 1.15rem calc(5.35rem + env(safe-area-inset-bottom));
+  }
+
+  .edu-now-cover {
+    width: min(78vw, calc(100svh - 16.5rem));
+    height: min(78vw, calc(100svh - 16.5rem));
+  }
+
   .edu-now-hero .edu-name {
-    font-size: 1.4rem;
+    font-size: 1.35rem;
+    margin: 0.9rem 0 0.25rem;
+  }
+
+  .edu-now-dock {
+    padding: 0.65rem 1rem 0;
   }
 
   .edu-time-current,
