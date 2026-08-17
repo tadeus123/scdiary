@@ -53,7 +53,7 @@ function episodeSeo(episode) {
     title: `${episode.name} — edu`,
     description: episode.bio || 'Conversation collected by Tade Mehl.',
     path: `/edu/${episode.id}`,
-    noindex: false,
+    noindex: true,
     includePersonSchema: false,
     ogImage: image || null,
   };

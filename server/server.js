@@ -28,6 +28,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 const publicDir = path.join(__dirname, '../public');
+app.get('/edu-episodes.json', (req, res) => {
+  res.status(404).type('text/plain').send('Not found');
+});
 const faviconRoutes = [
   ['/favicon.ico', 'favicon-48.png', 'image/png'],
   ['/favicon-16.png', 'favicon-16.png', 'image/png'],

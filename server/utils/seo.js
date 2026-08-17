@@ -33,9 +33,7 @@ const PAGES = {
   },
 };
 
-const { loadEpisodes } = require('./edu-episodes');
-
-const SITEMAP_PATHS = ['/', '/bookshelf', '/eisenkind', '/cause', '/want', '/corner', '/ce', '/edu'];
+const SITEMAP_PATHS = ['/', '/bookshelf', '/eisenkind', '/cause', '/want', '/corner', '/ce'];
 
 function normalizePath(pathname) {
   if (!pathname || pathname === '/') return '/';
@@ -48,6 +46,16 @@ function getSeoForPath(pathname) {
   if (path.startsWith('/admin')) {
     return {
       title: 'admin',
+      description: '',
+      path,
+      noindex: true,
+      includePersonSchema: false,
+    };
+  }
+
+  if (path === '/edu' || path.startsWith('/edu/')) {
+    return {
+      title: 'Tade Mehl — edu',
       description: '',
       path,
       noindex: true,
@@ -107,10 +115,9 @@ function getPersonSchema() {
 
 function buildSitemapXml() {
   const lastmod = new Date().toISOString().slice(0, 10);
-  const episodePaths = loadEpisodes().map((episode) => `/edu/${episode.id}`);
-  const urls = [...SITEMAP_PATHS, ...episodePaths].map((path) => {
+  const urls = SITEMAP_PATHS.map((path) => {
     const loc = getCanonicalUrl(path);
-    const priority = path === '/' ? '1.0' : path.startsWith('/edu/') ? '0.6' : '0.7';
+    const priority = path === '/' ? '1.0' : '0.7';
     return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <priority>${priority}</priority>\n  </url>`;
   });
 

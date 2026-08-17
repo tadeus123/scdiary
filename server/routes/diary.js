@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -79,11 +80,71 @@ router.get('/ce', (req, res) => {
   res.render('ce');
 });
 
+const EDU_PASSWORD = process.env.EDU_PASSWORD || 'kernel';
+const EDU_COOKIE = 'edu_auth';
+const EDU_SECRET = process.env.SESSION_SECRET || 'diary-secret-key-change-in-production';
+
+function eduToken() {
+  return crypto.createHmac('sha256', EDU_SECRET).update('edu-gate').digest('hex');
+}
+
+function isEduUnlocked(req) {
+  return req.cookies[EDU_COOKIE] === eduToken();
+}
+
+function safeEduNext(value) {
+  if (typeof value !== 'string') return '/edu';
+  let next = value.split('?')[0];
+  try {
+    next = decodeURIComponent(next);
+  } catch {
+    return '/edu';
+  }
+  if (next === '/edu' || next === '/edu/') return '/edu';
+  if (/^\/edu\/[a-z0-9-]+\/?$/i.test(next)) return next.replace(/\/$/, '');
+  return '/edu';
+}
+
+function renderEduGate(res, { error = null, next = '/edu', status = 200 } = {}) {
+  res.locals.seo = {
+    title: 'edu',
+    description: '',
+    path: '/edu',
+    noindex: true,
+    includePersonSchema: false,
+  };
+  res.status(status).render('edu-gate', { error, next: safeEduNext(next) });
+}
+
+function requireEdu(req, res, next) {
+  if (isEduUnlocked(req)) return next();
+  renderEduGate(res, { next: req.originalUrl });
+}
+
+router.post('/edu/unlock', (req, res) => {
+  const nextPath = safeEduNext(req.body && req.body.next);
+  const given = typeof req.body?.password === 'string' ? req.body.password : '';
+  const expected = Buffer.from(EDU_PASSWORD);
+  const received = Buffer.from(given);
+  const match = expected.length === received.length && crypto.timingSafeEqual(expected, received);
+  if (!match) {
+    return renderEduGate(res, { error: 'wrong password', next: nextPath, status: 401 });
+  }
+  res.cookie(EDU_COOKIE, eduToken(), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    sameSite: 'lax',
+    path: '/',
+  });
+  res.redirect(nextPath);
+});
+
 // Edu episodes — data is embedded in the page so /edu is not a static folder
-router.get(['/edu', '/edu/'], (req, res) => {
+router.get(['/edu', '/edu/'], requireEdu, (req, res) => {
   res.render('edu', { episodes: sortedEpisodes() });
 });
-router.get(['/edu/:id', '/edu/:id/'], (req, res) => {
+router.get(['/edu/:id', '/edu/:id/'], requireEdu, (req, res) => {
   const episode = getEpisode(req.params.id);
   if (!episode) {
     return res.redirect(302, '/edu');

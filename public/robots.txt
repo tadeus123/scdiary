@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /admin
+Disallow: /edu
 
 Sitemap: https://www.tademehl.com/sitemap.xml
