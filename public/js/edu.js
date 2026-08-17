@@ -37,12 +37,6 @@ function clampSpeed(value) {
   return match || 1;
 }
 
-function nextSpeed(value) {
-  const current = clampSpeed(value);
-  const index = SPEED_STEPS.indexOf(current);
-  return SPEED_STEPS[(index + 1) % SPEED_STEPS.length];
-}
-
 function savedSpeed() {
   const stored = parseFloat(localStorage.getItem(SPEED_KEY));
   return Number.isFinite(stored) ? clampSpeed(stored) : 1;
@@ -190,7 +184,19 @@ function applySpeed(speed, { persist = true } = {}) {
     el.textContent = formatSpeed(next);
     el.setAttribute('aria-label', `Playback speed ${formatSpeed(next)}`);
   });
+  list.querySelectorAll('.edu-speed-option').forEach((el) => {
+    const active = Math.abs(parseFloat(el.dataset.speed) - next) < 0.01;
+    el.classList.toggle('is-active', active);
+  });
   updatePositionState();
+}
+
+function closeSpeedMenus(exceptWrap = null) {
+  list.querySelectorAll('.edu-speed-wrap').forEach((wrap) => {
+    if (wrap === exceptWrap) return;
+    wrap.classList.remove('is-open');
+    wrap.querySelector('.edu-speed')?.setAttribute('aria-expanded', 'false');
+  });
 }
 
 async function loadEpisode(episode, { autoplay = false, startTime = null } = {}) {
@@ -245,7 +251,6 @@ function renderEpisodes(items) {
       </div>
       <div class="edu-player">
         <button type="button" class="edu-play" data-action="play" aria-label="Play">${playIcon()}</button>
-        <button type="button" class="edu-speed" data-action="speed" aria-label="Playback speed 1×">1×</button>
         <div class="edu-progress">
           <input
             class="edu-seek"
@@ -261,6 +266,20 @@ function renderEpisodes(items) {
             <span class="edu-time-duration">0:00</span>
           </div>
         </div>
+        <div class="edu-speed-wrap">
+          <div class="edu-speed-menu" role="listbox" aria-label="Playback speed">
+            ${SPEED_STEPS.map((step) => `
+              <button
+                type="button"
+                class="edu-speed-option"
+                data-action="speed-set"
+                data-speed="${step}"
+                role="option"
+              >${formatSpeed(step)}</button>
+            `).join('')}
+          </div>
+          <button type="button" class="edu-speed" data-action="speed-toggle" aria-haspopup="listbox" aria-expanded="false" aria-label="Playback speed 1×">1×</button>
+        </div>
       </div>
     </article>
   `).join('');
@@ -269,6 +288,27 @@ function renderEpisodes(items) {
 }
 
 list.addEventListener('click', (event) => {
+  const speedSet = event.target.closest('[data-action="speed-set"]');
+  if (speedSet) {
+    applySpeed(parseFloat(speedSet.dataset.speed));
+    closeSpeedMenus();
+    return;
+  }
+
+  const speedToggle = event.target.closest('[data-action="speed-toggle"]');
+  if (speedToggle) {
+    const wrap = speedToggle.closest('.edu-speed-wrap');
+    const willOpen = !wrap.classList.contains('is-open');
+    closeSpeedMenus();
+    if (willOpen) {
+      wrap.classList.add('is-open');
+      speedToggle.setAttribute('aria-expanded', 'true');
+    }
+    return;
+  }
+
+  closeSpeedMenus();
+
   const cover = event.target.closest('.edu-cover');
   const button = event.target.closest('[data-action]');
   if (!cover && !button) return;
@@ -277,19 +317,18 @@ list.addEventListener('click', (event) => {
   const episode = getEpisode(card.dataset.episodeId);
   if (!episode) return;
 
-  if (button.dataset.action === 'speed') {
-    applySpeed(nextSpeed(savedSpeed()));
-    return;
-  }
-
   if (cover || button.dataset.action === 'play') {
     if (activeId === episode.id && !audio.paused) {
       audio.pause();
       return;
     }
     loadEpisode(episode, { autoplay: true });
-    return;
   }
+});
+
+document.addEventListener('click', (event) => {
+  if (event.target.closest('.edu-speed-wrap')) return;
+  closeSpeedMenus();
 });
 
 list.addEventListener('input', (event) => {

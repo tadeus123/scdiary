@@ -3122,8 +3122,8 @@ body.selfie-crop-open {
   width: 100%;
   margin-top: 0.5rem;
   display: grid;
-  grid-template-columns: auto auto 1fr;
-  grid-template-areas: "play speed progress";
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "play progress speed";
   gap: 0.7rem 0.75rem;
   align-items: center;
 }
@@ -3150,21 +3150,60 @@ body.selfie-crop-open {
   border-color: var(--accent-color);
 }
 
-.edu-speed {
+.edu-speed-wrap {
   grid-area: speed;
+  position: relative;
+  align-self: start;
+  padding-top: 0.15rem;
+}
+
+.edu-speed {
   background: none;
   border: none;
   color: var(--accent-color);
   font-family: inherit;
   font-size: 0.95rem;
   cursor: pointer;
-  padding: 0.35rem 0.15rem;
-  min-width: 2.6rem;
-  text-align: left;
+  padding: 0.2rem 0.1rem;
+  min-width: 2.4rem;
+  text-align: right;
 }
 
 .edu-speed:hover {
   opacity: 0.7;
+}
+
+.edu-speed-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.3rem);
+  flex-direction: column;
+  align-items: stretch;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  z-index: 20;
+  min-width: 3.6rem;
+}
+
+.edu-speed-wrap.is-open .edu-speed-menu {
+  display: flex;
+}
+
+.edu-speed-option {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  font-family: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0.4rem 0.7rem;
+  text-align: right;
+}
+
+.edu-speed-option:hover,
+.edu-speed-option.is-active {
+  color: var(--accent-color);
 }
 
 .edu-progress {
