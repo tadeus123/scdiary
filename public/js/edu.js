@@ -1,4 +1,4 @@
-const SPEED_STEPS = [1, 1.25, 1.5, 1.75, 2, 2.5, 3];
+const SPEED_STEPS = [1, 1.25, 1.5, 1.75, 2, 2.5];
 const SKIP_SECONDS = 15;
 const SPEED_KEY = 'edu-speed';
 const progressKey = (id) => `edu-progress:${id}`;
@@ -44,7 +44,9 @@ function formatSpeed(speed) {
 
 function clampSpeed(value) {
   const match = SPEED_STEPS.find((step) => Math.abs(step - value) < 0.01);
-  return match || 1;
+  if (match) return match;
+  const max = SPEED_STEPS[SPEED_STEPS.length - 1];
+  return value > max ? max : 1;
 }
 
 function savedSpeed() {
