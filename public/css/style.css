@@ -3122,17 +3122,15 @@ body.selfie-crop-open {
   width: 100%;
   margin-top: 0.5rem;
   margin-bottom: 2rem;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  grid-template-areas: "play progress speed";
-  gap: 0.7rem 0.75rem;
+  display: flex;
   align-items: center;
+  gap: 0.55rem;
 }
 
 .edu-play {
-  grid-area: play;
-  width: 48px;
-  height: 48px;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
   border: 1px solid var(--border-color);
   background: var(--entry-bg);
   color: var(--text-color);
@@ -3151,11 +3149,35 @@ body.selfie-crop-open {
   border-color: var(--accent-color);
 }
 
+.edu-time-current,
+.edu-time-duration {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 2.4rem;
+}
+
+.edu-time-duration {
+  min-width: 3.6rem;
+  text-align: right;
+}
+
+.edu-seek {
+  flex: 1 1 auto;
+  min-width: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 28px;
+  background: transparent;
+  margin: 0;
+  cursor: pointer;
+}
+
 .edu-speed-wrap {
-  grid-area: speed;
+  flex: 0 0 auto;
   position: relative;
-  align-self: start;
-  padding-top: 0.15rem;
 }
 
 .edu-speed {
@@ -3207,21 +3229,6 @@ body.selfie-crop-open {
   color: var(--accent-color);
 }
 
-.edu-progress {
-  grid-area: progress;
-  min-width: 0;
-}
-
-.edu-seek {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 28px;
-  background: transparent;
-  margin: 0;
-  cursor: pointer;
-}
-
 .edu-seek::-webkit-slider-runnable-track {
   height: 3px;
   background: var(--border-color);
@@ -3251,15 +3258,6 @@ body.selfie-crop-open {
   border-radius: 50%;
   background: var(--accent-color);
   border: none;
-}
-
-.edu-times {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.8rem;
-  opacity: 0.6;
-  margin-top: 0.15rem;
-  font-variant-numeric: tabular-nums;
 }
 
 .edu-empty {
@@ -3299,13 +3297,23 @@ body.selfie-crop-open {
     font-size: 1.25rem;
   }
 
-  .edu-play {
-    width: 52px;
-    height: 52px;
+  .edu-player {
+    gap: 0.4rem;
   }
 
-  .edu-seek {
-    height: 32px;
+  .edu-play {
+    width: 36px;
+    height: 36px;
+  }
+
+  .edu-time-current,
+  .edu-time-duration {
+    font-size: 0.72rem;
+    min-width: 2.1rem;
+  }
+
+  .edu-time-duration {
+    min-width: 3.2rem;
   }
 }
 

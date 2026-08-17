@@ -251,21 +251,17 @@ function renderEpisodes(items) {
       </div>
       <div class="edu-player">
         <button type="button" class="edu-play" data-action="play" aria-label="Play">${playIcon()}</button>
-        <div class="edu-progress">
-          <input
-            class="edu-seek"
-            type="range"
-            min="0"
-            max="1000"
-            value="0"
-            step="1"
-            aria-label="Seek"
-          >
-          <div class="edu-times">
-            <span class="edu-time-current">0:00</span>
-            <span class="edu-time-duration">0:00</span>
-          </div>
-        </div>
+        <span class="edu-time-current">0:00</span>
+        <input
+          class="edu-seek"
+          type="range"
+          min="0"
+          max="1000"
+          value="0"
+          step="1"
+          aria-label="Seek"
+        >
+        <span class="edu-time-duration">0:00</span>
         <div class="edu-speed-wrap">
           <div class="edu-speed-menu" role="listbox" aria-label="Playback speed">
             ${SPEED_STEPS.map((step) => `
