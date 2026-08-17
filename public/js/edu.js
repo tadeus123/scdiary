@@ -90,8 +90,20 @@ function cardEl(id) {
   return list.querySelector(`[data-episode-id="${id}"]`);
 }
 
+function hashId() {
+  return decodeURIComponent((location.hash || '').replace(/^#/, ''));
+}
+
+function playIcon() {
+  return `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><polygon points="8,5 20,12 8,19" fill="currentColor"></polygon></svg>`;
+}
+
+function pauseIcon() {
+  return `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="7" y="5" width="4" height="14" fill="currentColor"></rect><rect x="13" y="5" width="4" height="14" fill="currentColor"></rect></svg>`;
+}
+
 function setPlayingUi(isPlaying) {
-  list.querySelectorAll('.edu-card').forEach((card) => {
+  list.querySelectorAll('[data-episode-id]').forEach((card) => {
     const playing = isPlaying && card.dataset.episodeId === activeId;
     card.classList.toggle('is-playing', playing);
     const button = card.querySelector('.edu-play');
@@ -100,14 +112,6 @@ function setPlayingUi(isPlaying) {
       button.innerHTML = playing ? pauseIcon() : playIcon();
     }
   });
-}
-
-function playIcon() {
-  return `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><polygon points="8,5 20,12 8,19" fill="currentColor"></polygon></svg>`;
-}
-
-function pauseIcon() {
-  return `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="7" y="5" width="4" height="14" fill="currentColor"></rect><rect x="13" y="5" width="4" height="14" fill="currentColor"></rect></svg>`;
 }
 
 function updateTimes(card, current, duration) {
@@ -207,109 +211,131 @@ function closeSpeedMenus(exceptWrap = null) {
   });
 }
 
-function idFromHash() {
-  const id = decodeURIComponent((location.hash || '').replace(/^#/, ''));
-  return getEpisode(id) ? id : (sortedEpisodes()[0]?.id || null);
-}
-
-function renderPeople(people) {
-  if (people.length < 2) return '';
-  return `<nav class="edu-people" aria-label="People">
-    ${people.map((episode) => `
-      <a
-        class="edu-person${episode.id === selectedId ? ' is-selected' : ''}"
-        href="#${encodeURIComponent(episode.id)}"
-        data-episode-id="${escapeHtml(episode.id)}"
-      >
-        <img src="${escapeHtml(episode.image)}" alt="" width="96" height="96">
-        <span class="edu-person-name">${escapeHtml(lastName(episode.name))}</span>
-      </a>
-    `).join('')}
-  </nav>`;
-}
-
-function renderCard(episode) {
+function renderPlayer() {
   return `
-    <article class="edu-card" data-episode-id="${escapeHtml(episode.id)}">
+    <div class="edu-player">
+      <button type="button" class="edu-play" data-action="play" aria-label="Play">${playIcon()}</button>
+      <span class="edu-time-current">0:00</span>
+      <input
+        class="edu-seek"
+        type="range"
+        min="0"
+        max="1000"
+        value="0"
+        step="1"
+        aria-label="Seek"
+      >
+      <span class="edu-time-duration">0:00</span>
+      <div class="edu-speed-wrap">
+        <button type="button" class="edu-speed" data-action="speed-toggle" aria-expanded="false" aria-label="Playback speed">1×</button>
+        <div class="edu-speed-menu" role="listbox" aria-label="Playback speed">
+          ${SPEED_STEPS.map((step) => `
+            <button
+              type="button"
+              class="edu-speed-option"
+              data-action="speed-set"
+              data-speed="${step}"
+              role="option"
+            >${formatSpeed(step)}</button>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTrack(episode) {
+  const open = episode.id === selectedId;
+  return `
+    <article
+      class="edu-track${open ? ' is-open' : ''}"
+      data-episode-id="${escapeHtml(episode.id)}"
+    >
       <img
         class="edu-cover"
         src="${escapeHtml(episode.image)}"
         alt="${escapeHtml(episode.name)}"
         width="800"
         height="800"
+        data-action="play"
       >
-      <div class="edu-copy">
-        <h2 class="edu-name">${escapeHtml(episode.name)}</h2>
-        <p class="edu-born">born: ${escapeHtml(String(episode.born))}</p>
-        <p class="edu-bio">${escapeHtml(episode.bio)}</p>
-        ${renderLinks(episode)}
-      </div>
-      <div class="edu-player">
-        <button type="button" class="edu-play" data-action="play" aria-label="Play">${playIcon()}</button>
-        <span class="edu-time-current">0:00</span>
-        <input
-          class="edu-seek"
-          type="range"
-          min="0"
-          max="1000"
-          value="0"
-          step="1"
-          aria-label="Seek"
-        >
-        <span class="edu-time-duration">0:00</span>
-        <div class="edu-speed-wrap">
-          <button type="button" class="edu-speed" data-action="speed-toggle" aria-expanded="false" aria-label="Playback speed">1×</button>
-          <div class="edu-speed-menu" role="listbox" aria-label="Playback speed">
-            ${SPEED_STEPS.map((step) => `
-              <button
-                type="button"
-                class="edu-speed-option"
-                data-action="speed-set"
-                data-speed="${step}"
-                role="option"
-              >${formatSpeed(step)}</button>
-            `).join('')}
+      <div class="edu-track-main">
+        <button type="button" class="edu-track-info" data-action="open" aria-expanded="${open ? 'true' : 'false'}">
+          <span class="edu-name">${escapeHtml(episode.name)}</span>
+          <span class="edu-born">born: ${escapeHtml(String(episode.born))}</span>
+        </button>
+        ${renderPlayer()}
+        ${open ? `
+          <div class="edu-track-details">
+            <p class="edu-bio">${escapeHtml(episode.bio)}</p>
+            ${renderLinks(episode)}
           </div>
-        </div>
+        ` : ''}
       </div>
     </article>
   `;
 }
 
-function render() {
-  const people = sortedEpisodes();
-  const episode = getEpisode(selectedId) || people[0];
-  if (!episode) {
-    list.innerHTML = '<p class="edu-empty">no episodes yet.</p>';
-    return;
-  }
-
-  selectedId = episode.id;
-  if ((location.hash || '').replace(/^#/, '') !== selectedId) {
-    history.replaceState(null, '', `#${encodeURIComponent(selectedId)}`);
-  }
-  list.innerHTML = `${renderPeople(people)}${renderCard(episode)}`;
-  applySpeed(savedSpeed(), { persist: false });
-  attachTranscripts();
+function parkTranscripts() {
+  const main = document.querySelector('.edu-page main');
+  if (!main) return;
+  document.querySelectorAll('.edu-transcript').forEach((section) => {
+    main.appendChild(section);
+  });
 }
 
 function attachTranscripts() {
   document.querySelectorAll('.edu-transcript').forEach((section) => {
-    section.classList.toggle('is-current', section.dataset.transcriptFor === selectedId);
+    const current = section.dataset.transcriptFor === selectedId;
+    section.classList.toggle('is-current', current);
+    if (current) {
+      const details = list.querySelector(`[data-episode-id="${selectedId}"] .edu-track-details`);
+      if (details) details.appendChild(section);
+    }
   });
 }
 
-function showPerson(id) {
-  if (!getEpisode(id) || id === selectedId) return;
-  if (activeId && activeId !== id && !audio.paused) audio.pause();
-  selectedId = id;
+function restoreActiveUi() {
+  applySpeed(savedSpeed(), { persist: false });
+  attachTranscripts();
+  if (!activeId) return;
+  const card = cardEl(activeId);
+  if (!card) return;
+  updateTimes(card, audio.currentTime, audio.duration);
+  setPlayingUi(!audio.paused);
+}
+
+function render() {
+  const tracks = sortedEpisodes();
+  if (!tracks.length) {
+    parkTranscripts();
+    list.innerHTML = '<p class="edu-empty">no episodes yet.</p>';
+    return;
+  }
+
+  parkTranscripts();
+  list.innerHTML = tracks.map(renderTrack).join('');
+  restoreActiveUi();
+}
+
+function syncFromHash() {
+  const id = hashId();
+  selectedId = getEpisode(id) ? id : null;
+  render();
+}
+
+function toggleOpen(id) {
+  if (!getEpisode(id)) return;
+  selectedId = selectedId === id ? null : id;
+  const next = selectedId ? `#${encodeURIComponent(selectedId)}` : (location.pathname + location.search);
+  history.pushState(null, '', next);
   render();
 }
 
 async function loadEpisode(episode, { autoplay = false, startTime = null } = {}) {
   const switching = activeId !== episode.id;
   activeId = episode.id;
-  list.querySelectorAll('.edu-card').forEach((card) => {
+  list.querySelectorAll('[data-episode-id]').forEach((card) => {
     card.classList.toggle('is-active', card.dataset.episodeId === episode.id);
   });
 
@@ -361,12 +387,19 @@ list.addEventListener('click', (event) => {
 
   closeSpeedMenus();
 
+  const opener = event.target.closest('[data-action="open"]');
+  if (opener) {
+    const card = opener.closest('[data-episode-id]');
+    if (card) toggleOpen(card.dataset.episodeId);
+    return;
+  }
+
   const cover = event.target.closest('.edu-cover');
   const button = event.target.closest('[data-action]');
   if (!cover && !button) return;
 
-  const card = event.target.closest('.edu-card');
-  const episode = getEpisode(card.dataset.episodeId);
+  const card = event.target.closest('[data-episode-id]');
+  const episode = getEpisode(card?.dataset.episodeId);
   if (!episode) return;
 
   if (cover || button.dataset.action === 'play') {
@@ -384,7 +417,7 @@ document.addEventListener('click', (event) => {
 });
 
 list.addEventListener('input', (event) => {
-  const card = event.target.closest('.edu-card');
+  const card = event.target.closest('[data-episode-id]');
   if (!card) return;
   const episode = getEpisode(card.dataset.episodeId);
   if (!episode) return;
@@ -399,7 +432,7 @@ list.addEventListener('input', (event) => {
 
 list.addEventListener('change', (event) => {
   if (!event.target.classList.contains('edu-seek')) return;
-  const card = event.target.closest('.edu-card');
+  const card = event.target.closest('[data-episode-id]');
   const episode = getEpisode(card.dataset.episodeId);
   if (!episode) return;
 
@@ -461,11 +494,16 @@ function init() {
   try {
     const data = Array.isArray(window.EDU_EPISODES) ? window.EDU_EPISODES : [];
     episodes = data;
-    selectedId = idFromHash();
+    selectedId = getEpisode(hashId()) ? hashId() : null;
     render();
-    window.addEventListener('hashchange', () => {
-      const id = idFromHash();
-      if (id) showPerson(id);
+    window.addEventListener('hashchange', syncFromHash);
+    window.addEventListener('popstate', syncFromHash);
+    document.querySelector('.edu-page .site-title')?.addEventListener('click', (event) => {
+      if (!selectedId) return;
+      event.preventDefault();
+      selectedId = null;
+      history.pushState(null, '', location.pathname + location.search);
+      render();
     });
   } catch (error) {
     console.error('Error loading edu episodes:', error);

@@ -3053,63 +3053,23 @@ body.selfie-crop-open {
   margin-bottom: 2.5rem;
 }
 
-.edu-people {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.25rem 1.5rem;
-  margin: 0 0 2.5rem;
-}
-
-.edu-person {
+.edu-episodes {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.45rem;
-  width: 5.5rem;
-  text-decoration: none;
-  color: var(--text-color);
-  opacity: 0.45;
-  transition: opacity 0.2s ease;
 }
 
-.edu-person:hover,
-.edu-person.is-selected {
-  opacity: 1;
-}
-
-.edu-person img {
-  width: 5.5rem;
-  height: 5.5rem;
-  object-fit: cover;
-  object-position: 50% 50%;
-  display: block;
-  background: var(--entry-bg);
-}
-
-.edu-person-name {
-  font-size: 0.8rem;
-  line-height: 1.3;
-  text-align: center;
-}
-
-.edu-person.is-selected .edu-person-name {
-  color: var(--accent-color);
-}
-
-.edu-transcript:not(.is-current) {
-  display: none;
-}
-
-.edu-card {
+.edu-track {
   display: flex;
-  flex-direction: column;
   align-items: flex-start;
-  gap: 1.25rem;
+  gap: 0.9rem;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .edu-cover {
-  width: 220px;
-  height: 220px;
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
   object-fit: cover;
   object-position: 50% 50%;
   display: block;
@@ -3117,25 +3077,62 @@ body.selfie-crop-open {
   cursor: pointer;
 }
 
+.edu-track-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.edu-track-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .edu-name {
-  font-size: 1.45rem;
+  font-size: 1.05rem;
   font-weight: 400;
   letter-spacing: -0.02em;
   line-height: 1.3;
-  margin: 0 0 0.35rem;
+}
+
+.edu-track.is-open .edu-name,
+.edu-track.is-playing .edu-name {
+  color: var(--accent-color);
 }
 
 .edu-born {
   color: var(--accent-color);
-  font-size: 0.95rem;
+  font-size: 0.8rem;
   letter-spacing: 0.02em;
-  margin: 0 0 1rem;
+}
+
+.edu-track-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0.35rem 0 0.5rem;
+}
+
+.edu-transcript:not(.is-current) {
+  display: none;
 }
 
 .edu-bio {
   font-size: 1.05rem;
   line-height: 1.8;
-  margin: 0 0 0.85rem;
+  margin: 0;
 }
 
 .edu-links {
@@ -3162,17 +3159,16 @@ body.selfie-crop-open {
 
 .edu-player {
   width: 100%;
-  margin-top: 0.5rem;
-  margin-bottom: 2rem;
+  margin: 0;
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.45rem;
 }
 
 .edu-play {
   flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border: 1px solid var(--border-color);
   background: var(--entry-bg);
   color: var(--text-color);
@@ -3186,7 +3182,7 @@ body.selfie-crop-open {
 }
 
 .edu-play:hover,
-.edu-card.is-playing .edu-play {
+.edu-track.is-playing .edu-play {
   color: var(--accent-color);
   border-color: var(--accent-color);
 }
@@ -3311,7 +3307,7 @@ body.selfie-crop-open {
 
 .edu-transcript {
   width: 100%;
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
 }
 
 .edu-transcript-label {
@@ -3357,21 +3353,22 @@ body.selfie-crop-open {
 
 @media (max-width: 600px) {
   .edu-cover {
-    width: 160px;
-    height: 160px;
+    width: 64px;
+    height: 64px;
+    flex-basis: 64px;
   }
 
   .edu-name {
-    font-size: 1.25rem;
+    font-size: 0.98rem;
   }
 
   .edu-player {
-    gap: 0.4rem;
+    gap: 0.3rem;
   }
 
   .edu-play {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
   }
 
   .edu-time-current,
