@@ -13,6 +13,46 @@ let activeId = null;
 let seeking = false;
 let applyingRemote = false;
 let lastWrite = 0;
+let clockTimer = null;
+let pendingRestore = null;
+const tabId = Math.random().toString(36).slice(2);
+
+function mediaDuration() {
+  const duration = audio.duration;
+  if (Number.isFinite(duration) && duration > 0) return duration;
+  if (audio.seekable && audio.seekable.length) {
+    const end = audio.seekable.end(audio.seekable.length - 1);
+    if (Number.isFinite(end) && end > 0) return end;
+  }
+  return readProgress(activeId).duration || 0;
+}
+
+function mediaTime() {
+  return Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+}
+
+function syncClock() {
+  if (!activeId) return;
+  const card = cardEl(activeId);
+  const duration = mediaDuration();
+  const current = mediaTime();
+  if (card) updateTimes(card, current, duration);
+  updatePositionState();
+  if (!audio.paused) saveProgress({ force: false });
+}
+
+function startClock() {
+  if (clockTimer) return;
+  syncClock();
+  clockTimer = setInterval(syncClock, 250);
+}
+
+function stopClock() {
+  if (!clockTimer) return;
+  clearInterval(clockTimer);
+  clockTimer = null;
+  syncClock();
+}
 
 function formatTime(seconds) {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
@@ -104,21 +144,14 @@ function saveProgress({ force = true } = {}) {
   const now = Date.now();
   if (!force && now - lastWrite < 400) return;
   lastWrite = now;
-  writeProgress(activeId, audio.currentTime, audio.duration);
+  writeProgress(activeId, mediaTime(), mediaDuration());
   publish({
     type: 'progress',
     id: activeId,
-    time: audio.currentTime,
-    duration: audio.duration,
+    time: mediaTime(),
+    duration: mediaDuration(),
     playing: !audio.paused,
   });
-}
-
-function restoreProgress(id) {
-  const stored = readProgress(id);
-  if (stored.time > 3 && !finished(stored.time, stored.duration || audio.duration)) {
-    audio.currentTime = stored.time;
-  }
 }
 
 function applyProgressUi(id, time, duration) {
@@ -137,11 +170,11 @@ function paintSavedProgress() {
 
 function publish(message) {
   if (!channel || applyingRemote) return;
-  channel.postMessage(message);
+  channel.postMessage({ ...message, tabId });
 }
 
 function applyRemote(message) {
-  if (!message || !message.id) return;
+  if (!message || message.tabId === tabId || !message.id) return;
   applyingRemote = true;
   try {
     if (message.type === 'play' && message.id !== undefined) {
@@ -184,10 +217,11 @@ function updateTimes(card, current, duration) {
   const currentEl = card.querySelector('.edu-time-current');
   const durationEl = card.querySelector('.edu-time-duration');
   const seek = card.querySelector('.edu-seek');
+  const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 0;
   if (currentEl) currentEl.textContent = formatTime(current);
-  if (durationEl && duration) durationEl.textContent = formatTime(duration);
+  if (durationEl && safeDuration) durationEl.textContent = formatTime(safeDuration);
   if (seek && !seeking) {
-    seek.value = duration ? String((current / duration) * 1000) : '0';
+    seek.value = safeDuration ? String(Math.min(1000, (current / safeDuration) * 1000)) : '0';
   }
 }
 
@@ -206,9 +240,11 @@ function updateMediaSession(episode) {
   });
 
   const seekBy = (offset) => {
-    if (!Number.isFinite(audio.duration)) return;
-    audio.currentTime = Math.min(audio.duration, Math.max(0, audio.currentTime + offset));
+    const duration = mediaDuration();
+    if (!duration) return;
+    audio.currentTime = Math.min(duration, Math.max(0, mediaTime() + offset));
     saveProgress();
+    syncClock();
   };
 
   navigator.mediaSession.setActionHandler('play', () => audio.play());
@@ -235,12 +271,13 @@ function updateMediaSession(episode) {
 }
 
 function updatePositionState() {
-  if (!('mediaSession' in navigator) || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
+  const duration = mediaDuration();
+  if (!('mediaSession' in navigator) || !duration) return;
   try {
     navigator.mediaSession.setPositionState({
-      duration: audio.duration,
-      playbackRate: audio.playbackRate,
-      position: Math.min(audio.currentTime, audio.duration),
+      duration,
+      playbackRate: audio.playbackRate || 1,
+      position: Math.min(mediaTime(), duration),
     });
   } catch {
     // Some browsers reject position updates while metadata is settling.
@@ -276,22 +313,14 @@ async function loadEpisode(episode, { autoplay = false, startTime = null } = {})
   });
 
   if (switching || !audio.src) {
+    audio.playsInline = true;
     audio.src = episode.audio;
-    audio.load();
     audio.setAttribute('title', episode.name);
-    applySpeed(savedSpeed(), { persist: false });
     updateMediaSession(episode);
-    const onReady = () => {
-      if (startTime == null) restoreProgress(episode.id);
-      else audio.currentTime = startTime;
-      const stored = readProgress(episode.id);
-      const card = cardEl(episode.id);
-      if (card) updateTimes(card, audio.currentTime, audio.duration || stored.duration);
-      writeProgress(episode.id, audio.currentTime, audio.duration);
-      updatePositionState();
-    };
-    if (audio.readyState >= 1) onReady();
-    else audio.addEventListener('loadedmetadata', onReady, { once: true });
+    const stored = readProgress(episode.id);
+    pendingRestore = startTime != null ? startTime : stored.time;
+    const card = cardEl(episode.id);
+    if (card) updateTimes(card, pendingRestore || 0, stored.duration);
   }
 
   if (autoplay) {
@@ -368,7 +397,7 @@ if (page && audio) {
     if (!episode) return;
     seeking = true;
     const stored = readProgress(episode.id);
-    const duration = (activeId === episode.id && audio.duration) || stored.duration || 0;
+    const duration = (activeId === episode.id && mediaDuration()) || stored.duration || 0;
     const next = (parseFloat(event.target.value) / 1000) * duration;
     card.querySelector('.edu-time-current').textContent = formatTime(next);
   });
@@ -380,16 +409,17 @@ if (page && audio) {
     if (!episode) return;
 
     const stored = readProgress(episode.id);
-    const duration = (activeId === episode.id && audio.duration) || stored.duration || 0;
+    const duration = (activeId === episode.id && mediaDuration()) || stored.duration || 0;
     const ratio = parseFloat(event.target.value) / 1000;
     const nextTime = ratio * duration;
 
     const applySeek = () => {
-      if (Number.isFinite(audio.duration)) {
-        audio.currentTime = ratio * audio.duration;
+      if (mediaDuration()) {
+        audio.currentTime = ratio * mediaDuration();
       }
       seeking = false;
       saveProgress();
+      syncClock();
     };
 
     if (activeId !== episode.id || !audio.src) {
@@ -403,52 +433,72 @@ if (page && audio) {
     applySeek();
   });
 
+  page.addEventListener('pointerup', (event) => {
+    if (!seeking || !event.target.classList.contains('edu-seek')) return;
+    event.target.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+
   audio.addEventListener('play', () => {
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
     setPlayingUi(true);
+    applySpeed(savedSpeed(), { persist: false });
+    startClock();
     saveProgress();
     publish({
       type: 'play',
       id: activeId,
-      time: audio.currentTime,
-      duration: audio.duration,
+      time: mediaTime(),
+      duration: mediaDuration(),
       playing: true,
     });
+  });
+
+  audio.addEventListener('playing', () => {
+    applySpeed(savedSpeed(), { persist: false });
+    if (pendingRestore != null && pendingRestore > 3) {
+      const restoreTo = pendingRestore;
+      pendingRestore = null;
+      const seek = () => {
+        try {
+          audio.currentTime = restoreTo;
+          syncClock();
+        } catch {
+          // Mobile browsers reject seeks until they have a range.
+        }
+      };
+      if (audio.readyState >= 2) seek();
+      else audio.addEventListener('canplay', seek, { once: true });
+    }
+    startClock();
   });
 
   audio.addEventListener('pause', () => {
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     setPlayingUi(false);
+    stopClock();
     saveProgress();
     publish({
       type: 'pause',
       id: activeId,
-      time: audio.currentTime,
-      duration: audio.duration,
+      time: mediaTime(),
+      duration: mediaDuration(),
       playing: false,
     });
   });
 
-  audio.addEventListener('timeupdate', () => {
-    const card = cardEl(activeId);
-    if (card) updateTimes(card, audio.currentTime, audio.duration);
-    updatePositionState();
-    saveProgress({ force: false });
-  });
-
-  audio.addEventListener('loadedmetadata', () => {
-    const card = cardEl(activeId);
-    if (card) updateTimes(card, audio.currentTime, audio.duration);
-    writeProgress(activeId, audio.currentTime, audio.duration);
-    updatePositionState();
-  });
+  audio.addEventListener('timeupdate', syncClock);
+  audio.addEventListener('durationchange', syncClock);
+  audio.addEventListener('loadedmetadata', syncClock);
+  audio.addEventListener('loadeddata', syncClock);
+  audio.addEventListener('canplay', syncClock);
 
   audio.addEventListener('ended', () => {
+    stopClock();
     if (activeId) localStorage.removeItem(progressKey(activeId));
     setPlayingUi(false);
     const card = cardEl(activeId);
-    if (card) updateTimes(card, 0, audio.duration);
-    publish({ type: 'ended', id: activeId, time: 0, duration: audio.duration });
+    if (card) updateTimes(card, 0, mediaDuration());
+    publish({ type: 'ended', id: activeId, time: 0, duration: mediaDuration() });
   });
 
   window.addEventListener('pagehide', () => saveProgress());
@@ -484,12 +534,6 @@ if (page && audio) {
       if (redirectLegacyHash()) return;
       applySpeed(savedSpeed(), { persist: false });
       paintSavedProgress();
-
-      const nowCard = page.querySelector('.edu-now-card');
-      if (nowCard) {
-        const episode = getEpisode(nowCard.dataset.episodeId);
-        if (episode) loadEpisode(episode, { autoplay: false });
-      }
     } catch (error) {
       console.error('Error loading edu episodes:', error);
     }
