@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <%- include('partials/seo-head') %>
-  <link rel="stylesheet" href="/css/style.css?v=edu17">
+  <link rel="stylesheet" href="/css/style.css?v=edu18">
 </head>
 <body class="edu-page edu-now">
-  <a href="/" class="corner-btn-left" aria-label="Back to Diary"></a>
+  <a href="/edu" class="corner-btn-left" aria-label="Back to edu"></a>
 
   <div class="container">
     <nav>
@@ -42,6 +42,8 @@
           >
           <h1 class="edu-name"><%= episode.name %></h1>
           <p class="edu-born">born: <%= episode.born %></p>
+        </div>
+        <div class="edu-now-dock">
           <%- include('partials/edu-player') %>
         </div>
         <div class="edu-now-copy">
@@ -71,13 +73,13 @@
   <audio
     id="edu-audio"
     class="edu-audio"
-    preload="metadata"
+    preload="none"
     playsinline
     webkit-playsinline
   ></audio>
 
   <script>window.EDU_EPISODES = <%- JSON.stringify([episode]) %>;</script>
   <script src="/js/main.js"></script>
-  <script src="/js/edu.js?v=edu17"></script>
+  <script src="/js/edu.js?v=edu18"></script>
 </body>
 </html>

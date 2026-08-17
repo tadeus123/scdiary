@@ -344,7 +344,7 @@ function redirectLegacyHash() {
 
 if (page && audio) {
   page.addEventListener('click', (event) => {
-    if (event.target.closest('a.edu-cover-link, a.edu-track-info')) {
+    if (event.target.closest('a.edu-track-open')) {
       saveProgress();
     }
 
