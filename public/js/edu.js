@@ -285,6 +285,14 @@ function renderEpisodes(items) {
   `).join('');
 
   applySpeed(savedSpeed(), { persist: false });
+  attachTranscripts();
+}
+
+function attachTranscripts() {
+  list.querySelectorAll('.edu-card').forEach((card) => {
+    const section = document.querySelector(`[data-transcript-for="${card.dataset.episodeId}"]`);
+    if (section) card.appendChild(section);
+  });
 }
 
 list.addEventListener('click', (event) => {

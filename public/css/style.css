@@ -3121,6 +3121,7 @@ body.selfie-crop-open {
 .edu-player {
   width: 100%;
   margin-top: 0.5rem;
+  margin-bottom: 2rem;
   display: grid;
   grid-template-columns: auto 1fr auto;
   grid-template-areas: "play progress speed";
@@ -3263,6 +3264,29 @@ body.selfie-crop-open {
 
 .edu-empty {
   opacity: 0.6;
+}
+
+.edu-transcript {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.edu-transcript-label {
+  color: var(--accent-color);
+  font-size: 0.95rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  margin: 0 0 1rem;
+}
+
+.edu-transcript p {
+  font-size: 1.05rem;
+  line-height: 1.8;
+  margin: 0 0 1.2rem;
+}
+
+.edu-transcript p:last-child {
+  margin-bottom: 0;
 }
 
 @media (max-width: 600px) {
