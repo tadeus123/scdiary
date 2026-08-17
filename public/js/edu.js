@@ -15,7 +15,15 @@ let applyingRemote = false;
 let lastWrite = 0;
 let clockTimer = null;
 let pendingRestore = null;
+let holdTimer = null;
 const tabId = Math.random().toString(36).slice(2);
+const holdAudio = new Audio('/media/edu/silence.mp3');
+holdAudio.loop = true;
+holdAudio.preload = 'auto';
+holdAudio.volume = 0;
+holdAudio.playsInline = true;
+holdAudio.setAttribute('playsinline', '');
+holdAudio.setAttribute('webkit-playsinline', '');
 
 let lastLockLabel = '';
 
@@ -61,6 +69,31 @@ function stopClock() {
   clearInterval(clockTimer);
   clockTimer = null;
   syncClock();
+}
+
+function holdPausedSession() {
+  if (!activeId || !audio.paused || audio.ended) return;
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+  updateLockTimes();
+  updatePositionState();
+}
+
+function startHold() {
+  if (!activeId || audio.ended) {
+    stopHold();
+    return;
+  }
+  holdPausedSession();
+  holdAudio.play().then(holdPausedSession).catch(() => {});
+  if (!holdTimer) holdTimer = setInterval(holdPausedSession, 1500);
+}
+
+function stopHold() {
+  holdAudio.pause();
+  if (holdTimer) {
+    clearInterval(holdTimer);
+    holdTimer = null;
+  }
 }
 
 function formatTime(seconds) {
@@ -372,6 +405,9 @@ function redirectLegacyHash() {
 }
 
 if (page && audio) {
+  holdAudio.className = 'edu-audio';
+  document.body.appendChild(holdAudio);
+
   page.addEventListener('click', (event) => {
     if (event.target.closest('a.edu-track-open')) {
       saveProgress();
@@ -468,6 +504,7 @@ if (page && audio) {
   });
 
   audio.addEventListener('play', () => {
+    stopHold();
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
     setPlayingUi(true);
     applySpeed(savedSpeed(), { persist: false });
@@ -502,10 +539,11 @@ if (page && audio) {
   });
 
   audio.addEventListener('pause', () => {
-    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     setPlayingUi(false);
     stopClock();
     saveProgress();
+    if (!audio.ended) startHold();
+    else stopHold();
     publish({
       type: 'pause',
       id: activeId,
@@ -522,7 +560,9 @@ if (page && audio) {
   audio.addEventListener('canplay', syncClock);
 
   audio.addEventListener('ended', () => {
+    stopHold();
     stopClock();
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
     if (activeId) localStorage.removeItem(progressKey(activeId));
     setPlayingUi(false);
     const card = cardEl(activeId);
@@ -533,7 +573,10 @@ if (page && audio) {
   window.addEventListener('pagehide', () => saveProgress());
   window.addEventListener('beforeunload', () => saveProgress());
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') saveProgress();
+    if (document.visibilityState === 'hidden') {
+      saveProgress();
+      if (audio.paused && activeId && !audio.ended) startHold();
+    }
   });
 
   if (channel) {
