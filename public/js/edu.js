@@ -7,8 +7,18 @@ const audio = document.getElementById('edu-audio');
 const list = document.getElementById('edu-episodes');
 
 let episodes = [];
+let selectedId = null;
 let activeId = null;
 let seeking = false;
+
+function lastName(name) {
+  const parts = String(name || '').trim().split(/\s+/);
+  return parts[parts.length - 1] || name;
+}
+
+function sortedEpisodes() {
+  return [...episodes].sort((a, b) => lastName(a.name).localeCompare(lastName(b.name)) || a.name.localeCompare(b.name));
+}
 
 function escapeHtml(text) {
   const div = document.createElement('div');
@@ -197,42 +207,29 @@ function closeSpeedMenus(exceptWrap = null) {
   });
 }
 
-async function loadEpisode(episode, { autoplay = false, startTime = null } = {}) {
-  const switching = activeId !== episode.id;
-  activeId = episode.id;
-  list.querySelectorAll('.edu-card').forEach((card) => {
-    card.classList.toggle('is-active', card.dataset.episodeId === episode.id);
-  });
-
-  if (switching || !audio.src) {
-    audio.src = episode.audio;
-    audio.load();
-    audio.setAttribute('title', episode.name);
-    applySpeed(savedSpeed(), { persist: false });
-    updateMediaSession(episode);
-    const onReady = () => {
-      if (startTime == null) restoreProgress(episode.id);
-      else audio.currentTime = startTime;
-      const card = cardEl(episode.id);
-      if (card) updateTimes(card, audio.currentTime, audio.duration);
-      updatePositionState();
-    };
-    if (audio.readyState >= 1) onReady();
-    else audio.addEventListener('loadedmetadata', onReady, { once: true });
-  }
-
-  if (autoplay) {
-    try {
-      await audio.play();
-    } catch (error) {
-      console.error('Could not start playback:', error);
-    }
-  }
+function idFromHash() {
+  const id = decodeURIComponent((location.hash || '').replace(/^#/, ''));
+  return getEpisode(id) ? id : (sortedEpisodes()[0]?.id || null);
 }
 
-function renderEpisodes(items) {
-  const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name));
-  list.innerHTML = sorted.map((episode) => `
+function renderPeople(people) {
+  if (people.length < 2) return '';
+  return `<nav class="edu-people" aria-label="People">
+    ${people.map((episode) => `
+      <a
+        class="edu-person${episode.id === selectedId ? ' is-selected' : ''}"
+        href="#${encodeURIComponent(episode.id)}"
+        data-episode-id="${escapeHtml(episode.id)}"
+      >
+        <img src="${escapeHtml(episode.image)}" alt="" width="96" height="96">
+        <span class="edu-person-name">${escapeHtml(lastName(episode.name))}</span>
+      </a>
+    `).join('')}
+  </nav>`;
+}
+
+function renderCard(episode) {
+  return `
     <article class="edu-card" data-episode-id="${escapeHtml(episode.id)}">
       <img
         class="edu-cover"
@@ -276,17 +273,70 @@ function renderEpisodes(items) {
         </div>
       </div>
     </article>
-  `).join('');
+  `;
+}
 
+function render() {
+  const people = sortedEpisodes();
+  const episode = getEpisode(selectedId) || people[0];
+  if (!episode) {
+    list.innerHTML = '<p class="edu-empty">no episodes yet.</p>';
+    return;
+  }
+
+  selectedId = episode.id;
+  if ((location.hash || '').replace(/^#/, '') !== selectedId) {
+    history.replaceState(null, '', `#${encodeURIComponent(selectedId)}`);
+  }
+  list.innerHTML = `${renderPeople(people)}${renderCard(episode)}`;
   applySpeed(savedSpeed(), { persist: false });
   attachTranscripts();
 }
 
 function attachTranscripts() {
-  list.querySelectorAll('.edu-card').forEach((card) => {
-    const section = document.querySelector(`[data-transcript-for="${card.dataset.episodeId}"]`);
-    if (section) card.appendChild(section);
+  document.querySelectorAll('.edu-transcript').forEach((section) => {
+    section.classList.toggle('is-current', section.dataset.transcriptFor === selectedId);
   });
+}
+
+function showPerson(id) {
+  if (!getEpisode(id) || id === selectedId) return;
+  if (activeId && activeId !== id && !audio.paused) audio.pause();
+  selectedId = id;
+  render();
+}
+
+async function loadEpisode(episode, { autoplay = false, startTime = null } = {}) {
+  const switching = activeId !== episode.id;
+  activeId = episode.id;
+  list.querySelectorAll('.edu-card').forEach((card) => {
+    card.classList.toggle('is-active', card.dataset.episodeId === episode.id);
+  });
+
+  if (switching || !audio.src) {
+    audio.src = episode.audio;
+    audio.load();
+    audio.setAttribute('title', episode.name);
+    applySpeed(savedSpeed(), { persist: false });
+    updateMediaSession(episode);
+    const onReady = () => {
+      if (startTime == null) restoreProgress(episode.id);
+      else audio.currentTime = startTime;
+      const card = cardEl(episode.id);
+      if (card) updateTimes(card, audio.currentTime, audio.duration);
+      updatePositionState();
+    };
+    if (audio.readyState >= 1) onReady();
+    else audio.addEventListener('loadedmetadata', onReady, { once: true });
+  }
+
+  if (autoplay) {
+    try {
+      await audio.play();
+    } catch (error) {
+      console.error('Could not start playback:', error);
+    }
+  }
 }
 
 list.addEventListener('click', (event) => {
@@ -410,12 +460,13 @@ document.addEventListener('visibilitychange', () => {
 function init() {
   try {
     const data = Array.isArray(window.EDU_EPISODES) ? window.EDU_EPISODES : [];
-    if (!data.length) {
-      list.innerHTML = '<p class="edu-empty">no episodes yet.</p>';
-      return;
-    }
     episodes = data;
-    renderEpisodes(episodes);
+    selectedId = idFromHash();
+    render();
+    window.addEventListener('hashchange', () => {
+      const id = idFromHash();
+      if (id) showPerson(id);
+    });
   } catch (error) {
     console.error('Error loading edu episodes:', error);
     list.innerHTML = '<p class="edu-empty">couldn’t load episodes. please refresh.</p>';

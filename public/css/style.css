@@ -3053,10 +3053,51 @@ body.selfie-crop-open {
   margin-bottom: 2.5rem;
 }
 
-.edu-episodes {
+.edu-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem 1.5rem;
+  margin: 0 0 2.5rem;
+}
+
+.edu-person {
   display: flex;
   flex-direction: column;
-  gap: 3.5rem;
+  align-items: center;
+  gap: 0.45rem;
+  width: 5.5rem;
+  text-decoration: none;
+  color: var(--text-color);
+  opacity: 0.45;
+  transition: opacity 0.2s ease;
+}
+
+.edu-person:hover,
+.edu-person.is-selected {
+  opacity: 1;
+}
+
+.edu-person img {
+  width: 5.5rem;
+  height: 5.5rem;
+  object-fit: cover;
+  object-position: 50% 18%;
+  display: block;
+  background: var(--entry-bg);
+}
+
+.edu-person-name {
+  font-size: 0.8rem;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.edu-person.is-selected .edu-person-name {
+  color: var(--accent-color);
+}
+
+.edu-transcript:not(.is-current) {
+  display: none;
 }
 
 .edu-card {
@@ -3070,6 +3111,7 @@ body.selfie-crop-open {
   width: 220px;
   height: 220px;
   object-fit: cover;
+  object-position: 50% 18%;
   display: block;
   background: var(--entry-bg);
   cursor: pointer;
