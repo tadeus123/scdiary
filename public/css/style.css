@@ -3387,13 +3387,21 @@ body.selfie-crop-open {
   bottom: 0;
   z-index: 5;
   background: var(--bg-color);
-  padding: 0.85rem 1.5rem calc(0.9rem + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--border-color);
+  padding: 0.85rem 1.5rem 0;
+  border-top: none;
 }
 
 .edu-now-dock .edu-player {
   width: min(100%, 520px);
   margin: 0 auto;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.edu-now-dock::after {
+  content: "";
+  display: block;
+  height: calc(0.45rem + env(safe-area-inset-bottom));
 }
 
 .edu-now .edu-play {
