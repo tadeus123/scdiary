@@ -1,0 +1,11 @@
+[
+  {
+    "id": "marshall-kirk-mckusick",
+    "name": "Marshall Kirk McKusick",
+    "born": 1954,
+    "bio": "spent much of his early career at UC Berkeley’s Computer Systems Research Group. Built the BSD Fast File System, worked on FreeBSD, and has long supported open source.",
+    "url": "https://www.mckusick.com/",
+    "image": "/edu/marshall-kirk-mckusick.jpg",
+    "audio": "https://mvtrinbmwtpniavdcspk.supabase.co/storage/v1/object/public/edu/marshall-kirk-mckusick.mp3"
+  }
+]

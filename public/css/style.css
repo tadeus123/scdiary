@@ -3036,3 +3036,235 @@ body.selfie-crop-open {
   }
 }
 
+/* Edu episodes */
+.edu-audio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.edu-page .container {
+  max-width: 640px;
+}
+
+.edu-page nav {
+  margin-bottom: 2.5rem;
+}
+
+.edu-episodes {
+  display: flex;
+  flex-direction: column;
+  gap: 3.5rem;
+}
+
+.edu-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.edu-cover {
+  width: 220px;
+  height: 220px;
+  object-fit: cover;
+  display: block;
+  background: var(--entry-bg);
+  cursor: pointer;
+}
+
+.edu-name {
+  font-size: 1.45rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  margin: 0 0 0.35rem;
+}
+
+.edu-born {
+  color: var(--accent-color);
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  margin: 0 0 1rem;
+}
+
+.edu-bio {
+  font-size: 1.05rem;
+  line-height: 1.8;
+  margin: 0 0 0.85rem;
+}
+
+.edu-link {
+  color: var(--text-color);
+  text-decoration: none;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.95rem;
+  opacity: 0.7;
+  transition: opacity 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.edu-link:hover {
+  opacity: 1;
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.edu-player {
+  width: 100%;
+  margin-top: 0.5rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "play progress"
+    "transport transport";
+  gap: 0.7rem 0.9rem;
+  align-items: center;
+}
+
+.edu-play {
+  grid-area: play;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--border-color);
+  background: var(--entry-bg);
+  color: var(--text-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.edu-play:hover,
+.edu-card.is-playing .edu-play {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.edu-progress {
+  grid-area: progress;
+  min-width: 0;
+}
+
+.edu-seek,
+.edu-speed {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 28px;
+  background: transparent;
+  margin: 0;
+  cursor: pointer;
+}
+
+.edu-seek::-webkit-slider-runnable-track,
+.edu-speed::-webkit-slider-runnable-track {
+  height: 3px;
+  background: var(--border-color);
+  border: none;
+}
+
+.edu-seek::-moz-range-track,
+.edu-speed::-moz-range-track {
+  height: 3px;
+  background: var(--border-color);
+  border: none;
+}
+
+.edu-seek::-webkit-slider-thumb,
+.edu-speed::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  border: none;
+  margin-top: -6.5px;
+}
+
+.edu-seek::-moz-range-thumb,
+.edu-speed::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  border: none;
+}
+
+.edu-times {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  opacity: 0.6;
+  margin-top: 0.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.edu-transport {
+  grid-area: transport;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.edu-skip {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  opacity: 0.6;
+  padding: 0.35rem 0.15rem;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.edu-skip:hover {
+  opacity: 1;
+  color: var(--accent-color);
+}
+
+.edu-speed-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.edu-speed-value {
+  font-size: 0.9rem;
+  min-width: 2.4rem;
+  color: var(--accent-color);
+}
+
+.edu-empty {
+  opacity: 0.6;
+}
+
+@media (max-width: 600px) {
+  .edu-cover {
+    width: 160px;
+    height: 160px;
+  }
+
+  .edu-name {
+    font-size: 1.25rem;
+  }
+
+  .edu-play {
+    width: 52px;
+    height: 52px;
+  }
+
+  .edu-seek,
+  .edu-speed {
+    height: 32px;
+  }
+}
+

@@ -29,7 +29,7 @@ const PAGES = {
   },
   '/edu': {
     title: 'Tade Mehl — edu',
-    description: 'Edu — Tade Mehl.',
+    description: 'Conversations and notes on people, collected by Tade Mehl.',
   },
 };
 

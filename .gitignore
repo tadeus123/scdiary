@@ -17,3 +17,4 @@ server/scripts/time-capsules-messages.js
 cause/node_modules/
 cause/.npm-cache/
 aircart-addon/node_modules/
+tmp/

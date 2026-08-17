@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <%- include('partials/seo-head') %>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=edu1">
 </head>
-<body>
+<body class="edu-page">
   <a href="/" class="corner-btn-left" aria-label="Back to Diary"></a>
 
   <div class="container">
@@ -29,9 +29,20 @@
       </div>
     </nav>
 
-    <main></main>
+    <main>
+      <div id="edu-episodes" class="edu-episodes" aria-label="Episodes"></div>
+    </main>
   </div>
 
+  <audio
+    id="edu-audio"
+    class="edu-audio"
+    preload="metadata"
+    playsinline
+    webkit-playsinline
+  ></audio>
+
   <script src="/js/main.js"></script>
+  <script src="/js/edu.js?v=edu1"></script>
 </body>
 </html>
