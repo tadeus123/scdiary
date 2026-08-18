@@ -14,7 +14,7 @@
         "label": "[video mentioned]"
       }
     ],
-    "image": "/media/edu/marshall-kirk-mckusick.jpg",
+    "image": "/media/edu/marshall-kirk-mckusick.jpg?v=3",
     "audio": "https://mvtrinbmwtpniavdcspk.supabase.co/storage/v1/object/public/edu/marshall-kirk-mckusick.mp3",
     "duration": 3925.73,
     "transcript": [
