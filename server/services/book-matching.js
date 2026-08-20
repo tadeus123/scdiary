@@ -73,7 +73,7 @@ function stripCitations(text) {
 function researchLooksUntrusted(about) {
   const text = String(about || '').trim();
   if (!text) return true;
-  return /does not appear to be an actual|not an actual published work|no known book|misattribut|does not correspond to a known|not a widely recognized publication|not widely recognized|limited information available about its content|fictional or hypothetical|fictional or misattribut|without further inform/i.test(text);
+  return /does not appear to be an actual|not an actual published work|no known book|misattribut|does not correspond to a known|not a widely recognized publication|not widely recognized|limited information available about its content|fictional or hypothetical|fictional or misattribut|without further inform|is likely|likely a |most likely a |may explore|may delve|may discuss|appears to be|seems to be|probably a |based on the title|possibly recounting/i.test(text);
 }
 
 function extractResponseText(data) {
@@ -98,13 +98,15 @@ function researchPrompt(title, author) {
 Title: "${title}"
 Author: ${author}
 
-Identify the actual published work. Books from 2024–2026 are often real even if you do not remember them. If the shelf title is slightly messy, match the real edition (for example "Source Code - Bill Gates" is Bill Gates's memoir Source Code: My Beginnings).
+Identify the actual published work. Books from 2024–2026 are often real even if you do not remember them. If the shelf title is slightly messy, match the real edition (for example "Source Code - Bill Gates" is Bill Gates's memoir Source Code: My Beginnings; "Sam Altman" by Keach Hagey is The Optimist: Sam Altman, OpenAI, and the Race to Invent the Future).
 
-Never claim a book is unpublished, fictional, or misattributed unless a web search finds no matching publication. If search finds no published book, say what the title most likely is (article, memo, video, self-published) without inventing a plot.
+Never claim a book is unpublished, fictional, or misattributed unless a web search finds no matching publication. If search finds no published book, say what the title actually is (article, memo, video, self-published pamphlet) without inventing a plot.
+
+After you have search results, write as fact. Do not hedge with "likely", "may explore", "appears to be", "probably", or "based on the title". Name the real title, year if known, and what the book actually covers.
 
 Return JSON only. No markdown fences. Do not put URLs or citations inside the JSON values:
 {
-  "about": "2-3 sentences: what this specific book is and argues or recounts",
+  "about": "2-3 sentences of confirmed facts: what this specific book is and argues or recounts",
   "subjects": ["specific topics, not broad genres"],
   "people": ["named people, companies, or programs the book is actually about"],
   "ideas": ["specific theses, arguments, or through-lines"],
@@ -346,11 +348,17 @@ async function researchBook(title, author) {
 
   try {
     const parsed = await researchJsonWithWebSearch(title, author);
-    return normalizeProfile(parsed);
+    const profile = normalizeProfile(parsed);
+    if (!researchLooksUntrusted(profile.about)) {
+      return profile;
+    }
+    console.warn(`⚠️ First search still hedged for "${title}"; searching again.`);
+    const retry = await researchJsonWithWebSearch(title, author);
+    return normalizeProfile(retry);
   } catch (error) {
     console.warn(`⚠️ Web search research failed for "${title}": ${error.message}. Falling back to memory.`);
     const parsed = await chatJson({
-      system: 'You research individual books. Identify the actual published work from title and author. Never invent a different famous book. Never say a well-known author\'s book does not exist just because you do not remember it; describe the work implied by the title. If the work is obscure, say what it most likely is from the title and author without padding. Respond with JSON only.',
+      system: 'You research individual books. Identify the actual published work from title and author. Never invent a different famous book. Never say a well-known author\'s book does not exist just because you do not remember it. After identifying the work, write confirmed facts only — no "likely" or "may explore". Respond with JSON only.',
       user: researchPrompt(title, author),
       maxTokens: 700,
       temperature: 0.2
