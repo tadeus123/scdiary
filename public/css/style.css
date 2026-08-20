@@ -1851,6 +1851,20 @@ body.selfie-crop-open {
   color: var(--text-color);
 }
 
+.ai-tools-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.ai-tools-avatar {
+  width: 1.35em;
+  height: 1.35em;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
 .book-form {
   display: flex;
   flex-direction: column;
