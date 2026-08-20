@@ -78,7 +78,7 @@
         </button>
         <p class="connection-hint">
           <strong>Similarity web:</strong> Each book is researched, then scored against every other book from 1–10 on genre and what it is about. Every pair above 5 is connected, so related books group into a web.<br>
-          This replaces the current connections and can take a few minutes.
+          This replaces the current connections. If research notes already exist, it only rebuilds the web (usually under a minute).
         </p>
         <div id="ai-tools-message" class="form-message"></div>
       </div>
@@ -114,6 +114,7 @@
       <img id="admin-book-cover" class="book-cover-detail" src="" alt="">
       <h2 id="admin-book-title"></h2>
       <p id="admin-book-author" class="book-author"></p>
+      <div id="admin-book-research" class="book-research-block"></div>
       <div id="admin-book-dates" class="book-dates"></div>
       <div class="admin-reread-section">
         <h3>Mark as re-read</h3>

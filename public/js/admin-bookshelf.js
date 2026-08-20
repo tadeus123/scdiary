@@ -40,6 +40,11 @@ async function initAdminBookshelf() {
     }
     
     const { books, connections } = data;
+
+    if (network) {
+      network.destroy();
+      network = null;
+    }
     
     const networkDiv = document.getElementById('admin-bookshelf-network');
     const emptyDiv = document.getElementById('network-empty');
@@ -438,6 +443,35 @@ document.getElementById('book-form').addEventListener('submit', async (e) => {
   }
 });
 
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function fillBookResearch(container, book) {
+  if (!container) return;
+  const profile = book.research_profile || {};
+  const genre = profile.category || book.category;
+  const about = profile.about;
+  const subjects = (profile.subjects || []).filter(Boolean).slice(0, 8);
+
+  if (!about && !genre) {
+    container.innerHTML = '';
+    container.classList.add('hidden');
+    return;
+  }
+
+  container.classList.remove('hidden');
+  container.innerHTML = [
+    genre ? `<p class="book-genre">${escapeHtml(genre)}</p>` : '',
+    about ? `<p class="book-research-about">${escapeHtml(about)}</p>` : '',
+    subjects.length ? `<p class="book-subjects">${escapeHtml(subjects.join(' · '))}</p>` : ''
+  ].join('');
+}
+
 // Show admin book panel (with re-read option)
 let currentAdminBookId = null;
 
@@ -454,6 +488,7 @@ function showAdminBookPanel(book) {
   coverImg.alt = book.title;
   titleEl.textContent = book.title;
   authorEl.textContent = book.author;
+  fillBookResearch(document.getElementById('admin-book-research'), book);
 
   // Build read dates list
   const allReadDates = [
@@ -581,13 +616,9 @@ document.getElementById('recategorize-all')?.addEventListener('click', async () 
     const data = await response.json();
     
     if (data.success) {
-      messageDiv.textContent = `Done. Researched ${data.researched || data.categorized} books, created ${data.connectionsCreated} connections.`;
+      messageDiv.textContent = `Done. ${data.connectionsCreated} connections from similarity scores. Click a book to read its research notes.`;
       messageDiv.className = 'form-message success';
-      
-      setTimeout(async () => {
-        await initAdminBookshelf();
-        messageDiv.style.display = 'none';
-      }, 3000);
+      await initAdminBookshelf();
     } else {
       messageDiv.textContent = `Error: ${data.error}`;
       messageDiv.className = 'form-message error';

@@ -169,6 +169,11 @@ async function loadBookshelf() {
       }
     };
     
+    if (network) {
+      network.destroy();
+      network = null;
+    }
+
     network = new vis.Network(container, graphData, options);
     
     // Obsidian-style: Infinite depth zoom - ultra smooth, no jitter
@@ -241,6 +246,35 @@ async function loadBookshelf() {
 }
 
 // Show book details overlay
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function fillBookResearch(container, book) {
+  if (!container) return;
+  const profile = book.research_profile || {};
+  const genre = profile.category || book.category;
+  const about = profile.about;
+  const subjects = (profile.subjects || []).filter(Boolean).slice(0, 8);
+
+  if (!about && !genre) {
+    container.innerHTML = '';
+    container.classList.add('hidden');
+    return;
+  }
+
+  container.classList.remove('hidden');
+  container.innerHTML = [
+    genre ? `<p class="book-genre">${escapeHtml(genre)}</p>` : '',
+    about ? `<p class="book-research-about">${escapeHtml(about)}</p>` : '',
+    subjects.length ? `<p class="book-subjects">${escapeHtml(subjects.join(' · '))}</p>` : ''
+  ].join('');
+}
+
 function showBookDetails(book, nodeId) {
   selectedNodeId = nodeId;
   
@@ -254,6 +288,7 @@ function showBookDetails(book, nodeId) {
   coverImg.alt = book.title;
   titleEl.textContent = book.title;
   authorEl.textContent = book.author;
+  fillBookResearch(document.getElementById('book-research'), book);
   
   // Build list of all read dates (first read + re-reads), sorted chronologically
   const allReadDates = [

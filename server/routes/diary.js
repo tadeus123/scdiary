@@ -429,37 +429,50 @@ router.delete('/api/books/:id', async (req, res) => {
   }
 });
 
-// Research every book independently, then rebuild connections from matching
+// Research missing books, then rebuild connections from similarity scores
 router.post('/api/books/recategorize-all', async (req, res) => {
   try {
-    console.log('🤖 Starting independent research of all books...');
-    
     const books = await getBooks();
-    const researched = await researchBooks(books);
+    const missing = books.filter(book => !book.research_profile?.about);
 
-    let researchedCount = 0;
+    let researchedCount = books.filter(book => book.research_profile?.about).length;
     let failed = 0;
 
-    for (const book of researched) {
-      const result = await updateBookResearch(book.id, {
-        category: book.category,
-        research_profile: book.research_profile
-      });
-      if (result.success) {
-        researchedCount++;
-      } else {
-        failed++;
-        console.error(`❌ Failed to save research for "${book.title}"`);
+    if (missing.length > 0) {
+      console.log(`🤖 Researching ${missing.length} books without notes...`);
+      const researched = await researchBooks(missing);
+
+      for (const book of researched) {
+        const result = await updateBookResearch(book.id, {
+          category: book.category,
+          research_profile: book.research_profile
+        });
+        if (result.success && book.research_profile?.about) {
+          researchedCount++;
+        } else if (!result.success) {
+          failed++;
+          console.error(`❌ Failed to save research for "${book.title}"`);
+        }
       }
+    } else {
+      console.log('✅ All books already have research notes; skipping re-research');
     }
 
-    console.log('🔗 Matching books by researched content...');
-    const matches = await proposeConnections(researched);
+    const latest = await getBooks();
+    console.log('🔗 Scoring similarity and rebuilding connections...');
+    const matches = await proposeConnections(latest);
     const rebuildResult = await replaceAllBookConnections(matches);
 
-    if (rebuildResult.success) {
-      console.log(`✅ Created ${rebuildResult.connectionsCreated} matched connections`);
+    if (!rebuildResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: rebuildResult.error || 'Failed to save connections',
+        researched: researchedCount,
+        failed
+      });
     }
+
+    console.log(`✅ Created ${rebuildResult.connectionsCreated} matched connections`);
 
     res.json({
       success: true,
