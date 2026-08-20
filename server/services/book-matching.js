@@ -132,15 +132,82 @@ function compactProfile(book) {
 
 function formatBookForPrompt(book, index) {
   const profile = book.research_profile || {};
+  const genre = profile.category || book.category || '';
   const lines = [
     `[${index}] "${book.title}" by ${book.author}`
   ];
+  if (genre) lines.push(`Genre: ${genre}`);
   if (profile.about) lines.push(`About: ${profile.about}`);
   if (profile.subjects?.length) lines.push(`Subjects: ${profile.subjects.join(', ')}`);
   if (profile.people?.length) lines.push(`People/orgs: ${profile.people.join(', ')}`);
   if (profile.ideas?.length) lines.push(`Ideas: ${profile.ideas.join('; ')}`);
   if (profile.world) lines.push(`World: ${profile.world}`);
   return lines.join('\n');
+}
+
+function embeddingText(book) {
+  const profile = book.research_profile || {};
+  const genre = profile.category || book.category || '';
+  return [
+    `"${book.title}" by ${book.author}`,
+    genre ? `Genre: ${genre}` : '',
+    profile.about || '',
+    profile.subjects?.length ? `What it is about: ${profile.subjects.join(', ')}` : '',
+    profile.people?.length ? `People: ${profile.people.join(', ')}` : '',
+    profile.ideas?.length ? `Ideas: ${profile.ideas.join('; ')}` : '',
+    profile.world || ''
+  ].filter(Boolean).join('\n');
+}
+
+function cosineSimilarity(a, b) {
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  if (!normA || !normB) return 0;
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+function similarityScore(cosine) {
+  return Math.round(Math.max(0, Math.min(10, cosine * 10)) * 10) / 10;
+}
+
+async function embedTexts(texts) {
+  if (!OPENAI_API_KEY) {
+    throw new Error('OpenAI API key not configured');
+  }
+
+  const vectors = [];
+  for (let i = 0; i < texts.length; i += 100) {
+    const batch = texts.slice(i, i + 100);
+    const response = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'text-embedding-3-small',
+        input: batch
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const message = errorData.error?.message || response.statusText;
+      throw new Error(`OpenAI embeddings error: ${message}`);
+    }
+
+    const data = await response.json();
+    const ordered = [...data.data].sort((a, b) => a.index - b.index);
+    vectors.push(...ordered.map(item => item.embedding));
+  }
+
+  return vectors;
 }
 
 /**
@@ -203,125 +270,73 @@ async function researchBooks(books) {
   });
 }
 
-function extractConnections(parsed, books, { onlyFromId } = {}) {
-  const list = Array.isArray(parsed.connections) ? parsed.connections : [];
-  const byIndex = new Map(books.map((book, i) => [i + 1, book]));
-  const seen = new Set();
+const SIMILARITY_THRESHOLD = 5;
+
+function pairKey(idA, idB) {
+  return [idA, idB].sort().join('|');
+}
+
+function connectionsFromScores(books, vectors, { onlyFromId } = {}) {
   const connections = [];
+  const seen = new Set();
 
-  for (const item of list) {
-    const a = Number(item.a);
-    const b = Number(item.b);
-    const bookA = byIndex.get(a);
-    const bookB = byIndex.get(b);
-    if (!bookA || !bookB || bookA.id === bookB.id) continue;
+  for (let i = 0; i < books.length; i++) {
+    for (let j = i + 1; j < books.length; j++) {
+      const bookA = books[i];
+      const bookB = books[j];
+      if (!bookA?.id || !bookB?.id || bookA.id === bookB.id) continue;
+      if (onlyFromId && bookA.id !== onlyFromId && bookB.id !== onlyFromId) continue;
 
-    if (onlyFromId && bookA.id !== onlyFromId && bookB.id !== onlyFromId) continue;
+      const score = similarityScore(cosineSimilarity(vectors[i], vectors[j]));
+      if (!(score > SIMILARITY_THRESHOLD)) continue;
 
-    const [fromId, toId] = [bookA.id, bookB.id].sort();
-    const key = `${fromId}|${toId}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+      const key = pairKey(bookA.id, bookB.id);
+      if (seen.has(key)) continue;
+      seen.add(key);
 
-    connections.push({
-      from_book_id: fromId,
-      to_book_id: toId,
-      reason: String(item.reason || '').trim().slice(0, 240)
-    });
+      const [fromId, toId] = [bookA.id, bookB.id].sort();
+      connections.push({
+        from_book_id: fromId,
+        to_book_id: toId,
+        reason: `similarity ${score}`
+      });
+    }
   }
 
   return connections;
 }
 
-const MATCHING_RULES = `You are connecting books in a personal intellectual library.
-
-A connection means these two books belong together for a reader of this shelf — they are about the same specific thing, person, company, program, argument, or lineage.
-
-CONNECT when:
-- Same person, company, program, or event (Jobs + Apple history; Kelly Johnson + Skunk Works)
-- Same specific subject from different angles (space settlement; humanoid robots; AI risk)
-- Direct intellectual lineage (a book continues, challenges, or is source material for another)
-- Same series or the same fictional world
-- Fiction and nonfiction that are actually about the same specific subject
-
-DO NOT CONNECT when:
-- They only share a genre or shelf category ("both biographies", "both sci-fi", "both business")
-- The link is vague mood or theme ("ambition", "innovation", "the future", "leadership")
-- You would only group them because they are "kind of similar"
-- The overlap is only that both are famous, both are nonfiction, or both are about "technology"
-
-Be sparse. Most books should have a few real links, not a web to everything nearby. Some books may have none. Hub books (a central Apple history, a core space-settlement text) may have more.
-
-Cross-category links are expected and often the correct ones.`;
-
 /**
- * Propose connections from independently researched profiles.
- * Matching is global — not restricted to category.
+ * Score every pair on genre + what the book is about (1-10).
+ * Always connect when the score is higher than 5.
  */
 async function proposeConnections(books) {
   const usable = books.filter(book => book?.id && book?.title);
   if (usable.length < 2) return [];
 
-  const catalog = usable.map((book, i) => formatBookForPrompt(book, i + 1)).join('\n\n');
-
-  const parsed = await chatJson({
-    system: MATCHING_RULES + ' Respond with JSON only.',
-    user: `Here is the full library. Each book was researched on its own. Decide which pairs should be connected.
-
-${catalog}
-
-Return JSON:
-{
-  "connections": [
-    { "a": 1, "b": 4, "reason": "short specific reason, not a genre" }
-  ]
-}
-
-Use the bracket numbers. Each pair once, a < b. Reason must name the shared subject, person, or argument.`,
-    maxTokens: 8000,
-    temperature: 0.2
-  });
-
-  const connections = extractConnections(parsed, usable);
-  console.log(`🔗 Matching proposed ${connections.length} connections`);
+  console.log(`🔗 Scoring similarity for ${usable.length} books (connect if > ${SIMILARITY_THRESHOLD})...`);
+  const vectors = await embedTexts(usable.map(embeddingText));
+  const connections = connectionsFromScores(usable, vectors);
+  console.log(`🔗 Created ${connections.length} connections with similarity > ${SIMILARITY_THRESHOLD}`);
   return connections;
 }
 
 /**
- * Connect one newly researched book to the rest of the library.
+ * Connect a newly researched book to every existing book it scores above 5 with.
  */
 async function proposeConnectionsForNewBook(newBook, existingBooks) {
   const others = existingBooks.filter(book => book.id !== newBook.id);
   if (others.length === 0) return [];
 
-  const catalog = [newBook, ...others]
-    .map((book, i) => formatBookForPrompt(book, i + 1))
-    .join('\n\n');
-
-  const parsed = await chatJson({
-    system: MATCHING_RULES + ' Only propose connections that include book [1]. Respond with JSON only.',
-    user: `Book [1] is newly added. Connect it only to books it truly belongs with.
-
-${catalog}
-
-Return JSON:
-{
-  "connections": [
-    { "a": 1, "b": 6, "reason": "short specific reason" }
-  ]
-}
-
-Every connection must include 1. Use bracket numbers. Do not connect [1] to a book just because they share a genre.`,
-    maxTokens: 2000,
-    temperature: 0.2
-  });
-
-  return extractConnections(parsed, [newBook, ...others], { onlyFromId: newBook.id });
+  const catalog = [newBook, ...others];
+  const vectors = await embedTexts(catalog.map(embeddingText));
+  return connectionsFromScores(catalog, vectors, { onlyFromId: newBook.id });
 }
 
 module.exports = {
   MODEL,
   CATEGORIES,
+  SIMILARITY_THRESHOLD,
   compactProfile,
   researchBook,
   researchBooks,

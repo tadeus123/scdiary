@@ -560,13 +560,13 @@ document.getElementById('recategorize-all')?.addEventListener('click', async () 
   const button = document.getElementById('recategorize-all');
   const messageDiv = document.getElementById('ai-tools-message');
   
-  if (!confirm('This researches every book independently, then rebuilds connections by real matching — not by category. It can take a few minutes. Continue?')) {
+  if (!confirm('This researches every book, then connects every pair with similarity above 5 (genre and what the book is about). It can take a few minutes. Continue?')) {
     return;
   }
   
   button.disabled = true;
   button.textContent = 'Researching books...';
-  messageDiv.textContent = 'Researching each book, then matching. This can take a few minutes.';
+  messageDiv.textContent = 'Researching each book, then connecting every pair with similarity above 5.';
   messageDiv.className = 'form-message info';
   messageDiv.style.display = 'block';
   
