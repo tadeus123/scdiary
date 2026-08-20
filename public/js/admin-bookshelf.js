@@ -1,8 +1,5 @@
 // Admin Bookshelf Management
 let network = null;
-let connectionMode = false;
-let deleteMode = false;
-let selectedNode = null;
 let nodesDataSet = null;
 let edgesDataSet = null;
 
@@ -202,14 +199,9 @@ async function initAdminBookshelf() {
       network.setOptions({ physics: false });
     });
     
-    // Click handler for connection, delete, and book detail modes
+    // Click a book to open its panel
     network.on('click', function(params) {
-      if (deleteMode) {
-        handleDeleteClick(params);
-      } else if (connectionMode && params.nodes.length > 0) {
-        handleConnectionClick(params.nodes[0]);
-      } else if (params.nodes.length > 0) {
-        // Neither mode: show book detail panel with re-read option
+      if (params.nodes.length > 0) {
         const nodeId = params.nodes[0];
         const node = nodesDataSet.get(nodeId);
         showAdminBookPanel(node.bookData);
@@ -221,170 +213,33 @@ async function initAdminBookshelf() {
   }
 }
 
-// Handle connection mode clicks
-function handleConnectionClick(nodeId) {
-  if (!selectedNode) {
-    // First node selected
-    selectedNode = nodeId;
-    network.selectNodes([nodeId]);
-    showMessage('Now click another book to connect', 'info');
-  } else if (selectedNode === nodeId) {
-    // Clicked same node - deselect
-    selectedNode = null;
-    network.unselectAll();
-    showMessage('Selection cancelled', 'info');
-  } else {
-    // Second node selected - create connection
-    createConnection(selectedNode, nodeId);
-    selectedNode = null;
-    network.unselectAll();
-  }
-}
+async function deleteCurrentBook() {
+  if (!currentAdminBookId || !nodesDataSet) return;
 
-// Create connection between two books
-async function createConnection(fromId, toId) {
+  const node = nodesDataSet.get(currentAdminBookId);
+  const book = node?.bookData;
+  const label = book ? `"${book.title}" by ${book.author}` : 'this book';
+
+  if (!confirm(`Delete ${label}?\n\nThis will also delete all its connections.`)) {
+    return;
+  }
+
   try {
-    const response = await fetch('/api/books/connections', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ fromId, toId })
+    const response = await fetch(`/api/books/${currentAdminBookId}`, {
+      method: 'DELETE'
     });
-    
     const data = await response.json();
-    
+
     if (data.success) {
-      showMessage('Connection created!', 'success');
-      // Add edge to network with the database ID
-      const edgeColor = getEdgeColor();
-      edgesDataSet.add({
-        id: data.connection.id, // Use the database ID
-        from: fromId,
-        to: toId,
-        color: edgeColor,
-        width: 1,
-        smooth: {
-          type: 'continuous'
-        },
-        connectionData: data.connection
-      });
+      hideAdminBookPanel();
+      showMessage('Book deleted.', 'success');
+      await initAdminBookshelf();
     } else {
-      showMessage('Failed to create connection: ' + data.error, 'error');
+      showMessage('Failed to delete book: ' + data.error, 'error');
     }
   } catch (error) {
-    console.error('Error creating connection:', error);
-    showMessage('Error creating connection', 'error');
-  }
-}
-
-// Toggle connection mode
-document.getElementById('toggle-connection-mode').addEventListener('click', () => {
-  // Turn off delete mode if it's on
-  if (deleteMode) {
-    deleteMode = false;
-    document.getElementById('delete-status').textContent = 'OFF';
-    document.getElementById('toggle-delete-mode').classList.remove('active');
-  }
-  
-  connectionMode = !connectionMode;
-  const statusSpan = document.getElementById('connection-status');
-  const button = document.getElementById('toggle-connection-mode');
-  
-  if (connectionMode) {
-    hideAdminBookPanel();
-    statusSpan.textContent = 'ON';
-    button.classList.add('active');
-    showMessage('Connection mode enabled. Click two books to connect them.', 'info');
-  } else {
-    statusSpan.textContent = 'OFF';
-    button.classList.remove('active');
-    selectedNode = null;
-    if (network) network.unselectAll();
-    showMessage('Connection mode disabled', 'info');
-  }
-});
-
-// Toggle delete mode
-document.getElementById('toggle-delete-mode').addEventListener('click', () => {
-  // Turn off connection mode if it's on
-  if (connectionMode) {
-    connectionMode = false;
-    document.getElementById('connection-status').textContent = 'OFF';
-    document.getElementById('toggle-connection-mode').classList.remove('active');
-    selectedNode = null;
-    if (network) network.unselectAll();
-  }
-  
-  deleteMode = !deleteMode;
-  const statusSpan = document.getElementById('delete-status');
-  const button = document.getElementById('toggle-delete-mode');
-  
-  if (deleteMode) {
-    hideAdminBookPanel();
-    statusSpan.textContent = 'ON';
-    button.classList.add('active');
-    showMessage('Delete mode enabled. Click a book or connection to delete it.', 'info');
-  } else {
-    statusSpan.textContent = 'OFF';
-    button.classList.remove('active');
-    showMessage('Delete mode disabled', 'info');
-  }
-});
-
-// Handle delete mode clicks
-async function handleDeleteClick(params) {
-  // Delete book (node)
-  if (params.nodes.length > 0) {
-    const nodeId = params.nodes[0];
-    const node = nodesDataSet.get(nodeId);
-    
-    if (confirm(`Delete "${node.bookData.title}" by ${node.bookData.author}?\n\nThis will also delete all its connections.`)) {
-      try {
-        const response = await fetch(`/api/books/${nodeId}`, {
-          method: 'DELETE'
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          showMessage('Book deleted successfully!', 'success');
-          // Reload network
-          await initAdminBookshelf();
-        } else {
-          showMessage('Failed to delete book: ' + data.error, 'error');
-        }
-      } catch (error) {
-        console.error('Error deleting book:', error);
-        showMessage('Error deleting book', 'error');
-      }
-    }
-  }
-  // Delete connection (edge)
-  else if (params.edges.length > 0) {
-    const edgeId = params.edges[0];
-    const edge = edgesDataSet.get(edgeId);
-    
-    if (confirm('Delete this connection between books?')) {
-      try {
-        const response = await fetch(`/api/books/connections/${edgeId}`, {
-          method: 'DELETE'
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          showMessage('Connection deleted!', 'success');
-          // Remove from network
-          edgesDataSet.remove(edgeId);
-        } else {
-          showMessage('Failed to delete connection: ' + data.error, 'error');
-        }
-      } catch (error) {
-        console.error('Error deleting connection:', error);
-        showMessage('Error deleting connection', 'error');
-      }
-    }
+    console.error('Error deleting book:', error);
+    showMessage('Error deleting book', 'error');
   }
 }
 
@@ -515,6 +370,7 @@ function hideAdminBookPanel() {
 
 // Close admin book panel
 document.getElementById('admin-close-panel')?.addEventListener('click', hideAdminBookPanel);
+document.getElementById('admin-delete-book-btn')?.addEventListener('click', deleteCurrentBook);
 
 // Mark as re-read
 document.getElementById('mark-reread-btn')?.addEventListener('click', async () => {

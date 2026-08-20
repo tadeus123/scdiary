@@ -87,23 +87,9 @@
       </div>
     </div>
     
-    <!-- Connection Controls -->
+    <!-- Delete book -->
     <div class="connection-section">
-      <h2>manage connections</h2>
-      <div class="connection-controls">
-        <button id="toggle-connection-mode" class="btn btn-secondary">
-          Connection Mode: <span id="connection-status">OFF</span>
-        </button>
-        <button id="toggle-delete-mode" class="btn btn-secondary btn-delete">
-          Delete Mode: <span id="delete-status">OFF</span>
-        </button>
-        <p class="connection-hint">
-          <strong>Connection Mode:</strong> Click two books to connect them<br>
-          <strong>Delete Mode:</strong> Click a book to delete it, or click a connection line to remove it
-        </p>
-      </div>
-      
-      <!-- Network Visualization -->
+      <h2>delete book</h2>
       <div id="admin-bookshelf-network" class="admin-network"></div>
       <div id="network-empty" class="network-empty">
         No books yet. Add your first book above!
@@ -126,6 +112,9 @@
           <button type="button" id="mark-reread-btn" class="btn">I read it again</button>
         </div>
         <div id="reread-message" class="reread-message"></div>
+      </div>
+      <div class="admin-delete-section">
+        <button type="button" id="admin-delete-book-btn" class="btn btn-delete-book">Delete book</button>
       </div>
     </div>
     <button id="admin-close-panel" class="close-details">✕</button>

@@ -1796,6 +1796,23 @@ body.selfie-crop-open {
   width: 100%;
 }
 
+.admin-delete-section {
+  width: 100%;
+  padding-top: 0.75rem;
+}
+
+.btn-delete-book {
+  background: transparent;
+  color: #941E2F;
+  border: 1px solid #941E2F;
+  width: 100%;
+}
+
+.btn-delete-book:hover {
+  background: #941E2F;
+  color: #fff;
+}
+
 .admin-reread-section h3 {
   font-size: 1rem;
   font-weight: 400;
