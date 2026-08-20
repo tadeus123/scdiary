@@ -1736,6 +1736,20 @@ body.selfie-crop-open {
   margin: 0;
 }
 
+.book-research-about[contenteditable="true"] {
+  cursor: text;
+  outline: none;
+  border-radius: 4px;
+  padding: 0.2rem 0.15rem;
+  min-height: 2.6em;
+}
+
+.book-research-about[contenteditable="true"]:hover,
+.book-research-about[contenteditable="true"]:focus {
+  background: rgba(193, 106, 40, 0.08);
+  opacity: 1;
+}
+
 .close-details {
   position: absolute;
   top: 1rem;
@@ -1759,34 +1773,37 @@ body.selfie-crop-open {
   opacity: 1;
 }
 
-/* Admin book panel (re-read feature) */
+/* Admin book panel */
 .admin-book-panel {
   position: fixed;
-  bottom: 50px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--entry-bg);
-  backdrop-filter: blur(10px);
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--border-color);
+  inset: 0;
   z-index: 1000;
-  max-width: 500px;
-  width: 90%;
-  text-align: center;
-  transition: all 0.3s ease;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 1.5rem 1rem 50px;
+  background: transparent;
 }
 
 .admin-book-panel.hidden {
   display: none;
 }
 
-.admin-book-panel-content {
+.admin-book-panel-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   align-items: center;
+  background: var(--entry-bg);
+  backdrop-filter: blur(10px);
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-color);
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
 }
 
 .admin-reread-section {

@@ -17,6 +17,7 @@ const {
   deleteConnection,
   replaceAllBookConnections,
   updateBookResearch,
+  updateBookResearchAbout,
   getCeCategories,
   getOrCreateCeCategory,
   getCeData,
@@ -369,6 +370,27 @@ router.post('/api/books/:id/reread', async (req, res) => {
     }
   } catch (error) {
     console.error('Error adding re-read:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// API: Update AI research note for a book
+router.patch('/api/books/:id/research-about', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const about = req.body?.about;
+    if (typeof about !== 'string') {
+      return res.status(400).json({ success: false, error: 'about is required' });
+    }
+
+    const result = await updateBookResearchAbout(id, about);
+    if (result.success) {
+      res.json({ success: true, research_profile: result.research_profile });
+    } else {
+      res.status(400).json({ success: false, error: result.error });
+    }
+  } catch (error) {
+    console.error('Error updating research note:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

@@ -310,19 +310,72 @@ function fillBookResearch(container, book) {
   if (!container) return;
   const profile = book.research_profile || {};
   const genre = profile.category || book.category;
-  const about = profile.about;
-
-  if (!about && !genre) {
-    container.innerHTML = '';
-    container.classList.add('hidden');
-    return;
-  }
+  const about = profile.about || '';
 
   container.classList.remove('hidden');
   container.innerHTML = [
     genre ? `<p class="book-genre">${escapeHtml(genre)}</p>` : '',
-    about ? `<p class="book-research-about">${escapeHtml(about)}</p>` : ''
+    `<p class="book-research-about" contenteditable="true" spellcheck="true">${escapeHtml(about)}</p>`
   ].join('');
+  lastSavedAbout = about.trim();
+}
+
+let researchSaveTimer = null;
+let lastSavedAbout = '';
+
+async function saveResearchAbout(el) {
+  const bookId = currentAdminBookId;
+  if (!bookId || !el) return;
+  const about = (el.innerText || '').replace(/\u00a0/g, ' ').trim();
+  if (about === lastSavedAbout) return;
+
+  lastSavedAbout = about;
+  try {
+    const response = await fetch(`/api/books/${bookId}/research-about`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ about })
+    });
+    const data = await response.json();
+    if (!data.success) {
+      console.error('Failed to save research note:', data.error);
+      return;
+    }
+    if (nodesDataSet) {
+      const node = nodesDataSet.get(bookId);
+      if (node?.bookData) {
+        const profile = {
+          ...(node.bookData.research_profile || {}),
+          ...(data.research_profile || {}),
+          about
+        };
+        nodesDataSet.update([{
+          id: bookId,
+          bookData: { ...node.bookData, research_profile: profile }
+        }]);
+      }
+    }
+  } catch (error) {
+    console.error('Error saving research note:', error);
+  }
+}
+
+function bindResearchEditing() {
+  const container = document.getElementById('admin-book-research');
+  if (!container || container.dataset.bound) return;
+  container.dataset.bound = 'true';
+
+  container.addEventListener('input', (e) => {
+    if (!e.target.classList.contains('book-research-about')) return;
+    clearTimeout(researchSaveTimer);
+    researchSaveTimer = setTimeout(() => saveResearchAbout(e.target), 700);
+  });
+
+  container.addEventListener('blur', (e) => {
+    if (!e.target.classList.contains('book-research-about')) return;
+    clearTimeout(researchSaveTimer);
+    saveResearchAbout(e.target);
+  }, true);
 }
 
 // Show admin book panel (with re-read option)
@@ -364,12 +417,20 @@ function showAdminBookPanel(book) {
 }
 
 function hideAdminBookPanel() {
+  const aboutEl = document.querySelector('#admin-book-research .book-research-about');
+  if (aboutEl) {
+    clearTimeout(researchSaveTimer);
+    saveResearchAbout(aboutEl);
+  }
   document.getElementById('admin-book-panel').classList.add('hidden');
   currentAdminBookId = null;
 }
 
-// Close admin book panel
-document.getElementById('admin-close-panel')?.addEventListener('click', hideAdminBookPanel);
+document.getElementById('admin-book-panel')?.addEventListener('click', (e) => {
+  if (e.target.id === 'admin-book-panel') {
+    hideAdminBookPanel();
+  }
+});
 document.getElementById('admin-delete-book-btn')?.addEventListener('click', deleteCurrentBook);
 
 // Mark as re-read
@@ -495,4 +556,7 @@ document.getElementById('recategorize-all')?.addEventListener('click', async () 
 document.addEventListener('themeChanged', updateEdgeColors);
 
 // Initialize on page load
-window.addEventListener('DOMContentLoaded', initAdminBookshelf);
+window.addEventListener('DOMContentLoaded', () => {
+  bindResearchEditing();
+  initAdminBookshelf();
+});

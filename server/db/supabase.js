@@ -642,6 +642,45 @@ async function updateBookResearch(bookId, { category, research_profile }) {
   }
 }
 
+async function updateBookResearchAbout(bookId, about) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { data: book, error: fetchError } = await supabase
+      .from('books')
+      .select('research_profile')
+      .eq('id', bookId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching book research:', fetchError);
+      return { success: false, error: fetchError.message };
+    }
+
+    const research_profile = {
+      ...(book.research_profile || {}),
+      about: String(about || '').trim()
+    };
+
+    const { error } = await supabase
+      .from('books')
+      .update({ research_profile })
+      .eq('id', bookId);
+
+    if (error) {
+      console.error('Error saving book research note:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, research_profile };
+  } catch (error) {
+    console.error('Error saving book research note:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // Update book reading time info (audio_duration_minutes only)
 async function updateBookReadingTime(bookId, { audio_duration_minutes }) {
   if (!supabase) {
@@ -1724,6 +1763,7 @@ module.exports = {
   replaceAllBookConnections,
   updateBookCategory,
   updateBookResearch,
+  updateBookResearchAbout,
   updateBookReadingTime,
   getCauseGraph,
   saveCauseGraph,
