@@ -595,13 +595,13 @@ document.getElementById('recategorize-all')?.addEventListener('click', async () 
   const button = document.getElementById('recategorize-all');
   const messageDiv = document.getElementById('ai-tools-message');
   
-  if (!confirm('This researches every book, then connects every pair with similarity above 5 (genre and what the book is about). It can take a few minutes. Continue?')) {
+  if (!confirm('This lets gpt-4o look at the researched shelf and draw connections like a person — same kinds of books together, plus the extra links that belong. Continue?')) {
     return;
   }
   
   button.disabled = true;
   button.textContent = 'Researching books...';
-  messageDiv.textContent = 'Researching each book, then connecting every pair with similarity above 5.';
+  messageDiv.textContent = 'Drawing connections the way a person would. This is usually under a minute.';
   messageDiv.className = 'form-message info';
   messageDiv.style.display = 'block';
   
@@ -616,7 +616,7 @@ document.getElementById('recategorize-all')?.addEventListener('click', async () 
     const data = await response.json();
     
     if (data.success) {
-      messageDiv.textContent = `Done. ${data.connectionsCreated} connections from similarity scores. Click a book to read its research notes.`;
+      messageDiv.textContent = `Done. ${data.connectionsCreated} connections. Click a book to read its research notes.`;
       messageDiv.className = 'form-message success';
       await initAdminBookshelf();
     } else {
