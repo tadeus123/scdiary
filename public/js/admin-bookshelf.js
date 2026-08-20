@@ -555,18 +555,18 @@ function showMessage(message, type = 'info') {
   }, 5000);
 }
 
-// AI Tools: Recategorize all books button
+// AI Tools: research every book, then rebuild connections from matching
 document.getElementById('recategorize-all')?.addEventListener('click', async () => {
   const button = document.getElementById('recategorize-all');
   const messageDiv = document.getElementById('ai-tools-message');
   
-  if (!confirm('This will re-categorize all books using AI and rebuild all connections. This may take a few minutes. Continue?')) {
+  if (!confirm('This researches every book independently, then rebuilds connections by real matching — not by category. It can take a few minutes. Continue?')) {
     return;
   }
   
   button.disabled = true;
-  button.textContent = '🤖 Categorizing...';
-  messageDiv.textContent = 'AI is analyzing your books... This may take a few minutes.';
+  button.textContent = 'Researching books...';
+  messageDiv.textContent = 'Researching each book, then matching. This can take a few minutes.';
   messageDiv.className = 'form-message info';
   messageDiv.style.display = 'block';
   
@@ -581,25 +581,24 @@ document.getElementById('recategorize-all')?.addEventListener('click', async () 
     const data = await response.json();
     
     if (data.success) {
-      messageDiv.textContent = `✅ Success! Categorized ${data.categorized} books, created ${data.connectionsCreated} connections.`;
+      messageDiv.textContent = `Done. Researched ${data.researched || data.categorized} books, created ${data.connectionsCreated} connections.`;
       messageDiv.className = 'form-message success';
       
-      // Reload network
       setTimeout(async () => {
         await initAdminBookshelf();
         messageDiv.style.display = 'none';
       }, 3000);
     } else {
-      messageDiv.textContent = `❌ Error: ${data.error}`;
+      messageDiv.textContent = `Error: ${data.error}`;
       messageDiv.className = 'form-message error';
     }
   } catch (error) {
-    console.error('Error recategorizing:', error);
-    messageDiv.textContent = `❌ Error: ${error.message}`;
+    console.error('Error researching books:', error);
+    messageDiv.textContent = `Error: ${error.message}`;
     messageDiv.className = 'form-message error';
   } finally {
     button.disabled = false;
-    button.textContent = 'Recategorize All Books';
+    button.textContent = 'Research & reconnect';
     
     setTimeout(() => {
       messageDiv.style.display = 'none';

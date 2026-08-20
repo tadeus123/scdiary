@@ -352,7 +352,7 @@ async function addBook(bookData) {
 }
 
 // Create connection between books
-async function addBookConnection(fromId, toId) {
+async function addBookConnection(fromId, toId, reason = null) {
   if (!supabase) {
     console.warn('⚠️  Supabase not configured');
     return { success: false, error: 'Supabase not configured' };
@@ -371,7 +371,8 @@ async function addBookConnection(fromId, toId) {
 
     const connectionData = {
       from_book_id: fromId,
-      to_book_id: toId
+      to_book_id: toId,
+      reason: reason || null
     };
 
     const { data, error } = await supabase
@@ -544,62 +545,38 @@ async function autoConnectBook(bookId, category) {
   }
 }
 
-// Rebuild all connections based on categories (deletes all, recreates)
-async function rebuildAllConnections() {
+// Replace every book connection with a provided set (research matching)
+async function replaceAllBookConnections(connections) {
   if (!supabase) {
     return { success: false, error: 'Supabase not configured' };
   }
 
   try {
-    // Delete all existing connections
+    const rows = (connections || []).map(conn => ({
+      from_book_id: conn.from_book_id,
+      to_book_id: conn.to_book_id,
+      reason: conn.reason || null
+    }));
+
+    if (rows.length === 0) {
+      return { success: false, error: 'No connections proposed; left the existing graph in place' };
+    }
+
     const { error: deleteError } = await supabase
       .from('book_connections')
       .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+      .neq('id', '00000000-0000-0000-0000-000000000000');
 
     if (deleteError) {
       console.error('Error deleting connections:', deleteError);
       return { success: false, error: deleteError.message };
     }
 
-    // Get all books with categories
-    const { data: books, error: fetchError } = await supabase
-      .from('books')
-      .select('id, category')
-      .not('category', 'is', null);
-
-    if (fetchError) {
-      console.error('Error fetching books:', fetchError);
-      return { success: false, error: fetchError.message };
-    }
-
-    // Group books by category
-    const booksByCategory = {};
-    books.forEach(book => {
-      if (!booksByCategory[book.category]) {
-        booksByCategory[book.category] = [];
-      }
-      booksByCategory[book.category].push(book.id);
-    });
-
-    // Create connections within each category
-    const allConnections = [];
-    Object.entries(booksByCategory).forEach(([category, bookIds]) => {
-      // Connect each book to every other book in the same category
-      for (let i = 0; i < bookIds.length; i++) {
-        for (let j = i + 1; j < bookIds.length; j++) {
-          allConnections.push({
-            from_book_id: bookIds[i],
-            to_book_id: bookIds[j]
-          });
-        }
-      }
-    });
-
-    if (allConnections.length > 0) {
+    for (let i = 0; i < rows.length; i += 80) {
+      const batch = rows.slice(i, i + 80);
       const { error: insertError } = await supabase
         .from('book_connections')
-        .insert(allConnections);
+        .insert(batch);
 
       if (insertError) {
         console.error('Error creating connections:', insertError);
@@ -607,9 +584,9 @@ async function rebuildAllConnections() {
       }
     }
 
-    return { success: true, connectionsCreated: allConnections.length };
+    return { success: true, connectionsCreated: rows.length };
   } catch (error) {
-    console.error('Error rebuilding connections:', error);
+    console.error('Error replacing connections:', error);
     return { success: false, error: error.message };
   }
 }
@@ -634,6 +611,33 @@ async function updateBookCategory(bookId, category) {
     return { success: true };
   } catch (error) {
     console.error('Error updating book category:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function updateBookResearch(bookId, { category, research_profile }) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const patch = {};
+    if (category !== undefined) patch.category = category;
+    if (research_profile !== undefined) patch.research_profile = research_profile;
+
+    const { error } = await supabase
+      .from('books')
+      .update(patch)
+      .eq('id', bookId);
+
+    if (error) {
+      console.error('Error updating book research:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating book research:', error);
     return { success: false, error: error.message };
   }
 }
@@ -1717,8 +1721,9 @@ module.exports = {
   deleteBook,
   deleteConnection,
   autoConnectBook,
-  rebuildAllConnections,
+  replaceAllBookConnections,
   updateBookCategory,
+  updateBookResearch,
   updateBookReadingTime,
   getCauseGraph,
   saveCauseGraph,

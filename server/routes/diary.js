@@ -15,9 +15,8 @@ const {
   addBookConnection, 
   deleteBook,
   deleteConnection,
-  autoConnectBook,
-  rebuildAllConnections,
-  updateBookCategory,
+  replaceAllBookConnections,
+  updateBookResearch,
   getCeCategories,
   getOrCreateCeCategory,
   getCeData,
@@ -30,8 +29,12 @@ const {
 } = require('../db/supabase');
 const { parseYouTubeUrl } = require('../utils/youtube');
 const { sortedEpisodes, getEpisode, episodeLinks, episodeSeo } = require('../utils/edu-episodes');
-const { categorizeBook } = require('../services/categorization');
-const { calculateSimilarity } = require('../services/similarity');
+const {
+  researchBook,
+  researchBooks,
+  proposeConnections,
+  proposeConnectionsForNewBook
+} = require('../services/book-matching');
 
 // Initialize Supabase client for storage
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -240,10 +243,24 @@ router.post('/api/books', upload.single('cover'), async (req, res) => {
       .from('book-covers')
       .getPublicUrl(fileName);
     
-    // 🤖 AI: Categorize the book automatically
-    console.log(`🤖 Categorizing "${title}" by ${author}...`);
-    const category = await categorizeBook(title, author);
-    console.log(`✅ Category: ${category}`);
+    // Research the book on its own, then match it against the rest of the shelf
+    console.log(`🤖 Researching "${title}" by ${author}...`);
+    let research_profile;
+    try {
+      research_profile = await researchBook(title, author);
+    } catch (researchError) {
+      console.error('Research failed, saving book without profile:', researchError.message);
+      research_profile = {
+        about: '',
+        subjects: [],
+        people: [],
+        ideas: [],
+        world: '',
+        category: 'Other'
+      };
+    }
+    const category = research_profile.category;
+    console.log(`✅ Research complete (${category})`);
     
     // Parse audio duration from form input
     const audioDurationMinutes = parseInt(audioDuration);
@@ -254,63 +271,45 @@ router.post('/api/books', upload.single('cover'), async (req, res) => {
       author,
       date_read: dateRead,
       cover_image_url: urlData.publicUrl,
-      category: category,
+      category,
+      research_profile,
       audio_duration_minutes: audioDurationMinutes
     };
     
     const result = await addBook(bookData);
     
     if (result.success) {
-      // 🤖 Smart connections: Use AI similarity analysis
-      if (category && category !== 'Other') {
-        try {
-          console.log(`🤖 Analyzing similarity with other ${category} books...`);
-          
-          // Get all other books in the same category
-          const allBooks = await getBooks();
-          const categoryBooks = allBooks.filter(b => 
-            b.category === category && b.id !== result.book.id
+      try {
+        const allBooks = await getBooks();
+        const newBook = {
+          id: result.book.id,
+          title: result.book.title,
+          author: result.book.author,
+          research_profile
+        };
+        const existingBooks = allBooks.filter(book => book.id !== result.book.id);
+        const matches = await proposeConnectionsForNewBook(newBook, existingBooks);
+
+        let connectionsCreated = 0;
+        for (const match of matches) {
+          const connResult = await addBookConnection(
+            match.from_book_id,
+            match.to_book_id,
+            match.reason
           );
-          
-          // Analyze similarity with each book
-          const newBook = {
-            id: result.book.id,
-            title: result.book.title,
-            author: result.book.author,
-            category: result.book.category
-          };
-          
-          let connectionsCreated = 0;
-          for (const otherBook of categoryBooks) {
-            try {
-              const similarity = await calculateSimilarity(newBook, otherBook);
-              
-              if (similarity >= 5) {
-                // Create connection
-                const connResult = await addBookConnection(newBook.id, otherBook.id);
-                if (connResult.success) {
-                  connectionsCreated++;
-                  console.log(`✅ Connected to "${otherBook.title}" (${similarity}/10)`);
-                } else {
-                  console.log(`⚠️  Failed to connect to "${otherBook.title}": ${connResult.error}`);
-                }
-              } else {
-                console.log(`⚪ Skipped "${otherBook.title}" (${similarity}/10)`);
-              }
-            } catch (connError) {
-              console.error(`❌ Error connecting to "${otherBook.title}":`, connError.message);
-              // Continue with other books
-            }
-            
-            // Small delay
-            await new Promise(resolve => setTimeout(resolve, 100));
+          if (connResult.success) {
+            connectionsCreated++;
+            const otherId = match.from_book_id === newBook.id
+              ? match.to_book_id
+              : match.from_book_id;
+            const other = existingBooks.find(book => book.id === otherId);
+            console.log(`✅ Connected to "${other?.title || otherId}" (${match.reason})`);
           }
-          
-          console.log(`✅ Created ${connectionsCreated} smart connections`);
-        } catch (analysisError) {
-          console.error('❌ Error during similarity analysis:', analysisError.message);
-          // Book is still added, just without connections
         }
+
+        console.log(`✅ Created ${connectionsCreated} matched connections`);
+      } catch (analysisError) {
+        console.error('❌ Error during book matching:', analysisError.message);
       }
       
       res.json({ success: true, book: result.book });
@@ -430,67 +429,64 @@ router.delete('/api/books/:id', async (req, res) => {
   }
 });
 
-// API: Recategorize all books using AI (admin only)
+// Research every book independently, then rebuild connections from matching
 router.post('/api/books/recategorize-all', async (req, res) => {
   try {
-    console.log('🤖 Starting recategorization of all books...');
+    console.log('🤖 Starting independent research of all books...');
     
     const books = await getBooks();
-    let categorized = 0;
+    const researched = await researchBooks(books);
+
+    let researchedCount = 0;
     let failed = 0;
-    
-    for (const book of books) {
-      try {
-        const category = await categorizeBook(book.title, book.author);
-        const result = await updateBookCategory(book.id, category);
-        
-        if (result.success) {
-          categorized++;
-          console.log(`✅ "${book.title}" → ${category}`);
-        } else {
-          failed++;
-          console.error(`❌ Failed to update "${book.title}"`);
-        }
-        
-        // Small delay to avoid rate limits
-        await new Promise(resolve => setTimeout(resolve, 100));
-      } catch (error) {
+
+    for (const book of researched) {
+      const result = await updateBookResearch(book.id, {
+        category: book.category,
+        research_profile: book.research_profile
+      });
+      if (result.success) {
+        researchedCount++;
+      } else {
         failed++;
-        console.error(`❌ Error categorizing "${book.title}":`, error.message);
+        console.error(`❌ Failed to save research for "${book.title}"`);
       }
     }
-    
-    // Rebuild all connections based on new categories
-    console.log('🔗 Rebuilding all connections...');
-    const rebuildResult = await rebuildAllConnections();
-    
+
+    console.log('🔗 Matching books by researched content...');
+    const matches = await proposeConnections(researched);
+    const rebuildResult = await replaceAllBookConnections(matches);
+
     if (rebuildResult.success) {
-      console.log(`✅ Created ${rebuildResult.connectionsCreated} connections`);
+      console.log(`✅ Created ${rebuildResult.connectionsCreated} matched connections`);
     }
-    
-    res.json({ 
-      success: true, 
-      categorized,
+
+    res.json({
+      success: true,
+      categorized: researchedCount,
+      researched: researchedCount,
       failed,
       connectionsCreated: rebuildResult.connectionsCreated || 0
     });
   } catch (error) {
-    console.error('Error recategorizing books:', error);
+    console.error('Error researching and matching books:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// API: Rebuild all connections based on categories (admin only)
+// Rebuild connections from stored research (no re-research)
 router.post('/api/books/rebuild-connections', async (req, res) => {
   try {
-    console.log('🔗 Rebuilding all connections...');
-    const result = await rebuildAllConnections();
-    
+    console.log('🔗 Matching books from stored research...');
+    const books = await getBooks();
+    const matches = await proposeConnections(books);
+    const result = await replaceAllBookConnections(matches);
+
     if (result.success) {
-      console.log(`✅ Created ${result.connectionsCreated} connections`);
-      res.json({ 
-        success: true, 
-        connectionsCreated: result.connectionsCreated 
+      console.log(`✅ Created ${result.connectionsCreated} matched connections`);
+      res.json({
+        success: true,
+        connectionsCreated: result.connectionsCreated
       });
     } else {
       res.status(500).json({ success: false, error: result.error });
