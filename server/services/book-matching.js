@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const MODEL = 'gpt-4o';
-const RESEARCH_CONCURRENCY = 5;
+const RESEARCH_CONCURRENCY = 2;
 
 const CATEGORIES = [
   'Biography',
@@ -62,6 +62,61 @@ function parseJson(text) {
   }
 }
 
+function stripCitations(text) {
+  return String(text || '')
+    .replace(/【[^】]*】/g, '')
+    .replace(/\s*\(\s*https?:\/\/[^)]+\)/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function researchLooksUntrusted(about) {
+  const text = String(about || '').trim();
+  if (!text) return true;
+  return /does not appear to be an actual|not an actual published work|no known book|misattribut|does not correspond to a known|not a widely recognized publication|not widely recognized|limited information available about its content|fictional or hypothetical|fictional or misattribut|without further inform/i.test(text);
+}
+
+function extractResponseText(data) {
+  if (typeof data.output_text === 'string' && data.output_text.trim()) {
+    return data.output_text;
+  }
+  const parts = [];
+  for (const item of data.output || []) {
+    if (item.type !== 'message') continue;
+    for (const content of item.content || []) {
+      if (content.type === 'output_text' && content.text) {
+        parts.push(content.text);
+      }
+    }
+  }
+  return parts.join('\n');
+}
+
+function researchPrompt(title, author) {
+  return `Search the live web for this exact title and author before writing anything. This title is on a real reader's shelf.
+
+Title: "${title}"
+Author: ${author}
+
+Identify the actual published work. Books from 2024–2026 are often real even if you do not remember them. If the shelf title is slightly messy, match the real edition (for example "Source Code - Bill Gates" is Bill Gates's memoir Source Code: My Beginnings).
+
+Never claim a book is unpublished, fictional, or misattributed unless a web search finds no matching publication. If search finds no published book, say what the title most likely is (article, memo, video, self-published) without inventing a plot.
+
+Return JSON only. No markdown fences. Do not put URLs or citations inside the JSON values:
+{
+  "about": "2-3 sentences: what this specific book is and argues or recounts",
+  "subjects": ["specific topics, not broad genres"],
+  "people": ["named people, companies, or programs the book is actually about"],
+  "ideas": ["specific theses, arguments, or through-lines"],
+  "world": "era, place, or domain (short)",
+  "category": "one of: ${CATEGORIES.join(', ')}"
+}
+
+Rules:
+- Biography only if the book is substantially about a person's life
+- Subjects must be specific ("Lockheed Skunk Works", "Apple 1976-2011") not "biography" or "business"`;
+}
+
 async function chatJson({ system, user, maxTokens = 800, temperature = 0.2 }) {
   if (!OPENAI_API_KEY) {
     throw new Error('OpenAI API key not configured');
@@ -116,6 +171,55 @@ async function chatJson({ system, user, maxTokens = 800, temperature = 0.2 }) {
   throw lastError;
 }
 
+async function researchJsonWithWebSearch(title, author) {
+  if (!OPENAI_API_KEY) {
+    throw new Error('OpenAI API key not configured');
+  }
+
+  let lastError;
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        tools: [{ type: 'web_search' }],
+        tool_choice: 'required',
+        input: researchPrompt(title, author)
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const parsed = parseJson(extractResponseText(data));
+      if (!parsed) {
+        throw new Error('Could not parse web-search research JSON');
+      }
+      return parsed;
+    }
+
+    const errorData = await response.json().catch(() => ({}));
+    const message = errorData.error?.message || response.statusText;
+    lastError = new Error(`OpenAI API error: ${message}`);
+
+    const retryAfter = message.match(/try again in ([0-9.]+)s/i);
+    if (!retryAfter && response.status !== 429) {
+      throw lastError;
+    }
+
+    const waitMs = retryAfter
+      ? Math.ceil(Number(retryAfter[1]) * 1000) + 400
+      : 3000 * attempt;
+    console.warn(`⏳ ${message} Waiting ${waitMs}ms (attempt ${attempt}/4)`);
+    await sleep(waitMs);
+  }
+
+  throw lastError;
+}
+
 function normalizeProfile(raw, fallbackCategory) {
   const subjects = Array.isArray(raw.subjects) ? raw.subjects.filter(Boolean).slice(0, 8) : [];
   const people = Array.isArray(raw.people) ? raw.people.filter(Boolean).slice(0, 8) : [];
@@ -123,11 +227,11 @@ function normalizeProfile(raw, fallbackCategory) {
   const category = CATEGORIES.includes(raw.category) ? raw.category : (fallbackCategory || 'Other');
 
   return {
-    about: String(raw.about || '').trim().slice(0, 600),
+    about: stripCitations(raw.about).slice(0, 600),
     subjects,
     people,
     ideas,
-    world: String(raw.world || '').trim().slice(0, 160),
+    world: stripCitations(raw.world).slice(0, 160),
     category
   };
 }
@@ -232,6 +336,7 @@ async function embedTexts(texts) {
 
 /**
  * Research one book in isolation — what it actually is, not how it compares.
+ * Uses live web search so recent books are not denied from memory.
  */
 async function researchBook(title, author) {
   if (!OPENAI_API_KEY) {
@@ -239,32 +344,19 @@ async function researchBook(title, author) {
     return normalizeProfile({ about: '', subjects: [], people: [], ideas: [], world: '', category: 'Other' });
   }
 
-  const parsed = await chatJson({
-    system: 'You research individual books. Identify the actual published work from title and author. Never invent a different famous book. If the work is obscure, say what it most likely is from the title and author without padding. Respond with JSON only.',
-    user: `Research this book independently. Do not compare it to other books.
-
-Title: "${title}"
-Author: ${author}
-
-Return JSON:
-{
-  "about": "2-3 sentences: what this specific book is and argues or recounts",
-  "subjects": ["specific topics, not broad genres"],
-  "people": ["named people, companies, or programs the book is actually about"],
-  "ideas": ["specific theses, arguments, or through-lines"],
-  "world": "era, place, or domain (short)",
-  "category": "one of: ${CATEGORIES.join(', ')}"
-}
-
-Rules:
-- Biography only if the book is substantially about a person's life
-- Subjects must be specific ("Lockheed Skunk Works", "Apple 1976-2011") not "biography" or "business"
-- If unsure, keep about short and subjects conservative`,
-    maxTokens: 700,
-    temperature: 0.2
-  });
-
-  return normalizeProfile(parsed);
+  try {
+    const parsed = await researchJsonWithWebSearch(title, author);
+    return normalizeProfile(parsed);
+  } catch (error) {
+    console.warn(`⚠️ Web search research failed for "${title}": ${error.message}. Falling back to memory.`);
+    const parsed = await chatJson({
+      system: 'You research individual books. Identify the actual published work from title and author. Never invent a different famous book. Never say a well-known author\'s book does not exist just because you do not remember it; describe the work implied by the title. If the work is obscure, say what it most likely is from the title and author without padding. Respond with JSON only.',
+      user: researchPrompt(title, author),
+      maxTokens: 700,
+      temperature: 0.2
+    });
+    return normalizeProfile(parsed);
+  }
 }
 
 async function researchBooks(books) {
@@ -454,6 +546,7 @@ module.exports = {
   MODEL,
   CATEGORIES,
   compactProfile,
+  researchLooksUntrusted,
   researchBook,
   researchBooks,
   proposeConnections,

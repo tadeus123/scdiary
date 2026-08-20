@@ -33,6 +33,7 @@ const { sortedEpisodes, getEpisode, episodeLinks, episodeSeo } = require('../uti
 const {
   researchBook,
   researchBooks,
+  researchLooksUntrusted,
   proposeConnections,
   proposeConnectionsForNewBook
 } = require('../services/book-matching');
@@ -455,13 +456,13 @@ router.delete('/api/books/:id', async (req, res) => {
 router.post('/api/books/recategorize-all', async (req, res) => {
   try {
     const books = await getBooks();
-    const missing = books.filter(book => !book.research_profile?.about);
+    const missing = books.filter(book => researchLooksUntrusted(book.research_profile?.about));
 
-    let researchedCount = books.filter(book => book.research_profile?.about).length;
+    let researchedCount = books.filter(book => !researchLooksUntrusted(book.research_profile?.about)).length;
     let failed = 0;
 
     if (missing.length > 0) {
-      console.log(`🤖 Researching ${missing.length} books without notes...`);
+      console.log(`🤖 Researching ${missing.length} books with missing or untrusted notes...`);
       const researched = await researchBooks(missing);
 
       for (const book of researched) {
@@ -477,7 +478,7 @@ router.post('/api/books/recategorize-all', async (req, res) => {
         }
       }
     } else {
-      console.log('✅ All books already have research notes; skipping re-research');
+      console.log('✅ All books already have trusted research notes; skipping re-research');
     }
 
     const latest = await getBooks();
