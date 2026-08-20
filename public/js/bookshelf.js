@@ -259,7 +259,6 @@ function fillBookResearch(container, book) {
   const profile = book.research_profile || {};
   const genre = profile.category || book.category;
   const about = profile.about;
-  const subjects = (profile.subjects || []).filter(Boolean).slice(0, 8);
 
   if (!about && !genre) {
     container.innerHTML = '';
@@ -270,8 +269,7 @@ function fillBookResearch(container, book) {
   container.classList.remove('hidden');
   container.innerHTML = [
     genre ? `<p class="book-genre">${escapeHtml(genre)}</p>` : '',
-    about ? `<p class="book-research-about">${escapeHtml(about)}</p>` : '',
-    subjects.length ? `<p class="book-subjects">${escapeHtml(subjects.join(' · '))}</p>` : ''
+    about ? `<p class="book-research-about">${escapeHtml(about)}</p>` : ''
   ].join('');
 }
 

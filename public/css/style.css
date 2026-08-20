@@ -1736,14 +1736,6 @@ body.selfie-crop-open {
   margin: 0;
 }
 
-.book-subjects {
-  font-size: 0.8rem;
-  line-height: 1.4;
-  color: var(--text-color);
-  opacity: 0.5;
-  margin: 0.45rem 0 0;
-}
-
 .close-details {
   position: absolute;
   top: 1rem;
