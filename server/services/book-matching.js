@@ -70,6 +70,37 @@ function stripCitations(text) {
     .trim();
 }
 
+function polishAbout(text) {
+  let s = stripCitations(text);
+  s = s.replace(/[\u00A0\u202F]/g, ' ');
+  s = s.replace(/[\u2010\u2011]/g, '-');
+  s = s.replace(/\s*[\u2012\u2013\u2014\u2015]\s*/g, ', ');
+
+  s = s.replace(/\s*\([^)]*\bhardcover\b[^)]*\)/gi, '');
+  s = s.replace(/\s*\([^)]*\bpaperback\b[^)]*\)/gi, '');
+  s = s.replace(/\s*with a first edition released in \d{4} in some catalogs\.?/gi, '');
+  s = s.replace(/\s*by W\.\s*W\.\s*Norton(?:\s*&\s*Company)?/gi, '');
+  s = s.replace(/\b(?:originally|first)\s+published(?:\s+in book form)?\s+in\s+[A-Za-z]*\s*\d{4}\.?/gi, '');
+  s = s.replace(/\b[Pp]ublished on\s+[A-Za-z]+\s+\d{1,2}(?:\s*\([^)]*\))?,?\s*\d{4}(?:\s+by\s+[^,.]+)?\.?/g, '');
+  s = s.replace(/\b[Pp]ublished\s+(?:in\s+)?[A-Za-z]+\s+\d{1,2},?\s*\d{4}\.?/g, '');
+  s = s.replace(/\b[Pp]ublished in \d{4}(?:\s*\([^)]+\))?(?:\s+and\s+\d{4}(?:\s*\([^)]+\))?)?\.?/g, '');
+  s = s.replace(/,\s*published\b/gi, '');
+
+  s = s.replace(/\ba \d{4} (non-fiction|memoir|biography|novel|book)\b/gi, 'a $1');
+  s = s.replace(/,\s+(It|In it|Through|This)\b/g, '. $1');
+  s = s.replace(/,\s+(explores|chronicles|traces|recounts|argues)\b/g, ' $1');
+
+  s = s.replace(/\s+,/g, ',');
+  s = s.replace(/,{2,}/g, ',');
+  s = s.replace(/,\s*\./g, '.');
+  s = s.replace(/\.\s*,/g, '.');
+  s = s.replace(/\.{2,}/g, '.');
+  s = s.replace(/\s{2,}/g, ' ');
+  s = s.replace(/^[,.\s]+/, '');
+  s = s.replace(/\s+([.!?])/g, '$1');
+  return s.trim();
+}
+
 function researchLooksUntrusted(about) {
   const text = String(about || '').trim();
   if (!text) return true;
@@ -102,7 +133,7 @@ Identify the actual published work. Books from 2024–2026 are often real even i
 
 Never claim a book is unpublished, fictional, or misattributed unless a web search finds no matching publication. If search finds no published book, say what the title actually is (article, memo, video, self-published pamphlet) without inventing a plot.
 
-After you have search results, write as fact. Do not hedge with "likely", "may explore", "appears to be", "probably", or "based on the title". Name the real title, year if known, and what the book actually covers.
+After you have search results, write as fact. Do not hedge with "likely", "may explore", "appears to be", "probably", or "based on the title". Write what the book is about. Do not mention the publication date, publisher, imprint, hardcover or paperback, ISBN, or "published on". Do not use em dashes or en dashes; use commas or periods.
 
 Return JSON only. No markdown fences. Do not put URLs or citations inside the JSON values:
 {
@@ -229,7 +260,7 @@ function normalizeProfile(raw, fallbackCategory) {
   const category = CATEGORIES.includes(raw.category) ? raw.category : (fallbackCategory || 'Other');
 
   return {
-    about: stripCitations(raw.about).slice(0, 600),
+    about: polishAbout(raw.about).slice(0, 600),
     subjects,
     people,
     ideas,
@@ -554,6 +585,7 @@ module.exports = {
   MODEL,
   CATEGORIES,
   compactProfile,
+  polishAbout,
   researchLooksUntrusted,
   researchBook,
   researchBooks,
