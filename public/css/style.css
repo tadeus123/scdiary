@@ -1710,8 +1710,8 @@ body.selfie-crop-open {
 .book-research-block {
   width: 100%;
   text-align: left;
-  max-height: 12rem;
-  overflow: auto;
+  max-height: none;
+  overflow: visible;
 }
 
 .book-research-block.hidden {
