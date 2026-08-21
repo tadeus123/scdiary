@@ -28,7 +28,10 @@ function updateEdgeColors() {
 // Initialize admin bookshelf network
 async function initAdminBookshelf() {
   try {
-    const response = await fetch('/api/books');
+    const response = await fetch(`/api/books?t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' }
+    });
     const data = await response.json();
     
     if (!data.success) {
@@ -461,7 +464,10 @@ document.getElementById('mark-reread-btn')?.addEventListener('click', async () =
     if (data.success) {
       showRereadMessage('Re-read added!', 'success');
       // Refetch books and update panel
-      const booksResponse = await fetch('/api/books');
+      const booksResponse = await fetch(`/api/books?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
       const booksData = await booksResponse.json();
       if (booksData.success) {
         const updatedBook = booksData.books.find(b => b.id === currentAdminBookId);

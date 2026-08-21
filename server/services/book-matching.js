@@ -73,7 +73,7 @@ function stripCitations(text) {
 function researchLooksUntrusted(about) {
   const text = String(about || '').trim();
   if (!text) return true;
-  return /does not appear to be an actual|not an actual published work|no known book|misattribut|does not correspond to a known|not a widely recognized publication|not widely recognized|limited information available about its content|fictional or hypothetical|fictional or misattribut|without further inform|is likely|likely a |most likely a |may explore|may delve|may discuss|appears to be|seems to be|probably a |based on the title|possibly recounting/i.test(text);
+  return /does not appear to be an actual|not an actual published work|no known book|misattribut|does not correspond to a known|not a widely recognized publication|not widely recognized|limited information available about its content|fictional or hypothetical|fictional or misattribut|without further inform|\blikely\b|\bprobably\b|\bpresumably\b|may explore|may delve|may discuss|appears to be|seems to be|based on the title|possibly recounting/i.test(text);
 }
 
 function extractResponseText(data) {
