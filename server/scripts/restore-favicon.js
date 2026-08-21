@@ -8,7 +8,6 @@ const FILES = [
   'favicon-16.png',
   'favicon-32.png',
   'favicon-48.png',
-  'favicon.svg',
   'apple-touch-icon.png'
 ];
 
@@ -37,5 +36,5 @@ fs.writeFileSync(
   seoPath,
   seoSrc.replace(/const FAVICON_VERSION = '\d+'/, `const FAVICON_VERSION = '${nextVersion}'`)
 );
-console.log(`Restored locked red Georgia T (heightRatio=1.02, yShiftRatio=0.05).`);
-console.log(`FAVICON_VERSION -> ${nextVersion} (cache bust so the tab drops the test icon)`);
+console.log('Restored locked cream-background T from favicon-locked (master: source.png 1024x1024).');
+console.log(`FAVICON_VERSION -> ${nextVersion} (cache bust so the tab drops any test icon)`);

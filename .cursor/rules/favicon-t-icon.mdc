@@ -1,39 +1,27 @@
 ---
-description: Favicon must always be the red Georgia T — never the corner triangle
+description: Favicon must always be the cream-background crimson T — never the corner triangle
 alwaysApply: true
 ---
 
-# Favicon: Red Georgia T Only
+# Favicon: Cream-background crimson T
 
-The site favicon is a **burgundy Georgia serif "T"** (`#941E2F`), never the cream/orange corner-triangle UI motif.
+The site favicon is the **centered crimson serif T on a cream background**. High-quality master: `server/scripts/favicon-locked/source.png` (1024×1024, lossless). Never the cream/orange corner-triangle UI motif.
 
 ## Locked known-good (do not drift)
 
-Known-good copies live in `server/scripts/favicon-locked/`. Spec: `LOCKED.json`.
+Known-good copies live in `server/scripts/favicon-locked/`. Spec: `LOCKED.json`. **Never overwrite `source.png`.**
 
-**Tab actually uses PNGs, not the SVG.** HTML does not link `favicon.svg`. Chrome typically shows `favicon-16.png` at 1x and `favicon-32.png` at 2x. Google Search uses `favicon-48.png`. `/favicon.ico` is served from `favicon-48.png`. Cache buster: `FAVICON_VERSION = '12'` in `server/utils/seo.js`.
+**Tab actually uses PNGs, not the SVG.** HTML does not link `favicon.svg`. Chrome typically shows `favicon-16.png` at 1x and `favicon-32.png` at 2x. Google Search uses `favicon-48.png`. `/favicon.ico` is served from `favicon-48.png`. Cache buster: `FAVICON_VERSION` in `server/utils/seo.js` (currently `'15'`).
 
-Exact PNG geometry (do not change unless asked):
-
-- Font: Georgia
-- Color: `#941E2F`
-- Height ratio: `1.02` (glyph slightly taller than the canvas)
-- Y shift ratio: `0.05` → **16px: +1px, 32px: +2px, 48px: +2px, 180px: +9px**
-
-Exact SVG geometry (not used in tabs):
-
-- canvas / viewBox: `32×32`
-- `x="16"` `y="21"` `font-size="32"`
-- `text-anchor="middle"` `dominant-baseline="middle"`
-- `transform="translate(0 1)"` (1px down)
+Do not regenerate this icon as a Georgia text draw. Tab sizes are scaled from the 1024 master.
 
 ## Never change without explicit user request
 
-Do **not** edit, regenerate, reorder, or replace any file in `public/favicon*`, `public/apple-touch-icon.png`, or `views/partials/seo-head.ejs` favicon links unless the user explicitly asks.
+Do **not** edit, regenerate, reorder, or replace any file in `public/favicon*`, `public/apple-touch-icon.png`, `server/scripts/favicon-locked/`, or `views/partials/seo-head.ejs` favicon links unless the user explicitly asks.
 
 ## Testing a new icon
 
-1. Leave `server/scripts/favicon-locked/` untouched.
+1. Leave `server/scripts/favicon-locked/` untouched (especially `source.png`).
 2. Swap only the public files to test.
 3. If it is not good, restore instantly:
 
@@ -41,15 +29,13 @@ Do **not** edit, regenerate, reorder, or replace any file in `public/favicon*`, 
 npm run restore:favicon
 ```
 
-If a test was already loaded in a browser, bump `FAVICON_VERSION` in `server/utils/seo.js` after restore so the tab drops the test icon.
-
 ## Forbidden icon
 
-The corner-triangle favicon (cream `#EFE8DC` + orange `#C16A28` wedge) must never appear in favicon assets. It is a **navigation UI element**, not the tab icon.
+The corner-triangle motif (cream `#EFE8DC` + orange `#C16A28` wedge) must never appear in favicon assets. It is a **navigation UI element**, not the tab icon.
 
-## Required assets (all must show the red T)
+## Required assets
 
-- `public/favicon.svg` — Georgia `T` text, `#941E2F`
+- `server/scripts/favicon-locked/source.png` — 1024×1024 master
 - `public/favicon-16.png`, `favicon-32.png`, `favicon-48.png`
 - `public/apple-touch-icon.png`
 - `/favicon.ico` is served by Express as a copy of `favicon-48.png` (no separate .ico file)
@@ -78,4 +64,4 @@ npm run restore:favicon
 
 All pages must include favicons only through `views/partials/seo-head.ejs` (which includes `favicon-links.ejs`). Do not add separate favicon links unless updating those partials for the whole site.
 
-**Do not link `favicon.svg` in HTML.** Browsers render SVG favicons at a different size than the locked PNG tab icons. Tab icons must use the PNG/ICO assets only.
+**Do not link `favicon.svg` in HTML.** Tab icons must use the PNG/ICO assets only.
