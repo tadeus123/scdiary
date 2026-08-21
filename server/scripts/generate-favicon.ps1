@@ -1,4 +1,6 @@
 # Generate favicon PNGs: large Georgia "T" in #941E2F, tab-cap height.
+# Locked known-good: heightRatio=1.02, yShiftRatio=0.05 (see favicon-locked/LOCKED.json).
+# If a test looks wrong: npm run restore:favicon
 param(
   [double]$HeightRatio = 1.02,
   [double]$YShiftRatio = 0.05,

@@ -5,9 +5,13 @@ const crypto = require('crypto');
 const publicDir = path.join(__dirname, '../../public');
 
 // Locked tab icons: large Georgia T, #941E2F, shifted down for tab alignment.
+// Exact geometry is in server/scripts/favicon-locked/LOCKED.json
 const CANONICAL_SHA1 = {
   'favicon-16.png': '213334de66ed91417eeba664c1d70f87def79506',
-  'favicon-32.png': '21afbae306533db99c7e073d766dd49f6c97eb9f'
+  'favicon-32.png': '21afbae306533db99c7e073d766dd49f6c97eb9f',
+  'favicon-48.png': '888bca28b030f62e4da083bf0aefc34c0b933326',
+  'favicon.svg': '2b9e80ebd156bf42ad24d37502d5f2ac0bb64a22',
+  'apple-touch-icon.png': '20d7e10ea876d46dd2f9f5152af2ed5cbbaa8dd5'
 };
 
 const forbiddenPatterns = [
@@ -32,16 +36,13 @@ function verifyFavicons() {
 
   for (const [file, expectedHash] of Object.entries(CANONICAL_SHA1)) {
     const fullPath = path.join(publicDir, file);
+    if (!fs.existsSync(fullPath)) {
+      errors.push(`${file}: missing`);
+      continue;
+    }
     const hash = sha1File(fullPath);
     if (hash !== expectedHash) {
       errors.push(`${file}: hash mismatch (expected locked large Georgia T)`);
-    }
-  }
-
-  for (const size of [48]) {
-    const pngPath = path.join(publicDir, `favicon-${size}.png`);
-    if (!fs.existsSync(pngPath)) {
-      errors.push(`favicon-${size}.png: missing`);
     }
   }
 

@@ -7,9 +7,41 @@ alwaysApply: true
 
 The site favicon is a **burgundy Georgia serif "T"** (`#941E2F`), never the cream/orange corner-triangle UI motif.
 
+## Locked known-good (do not drift)
+
+Known-good copies live in `server/scripts/favicon-locked/`. Spec: `LOCKED.json`.
+
+**Tab actually uses PNGs, not the SVG.** HTML does not link `favicon.svg`. Chrome typically shows `favicon-16.png` at 1x and `favicon-32.png` at 2x. Google Search uses `favicon-48.png`. `/favicon.ico` is served from `favicon-48.png`. Cache buster: `FAVICON_VERSION = '12'` in `server/utils/seo.js`.
+
+Exact PNG geometry (do not change unless asked):
+
+- Font: Georgia
+- Color: `#941E2F`
+- Height ratio: `1.02` (glyph slightly taller than the canvas)
+- Y shift ratio: `0.05` → **16px: +1px, 32px: +2px, 48px: +2px, 180px: +9px**
+
+Exact SVG geometry (not used in tabs):
+
+- canvas / viewBox: `32×32`
+- `x="16"` `y="21"` `font-size="32"`
+- `text-anchor="middle"` `dominant-baseline="middle"`
+- `transform="translate(0 1)"` (1px down)
+
 ## Never change without explicit user request
 
 Do **not** edit, regenerate, reorder, or replace any file in `public/favicon*`, `public/apple-touch-icon.png`, or `views/partials/seo-head.ejs` favicon links unless the user explicitly asks.
+
+## Testing a new icon
+
+1. Leave `server/scripts/favicon-locked/` untouched.
+2. Swap only the public files to test.
+3. If it is not good, restore instantly:
+
+```bash
+npm run restore:favicon
+```
+
+If a test was already loaded in a browser, bump `FAVICON_VERSION` in `server/utils/seo.js` after restore so the tab drops the test icon.
 
 ## Forbidden icon
 
@@ -20,7 +52,7 @@ The corner-triangle favicon (cream `#EFE8DC` + orange `#C16A28` wedge) must neve
 - `public/favicon.svg` — Georgia `T` text, `#941E2F`
 - `public/favicon-16.png`, `favicon-32.png`, `favicon-48.png`
 - `public/apple-touch-icon.png`
-- `/favicon.ico` is served by Express as a copy of `favicon-32.png` (no separate .ico file)
+- `/favicon.ico` is served by Express as a copy of `favicon-48.png` (no separate .ico file)
 
 ## If favicons must be regenerated
 
@@ -34,6 +66,12 @@ Then confirm:
 
 ```bash
 npm run verify:favicon
+```
+
+If the result is wrong, restore instead of hand-fixing:
+
+```bash
+npm run restore:favicon
 ```
 
 ## New pages
