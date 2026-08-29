@@ -42,16 +42,12 @@ function formatDateLabel(iso, compact = false) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function formatDateTime(iso) {
+function formatTooltipWhen(iso) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-  });
+  const day = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return `${day}, ${time}`;
 }
 
 function niceTicks(min, max, count = 5) {
@@ -322,20 +318,23 @@ function renderChart(series) {
     if (!tooltip || !target) return;
     const note = target.getAttribute('data-note');
     const at = target.getAttribute('data-at');
-    const balance = target.getAttribute('data-balance');
-    const delta = target.getAttribute('data-delta');
-    const amount = target.getAttribute('data-amount');
-    const currency = target.getAttribute('data-currency');
-    const amountLine = currency && currency !== 'USD'
-      ? `${escapeXml(formatSignedUsd(delta))} · ${escapeXml(Number(amount).toFixed(2))} ${escapeXml(currency)}`
-      : escapeXml(formatSignedUsd(delta));
-    tooltip.innerHTML = `${escapeXml(formatDateTime(at))}<br>${amountLine}${note ? `<br>${escapeXml(note)}` : ''}<br>${escapeXml(formatUsd(balance))}`;
+    const balance = Number(target.getAttribute('data-balance'));
+    const delta = Number(target.getAttribute('data-delta'));
+    const deltaClass = delta < 0 ? ' liquidity-tooltip-out' : '';
+    const balanceClass = balance < 0 ? ' liquidity-tooltip-out' : '';
+    tooltip.innerHTML = `
+      <span class="liquidity-tooltip-when">${escapeXml(formatTooltipWhen(at))}</span>
+      ${note ? `<span class="liquidity-tooltip-note">${escapeXml(note)}</span>` : ''}
+      <span class="liquidity-tooltip-delta${deltaClass}">${escapeXml(formatSignedUsd(delta))}</span>
+      <span class="liquidity-tooltip-balance${balanceClass}">${escapeXml(formatUsd(balance))}</span>
+    `;
     tooltip.classList.remove('hidden');
     const x = event.clientX ?? (target.getBoundingClientRect().left);
     const y = event.clientY ?? (target.getBoundingClientRect().top);
-    const tipWidth = 180;
+    const tipWidth = tooltip.offsetWidth || 180;
+    const tipHeight = tooltip.offsetHeight || 72;
     tooltip.style.left = `${Math.min(width - tipWidth - 12, Math.max(12, x + 12))}px`;
-    tooltip.style.top = `${Math.max(12, y - 88)}px`;
+    tooltip.style.top = `${Math.max(12, y - tipHeight - 12)}px`;
   };
 
   container.querySelectorAll('.liquidity-hit').forEach((hit) => {
