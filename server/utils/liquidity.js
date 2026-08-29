@@ -170,6 +170,37 @@ function dueMonthlyLogs(recurring = [], now = new Date()) {
   return logs;
 }
 
+function monthlyFlowUsd(recurring = [], latestRate = 1) {
+  let incoming = 0;
+  let outgoing = 0;
+  for (const item of recurring) {
+    const rate = String(item.currency).toUpperCase() === 'EUR' ? toNumber(latestRate, 1) : 1;
+    const usd = Math.abs(signedUsd(item.amount, item.direction, rate));
+    if (item.direction === 'in') incoming = roundMoney(incoming + usd);
+    else outgoing = roundMoney(outgoing + usd);
+  }
+  return {
+    incoming,
+    outgoing,
+    combined: roundMoney(incoming + outgoing)
+  };
+}
+
+function cashRunwayMonths(currentUsd, recurring = [], latestRate = 1) {
+  const { combined } = monthlyFlowUsd(recurring, latestRate);
+  if (!(combined > 0)) return null;
+  const cash = toNumber(currentUsd);
+  if (cash <= 0) return 0;
+  return Math.round((cash / combined) * 10) / 10;
+}
+
+function formatCashRunway(months) {
+  if (months === null || !Number.isFinite(months)) return 'cash runway: —';
+  const label = months === 1 ? 'month' : 'months';
+  const value = Number.isInteger(months) ? String(months) : months.toFixed(1);
+  return `cash runway: ${value} ${label}`;
+}
+
 function liabilitiesTotalUsd(liabilities = []) {
   const total = liabilities.reduce((sum, item) => sum + Math.abs(toNumber(item.amount_usd)), 0);
   return roundMoney(-total);
@@ -241,6 +272,9 @@ module.exports = {
   monthlyOccurrences,
   monthlyLogId,
   dueMonthlyLogs,
+  monthlyFlowUsd,
+  cashRunwayMonths,
+  formatCashRunway,
   horizonEndAt,
   liabilitiesTotalUsd,
   buildLiquiditySeries

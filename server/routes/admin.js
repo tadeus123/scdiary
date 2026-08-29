@@ -313,8 +313,8 @@ function newLiquidityId(prefix) {
 }
 
 router.get('/liquidity', isAuthenticated, async (req, res) => {
-  const { settings, entries, recurring, liabilities } = await loadLiquidityGraph();
-  res.render('admin-liquidity', { settings, entries, recurring, liabilities });
+  const { settings, entries, recurring, liabilities, runway } = await loadLiquidityGraph();
+  res.render('admin-liquidity', { settings, entries, recurring, liabilities, runway });
 });
 
 router.post('/liquidity/liability', isAuthenticated, async (req, res) => {

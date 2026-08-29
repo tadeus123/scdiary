@@ -5,12 +5,14 @@ const {
   getLiquidityLiabilities,
   createLiquidityEntries
 } = require('../db/supabase');
-const { getEurUsdRate } = require('./fx');
+const { getEurUsdRate, getLatestEurUsdRate } = require('./fx');
 const {
   buildLiquiditySeries,
   dueMonthlyLogs,
   signedUsd,
-  toNumber
+  toNumber,
+  cashRunwayMonths,
+  formatCashRunway
 } = require('./liquidity');
 
 function occurrenceKey(entry) {
@@ -88,7 +90,22 @@ async function loadLiquidityGraph(now = new Date()) {
     liabilities
   });
 
-  return { settings, entries, recurring, liabilities, series };
+  let latestRate = 1;
+  if (recurring.some((item) => String(item.currency).toUpperCase() === 'EUR')) {
+    try {
+      latestRate = await getLatestEurUsdRate();
+    } catch (error) {
+      console.error('Latest FX rate failed:', error);
+    }
+  }
+
+  const months = cashRunwayMonths(series.current, recurring, latestRate);
+  const runway = {
+    months,
+    label: formatCashRunway(months)
+  };
+
+  return { settings, entries, recurring, liabilities, series, runway };
 }
 
 module.exports = {

@@ -146,19 +146,20 @@ function formatMonthlyAmount(item) {
   return `${signed} ${item.currency}`;
 }
 
-function renderMonthlyPanel(recurring = []) {
+function renderMonthlyPanel(recurring = [], runway) {
   const panel = document.getElementById('liquidity-monthly-panel');
   if (!panel) return;
   if (!recurring.length) {
     panel.innerHTML = '<p class="liquidity-monthly-empty">no monthly items yet</p>';
     return;
   }
-  panel.innerHTML = recurring.map((item) => `
+  panel.innerHTML = `${recurring.map((item) => `
     <div class="liquidity-monthly-item">
       <span class="liquidity-monthly-name">${escapeXml(item.name || '')}</span>
       <span class="liquidity-monthly-meta">${escapeXml(formatMonthlyAmount(item))} · day ${escapeXml(String(item.day_of_month))}</span>
     </div>
-  `).join('');
+  `).join('')}
+  <p class="liquidity-runway">${escapeXml(runway?.label || 'cash runway: —')}</p>`;
 }
 
 function bindMonthlyToggle() {
@@ -326,7 +327,7 @@ async function loadLiquidity() {
       return;
     }
     bindMonthlyToggle();
-    renderMonthlyPanel(data.recurring || []);
+    renderMonthlyPanel(data.recurring || [], data.runway);
     renderChart(data.series);
   } catch (error) {
     console.error('Error loading liquidity:', error);
