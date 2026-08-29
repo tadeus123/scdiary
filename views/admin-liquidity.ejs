@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <%- include('partials/seo-head') %>
-  <link rel="stylesheet" href="/css/style.css?v=lq-tight-rows">
+  <link rel="stylesheet" href="/css/style.css?v=lq-tight-rows2">
 </head>
 <body class="admin-page admin-liquidity-page">
   <a href="/admin" class="corner-btn-left" aria-label="Back to Admin"></a>
@@ -165,14 +165,16 @@
             <% recurring.forEach(item => { %>
               <article class="entry" data-recurring-id="<%= item.id %>">
                 <div class="entry-header">
-                  <div class="entry-date"><%= item.name %></div>
+                  <div class="entry-date">
+                    <%= item.name %>
+                    <span class="liquidity-row-meta">day <%= item.day_of_month %><%= item.end_date ? ` · until ${item.end_date}` : '' %></span>
+                  </div>
                   <button type="button" class="delete-entry-btn" onclick="deleteLiquidityRecurring('<%= item.id %>')" aria-label="Delete monthly">×</button>
                 </div>
                 <div class="entry-content">
                   <p class="liquidity-amount <%= item.direction === 'out' ? 'liquidity-out' : 'liquidity-in' %>">
                     <%= item.direction === 'out' ? '−' : '+' %><%= Number(item.amount).toFixed(2) %> <%= item.currency %>
                   </p>
-                  <p class="form-hint">day <%= item.day_of_month %><%= item.end_date ? ` · until ${item.end_date}` : '' %></p>
                 </div>
               </article>
             <% }) %>
