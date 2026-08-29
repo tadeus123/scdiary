@@ -146,38 +146,92 @@ function formatMonthlyAmount(item) {
   return `${signed} ${item.currency}`;
 }
 
-function renderMonthlyPanel(recurring = [], runway) {
-  const panel = document.getElementById('liquidity-monthly-panel');
-  if (!panel) return;
-  if (!recurring.length) {
-    panel.innerHTML = '<p class="liquidity-monthly-empty">no monthly items yet</p>';
-    return;
+function sortMonthlyExpenses(recurring = []) {
+  return [...recurring]
+    .filter((item) => item.direction === 'out')
+    .sort((a, b) => {
+      const usdDiff = Math.abs(Number(b.amount_usd) || 0) - Math.abs(Number(a.amount_usd) || 0);
+      if (usdDiff !== 0) return usdDiff;
+      const dayDiff = Number(a.day_of_month) - Number(b.day_of_month);
+      if (dayDiff !== 0) return dayDiff;
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+}
+
+function renderMonthlyOverlay(recurring = [], runway) {
+  const list = document.getElementById('liquidity-monthly-list');
+  const totals = document.getElementById('liquidity-monthly-totals');
+  if (!list || !totals) return;
+
+  const expenses = sortMonthlyExpenses(recurring);
+  if (!expenses.length) {
+    list.innerHTML = '<p class="liquidity-monthly-empty">no monthly expenses yet</p>';
+  } else {
+    list.innerHTML = expenses.map((item) => {
+      const usd = Math.abs(Number(item.amount_usd) || 0);
+      const original = item.currency === 'EUR'
+        ? `<span class="liquidity-monthly-original">${escapeXml(formatMonthlyAmount(item))}</span>`
+        : '';
+      return `
+        <div class="liquidity-monthly-row">
+          <div class="liquidity-monthly-copy">
+            <span class="liquidity-monthly-name">${escapeXml(item.name || '')}</span>
+            <span class="liquidity-monthly-meta">day ${escapeXml(String(item.day_of_month))}${original ? ` · ${original}` : ''}</span>
+          </div>
+          <span class="liquidity-monthly-sum">${escapeXml(formatUsd(-usd))}</span>
+        </div>
+      `;
+    }).join('');
   }
-  panel.innerHTML = `${recurring.map((item) => `
-    <div class="liquidity-monthly-item">
-      <span class="liquidity-monthly-name">${escapeXml(item.name || '')}</span>
-      <span class="liquidity-monthly-meta">${escapeXml(formatMonthlyAmount(item))} · day ${escapeXml(String(item.day_of_month))}</span>
+
+  const expensesUsd = Number(runway?.expenses_usd);
+  const total = Number.isFinite(expensesUsd)
+    ? expensesUsd
+    : expenses.reduce((sum, item) => sum + Math.abs(Number(item.amount_usd) || 0), 0);
+
+  totals.innerHTML = `
+    <div class="liquidity-monthly-total">
+      <span>total expenses</span>
+      <span>${escapeXml(formatUsd(-Math.abs(total)))}</span>
     </div>
-  `).join('')}
-  <p class="liquidity-runway">${escapeXml(runway?.label || 'cash runway: —')}</p>`;
+    <p class="liquidity-runway">${escapeXml(runway?.label || 'cash runway: —')}</p>
+  `;
+}
+
+function setMonthlyOverlayOpen(open) {
+  const overlay = document.getElementById('liquidity-monthly-overlay');
+  const toggle = document.getElementById('liquidity-monthly-toggle');
+  if (!overlay || !toggle) return;
+  overlay.classList.toggle('hidden', !open);
+  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  document.body.classList.toggle('liquidity-monthly-open', open);
 }
 
 function bindMonthlyToggle() {
   const toggle = document.getElementById('liquidity-monthly-toggle');
-  const panel = document.getElementById('liquidity-monthly-panel');
-  if (!toggle || !panel || toggle.dataset.bound) return;
+  const overlay = document.getElementById('liquidity-monthly-overlay');
+  const close = document.getElementById('liquidity-monthly-close');
+  if (!toggle || !overlay || toggle.dataset.bound === 'true') return;
   toggle.dataset.bound = 'true';
-  toggle.addEventListener('click', (event) => {
+
+  toggle.onclick = (event) => {
+    event.preventDefault();
     event.stopPropagation();
-    panel.classList.toggle('hidden');
-    const open = !panel.classList.contains('hidden');
-    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-  });
-  document.addEventListener('click', (event) => {
-    if (panel.classList.contains('hidden')) return;
-    if (event.target.closest('#liquidity-monthly-wrap')) return;
-    panel.classList.add('hidden');
-    toggle.setAttribute('aria-expanded', 'false');
+    const isClosed = overlay.classList.contains('hidden');
+    setMonthlyOverlayOpen(isClosed);
+  };
+  if (close) {
+    close.onclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setMonthlyOverlayOpen(false);
+    };
+  }
+  overlay.onclick = (event) => {
+    if (event.target === overlay) setMonthlyOverlayOpen(false);
+  };
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') setMonthlyOverlayOpen(false);
   });
 }
 
@@ -196,7 +250,7 @@ function renderChart(series) {
   const padding = {
     top: compact ? 108 : Math.max(96, height * 0.16),
     right: compact ? 20 : 48,
-    bottom: compact ? 88 : 84,
+    bottom: compact ? 72 : 76,
     left: compact ? 52 : 72
   };
   const graphWidth = Math.max(40, width - padding.left - padding.right);
@@ -326,8 +380,7 @@ async function loadLiquidity() {
       document.getElementById('liquidity-balance').textContent = 'could not load liquidity';
       return;
     }
-    bindMonthlyToggle();
-    renderMonthlyPanel(data.recurring || [], data.runway);
+    renderMonthlyOverlay(data.recurring || [], data.runway);
     renderChart(data.series);
   } catch (error) {
     console.error('Error loading liquidity:', error);
@@ -345,4 +398,5 @@ window.addEventListener('resize', scheduleRedraw);
 window.visualViewport?.addEventListener('resize', scheduleRedraw);
 
 document.addEventListener('themeChanged', loadLiquidity);
+bindMonthlyToggle();
 loadLiquidity();

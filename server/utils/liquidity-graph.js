@@ -12,7 +12,8 @@ const {
   signedUsd,
   toNumber,
   cashRunwayMonths,
-  formatCashRunway
+  formatCashRunway,
+  monthlyFlowUsd
 } = require('./liquidity');
 
 function occurrenceKey(entry) {
@@ -99,13 +100,25 @@ async function loadLiquidityGraph(now = new Date()) {
     }
   }
 
+  const flow = monthlyFlowUsd(recurring, latestRate);
   const months = cashRunwayMonths(series.current, recurring, latestRate);
   const runway = {
     months,
-    label: formatCashRunway(months)
+    label: formatCashRunway(months),
+    incoming_usd: flow.incoming,
+    expenses_usd: flow.outgoing,
+    combined_usd: flow.combined
   };
 
-  return { settings, entries, recurring, liabilities, series, runway };
+  const recurringView = recurring.map((item) => {
+    const rate = String(item.currency).toUpperCase() === 'EUR' ? latestRate : 1;
+    return {
+      ...item,
+      amount_usd: signedUsd(item.amount, item.direction, rate)
+    };
+  });
+
+  return { settings, entries, recurring: recurringView, liabilities, series, runway };
 }
 
 module.exports = {

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <%- include('partials/seo-head') %>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=lq-monthly-overlay">
 </head>
 <body class="liquidity-page">
   <nav class="bookshelf-header liquidity-header">
@@ -24,17 +24,22 @@
         </svg>
       </button>
     </div>
+    <button type="button" id="liquidity-monthly-toggle" class="liquidity-monthly-toggle" aria-expanded="false" aria-controls="liquidity-monthly-overlay">monthly</button>
   </nav>
 
   <div id="liquidity-chart"></div>
   <div id="liquidity-balance" class="reading-time-summary"></div>
-  <div id="liquidity-monthly-wrap">
-    <button type="button" id="liquidity-monthly-toggle" class="liquidity-monthly-toggle" aria-expanded="false">monthly</button>
-    <div id="liquidity-monthly-panel" class="liquidity-monthly-panel hidden"></div>
+  <div id="liquidity-monthly-overlay" class="liquidity-monthly-overlay hidden">
+    <div class="liquidity-monthly-sheet" role="dialog" aria-modal="true" aria-labelledby="liquidity-monthly-title">
+      <button type="button" class="liquidity-monthly-close" id="liquidity-monthly-close" aria-label="Close">×</button>
+      <h2 id="liquidity-monthly-title">monthly</h2>
+      <div id="liquidity-monthly-list"></div>
+      <div id="liquidity-monthly-totals"></div>
+    </div>
   </div>
   <div id="liquidity-tooltip" class="liquidity-tooltip hidden"></div>
 
   <script src="/js/main.js"></script>
-  <script src="/js/liquidity.js"></script>
+  <script src="/js/liquidity.js?v=lq-monthly-overlay"></script>
 </body>
 </html>
