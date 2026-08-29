@@ -140,12 +140,6 @@ function escapeXml(text) {
     .replace(/\n/g, ' ');
 }
 
-function formatMonthlyAmount(item) {
-  const amount = Number(item.amount);
-  const signed = `${item.direction === 'out' ? '−' : '+'}${Math.abs(amount).toFixed(2)}`;
-  return `${signed} ${item.currency}`;
-}
-
 function sortMonthlyExpenses(recurring = []) {
   return [...recurring]
     .filter((item) => item.direction === 'out')
@@ -169,14 +163,11 @@ function renderMonthlyOverlay(recurring = [], runway) {
   } else {
     list.innerHTML = expenses.map((item) => {
       const usd = Math.abs(Number(item.amount_usd) || 0);
-      const original = item.currency === 'EUR'
-        ? `<span class="liquidity-monthly-original">${escapeXml(formatMonthlyAmount(item))}</span>`
-        : '';
       return `
         <div class="liquidity-monthly-row">
           <div class="liquidity-monthly-copy">
             <span class="liquidity-monthly-name">${escapeXml(item.name || '')}</span>
-            <span class="liquidity-monthly-meta">day ${escapeXml(String(item.day_of_month))}${original ? ` · ${original}` : ''}</span>
+            <span class="liquidity-monthly-meta">day ${escapeXml(String(item.day_of_month))}</span>
           </div>
           <span class="liquidity-monthly-sum">${escapeXml(formatUsd(-usd))}</span>
         </div>

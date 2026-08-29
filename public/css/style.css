@@ -3889,13 +3889,15 @@ body.selfie-crop-open {
 
 .liquidity-monthly-copy {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.5rem;
   min-width: 0;
 }
 
 .liquidity-monthly-name {
-  display: block;
+  display: inline;
 }
 
 .liquidity-monthly-sum {
