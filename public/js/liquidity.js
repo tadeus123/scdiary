@@ -349,37 +349,40 @@ function renderChart(series) {
   `;
 
   const tooltip = document.getElementById('liquidity-tooltip');
-  let pinnedId = null;
   let pinnedDay = null;
 
   const hideTip = () => {
-    pinnedId = null;
     pinnedDay = null;
     tooltip?.classList.add('hidden');
-    if (tooltip) tooltip.dataset.id = '';
   };
 
-  const pointId = (point) => point.id || point.at || '';
-
-  const showPoint = (point, event, pin = false) => {
-    if (!tooltip || !point) return;
-    const id = pointId(point);
-    const delta = Number(point.delta);
-    const deltaClass = delta < 0 ? ' liquidity-tooltip-out' : '';
+  const showDay = (dayKey, event, pin = false) => {
+    if (!tooltip || !dayKey) return;
+    const group = pointsByDay.get(dayKey) || [];
+    if (!group.length) return;
+    const last = group[group.length - 1];
+    const logs = group.map((point) => {
+      const delta = Number(point.delta);
+      const deltaClass = delta < 0 ? ' liquidity-tooltip-out' : '';
+      const note = point.note
+        ? `<span class="liquidity-tooltip-note">${escapeTooltipNote(point.note)}</span>`
+        : '';
+      return `
+        <div class="liquidity-tooltip-log">
+          ${note}
+          <span class="liquidity-tooltip-delta${deltaClass}">${escapeXml(formatSignedUsd(delta))}</span>
+        </div>
+      `;
+    }).join('');
     tooltip.innerHTML = `
-      <span class="liquidity-tooltip-when">${escapeXml(formatTooltipWhen(point.at))}</span>
-      ${point.note ? `<span class="liquidity-tooltip-note">${escapeTooltipNote(point.note)}</span>` : ''}
-      <span class="liquidity-tooltip-delta${deltaClass}">${escapeXml(formatSignedUsd(delta))}</span>
-      <span class="liquidity-tooltip-balance">${escapeXml(formatUsd(point.balance))}</span>
+      <span class="liquidity-tooltip-when">${escapeXml(formatTooltipWhen(last.at))}</span>
+      ${logs}
+      <span class="liquidity-tooltip-balance">${escapeXml(formatUsd(last.balance))}</span>
     `;
     tooltip.classList.remove('hidden');
-    if (pin) {
-      pinnedId = id;
-      pinnedDay = point.dayKey;
-      tooltip.dataset.id = id;
-    }
-    const x = event.clientX ?? point.x;
-    const y = event.clientY ?? point.y;
+    if (pin) pinnedDay = dayKey;
+    const x = event.clientX ?? last.x;
+    const y = event.clientY ?? last.y;
     const tipWidth = tooltip.offsetWidth || 200;
     const tipHeight = tooltip.offsetHeight || 72;
     tooltip.style.left = `${Math.min(width - tipWidth - 12, Math.max(12, x + 12))}px`;
@@ -387,46 +390,27 @@ function renderChart(series) {
     tooltip.style.top = `${above >= 12 ? above : Math.min(height - tipHeight - 12, y + 16)}px`;
   };
 
-  const pointFromTarget = (target) => {
-    const id = target.getAttribute('data-id') || '';
-    const day = target.getAttribute('data-day') || '';
-    const group = pointsByDay.get(day) || [];
-    if (id) return group.find((point) => pointId(point) === id) || group[0];
-    return group[0];
-  };
-
   container.querySelectorAll('.liquidity-hit').forEach((hit) => {
     hit.addEventListener('mouseenter', (event) => {
-      if (pinnedId) return;
-      showPoint(pointFromTarget(event.currentTarget), event);
+      if (pinnedDay) return;
+      showDay(event.currentTarget.getAttribute('data-day'), event);
     });
     hit.addEventListener('mousemove', (event) => {
-      if (pinnedId) return;
-      showPoint(pointFromTarget(event.currentTarget), event);
+      if (pinnedDay) return;
+      showDay(event.currentTarget.getAttribute('data-day'), event);
     });
     hit.addEventListener('mouseleave', () => {
-      if (pinnedId) return;
+      if (pinnedDay) return;
       tooltip?.classList.add('hidden');
     });
     hit.addEventListener('click', (event) => {
       event.stopPropagation();
       const day = event.currentTarget.getAttribute('data-day') || '';
-      const id = event.currentTarget.getAttribute('data-id') || '';
-      const group = pointsByDay.get(day) || [];
-      if (!group.length) return;
-
-      if (group.length === 1 && pinnedId === pointId(group[0])) {
+      if (pinnedDay && pinnedDay === day) {
         hideTip();
         return;
       }
-
-      let idx = id ? group.findIndex((point) => pointId(point) === id) : 0;
-      if (idx < 0) idx = 0;
-      if (pinnedDay === day && pinnedId) {
-        const current = group.findIndex((point) => pointId(point) === pinnedId);
-        idx = current < 0 ? 0 : (current + 1) % group.length;
-      }
-      showPoint(group[idx], event, true);
+      showDay(day, event, true);
     });
   });
 
