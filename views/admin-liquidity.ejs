@@ -83,9 +83,6 @@
                 <% if (entry.recurring_id) { %>
                   <p class="form-hint">monthly</p>
                 <% } %>
-                <% if (entry.currency === 'EUR') { %>
-                  <p class="form-hint"><%= Number(entry.amount).toFixed(2) %> EUR → USD @ <%= Number(entry.fx_rate).toFixed(4) %></p>
-                <% } %>
               </div>
             </article>
           <% }) %>
@@ -131,9 +128,6 @@
                 </div>
                 <div class="entry-content">
                   <p class="liquidity-amount liquidity-out">−$<%= Math.abs(Number(item.amount_usd)).toFixed(2) %></p>
-                  <% if (item.currency === 'EUR') { %>
-                    <p class="form-hint"><%= Number(item.amount).toFixed(2) %> EUR → USD @ <%= Number(item.fx_rate).toFixed(4) %></p>
-                  <% } %>
                   <p class="form-hint"><%= item.due_date ? `due ${item.due_date}` : 'as soon as possible' %></p>
                 </div>
               </article>
