@@ -192,7 +192,7 @@ function renderMonthlyOverlay(recurring = [], runway) {
   totals.innerHTML = `
     <div class="liquidity-monthly-total">
       <span>total expenses</span>
-      <span>${escapeXml(formatUsd(-Math.abs(total)))}</span>
+      <span class="liquidity-monthly-sum">${escapeXml(formatUsd(-Math.abs(total)))}</span>
     </div>
     <p class="liquidity-runway">${escapeXml(runway?.label || 'cash runway: —')}</p>
   `;

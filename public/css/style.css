@@ -3818,9 +3818,10 @@ body.selfie-crop-open {
   z-index: 1200;
   background: rgba(0, 0, 0, 0.42);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: max(0.5rem, env(safe-area-inset-top, 0px)) 0.5rem max(0.5rem, env(safe-area-inset-bottom, 0px));
+  overflow: auto;
+  padding: max(0.35rem, env(safe-area-inset-top, 0px)) 0.5rem max(0.35rem, env(safe-area-inset-bottom, 0px));
 }
 
 .liquidity-monthly-sheet {
@@ -3828,22 +3829,20 @@ body.selfie-crop-open {
   display: flex;
   flex-direction: column;
   width: min(760px, 100%);
-  height: min(90dvh, 860px);
-  max-height: min(90dvh, 860px);
-  overflow: hidden;
+  height: auto;
+  margin: auto;
+  overflow: visible;
   background: var(--bg-color);
   color: var(--text-color);
   font-family: Georgia, 'Times New Roman', serif;
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 2.1rem 2rem 1.5rem;
+  padding: 1.15rem 1.5rem 0.95rem;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
 }
 
 #liquidity-monthly-list {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
+  overflow: visible;
 }
 
 #liquidity-monthly-totals {
@@ -3851,10 +3850,10 @@ body.selfie-crop-open {
 }
 
 .liquidity-monthly-sheet h2 {
-  font-size: 1.8rem;
+  font-size: 1.4rem;
   font-weight: 400;
   letter-spacing: -0.02em;
-  margin: 0 2rem 1.6rem 0;
+  margin: 0 2rem 0.55rem 0;
 }
 
 .liquidity-monthly-close {
@@ -3884,7 +3883,7 @@ body.selfie-crop-open {
   justify-content: space-between;
   align-items: baseline;
   gap: 1.25rem;
-  padding: 0.95rem 0;
+  padding: 0.4rem 0;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -3902,6 +3901,7 @@ body.selfie-crop-open {
 .liquidity-monthly-sum {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  color: #c62828;
 }
 
 .liquidity-monthly-meta,
@@ -3916,8 +3916,8 @@ body.selfie-crop-open {
   justify-content: space-between;
   align-items: baseline;
   gap: 1rem;
-  margin-top: 0.5rem;
-  padding-top: 1.1rem;
+  margin-top: 0.35rem;
+  padding-top: 0.85rem;
   border-top: 1px solid var(--border-color);
   font-size: 1.15rem;
 }
@@ -3926,6 +3926,10 @@ body.selfie-crop-open {
   margin: 0.7rem 0 0;
   font-size: 1rem;
   opacity: 0.85;
+}
+
+[data-theme="dark"] .liquidity-monthly-sum {
+  color: #ff5252;
 }
 
 .liquidity-optional-date {
@@ -4090,9 +4094,9 @@ body.selfie-crop-open {
 
   .liquidity-monthly-sheet {
     width: 100%;
-    height: calc(100dvh - 1.5rem);
-    max-height: calc(100dvh - 1.5rem);
-    padding: 1.75rem 1.25rem 1.25rem;
+    height: auto;
+    max-height: none;
+    padding: 1.1rem 1.1rem 0.9rem;
     border-radius: 10px;
   }
 
