@@ -224,8 +224,7 @@ async function saveRecurring(event) {
     name: document.getElementById('recurring-name').value,
     amount: parsed ? formatSignedAmount(parsed) : document.getElementById('recurring-amount').value,
     currency: document.getElementById('recurring-currency').value,
-    day_of_month: document.getElementById('recurring-day').value,
-    start_date: document.getElementById('recurring-start').value
+    day_of_month: document.getElementById('recurring-day').value
   };
 
   if (!parsed) {

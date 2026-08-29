@@ -472,7 +472,8 @@ router.post('/liquidity/recurring', isAuthenticated, async (req, res) => {
   const signed = parseSignedAmount(req.body?.amount);
   const currency = normalizeCurrency(req.body?.currency);
   const day = Math.round(toNumber(req.body?.day_of_month, 0));
-  const start_date = String(req.body?.start_date || '').slice(0, 10);
+  const now = new Date();
+  const start_date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   if (!name) {
     return res.status(400).json({ success: false, error: 'Name is required.' });
@@ -486,9 +487,6 @@ router.post('/liquidity/recurring', isAuthenticated, async (req, res) => {
   const { amount, direction } = signed;
   if (!Number.isInteger(day) || day < 1 || day > 31) {
     return res.status(400).json({ success: false, error: 'Day of month must be between 1 and 31.' });
-  }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(start_date)) {
-    return res.status(400).json({ success: false, error: 'Start date is required.' });
   }
 
   const item = {
