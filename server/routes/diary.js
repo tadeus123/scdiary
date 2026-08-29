@@ -28,6 +28,7 @@ const {
   addCeVideo,
   isConfigured
 } = require('../db/supabase');
+const { loadLiquidityGraph } = require('../utils/liquidity-graph');
 const { parseYouTubeUrl } = require('../utils/youtube');
 const { sortedEpisodes, getEpisode, episodeLinks, episodeSeo } = require('../utils/edu-episodes');
 const {
@@ -78,6 +79,11 @@ router.get('/api/entries', async (req, res) => {
 // Bookshelf page
 router.get('/bookshelf', (req, res) => {
   res.render('bookshelf');
+});
+
+// Liquidity page
+router.get('/liquidity', (req, res) => {
+  res.render('liquidity');
 });
 
 // Company Education page
@@ -159,6 +165,22 @@ router.get(['/edu/:id', '/edu/:id/'], requireEdu, (req, res) => {
 });
 router.get(['/companyeducation', '/companyeducation/'], (req, res) => {
   res.redirect(301, '/edu');
+});
+
+router.get('/api/liquidity', async (req, res) => {
+  try {
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+
+    const { series } = await loadLiquidityGraph();
+    res.json({ success: true, series });
+  } catch (error) {
+    console.error('Error fetching liquidity:', error);
+    res.status(500).json({ success: false, error: 'Failed to load liquidity' });
+  }
 });
 
 // API: Get all books and connections

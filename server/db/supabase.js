@@ -1736,6 +1736,223 @@ async function deleteCornerSelfie(year) {
   }
 }
 
+function defaultLiquiditySettings() {
+  return {
+    id: 'main',
+    starting_balance_usd: -2.5,
+    starting_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+}
+
+function coerceLiquiditySettings(row) {
+  const fallback = defaultLiquiditySettings();
+  if (!row) return fallback;
+  const starting = Number(row.starting_balance_usd);
+  return {
+    id: row.id || 'main',
+    starting_balance_usd: Number.isFinite(starting) ? starting : fallback.starting_balance_usd,
+    starting_at: row.starting_at || fallback.starting_at,
+    updated_at: row.updated_at || fallback.updated_at
+  };
+}
+
+async function getLiquiditySettings() {
+  if (!supabase) {
+    return defaultLiquiditySettings();
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('liquidity_settings')
+      .select('*')
+      .eq('id', 'main')
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching liquidity settings:', error);
+      return defaultLiquiditySettings();
+    }
+
+    if (!data) {
+      const inserted = await upsertLiquiditySettings(defaultLiquiditySettings());
+      return inserted.success ? inserted.settings : defaultLiquiditySettings();
+    }
+
+    return coerceLiquiditySettings(data);
+  } catch (error) {
+    console.error('Error fetching liquidity settings:', error);
+    return defaultLiquiditySettings();
+  }
+}
+
+async function upsertLiquiditySettings(settings) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  const row = {
+    id: 'main',
+    starting_balance_usd: settings.starting_balance_usd,
+    starting_at: settings.starting_at,
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    const { data, error } = await supabase
+      .from('liquidity_settings')
+      .upsert(row, { onConflict: 'id' })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error saving liquidity settings:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, settings: coerceLiquiditySettings(data) };
+  } catch (error) {
+    console.error('Error saving liquidity settings:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function getLiquidityEntries() {
+  if (!supabase) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from('liquidity_entries')
+      .select('*')
+      .order('timestamp', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching liquidity entries:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching liquidity entries:', error);
+    return [];
+  }
+}
+
+async function createLiquidityEntry(entry) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('liquidity_entries')
+      .insert([entry])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating liquidity entry:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, entry: data };
+  } catch (error) {
+    console.error('Error creating liquidity entry:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function deleteLiquidityEntry(id) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('liquidity_entries')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting liquidity entry:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting liquidity entry:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function getLiquidityRecurring() {
+  if (!supabase) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from('liquidity_recurring')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching liquidity recurring:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching liquidity recurring:', error);
+    return [];
+  }
+}
+
+async function createLiquidityRecurring(item) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('liquidity_recurring')
+      .insert([item])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating liquidity recurring:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, item: data };
+  } catch (error) {
+    console.error('Error creating liquidity recurring:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function deleteLiquidityRecurring(id) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('liquidity_recurring')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting liquidity recurring:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting liquidity recurring:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   getEntries,
   createEntry,
@@ -1781,6 +1998,15 @@ module.exports = {
   getCornerSelfie,
   upsertCornerSelfie,
   deleteCornerSelfie,
+  // Liquidity
+  getLiquiditySettings,
+  upsertLiquiditySettings,
+  getLiquidityEntries,
+  createLiquidityEntry,
+  deleteLiquidityEntry,
+  getLiquidityRecurring,
+  createLiquidityRecurring,
+  deleteLiquidityRecurring,
   isConfigured: () => supabase !== null
 };
 

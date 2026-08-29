@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <%- include('partials/seo-head') %>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="admin-page admin-liquidity-page">
+  <a href="/admin" class="corner-btn-left" aria-label="Back to Admin"></a>
+
+  <div class="container">
+    <nav>
+      <div class="nav-left">
+        <span class="site-title">liquidity</span>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme" type="button">
+          <svg class="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="6.5" x2="12" y2="3"></line>
+            <line x1="17.5" y1="12" x2="21" y2="12"></line>
+            <line x1="12" y1="17.5" x2="12" y2="21"></line>
+            <line x1="6.5" y1="12" x2="3" y2="12"></line>
+            <line x1="16.96" y1="7.04" x2="19.07" y2="4.93"></line>
+            <line x1="16.96" y1="16.96" x2="19.07" y2="19.07"></line>
+            <line x1="7.04" y1="16.96" x2="4.93" y2="19.07"></line>
+            <line x1="7.04" y1="7.04" x2="4.93" y2="4.93"></line>
+          </svg>
+        </button>
+      </div>
+    </nav>
+
+    <main>
+      <div class="new-entry-box liquidity-start-box">
+        <div id="settings-message"></div>
+        <div class="liquidity-form-row">
+          <div class="form-group">
+            <label for="starting-balance">starting USD</label>
+            <input type="number" id="starting-balance" step="0.01" value="<%= Number(settings.starting_balance_usd).toFixed(2) %>">
+          </div>
+          <div class="form-group">
+            <label for="starting-date">as of</label>
+            <input type="date" id="starting-date" value="<%= String(settings.starting_at).slice(0, 10) %>">
+          </div>
+        </div>
+        <button type="button" class="btn" id="save-settings-btn">save start</button>
+      </div>
+
+      <div class="new-entry-box">
+        <div id="message-container"></div>
+        <div class="liquidity-form-row">
+          <div class="form-group">
+            <label for="entry-amount">amount</label>
+            <input type="number" id="entry-amount" step="0.01" min="0.01" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label for="entry-currency">currency</label>
+            <select id="entry-currency">
+              <option value="USD" selected>USD</option>
+              <option value="EUR">EUR</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="entry-direction">in or out</label>
+            <select id="entry-direction">
+              <option value="out" selected>out</option>
+              <option value="in">in</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="entry-date">date</label>
+            <input type="date" id="entry-date">
+            <span class="form-hint">leave empty for now</span>
+          </div>
+        </div>
+        <textarea id="entry-content" placeholder="what was this..."></textarea>
+        <button type="button" class="btn" id="save-btn">save</button>
+      </div>
+
+      <div class="entries">
+        <% if (!entries || entries.length === 0) { %>
+          <div class="empty-state">
+            <p>no movements yet. log the first one above.</p>
+          </div>
+        <% } else { %>
+          <% entries.forEach(entry => { %>
+            <article class="entry" data-entry-id="<%= entry.id %>">
+              <div class="entry-header">
+                <div class="entry-date">
+                  <%= new Date(entry.timestamp).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  }) %>
+                </div>
+                <button type="button" class="delete-entry-btn" onclick="deleteLiquidityEntry('<%= entry.id %>')" aria-label="Delete entry">×</button>
+              </div>
+              <div class="entry-content">
+                <% const usd = Number(entry.amount_usd); %>
+                <p class="liquidity-amount <%= usd < 0 ? 'liquidity-out' : 'liquidity-in' %>">
+                  <%= usd < 0 ? '−' : '+' %>$<%= Math.abs(usd).toFixed(2) %>
+                </p>
+                <% if (entry.note) { %>
+                  <p><%= entry.note %></p>
+                <% } %>
+                <% if (entry.currency === 'EUR') { %>
+                  <p class="form-hint"><%= Number(entry.amount).toFixed(2) %> EUR → USD @ <%= Number(entry.fx_rate).toFixed(4) %></p>
+                <% } %>
+              </div>
+            </article>
+          <% }) %>
+        <% } %>
+      </div>
+
+      <div class="add-book-section liquidity-monthly-section">
+        <h2>monthly</h2>
+        <div id="recurring-message"></div>
+        <form id="recurring-form" class="book-form">
+          <div class="liquidity-form-row">
+            <div class="form-group">
+              <label for="recurring-name">name</label>
+              <input type="text" id="recurring-name" placeholder="rent, salary, …" required>
+            </div>
+            <div class="form-group">
+              <label for="recurring-amount">amount</label>
+              <input type="number" id="recurring-amount" step="0.01" min="0.01" required>
+            </div>
+            <div class="form-group">
+              <label for="recurring-currency">currency</label>
+              <select id="recurring-currency">
+                <option value="USD" selected>USD</option>
+                <option value="EUR">EUR</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="recurring-direction">in or out</label>
+              <select id="recurring-direction">
+                <option value="out" selected>out</option>
+                <option value="in">in</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="recurring-day">day of month</label>
+              <input type="number" id="recurring-day" min="1" max="31" value="1" required>
+            </div>
+            <div class="form-group">
+              <label for="recurring-start">starts</label>
+              <input type="date" id="recurring-start" value="<%= String(settings.starting_at).slice(0, 10) %>" required>
+            </div>
+          </div>
+          <button type="submit" class="btn" id="save-recurring-btn">add monthly</button>
+        </form>
+
+        <% if (recurring && recurring.length > 0) { %>
+          <div class="entries liquidity-recurring-list">
+            <% recurring.forEach(item => { %>
+              <article class="entry" data-recurring-id="<%= item.id %>">
+                <div class="entry-header">
+                  <div class="entry-date"><%= item.name %></div>
+                  <button type="button" class="delete-entry-btn" onclick="deleteLiquidityRecurring('<%= item.id %>')" aria-label="Delete monthly">×</button>
+                </div>
+                <div class="entry-content">
+                  <p class="liquidity-amount <%= item.direction === 'out' ? 'liquidity-out' : 'liquidity-in' %>">
+                    <%= item.direction === 'out' ? '−' : '+' %><%= Number(item.amount).toFixed(2) %> <%= item.currency %>
+                  </p>
+                  <p class="form-hint">day <%= item.day_of_month %> · from <%= item.start_date %><%= item.end_date ? ` · until ${item.end_date}` : '' %></p>
+                </div>
+              </article>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/main.js"></script>
+  <script src="/js/admin-liquidity.js"></script>
+</body>
+</html>
