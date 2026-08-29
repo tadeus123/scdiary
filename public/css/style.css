@@ -3660,9 +3660,41 @@ body.selfie-crop-open {
   color: var(--accent-color);
 }
 
-.liquidity-liability-list {
-  margin-top: 1.75rem;
-  gap: 1.5rem;
+.liquidity-liability-list,
+.liquidity-recurring-list {
+  margin-top: 1.25rem;
+  gap: 0;
+}
+
+.liquidity-liability-list .entry,
+.liquidity-recurring-list .entry {
+  padding: 0.65rem 0;
+}
+
+.liquidity-liability-list .entry-header,
+.liquidity-recurring-list .entry-header {
+  margin-bottom: 0.15rem;
+  align-items: center;
+}
+
+.liquidity-liability-list .entry-date,
+.liquidity-recurring-list .entry-date {
+  margin-bottom: 0;
+}
+
+.liquidity-liability-list .entry-content,
+.liquidity-recurring-list .entry-content {
+  line-height: 1.35;
+}
+
+.liquidity-liability-list .entry-content p,
+.liquidity-recurring-list .entry-content p {
+  margin-bottom: 0.1rem;
+}
+
+.liquidity-liability-list .liquidity-amount,
+.liquidity-recurring-list .liquidity-amount {
+  margin-bottom: 0;
 }
 
 .liquidity-entry-actions {
@@ -3699,8 +3731,7 @@ body.selfie-crop-open {
 }
 
 .liquidity-recurring-list {
-  margin-top: 2rem;
-  gap: 1.5rem;
+  margin-top: 1.25rem;
 }
 
 .liquidity-amount {
