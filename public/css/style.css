@@ -4004,6 +4004,7 @@ body.selfie-crop-open {
   margin-top: 0.25rem;
   padding-top: 0.35rem;
   border-top: 1px solid var(--border-color);
+  color: var(--text-color);
 }
 
 .liquidity-tooltip-out {

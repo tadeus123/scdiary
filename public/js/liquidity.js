@@ -326,12 +326,11 @@ function renderChart(series) {
     const balance = Number(target.getAttribute('data-balance'));
     const delta = Number(target.getAttribute('data-delta'));
     const deltaClass = delta < 0 ? ' liquidity-tooltip-out' : '';
-    const balanceClass = balance < 0 ? ' liquidity-tooltip-out' : '';
     tooltip.innerHTML = `
       <span class="liquidity-tooltip-when">${escapeXml(formatTooltipWhen(at))}</span>
       ${note ? `<span class="liquidity-tooltip-note">${escapeXml(note)}</span>` : ''}
       <span class="liquidity-tooltip-delta${deltaClass}">${escapeXml(formatSignedUsd(delta))}</span>
-      <span class="liquidity-tooltip-balance${balanceClass}">${escapeXml(formatUsd(balance))}</span>
+      <span class="liquidity-tooltip-balance">${escapeXml(formatUsd(balance))}</span>
     `;
     tooltip.classList.remove('hidden');
     const x = event.clientX ?? (target.getBoundingClientRect().left);
