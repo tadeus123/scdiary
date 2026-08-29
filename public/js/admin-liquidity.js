@@ -24,16 +24,59 @@ function timestampFromDateInput(value) {
   return `${value}T12:00:00.000Z`;
 }
 
+function normalizeMoneyString(value) {
+  let s = String(value).trim().replace(/\s/g, '').replace(/[−–—]/g, '-');
+  if (!s) return '';
+  const lastComma = s.lastIndexOf(',');
+  const lastDot = s.lastIndexOf('.');
+  if (lastComma !== -1 && lastDot !== -1) {
+    if (lastComma > lastDot) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      s = s.replace(/,/g, '');
+    }
+  } else if (lastComma !== -1) {
+    s = s.replace(/,/g, '.');
+  }
+  return s;
+}
+
+function parseSignedAmount(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(normalizeMoneyString(value));
+  if (!Number.isFinite(n) || n === 0) return null;
+  const amount = Math.round(Math.abs(n) * 100) / 100;
+  if (!(amount > 0)) return null;
+  return { amount, direction: n < 0 ? 'out' : 'in' };
+}
+
+function formatSignedAmount(parsed) {
+  const formatted = parsed.amount.toFixed(2);
+  return parsed.direction === 'out' ? `-${formatted}` : formatted;
+}
+
+function bindAmountInputs() {
+  ['liability-amount', 'entry-amount', 'recurring-amount'].forEach((id) => {
+    const input = document.getElementById(id);
+    if (!input) return;
+    input.addEventListener('blur', () => {
+      const parsed = parseSignedAmount(input.value);
+      if (parsed) input.value = formatSignedAmount(parsed);
+    });
+  });
+}
+
 async function saveLiability() {
   const button = document.getElementById('save-liability-btn');
+  const parsed = parseSignedAmount(document.getElementById('liability-amount').value);
   const payload = {
-    amount: document.getElementById('liability-amount').value,
+    amount: parsed ? formatSignedAmount(parsed) : document.getElementById('liability-amount').value,
     currency: document.getElementById('liability-currency').value,
     due_date: document.getElementById('liability-due').value,
     name: document.getElementById('liability-name').value.trim()
   };
 
-  if (!payload.amount || !payload.name) {
+  if (!parsed || !payload.name) {
     showMessage('liability-message', 'Amount and a name are required.', 'error');
     return;
   }
@@ -104,17 +147,19 @@ async function payLiquidityLiability(itemId) {
 }
 
 async function saveEntry() {
-  const amount = document.getElementById('entry-amount').value;
+  const parsed = parseSignedAmount(document.getElementById('entry-amount').value);
   const currency = document.getElementById('entry-currency').value;
-  const direction = document.getElementById('entry-direction').value;
   const note = document.getElementById('entry-content').value.trim();
   const date = document.getElementById('entry-date').value;
   const saveBtn = document.getElementById('save-btn');
 
-  if (!amount) {
-    showMessage('message-container', 'Amount is required.', 'error');
+  if (!parsed) {
+    showMessage('message-container', 'Amount is required. Use -25.32 for out, 25.32 for in.', 'error');
     return;
   }
+
+  const amount = formatSignedAmount(parsed);
+  document.getElementById('entry-amount').value = amount;
 
   saveBtn.disabled = true;
   saveBtn.textContent = 'saving...';
@@ -126,7 +171,6 @@ async function saveEntry() {
       body: JSON.stringify({
         amount,
         currency,
-        direction,
         note,
         timestamp: timestampFromDateInput(date)
       })
@@ -179,14 +223,22 @@ async function deleteLiquidityEntry(entryId) {
 async function saveRecurring(event) {
   event.preventDefault();
   const button = document.getElementById('save-recurring-btn');
+  const parsed = parseSignedAmount(document.getElementById('recurring-amount').value);
+  if (parsed) {
+    document.getElementById('recurring-amount').value = formatSignedAmount(parsed);
+  }
   const payload = {
     name: document.getElementById('recurring-name').value,
-    amount: document.getElementById('recurring-amount').value,
+    amount: parsed ? formatSignedAmount(parsed) : document.getElementById('recurring-amount').value,
     currency: document.getElementById('recurring-currency').value,
-    direction: document.getElementById('recurring-direction').value,
     day_of_month: document.getElementById('recurring-day').value,
     start_date: document.getElementById('recurring-start').value
   };
+
+  if (!parsed) {
+    showMessage('recurring-message', 'Amount is required. Use -25.32 for out, 25.32 for in.', 'error');
+    return;
+  }
 
   button.disabled = true;
   button.textContent = 'saving...';
@@ -255,6 +307,7 @@ document.getElementById('save-liability-btn')?.addEventListener('click', saveLia
 document.getElementById('save-btn')?.addEventListener('click', saveEntry);
 document.getElementById('recurring-form')?.addEventListener('submit', saveRecurring);
 bindPills();
+bindAmountInputs();
 
 document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {

@@ -31,8 +31,8 @@ const {
 const { getEurUsdRate } = require('../utils/fx');
 const {
   parsePositiveAmount,
+  parseSignedAmount,
   normalizeCurrency,
-  normalizeDirection,
   signedUsd,
   roundMoney,
   toNumber
@@ -340,7 +340,7 @@ router.post('/liquidity/liability', isAuthenticated, async (req, res) => {
     return res.status(400).json({ success: false, error: 'What is this liability?' });
   }
   if (!amount) {
-    return res.status(400).json({ success: false, error: 'Amount must be greater than 0.' });
+    return res.status(400).json({ success: false, error: 'Amount must be a number other than 0, like -25.32.' });
   }
   if (!currency) {
     return res.status(400).json({ success: false, error: 'Currency must be USD or EUR.' });
@@ -422,21 +422,18 @@ router.post('/liquidity/entry', isAuthenticated, async (req, res) => {
     return res.status(503).json({ success: false, error: 'Supabase is not configured on the server.' });
   }
 
-  const amount = parsePositiveAmount(req.body?.amount);
+  const signed = parseSignedAmount(req.body?.amount);
   const currency = normalizeCurrency(req.body?.currency);
-  const direction = normalizeDirection(req.body?.direction);
   const note = typeof req.body?.note === 'string' ? req.body.note.trim() : '';
   const timestamp = req.body?.timestamp || new Date().toISOString();
 
-  if (!amount) {
-    return res.status(400).json({ success: false, error: 'Amount must be greater than 0.' });
+  if (!signed) {
+    return res.status(400).json({ success: false, error: 'Amount must be a number other than 0, like -25.32 or 25.32.' });
   }
   if (!currency) {
     return res.status(400).json({ success: false, error: 'Currency must be USD or EUR.' });
   }
-  if (!direction) {
-    return res.status(400).json({ success: false, error: 'Choose in or out.' });
-  }
+  const { amount, direction } = signed;
 
   let fx_rate = 1;
   try {
@@ -482,24 +479,21 @@ router.post('/liquidity/recurring', isAuthenticated, async (req, res) => {
   }
 
   const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
-  const amount = parsePositiveAmount(req.body?.amount);
+  const signed = parseSignedAmount(req.body?.amount);
   const currency = normalizeCurrency(req.body?.currency);
-  const direction = normalizeDirection(req.body?.direction);
   const day = Math.round(toNumber(req.body?.day_of_month, 0));
   const start_date = String(req.body?.start_date || '').slice(0, 10);
 
   if (!name) {
     return res.status(400).json({ success: false, error: 'Name is required.' });
   }
-  if (!amount) {
-    return res.status(400).json({ success: false, error: 'Amount must be greater than 0.' });
+  if (!signed) {
+    return res.status(400).json({ success: false, error: 'Amount must be a number other than 0, like -25.32 or 25.32.' });
   }
   if (!currency) {
     return res.status(400).json({ success: false, error: 'Currency must be USD or EUR.' });
   }
-  if (!direction) {
-    return res.status(400).json({ success: false, error: 'Choose in or out.' });
-  }
+  const { amount, direction } = signed;
   if (!Number.isInteger(day) || day < 1 || day > 31) {
     return res.status(400).json({ success: false, error: 'Day of month must be between 1 and 31.' });
   }

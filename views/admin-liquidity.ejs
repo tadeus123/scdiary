@@ -37,7 +37,8 @@
         <div class="liquidity-form-row">
           <div class="form-group">
             <label for="liability-amount">amount</label>
-            <input type="number" id="liability-amount" step="0.01" min="0.01" placeholder="0.00" inputmode="decimal">
+            <input type="text" id="liability-amount" inputmode="decimal" placeholder="-25.32" autocomplete="off" autocapitalize="off" spellcheck="false">
+            <span class="form-hint">minus is out · use a dot, two decimals</span>
           </div>
           <div class="form-group">
             <span class="liquidity-field-label">currency</span>
@@ -88,7 +89,8 @@
         <div class="liquidity-form-row">
           <div class="form-group">
             <label for="entry-amount">amount</label>
-            <input type="number" id="entry-amount" step="0.01" min="0.01" placeholder="0.00" inputmode="decimal">
+            <input type="text" id="entry-amount" inputmode="decimal" placeholder="-25.32" autocomplete="off" autocapitalize="off" spellcheck="false">
+            <span class="form-hint">minus is out · 25.32 is in</span>
           </div>
           <div class="form-group">
             <span class="liquidity-field-label">currency</span>
@@ -97,14 +99,6 @@
               <button type="button" class="liquidity-pill" data-value="EUR">EUR</button>
             </div>
             <input type="hidden" id="entry-currency" value="USD">
-          </div>
-          <div class="form-group">
-            <span class="liquidity-field-label">in or out</span>
-            <div class="liquidity-pills" data-target="entry-direction" role="group" aria-label="in or out">
-              <button type="button" class="liquidity-pill is-active" data-value="out">out</button>
-              <button type="button" class="liquidity-pill" data-value="in">in</button>
-            </div>
-            <input type="hidden" id="entry-direction" value="out">
           </div>
           <div class="form-group">
             <label for="entry-date">date</label>
@@ -163,7 +157,8 @@
             </div>
             <div class="form-group">
               <label for="recurring-amount">amount</label>
-              <input type="number" id="recurring-amount" step="0.01" min="0.01" required inputmode="decimal">
+              <input type="text" id="recurring-amount" inputmode="decimal" placeholder="-25.32" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+              <span class="form-hint">minus is out · 25.32 is in</span>
             </div>
             <div class="form-group">
               <span class="liquidity-field-label">currency</span>
@@ -172,14 +167,6 @@
                 <button type="button" class="liquidity-pill" data-value="EUR">EUR</button>
               </div>
               <input type="hidden" id="recurring-currency" value="USD">
-            </div>
-            <div class="form-group">
-              <span class="liquidity-field-label">in or out</span>
-              <div class="liquidity-pills" data-target="recurring-direction" role="group" aria-label="in or out">
-                <button type="button" class="liquidity-pill is-active" data-value="out">out</button>
-                <button type="button" class="liquidity-pill" data-value="in">in</button>
-              </div>
-              <input type="hidden" id="recurring-direction" value="out">
             </div>
             <div class="form-group">
               <label for="recurring-day">day of month</label>

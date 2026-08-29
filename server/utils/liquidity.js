@@ -7,12 +7,40 @@ function roundMoney(value) {
   return Math.round(toNumber(value) * 100) / 100;
 }
 
-function parsePositiveAmount(value) {
+function normalizeMoneyString(value) {
+  let s = String(value).trim().replace(/\s/g, '').replace(/[−–—]/g, '-');
+  if (!s) return '';
+  const lastComma = s.lastIndexOf(',');
+  const lastDot = s.lastIndexOf('.');
+  if (lastComma !== -1 && lastDot !== -1) {
+    if (lastComma > lastDot) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      s = s.replace(/,/g, '');
+    }
+  } else if (lastComma !== -1) {
+    s = s.replace(/,/g, '.');
+  }
+  return s;
+}
+
+function formatSignedAmount(amount, direction) {
+  const formatted = roundMoney(Math.abs(amount)).toFixed(2);
+  return direction === 'out' ? `-${formatted}` : formatted;
+}
+
+function parseSignedAmount(value) {
   if (value === null || value === undefined || value === '') return null;
-  const normalized = String(value).trim().replace(/\s/g, '').replace(',', '.');
-  const n = Number(normalized);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  return roundMoney(n);
+  const n = Number(normalizeMoneyString(value));
+  if (!Number.isFinite(n) || n === 0) return null;
+  const amount = roundMoney(Math.abs(n));
+  if (!(amount > 0)) return null;
+  return { amount, direction: n < 0 ? 'out' : 'in' };
+}
+
+function parsePositiveAmount(value) {
+  const parsed = parseSignedAmount(value);
+  return parsed ? parsed.amount : null;
 }
 
 function normalizeCurrency(value) {
@@ -266,6 +294,9 @@ function buildLiquiditySeries({ settings, entries = [], recurring = [], liabilit
 module.exports = {
   toNumber,
   roundMoney,
+  normalizeMoneyString,
+  formatSignedAmount,
+  parseSignedAmount,
   parsePositiveAmount,
   normalizeCurrency,
   normalizeDirection,
