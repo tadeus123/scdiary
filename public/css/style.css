@@ -3906,6 +3906,10 @@ body.selfie-crop-open {
   color: #c62828;
 }
 
+.liquidity-monthly-sum-in {
+  color: var(--text-color);
+}
+
 .liquidity-monthly-meta,
 .liquidity-monthly-empty {
   font-size: 0.85rem;

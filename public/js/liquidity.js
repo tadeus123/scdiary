@@ -136,16 +136,21 @@ function escapeXml(text) {
     .replace(/\n/g, ' ');
 }
 
-function sortMonthlyExpenses(recurring = []) {
-  return [...recurring]
-    .filter((item) => item.direction === 'out')
-    .sort((a, b) => {
-      const usdDiff = Math.abs(Number(b.amount_usd) || 0) - Math.abs(Number(a.amount_usd) || 0);
-      if (usdDiff !== 0) return usdDiff;
-      const dayDiff = Number(a.day_of_month) - Number(b.day_of_month);
-      if (dayDiff !== 0) return dayDiff;
-      return String(a.name || '').localeCompare(String(b.name || ''));
-    });
+function monthlyItemUsd(item) {
+  const usd = Number(item.amount_usd);
+  if (Number.isFinite(usd)) return usd;
+  const amount = Math.abs(Number(item.amount) || 0);
+  return item.direction === 'in' ? amount : -amount;
+}
+
+function sortMonthlyItems(recurring = []) {
+  return [...recurring].sort((a, b) => {
+    const usdDiff = monthlyItemUsd(a) - monthlyItemUsd(b);
+    if (usdDiff !== 0) return usdDiff;
+    const dayDiff = Number(a.day_of_month) - Number(b.day_of_month);
+    if (dayDiff !== 0) return dayDiff;
+    return String(a.name || '').localeCompare(String(b.name || ''));
+  });
 }
 
 function renderMonthlyOverlay(recurring = [], runway) {
@@ -153,19 +158,21 @@ function renderMonthlyOverlay(recurring = [], runway) {
   const totals = document.getElementById('liquidity-monthly-totals');
   if (!list || !totals) return;
 
-  const expenses = sortMonthlyExpenses(recurring);
-  if (!expenses.length) {
+  const items = sortMonthlyItems(recurring);
+  const expenses = items.filter((item) => item.direction !== 'in');
+  if (!items.length) {
     list.innerHTML = '<p class="liquidity-monthly-empty">no monthly expenses yet</p>';
   } else {
-    list.innerHTML = expenses.map((item) => {
-      const usd = Math.abs(Number(item.amount_usd) || 0);
+    list.innerHTML = items.map((item) => {
+      const usd = monthlyItemUsd(item);
+      const sumClass = usd < 0 ? 'liquidity-monthly-sum' : 'liquidity-monthly-sum liquidity-monthly-sum-in';
       return `
         <div class="liquidity-monthly-row">
           <div class="liquidity-monthly-copy">
             <span class="liquidity-monthly-name">${escapeXml(item.name || '')}</span>
             <span class="liquidity-monthly-meta">day ${escapeXml(String(item.day_of_month))}</span>
           </div>
-          <span class="liquidity-monthly-sum">${escapeXml(formatUsd(-usd))}</span>
+          <span class="${sumClass}">${escapeXml(formatSignedUsd(usd))}</span>
         </div>
       `;
     }).join('');
@@ -174,7 +181,7 @@ function renderMonthlyOverlay(recurring = [], runway) {
   const expensesUsd = Number(runway?.expenses_usd);
   const total = Number.isFinite(expensesUsd)
     ? expensesUsd
-    : expenses.reduce((sum, item) => sum + Math.abs(Number(item.amount_usd) || 0), 0);
+    : expenses.reduce((sum, item) => sum + Math.abs(monthlyItemUsd(item)), 0);
 
   totals.innerHTML = `
     <div class="liquidity-monthly-total">
