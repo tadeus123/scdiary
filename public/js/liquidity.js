@@ -8,6 +8,16 @@ function formatUsd(value) {
   return `${n < 0 ? '−' : ''}$${formatted}`;
 }
 
+function formatSignedUsd(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '$0.00';
+  const formatted = Math.abs(n).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+  return `${n < 0 ? '−' : '+'}$${formatted}`;
+}
+
 function formatAxisUsd(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return '$0';
@@ -30,6 +40,18 @@ function formatDateLabel(iso, compact = false) {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatDateTime(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
 }
 
 function niceTicks(min, max, count = 5) {
@@ -118,32 +140,86 @@ function escapeXml(text) {
     .replace(/\n/g, ' ');
 }
 
+function formatMonthlyAmount(item) {
+  const amount = Number(item.amount);
+  const signed = `${item.direction === 'out' ? '−' : '+'}${Math.abs(amount).toFixed(2)}`;
+  return `${signed} ${item.currency}`;
+}
+
+function renderMonthlyPanel(recurring = []) {
+  const panel = document.getElementById('liquidity-monthly-panel');
+  if (!panel) return;
+  if (!recurring.length) {
+    panel.innerHTML = '<p class="liquidity-monthly-empty">no monthly items yet</p>';
+    return;
+  }
+  panel.innerHTML = recurring.map((item) => `
+    <div class="liquidity-monthly-item">
+      <span class="liquidity-monthly-name">${escapeXml(item.name || '')}</span>
+      <span class="liquidity-monthly-meta">${escapeXml(formatMonthlyAmount(item))} · day ${escapeXml(String(item.day_of_month))}</span>
+    </div>
+  `).join('');
+}
+
+function bindMonthlyToggle() {
+  const toggle = document.getElementById('liquidity-monthly-toggle');
+  const panel = document.getElementById('liquidity-monthly-panel');
+  if (!toggle || !panel || toggle.dataset.bound) return;
+  toggle.dataset.bound = 'true';
+  toggle.addEventListener('click', (event) => {
+    event.stopPropagation();
+    panel.classList.toggle('hidden');
+    const open = !panel.classList.contains('hidden');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  document.addEventListener('click', (event) => {
+    if (panel.classList.contains('hidden')) return;
+    if (event.target.closest('#liquidity-monthly-wrap')) return;
+    panel.classList.add('hidden');
+    toggle.setAttribute('aria-expanded', 'false');
+  });
+}
+
 function renderChart(series) {
   const container = document.getElementById('liquidity-chart');
   const balanceEl = document.getElementById('liquidity-balance');
-  if (!container || !series?.points?.length) return;
+  if (!container) return;
 
   if (balanceEl) {
-    balanceEl.textContent = `now: ${formatUsd(series.current)}`;
+    balanceEl.textContent = `now: ${formatUsd(series?.current ?? 0)}`;
   }
 
+  const points = series?.points || [];
   const { width, height } = viewportSize();
   const compact = width < 700;
   const padding = {
     top: compact ? 108 : Math.max(96, height * 0.16),
     right: compact ? 20 : 48,
-    bottom: compact ? 64 : 72,
+    bottom: compact ? 88 : 84,
     left: compact ? 52 : 72
   };
   const graphWidth = Math.max(40, width - padding.left - padding.right);
   const graphHeight = Math.max(40, height - padding.top - padding.bottom);
+  const axisBottom = padding.top + graphHeight;
+  const yTitleX = compact ? 14 : 18;
+  const xLabelY = height - (compact ? 36 : 32);
+  const xTitleY = height - (compact ? 16 : 12);
 
-  const times = series.points.map((point) => new Date(point.at).getTime());
+  if (!points.length) {
+    container.innerHTML = `
+      <svg class="liquidity-svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Liquidity over time">
+        <text x="${padding.left + graphWidth / 2}" y="${xTitleY}" class="timeline-axis-title" text-anchor="middle">Time</text>
+        <text x="${yTitleX}" y="${padding.top + graphHeight / 2}" class="timeline-axis-title" text-anchor="middle" transform="rotate(-90 ${yTitleX} ${padding.top + graphHeight / 2})">USD</text>
+      </svg>
+    `;
+    return;
+  }
+
+  const times = points.map((point) => new Date(point.at).getTime());
   const startMs = times[0];
   const endMs = times[times.length - 1];
   const span = Math.max(24 * 60 * 60 * 1000, endMs - startMs);
-  const nowMs = series.now_at ? new Date(series.now_at).getTime() : Date.now();
-  const balances = series.points.map((point) => Number(point.balance));
+  const balances = points.map((point) => Number(point.balance));
   let minBalance = Math.min(...balances);
   let maxBalance = Math.max(...balances);
   if (minBalance > 0) minBalance = 0;
@@ -153,39 +229,24 @@ function renderChart(series) {
   const xOf = (ms) => padding.left + ((ms - startMs) / span) * graphWidth;
   const yOf = (value) => padding.top + ((yScale.max - value) / (yScale.max - yScale.min || 1)) * graphHeight;
 
-  const mapped = series.points.map((point, index) => ({
+  const mapped = points.map((point, index) => ({
     ...point,
     x: xOf(times[index]),
     y: yOf(Number(point.balance))
   }));
 
-  const nowX = xOf(Math.min(endMs, Math.max(startMs, nowMs)));
-  const nowProgress = (nowMs - startMs) / span;
-  const splitFuture = nowProgress > 0.02 && nowProgress < 0.98;
+  const seenX = new Map();
+  mapped.forEach((point) => {
+    const key = Math.round(point.x);
+    const count = seenX.get(key) || 0;
+    seenX.set(key, count + 1);
+    if (count > 0) point.x += count * (compact ? 8 : 6);
+  });
 
-  let pastPath = `M ${mapped[0].x} ${mapped[0].y}`;
-  let futurePath = '';
-  let inFuture = false;
-  for (let i = 1; i < mapped.length; i++) {
-    const crossesNow = splitFuture && !inFuture && times[i] > nowMs;
-    if (crossesNow) {
-      pastPath += ` H ${nowX}`;
-      futurePath = `M ${nowX} ${mapped[i - 1].y} H ${mapped[i].x} V ${mapped[i].y}`;
-      inFuture = true;
-    } else if (inFuture) {
-      futurePath += ` H ${mapped[i].x} V ${mapped[i].y}`;
-    } else {
-      pastPath += ` H ${mapped[i].x} V ${mapped[i].y}`;
-    }
-  }
-
-  const zeroY = yScale.min <= 0 && yScale.max >= 0 ? yOf(0) : null;
+  const linePath = mapped.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
   const xTickValues = dayAxisTicks(startMs, endMs, compact);
   const labelMode = (endMs - startMs) / (24 * 60 * 60 * 1000) > 80 ? 'month' : (compact ? 'short' : 'day');
-  const yTitleX = compact ? 14 : 18;
-  const xLabelY = height - (compact ? 22 : 28);
-  const xTitleY = height - (compact ? 8 : 10);
-  const dotRadius = compact ? 6 : 4.5;
+  const dotRadius = compact ? 6 : 5;
   const hitRadius = compact ? 18 : 10;
 
   container.innerHTML = `
@@ -194,20 +255,18 @@ function renderChart(series) {
         <line x1="${padding.left}" y1="${yOf(tick)}" x2="${width - padding.right}" y2="${yOf(tick)}" class="timeline-grid-line" />
         <text x="${padding.left - 8}" y="${yOf(tick) + 4}" class="timeline-axis-label" text-anchor="end">${escapeXml(formatAxisUsd(tick))}</text>
       `).join('')}
-      ${zeroY !== null ? `<line x1="${padding.left}" y1="${zeroY}" x2="${width - padding.right}" y2="${zeroY}" class="liquidity-zero-line" />` : ''}
-      ${splitFuture ? `<line x1="${nowX}" y1="${padding.top}" x2="${nowX}" y2="${padding.top + graphHeight}" class="liquidity-now-line" />` : ''}
-      <path d="${pastPath}" class="timeline-line" />
-      ${futurePath ? `<path d="${futurePath}" class="timeline-line liquidity-line-future" />` : ''}
-      ${mapped.filter((point) => point.kind === 'entry' || point.kind === 'monthly').map((point) => `
-        <g class="liquidity-marker">
-          <circle cx="${point.x}" cy="${point.y}" r="${hitRadius}" class="liquidity-hit" data-at="${escapeXml(point.at)}" data-balance="${point.balance}" data-note="${escapeXml(point.note || '')}" />
-          <circle cx="${point.x}" cy="${point.y}" r="${dotRadius}" class="timeline-marker-dot${point.projected ? ' liquidity-dot-future' : ''}" />
+      <path d="${linePath}" class="timeline-line" />
+      ${mapped.map((point) => `
+        <g class="timeline-marker liquidity-marker">
+          <line x1="${point.x}" y1="${point.y}" x2="${point.x}" y2="${axisBottom}" class="timeline-marker-line liquidity-hit" data-id="${escapeXml(point.id || point.at)}" data-at="${escapeXml(point.at)}" data-balance="${point.balance}" data-delta="${point.delta}" data-note="${escapeXml(point.note || '')}" data-amount="${point.amount}" data-currency="${escapeXml(point.currency || '')}" />
+          <circle cx="${point.x}" cy="${point.y}" r="${hitRadius}" class="liquidity-hit" data-id="${escapeXml(point.id || point.at)}" data-at="${escapeXml(point.at)}" data-balance="${point.balance}" data-delta="${point.delta}" data-note="${escapeXml(point.note || '')}" data-amount="${point.amount}" data-currency="${escapeXml(point.currency || '')}" />
+          <circle cx="${point.x}" cy="${point.y}" r="${dotRadius}" class="timeline-marker-dot" />
         </g>
       `).join('')}
       ${xTickValues.map((ms) => `
         <text x="${xOf(ms)}" y="${xLabelY}" class="timeline-axis-label" text-anchor="middle">${escapeXml(formatDateLabel(ms, labelMode))}</text>
       `).join('')}
-      <text x="${padding.left + graphWidth / 2}" y="${xTitleY}" class="timeline-axis-title" text-anchor="middle">days</text>
+      <text x="${padding.left + graphWidth / 2}" y="${xTitleY}" class="timeline-axis-title" text-anchor="middle">Time</text>
       <text x="${yTitleX}" y="${padding.top + graphHeight / 2}" class="timeline-axis-title" text-anchor="middle" transform="rotate(-90 ${yTitleX} ${padding.top + graphHeight / 2})">USD</text>
     </svg>
   `;
@@ -218,13 +277,19 @@ function renderChart(series) {
     const note = target.getAttribute('data-note');
     const at = target.getAttribute('data-at');
     const balance = target.getAttribute('data-balance');
-    tooltip.innerHTML = `${escapeXml(formatDateLabel(at))}<br>${escapeXml(formatUsd(balance))}${note ? `<br>${escapeXml(note)}` : ''}`;
+    const delta = target.getAttribute('data-delta');
+    const amount = target.getAttribute('data-amount');
+    const currency = target.getAttribute('data-currency');
+    const amountLine = currency && currency !== 'USD'
+      ? `${escapeXml(formatSignedUsd(delta))} · ${escapeXml(Number(amount).toFixed(2))} ${escapeXml(currency)}`
+      : escapeXml(formatSignedUsd(delta));
+    tooltip.innerHTML = `${escapeXml(formatDateTime(at))}<br>${amountLine}${note ? `<br>${escapeXml(note)}` : ''}<br>${escapeXml(formatUsd(balance))}`;
     tooltip.classList.remove('hidden');
     const x = event.clientX ?? (target.getBoundingClientRect().left);
     const y = event.clientY ?? (target.getBoundingClientRect().top);
-    const tipWidth = 160;
+    const tipWidth = 180;
     tooltip.style.left = `${Math.min(width - tipWidth - 12, Math.max(12, x + 12))}px`;
-    tooltip.style.top = `${Math.max(12, y - 72)}px`;
+    tooltip.style.top = `${Math.max(12, y - 88)}px`;
   };
 
   container.querySelectorAll('.liquidity-hit').forEach((hit) => {
@@ -233,11 +298,12 @@ function renderChart(series) {
     hit.addEventListener('mouseleave', () => tooltip?.classList.add('hidden'));
     hit.addEventListener('click', (event) => {
       event.stopPropagation();
-      if (tooltip && !tooltip.classList.contains('hidden') && tooltip.dataset.at === event.target.getAttribute('data-at')) {
+      const id = event.target.getAttribute('data-id');
+      if (tooltip && !tooltip.classList.contains('hidden') && tooltip.dataset.id === id) {
         tooltip.classList.add('hidden');
         return;
       }
-      if (tooltip) tooltip.dataset.at = event.target.getAttribute('data-at') || '';
+      if (tooltip) tooltip.dataset.id = id || '';
       showTip(event, event.target);
     });
   });
@@ -259,6 +325,8 @@ async function loadLiquidity() {
       document.getElementById('liquidity-balance').textContent = 'could not load liquidity';
       return;
     }
+    bindMonthlyToggle();
+    renderMonthlyPanel(data.recurring || []);
     renderChart(data.series);
   } catch (error) {
     console.error('Error loading liquidity:', error);

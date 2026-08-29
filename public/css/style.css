@@ -3777,6 +3777,71 @@ body.selfie-crop-open {
   bottom: 52px;
 }
 
+#liquidity-monthly-wrap {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 950;
+  max-width: min(280px, calc(100vw - 40px));
+}
+
+.liquidity-monthly-toggle {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.85rem;
+  background: none;
+  border: none;
+  color: var(--text-color);
+  opacity: 0.55;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  min-height: 44px;
+  padding: 0.15rem 0;
+}
+
+.liquidity-monthly-toggle:hover,
+.liquidity-monthly-toggle[aria-expanded="true"] {
+  opacity: 0.9;
+}
+
+.liquidity-monthly-panel {
+  margin-top: 0.4rem;
+  background: var(--entry-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  color: var(--text-color);
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.liquidity-monthly-panel.hidden {
+  display: none;
+}
+
+.liquidity-monthly-item {
+  margin-bottom: 0.75rem;
+}
+
+.liquidity-monthly-item:last-child {
+  margin-bottom: 0;
+}
+
+.liquidity-monthly-name {
+  display: block;
+}
+
+.liquidity-monthly-meta,
+.liquidity-monthly-empty {
+  font-size: 0.85rem;
+  opacity: 0.7;
+  margin: 0;
+}
+
+.liquidity-optional-date {
+  margin-top: 1.25rem;
+}
+
 .liquidity-line-future {
   stroke-dasharray: 7 7;
   opacity: 0.55;
@@ -3927,6 +3992,17 @@ body.selfie-crop-open {
     bottom: auto;
     font-size: 0.95rem;
     opacity: 0.7;
+  }
+
+  #liquidity-monthly-wrap {
+    left: 1.15rem;
+    right: 1.15rem;
+    bottom: calc(0.85rem + env(safe-area-inset-bottom, 0px));
+    max-width: none;
+  }
+
+  .liquidity-monthly-toggle {
+    font-size: 0.95rem;
   }
 
   .liquidity-tooltip {

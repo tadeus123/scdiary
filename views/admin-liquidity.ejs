@@ -30,6 +30,72 @@
     </nav>
 
     <main>
+      <div class="new-entry-box">
+        <h2>log</h2>
+        <p class="form-hint">each save is a dot on the graph, at this moment.</p>
+        <div id="message-container"></div>
+        <div class="liquidity-form-row">
+          <div class="form-group">
+            <label for="entry-amount">amount</label>
+            <input type="text" id="entry-amount" inputmode="decimal" placeholder="-25.32" autocomplete="off" autocapitalize="off" spellcheck="false">
+            <span class="form-hint">minus is out · 25.32 is in</span>
+          </div>
+          <div class="form-group">
+            <span class="liquidity-field-label">currency</span>
+            <div class="liquidity-pills" data-target="entry-currency" role="group" aria-label="currency">
+              <button type="button" class="liquidity-pill is-active" data-value="USD">USD</button>
+              <button type="button" class="liquidity-pill" data-value="EUR">EUR</button>
+            </div>
+            <input type="hidden" id="entry-currency" value="USD">
+          </div>
+        </div>
+        <textarea id="entry-content" placeholder="what was this..."></textarea>
+        <button type="button" class="btn" id="save-btn">save</button>
+        <div class="form-group liquidity-optional-date">
+          <label for="entry-date">date</label>
+          <input type="date" id="entry-date">
+          <span class="form-hint">empty means now</span>
+        </div>
+      </div>
+
+      <div class="entries">
+        <% if (!entries || entries.length === 0) { %>
+          <div class="empty-state">
+            <p>no movements yet. log the first one above.</p>
+          </div>
+        <% } else { %>
+          <% entries.forEach(entry => { %>
+            <article class="entry" data-entry-id="<%= entry.id %>">
+              <div class="entry-header">
+                <div class="entry-date">
+                  <%= new Date(entry.timestamp).toLocaleString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                  }) %>
+                </div>
+                <button type="button" class="delete-entry-btn" onclick="deleteLiquidityEntry('<%= entry.id %>')" aria-label="Delete entry">×</button>
+              </div>
+              <div class="entry-content">
+                <% const usd = Number(entry.amount_usd); %>
+                <p class="liquidity-amount <%= usd < 0 ? 'liquidity-out' : 'liquidity-in' %>">
+                  <%= usd < 0 ? '−' : '+' %>$<%= Math.abs(usd).toFixed(2) %>
+                </p>
+                <% if (entry.note) { %>
+                  <p><%= entry.note %></p>
+                <% } %>
+                <% if (entry.currency === 'EUR') { %>
+                  <p class="form-hint"><%= Number(entry.amount).toFixed(2) %> EUR → USD @ <%= Number(entry.fx_rate).toFixed(4) %></p>
+                <% } %>
+              </div>
+            </article>
+          <% }) %>
+        <% } %>
+      </div>
+
       <div class="new-entry-box liquidity-start-box">
         <h2>liabilities</h2>
         <p class="form-hint">what you still owe. the graph starts at minus this total.</p>
@@ -83,71 +149,9 @@
         <% } %>
       </div>
 
-      <div class="new-entry-box">
-        <h2>log</h2>
-        <div id="message-container"></div>
-        <div class="liquidity-form-row">
-          <div class="form-group">
-            <label for="entry-amount">amount</label>
-            <input type="text" id="entry-amount" inputmode="decimal" placeholder="-25.32" autocomplete="off" autocapitalize="off" spellcheck="false">
-            <span class="form-hint">minus is out · 25.32 is in</span>
-          </div>
-          <div class="form-group">
-            <span class="liquidity-field-label">currency</span>
-            <div class="liquidity-pills" data-target="entry-currency" role="group" aria-label="currency">
-              <button type="button" class="liquidity-pill is-active" data-value="USD">USD</button>
-              <button type="button" class="liquidity-pill" data-value="EUR">EUR</button>
-            </div>
-            <input type="hidden" id="entry-currency" value="USD">
-          </div>
-          <div class="form-group">
-            <label for="entry-date">date</label>
-            <input type="date" id="entry-date">
-            <span class="form-hint">empty means now</span>
-          </div>
-        </div>
-        <textarea id="entry-content" placeholder="what was this..."></textarea>
-        <button type="button" class="btn" id="save-btn">save</button>
-      </div>
-
-      <div class="entries">
-        <% if (!entries || entries.length === 0) { %>
-          <div class="empty-state">
-            <p>no movements yet. log the first one above.</p>
-          </div>
-        <% } else { %>
-          <% entries.forEach(entry => { %>
-            <article class="entry" data-entry-id="<%= entry.id %>">
-              <div class="entry-header">
-                <div class="entry-date">
-                  <%= new Date(entry.timestamp).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  }) %>
-                </div>
-                <button type="button" class="delete-entry-btn" onclick="deleteLiquidityEntry('<%= entry.id %>')" aria-label="Delete entry">×</button>
-              </div>
-              <div class="entry-content">
-                <% const usd = Number(entry.amount_usd); %>
-                <p class="liquidity-amount <%= usd < 0 ? 'liquidity-out' : 'liquidity-in' %>">
-                  <%= usd < 0 ? '−' : '+' %>$<%= Math.abs(usd).toFixed(2) %>
-                </p>
-                <% if (entry.note) { %>
-                  <p><%= entry.note %></p>
-                <% } %>
-                <% if (entry.currency === 'EUR') { %>
-                  <p class="form-hint"><%= Number(entry.amount).toFixed(2) %> EUR → USD @ <%= Number(entry.fx_rate).toFixed(4) %></p>
-                <% } %>
-              </div>
-            </article>
-          <% }) %>
-        <% } %>
-      </div>
-
       <div class="add-book-section liquidity-monthly-section">
         <h2>monthly</h2>
+        <p class="form-hint">fixed spendings, listed on the graph page. they are not forecasted on the line.</p>
         <div id="recurring-message"></div>
         <form id="recurring-form" class="book-form">
           <div class="liquidity-form-row">

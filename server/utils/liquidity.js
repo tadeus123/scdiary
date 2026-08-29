@@ -139,19 +139,13 @@ function liabilitiesTotalUsd(liabilities = []) {
   return roundMoney(-total);
 }
 
-function buildLiquiditySeries({ settings, entries = [], recurring = [], liabilities = [], ratesByDate = {}, latestRate = 1, now = new Date() }) {
+function buildLiquiditySeries({ entries = [], liabilities = [] }) {
   const startingBalance = liabilitiesTotalUsd(liabilities);
-  const startAt = toDate(settings?.starting_at) || now;
-  const nowAt = toDate(now) || new Date();
-  const startMs = startAt.getTime();
-  const startDay = utcDateFromKey(dateKey(startAt) || dateKey(nowAt));
-
   const events = [];
-  let lastEventAt = null;
 
   for (const entry of entries) {
     const at = toDate(entry.timestamp);
-    if (!at || at.getTime() < startMs) continue;
+    if (!at) continue;
     events.push({
       at,
       delta: roundMoney(entry.amount_usd),
@@ -163,130 +157,35 @@ function buildLiquiditySeries({ settings, entries = [], recurring = [], liabilit
       currency: entry.currency,
       fx_rate: toNumber(entry.fx_rate, 1)
     });
-    if (!lastEventAt || at > lastEventAt) lastEventAt = at;
-  }
-
-  const endAt = horizonEndAt(startDay, nowAt, lastEventAt);
-
-  for (const item of recurring) {
-    const itemStart = toDate(item.start_date) || startDay;
-    const from = itemStart > startDay ? itemStart : startDay;
-    const itemEnd = item.end_date ? toDate(item.end_date) : null;
-    const to = itemEnd && itemEnd < endAt ? itemEnd : endAt;
-    const occurrences = monthlyOccurrences(item.day_of_month, from, to);
-
-    for (const atOriginal of occurrences) {
-      let at = atOriginal;
-      if (at.getTime() < startMs) {
-        if (dateKey(at) === dateKey(startAt)) {
-          at = startAt;
-        } else {
-          continue;
-        }
-      }
-      if (at > endAt) continue;
-      const key = dateKey(at);
-      const rate = rateForDate(item.currency, key, ratesByDate, latestRate);
-      events.push({
-        at,
-        delta: signedUsd(item.amount, item.direction, rate),
-        kind: 'monthly',
-        id: item.id,
-        note: item.name || '',
-        direction: item.direction,
-        amount: toNumber(item.amount),
-        currency: item.currency,
-        fx_rate: rate
-      });
-      if (!lastEventAt || at > lastEventAt) lastEventAt = at;
-    }
   }
 
   events.sort((a, b) => {
     const diff = a.at.getTime() - b.at.getTime();
     if (diff !== 0) return diff;
-    if (a.kind === b.kind) return String(a.id).localeCompare(String(b.id));
-    return a.kind === 'monthly' ? -1 : 1;
+    return String(a.id).localeCompare(String(b.id));
   });
 
-  const points = [{
-    at: startAt.toISOString(),
-    balance: startingBalance,
-    delta: 0,
-    kind: 'start',
-    note: 'start',
-    projected: false
-  }];
-
+  const points = [];
   let balance = startingBalance;
-  let current = startingBalance;
-  let nowInserted = Math.abs(nowAt.getTime() - startAt.getTime()) < 60 * 60 * 1000;
-
-  function pushNowIfNeeded(beforeTime) {
-    if (nowInserted || nowAt.getTime() >= beforeTime.getTime()) return;
-    if (nowAt.getTime() <= startMs) return;
-    points.push({
-      at: nowAt.toISOString(),
-      balance,
-      delta: 0,
-      kind: 'now',
-      note: 'now',
-      projected: false
-    });
-    current = balance;
-    nowInserted = true;
-  }
-
   for (const event of events) {
-    pushNowIfNeeded(event.at);
     balance = roundMoney(balance + event.delta);
-    const projected = event.at.getTime() > nowAt.getTime();
     points.push({
       at: event.at.toISOString(),
       balance,
       delta: event.delta,
       kind: event.kind,
+      id: event.id,
       note: event.note,
       direction: event.direction,
       amount: event.amount,
       currency: event.currency,
-      fx_rate: event.fx_rate,
-      projected
-    });
-    if (!projected) current = balance;
-  }
-
-  if (!nowInserted && nowAt.getTime() > startMs && nowAt.getTime() < endAt.getTime()) {
-    points.push({
-      at: nowAt.toISOString(),
-      balance,
-      delta: 0,
-      kind: 'now',
-      note: 'now',
-      projected: false
-    });
-    current = balance;
-    nowInserted = true;
-  }
-
-  const lastAt = toDate(points[points.length - 1].at);
-  if (!lastAt || lastAt.getTime() < endAt.getTime()) {
-    points.push({
-      at: endAt.toISOString(),
-      balance,
-      delta: 0,
-      kind: 'horizon',
-      note: 'horizon',
-      projected: true
+      fx_rate: event.fx_rate
     });
   }
 
   return {
     starting_balance_usd: startingBalance,
-    starting_at: startAt.toISOString(),
-    current,
-    horizon_at: endAt.toISOString(),
-    now_at: nowAt.toISOString(),
+    current: balance,
     points
   };
 }

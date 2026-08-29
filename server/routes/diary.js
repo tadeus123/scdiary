@@ -175,8 +175,8 @@ router.get('/api/liquidity', async (req, res) => {
       'Expires': '0'
     });
 
-    const { series } = await loadLiquidityGraph();
-    res.json({ success: true, series });
+    const { series, recurring } = await loadLiquidityGraph();
+    res.json({ success: true, series, recurring });
   } catch (error) {
     console.error('Error fetching liquidity:', error);
     res.status(500).json({ success: false, error: 'Failed to load liquidity' });
