@@ -45,9 +45,7 @@ function formatDateLabel(iso, compact = false) {
 function formatTooltipWhen(iso) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  const day = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  return `${day}, ${time}`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function niceTicks(min, max, count = 5) {
