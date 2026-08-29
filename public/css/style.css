@@ -3921,7 +3921,8 @@ body.selfie-crop-open {
   margin-top: 0.35rem;
   padding-top: 0.85rem;
   border-top: 1px solid var(--border-color);
-  font-size: 1.15rem;
+  font-size: 1.35rem;
+  font-weight: 700;
 }
 
 .liquidity-monthly-totals .liquidity-runway {
@@ -4108,7 +4109,7 @@ body.selfie-crop-open {
   }
 
   .liquidity-monthly-total {
-    font-size: 1.05rem;
+    font-size: 1.2rem;
   }
 
   .liquidity-tooltip {
