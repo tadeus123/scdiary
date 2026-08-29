@@ -16,13 +16,16 @@ const {
   upsertCornerSelfie,
   deleteCornerSelfie,
   getLiquiditySettings,
-  upsertLiquiditySettings,
   getLiquidityEntries,
   createLiquidityEntry,
   deleteLiquidityEntry,
   getLiquidityRecurring,
   createLiquidityRecurring,
   deleteLiquidityRecurring,
+  getLiquidityLiabilities,
+  getLiquidityLiability,
+  createLiquidityLiability,
+  deleteLiquidityLiability,
   isConfigured
 } = require('../db/supabase');
 const { getEurUsdRate } = require('../utils/fx');
@@ -312,45 +315,105 @@ function newLiquidityId(prefix) {
   return `${prefix}-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
 }
 
-function parseStartingDate(value) {
-  const date = String(value || '').slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-  return `${date}T00:00:00.000Z`;
-}
-
 router.get('/liquidity', isAuthenticated, async (req, res) => {
-  const [settings, entries, recurring] = await Promise.all([
+  const [settings, entries, recurring, liabilities] = await Promise.all([
     getLiquiditySettings(),
     getLiquidityEntries(),
-    getLiquidityRecurring()
+    getLiquidityRecurring(),
+    getLiquidityLiabilities()
   ]);
-  res.render('admin-liquidity', { settings, entries, recurring });
+  res.render('admin-liquidity', { settings, entries, recurring, liabilities });
 });
 
-router.put('/liquidity/settings', isAuthenticated, async (req, res) => {
+router.post('/liquidity/liability', isAuthenticated, async (req, res) => {
   if (!isConfigured()) {
     return res.status(503).json({ success: false, error: 'Supabase is not configured on the server.' });
   }
 
-  const starting = Number(String(req.body?.starting_balance_usd ?? '').replace(',', '.'));
-  const starting_at = parseStartingDate(req.body?.starting_at);
+  const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+  const amount = parsePositiveAmount(req.body?.amount);
+  const currency = normalizeCurrency(req.body?.currency);
+  const dueRaw = String(req.body?.due_date || '').slice(0, 10);
+  const due_date = /^\d{4}-\d{2}-\d{2}$/.test(dueRaw) ? dueRaw : null;
 
-  if (!Number.isFinite(starting)) {
-    return res.status(400).json({ success: false, error: 'Starting balance must be a number in USD.' });
+  if (!name) {
+    return res.status(400).json({ success: false, error: 'What is this liability?' });
   }
-  if (!starting_at) {
-    return res.status(400).json({ success: false, error: 'Starting date is required.' });
+  if (!amount) {
+    return res.status(400).json({ success: false, error: 'Amount must be greater than 0.' });
+  }
+  if (!currency) {
+    return res.status(400).json({ success: false, error: 'Currency must be USD or EUR.' });
   }
 
-  const result = await upsertLiquiditySettings({
-    starting_balance_usd: roundMoney(starting),
-    starting_at
-  });
+  let fx_rate = 1;
+  try {
+    if (currency === 'EUR') {
+      fx_rate = await getEurUsdRate(due_date || new Date().toISOString());
+    }
+  } catch (error) {
+    console.error('FX conversion failed:', error);
+    return res.status(502).json({ success: false, error: 'Could not convert EUR to USD. Try again, or log in USD.' });
+  }
 
+  const item = {
+    id: newLiquidityId('lb'),
+    name,
+    amount,
+    currency,
+    fx_rate,
+    amount_usd: roundMoney(amount * fx_rate),
+    due_date
+  };
+
+  const result = await createLiquidityLiability(item);
   if (result.success) {
-    res.json({ success: true, settings: result.settings });
+    res.json({ success: true, item: result.item });
   } else {
-    res.status(500).json({ success: false, error: result.error || 'Failed to save starting point' });
+    res.status(500).json({ success: false, error: result.error || 'Failed to save liability' });
+  }
+});
+
+router.post('/liquidity/liability/:id/paid', isAuthenticated, async (req, res) => {
+  if (!isConfigured()) {
+    return res.status(503).json({ success: false, error: 'Supabase is not configured on the server.' });
+  }
+
+  const liability = await getLiquidityLiability(req.params.id);
+  if (!liability) {
+    return res.status(404).json({ success: false, error: 'Liability not found' });
+  }
+
+  const entry = {
+    id: newLiquidityId('lq'),
+    timestamp: new Date().toISOString(),
+    amount: toNumber(liability.amount),
+    currency: liability.currency,
+    fx_rate: toNumber(liability.fx_rate, 1),
+    amount_usd: signedUsd(liability.amount, 'out', toNumber(liability.fx_rate, 1)),
+    direction: 'out',
+    note: liability.name
+  };
+
+  const logged = await createLiquidityEntry(entry);
+  if (!logged.success) {
+    return res.status(500).json({ success: false, error: logged.error || 'Failed to log payment' });
+  }
+
+  const removed = await deleteLiquidityLiability(liability.id);
+  if (!removed.success) {
+    return res.status(500).json({ success: false, error: removed.error || 'Payment logged, but the liability could not be removed' });
+  }
+
+  res.json({ success: true, entry: logged.entry });
+});
+
+router.delete('/liquidity/liability/:id', isAuthenticated, async (req, res) => {
+  const result = await deleteLiquidityLiability(req.params.id);
+  if (result.success) {
+    res.json({ success: true });
+  } else {
+    res.status(500).json({ success: false, error: result.error || 'Failed to delete liability' });
   }
 });
 

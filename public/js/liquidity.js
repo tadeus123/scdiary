@@ -19,15 +19,17 @@ function formatAxisUsd(value) {
   return `${n < 0 ? '−' : ''}$${abs.toFixed(abs >= 100 ? 0 : 2)}`;
 }
 
-function formatDateLabel(iso, mode = false) {
+function formatDateLabel(iso, compact = false) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  if (mode === 'time') {
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const spanHint = typeof compact === 'string' ? compact : (compact ? 'short' : 'day');
+  if (spanHint === 'month') {
+    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   }
-  return date.toLocaleDateString('en-US', mode
-    ? { month: 'short', day: 'numeric' }
-    : { month: 'short', day: 'numeric', year: 'numeric' });
+  if (spanHint === 'short') {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function niceTicks(min, max, count = 5) {
@@ -57,14 +59,32 @@ function niceTicks(min, max, count = 5) {
   return { min: niceMin, max: niceMax, ticks };
 }
 
-function timeTicks(startMs, endMs, count = 5) {
-  const span = Math.max(1, endMs - startMs);
-  const ticks = [];
-  const steps = Math.max(2, count);
-  for (let i = 0; i < steps; i++) {
-    ticks.push(startMs + (span * i) / (steps - 1));
+function dayAxisTicks(startMs, endMs, compact) {
+  const spanDays = Math.max(1, (endMs - startMs) / (24 * 60 * 60 * 1000));
+  const ticks = [startMs];
+  const start = new Date(startMs);
+  let year = start.getUTCFullYear();
+  let month = start.getUTCMonth() + 1;
+  const monthStep = spanDays > 240 ? (compact ? 3 : 2) : 1;
+
+  while (month > 11) {
+    month -= 12;
+    year += 1;
   }
-  return ticks;
+
+  while (true) {
+    const tick = Date.UTC(year, month, 1);
+    if (tick >= endMs - 12 * 24 * 60 * 60 * 1000) break;
+    if (tick > startMs) ticks.push(tick);
+    month += monthStep;
+    while (month > 11) {
+      month -= 12;
+      year += 1;
+    }
+  }
+
+  ticks.push(endMs);
+  return uniqueLabeledTicks(ticks, (ms) => formatDateLabel(ms, spanDays > 80 ? 'month' : (compact ? 'short' : 'day')));
 }
 
 function uniqueLabeledTicks(ticks, formatter) {
@@ -121,7 +141,8 @@ function renderChart(series) {
   const times = series.points.map((point) => new Date(point.at).getTime());
   const startMs = times[0];
   const endMs = times[times.length - 1];
-  const span = Math.max(1, endMs - startMs);
+  const span = Math.max(24 * 60 * 60 * 1000, endMs - startMs);
+  const nowMs = series.now_at ? new Date(series.now_at).getTime() : Date.now();
   const balances = series.points.map((point) => Number(point.balance));
   let minBalance = Math.min(...balances);
   let maxBalance = Math.max(...balances);
@@ -138,18 +159,29 @@ function renderChart(series) {
     y: yOf(Number(point.balance))
   }));
 
-  let path = `M ${mapped[0].x} ${mapped[0].y}`;
+  const nowX = xOf(Math.min(endMs, Math.max(startMs, nowMs)));
+  const nowProgress = (nowMs - startMs) / span;
+  const splitFuture = nowProgress > 0.02 && nowProgress < 0.98;
+
+  let pastPath = `M ${mapped[0].x} ${mapped[0].y}`;
+  let futurePath = '';
+  let inFuture = false;
   for (let i = 1; i < mapped.length; i++) {
-    path += ` H ${mapped[i].x} V ${mapped[i].y}`;
+    const crossesNow = splitFuture && !inFuture && times[i] > nowMs;
+    if (crossesNow) {
+      pastPath += ` H ${nowX}`;
+      futurePath = `M ${nowX} ${mapped[i - 1].y} H ${mapped[i].x} V ${mapped[i].y}`;
+      inFuture = true;
+    } else if (inFuture) {
+      futurePath += ` H ${mapped[i].x} V ${mapped[i].y}`;
+    } else {
+      pastPath += ` H ${mapped[i].x} V ${mapped[i].y}`;
+    }
   }
 
   const zeroY = yScale.min <= 0 && yScale.max >= 0 ? yOf(0) : null;
-  const sameDay = new Date(startMs).toDateString() === new Date(endMs).toDateString();
-  const labelMode = sameDay ? 'time' : compact;
-  const xTickValues = uniqueLabeledTicks(
-    timeTicks(startMs, endMs, compact ? 3 : (span > 1000 * 60 * 60 * 24 * 180 ? 6 : 5)),
-    (ms) => formatDateLabel(ms, labelMode)
-  );
+  const xTickValues = dayAxisTicks(startMs, endMs, compact);
+  const labelMode = (endMs - startMs) / (24 * 60 * 60 * 1000) > 80 ? 'month' : (compact ? 'short' : 'day');
   const yTitleX = compact ? 14 : 18;
   const xLabelY = height - (compact ? 22 : 28);
   const xTitleY = height - (compact ? 8 : 10);
@@ -163,17 +195,19 @@ function renderChart(series) {
         <text x="${padding.left - 8}" y="${yOf(tick) + 4}" class="timeline-axis-label" text-anchor="end">${escapeXml(formatAxisUsd(tick))}</text>
       `).join('')}
       ${zeroY !== null ? `<line x1="${padding.left}" y1="${zeroY}" x2="${width - padding.right}" y2="${zeroY}" class="liquidity-zero-line" />` : ''}
-      <path d="${path}" class="timeline-line" />
+      ${splitFuture ? `<line x1="${nowX}" y1="${padding.top}" x2="${nowX}" y2="${padding.top + graphHeight}" class="liquidity-now-line" />` : ''}
+      <path d="${pastPath}" class="timeline-line" />
+      ${futurePath ? `<path d="${futurePath}" class="timeline-line liquidity-line-future" />` : ''}
       ${mapped.filter((point) => point.kind === 'entry' || point.kind === 'monthly').map((point) => `
         <g class="liquidity-marker">
           <circle cx="${point.x}" cy="${point.y}" r="${hitRadius}" class="liquidity-hit" data-at="${escapeXml(point.at)}" data-balance="${point.balance}" data-note="${escapeXml(point.note || '')}" />
-          <circle cx="${point.x}" cy="${point.y}" r="${dotRadius}" class="timeline-marker-dot" />
+          <circle cx="${point.x}" cy="${point.y}" r="${dotRadius}" class="timeline-marker-dot${point.projected ? ' liquidity-dot-future' : ''}" />
         </g>
       `).join('')}
       ${xTickValues.map((ms) => `
         <text x="${xOf(ms)}" y="${xLabelY}" class="timeline-axis-label" text-anchor="middle">${escapeXml(formatDateLabel(ms, labelMode))}</text>
       `).join('')}
-      <text x="${padding.left + graphWidth / 2}" y="${xTitleY}" class="timeline-axis-title" text-anchor="middle">time</text>
+      <text x="${padding.left + graphWidth / 2}" y="${xTitleY}" class="timeline-axis-title" text-anchor="middle">days</text>
       <text x="${yTitleX}" y="${padding.top + graphHeight / 2}" class="timeline-axis-title" text-anchor="middle" transform="rotate(-90 ${yTitleX} ${padding.top + graphHeight / 2})">USD</text>
     </svg>
   `;

@@ -1,16 +1,18 @@
 const {
   getLiquiditySettings,
   getLiquidityEntries,
-  getLiquidityRecurring
+  getLiquidityRecurring,
+  getLiquidityLiabilities
 } = require('../db/supabase');
 const { getLatestEurUsdRate, getEurUsdRates } = require('./fx');
-const { buildLiquiditySeries, dateKey } = require('./liquidity');
+const { buildLiquiditySeries, dateKey, utcDateFromKey, horizonEndAt } = require('./liquidity');
 
 async function loadLiquidityGraph(now = new Date()) {
-  const [settings, entries, recurring] = await Promise.all([
+  const [settings, entries, recurring, liabilities] = await Promise.all([
     getLiquiditySettings(),
     getLiquidityEntries(),
-    getLiquidityRecurring()
+    getLiquidityRecurring(),
+    getLiquidityLiabilities()
   ]);
 
   const needsFx = recurring.some((item) => String(item.currency).toUpperCase() === 'EUR');
@@ -20,7 +22,13 @@ async function loadLiquidityGraph(now = new Date()) {
   if (needsFx) {
     latestRate = await getLatestEurUsdRate();
     const startKey = dateKey(settings.starting_at) || dateKey(now);
-    const endKey = dateKey(now);
+    const startDay = utcDateFromKey(startKey);
+    let lastEntryAt = null;
+    for (const entry of entries) {
+      const at = new Date(entry.timestamp);
+      if (!Number.isNaN(at.getTime()) && (!lastEntryAt || at > lastEntryAt)) lastEntryAt = at;
+    }
+    const endKey = dateKey(horizonEndAt(startDay, now, lastEntryAt));
     ratesByDate = await getEurUsdRates(startKey, endKey);
   }
 
@@ -28,12 +36,13 @@ async function loadLiquidityGraph(now = new Date()) {
     settings,
     entries,
     recurring,
+    liabilities,
     ratesByDate,
     latestRate,
     now
   });
 
-  return { settings, entries, recurring, series };
+  return { settings, entries, recurring, liabilities, series };
 }
 
 module.exports = {

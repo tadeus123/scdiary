@@ -83,6 +83,22 @@ function monthlyOccurrences(dayOfMonth, startDate, endDate) {
   return dates;
 }
 
+const MS_DAY = 24 * 60 * 60 * 1000;
+const MIN_HORIZON_DAYS = 365;
+
+function addUtcDays(date, days) {
+  return new Date(date.getTime() + days * MS_DAY);
+}
+
+function horizonEndAt(startDay, nowAt, lastEventAt) {
+  const candidates = [
+    addUtcDays(startDay, MIN_HORIZON_DAYS).getTime(),
+    nowAt.getTime()
+  ];
+  if (lastEventAt) candidates.push(lastEventAt.getTime());
+  return new Date(Math.max(...candidates));
+}
+
 function rateForDate(currency, key, ratesByDate, latestRate) {
   if (currency !== 'EUR') return 1;
   const mapped = ratesByDate && key ? ratesByDate[key] : null;
@@ -90,14 +106,20 @@ function rateForDate(currency, key, ratesByDate, latestRate) {
   return Number.isFinite(Number(latestRate)) && Number(latestRate) > 0 ? Number(latestRate) : 1;
 }
 
-function buildLiquiditySeries({ settings, entries = [], recurring = [], ratesByDate = {}, latestRate = 1, now = new Date() }) {
-  const startingBalance = roundMoney(settings?.starting_balance_usd ?? -2.5);
+function liabilitiesTotalUsd(liabilities = []) {
+  const total = liabilities.reduce((sum, item) => sum + Math.abs(toNumber(item.amount_usd)), 0);
+  return roundMoney(-total);
+}
+
+function buildLiquiditySeries({ settings, entries = [], recurring = [], liabilities = [], ratesByDate = {}, latestRate = 1, now = new Date() }) {
+  const startingBalance = liabilitiesTotalUsd(liabilities);
   const startAt = toDate(settings?.starting_at) || now;
-  const endAt = toDate(now) || new Date();
+  const nowAt = toDate(now) || new Date();
   const startMs = startAt.getTime();
-  const startDay = utcDateFromKey(dateKey(startAt) || dateKey(endAt));
+  const startDay = utcDateFromKey(dateKey(startAt) || dateKey(nowAt));
 
   const events = [];
+  let lastEventAt = null;
 
   for (const entry of entries) {
     const at = toDate(entry.timestamp);
@@ -113,7 +135,10 @@ function buildLiquiditySeries({ settings, entries = [], recurring = [], ratesByD
       currency: entry.currency,
       fx_rate: toNumber(entry.fx_rate, 1)
     });
+    if (!lastEventAt || at > lastEventAt) lastEventAt = at;
   }
+
+  const endAt = horizonEndAt(startDay, nowAt, lastEventAt);
 
   for (const item of recurring) {
     const itemStart = toDate(item.start_date) || startDay;
@@ -131,6 +156,7 @@ function buildLiquiditySeries({ settings, entries = [], recurring = [], ratesByD
           continue;
         }
       }
+      if (at > endAt) continue;
       const key = dateKey(at);
       const rate = rateForDate(item.currency, key, ratesByDate, latestRate);
       events.push({
@@ -144,6 +170,7 @@ function buildLiquiditySeries({ settings, entries = [], recurring = [], ratesByD
         currency: item.currency,
         fx_rate: rate
       });
+      if (!lastEventAt || at > lastEventAt) lastEventAt = at;
     }
   }
 
@@ -159,12 +186,33 @@ function buildLiquiditySeries({ settings, entries = [], recurring = [], ratesByD
     balance: startingBalance,
     delta: 0,
     kind: 'start',
-    note: 'start'
+    note: 'start',
+    projected: false
   }];
 
   let balance = startingBalance;
+  let current = startingBalance;
+  let nowInserted = Math.abs(nowAt.getTime() - startAt.getTime()) < 60 * 60 * 1000;
+
+  function pushNowIfNeeded(beforeTime) {
+    if (nowInserted || nowAt.getTime() >= beforeTime.getTime()) return;
+    if (nowAt.getTime() <= startMs) return;
+    points.push({
+      at: nowAt.toISOString(),
+      balance,
+      delta: 0,
+      kind: 'now',
+      note: 'now',
+      projected: false
+    });
+    current = balance;
+    nowInserted = true;
+  }
+
   for (const event of events) {
+    pushNowIfNeeded(event.at);
     balance = roundMoney(balance + event.delta);
+    const projected = event.at.getTime() > nowAt.getTime();
     points.push({
       at: event.at.toISOString(),
       balance,
@@ -174,8 +222,23 @@ function buildLiquiditySeries({ settings, entries = [], recurring = [], ratesByD
       direction: event.direction,
       amount: event.amount,
       currency: event.currency,
-      fx_rate: event.fx_rate
+      fx_rate: event.fx_rate,
+      projected
     });
+    if (!projected) current = balance;
+  }
+
+  if (!nowInserted && nowAt.getTime() > startMs && nowAt.getTime() < endAt.getTime()) {
+    points.push({
+      at: nowAt.toISOString(),
+      balance,
+      delta: 0,
+      kind: 'now',
+      note: 'now',
+      projected: false
+    });
+    current = balance;
+    nowInserted = true;
   }
 
   const lastAt = toDate(points[points.length - 1].at);
@@ -184,15 +247,18 @@ function buildLiquiditySeries({ settings, entries = [], recurring = [], ratesByD
       at: endAt.toISOString(),
       balance,
       delta: 0,
-      kind: 'now',
-      note: 'now'
+      kind: 'horizon',
+      note: 'horizon',
+      projected: true
     });
   }
 
   return {
     starting_balance_usd: startingBalance,
     starting_at: startAt.toISOString(),
-    current: balance,
+    current,
+    horizon_at: endAt.toISOString(),
+    now_at: nowAt.toISOString(),
     points
   };
 }
@@ -207,5 +273,7 @@ module.exports = {
   dateKey,
   utcDateFromKey,
   monthlyOccurrences,
+  horizonEndAt,
+  liabilitiesTotalUsd,
   buildLiquiditySeries
 };

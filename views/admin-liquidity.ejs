@@ -31,21 +31,59 @@
 
     <main>
       <div class="new-entry-box liquidity-start-box">
-        <div id="settings-message"></div>
+        <h2>liabilities</h2>
+        <p class="form-hint">what you still owe. the graph starts at minus this total.</p>
+        <div id="liability-message"></div>
         <div class="liquidity-form-row">
           <div class="form-group">
-            <label for="starting-balance">starting USD</label>
-            <input type="number" id="starting-balance" step="0.01" inputmode="decimal" value="<%= Number(settings.starting_balance_usd).toFixed(2) %>">
+            <label for="liability-amount">amount</label>
+            <input type="number" id="liability-amount" step="0.01" min="0.01" placeholder="0.00" inputmode="decimal">
           </div>
           <div class="form-group">
-            <label for="starting-date">as of</label>
-            <input type="date" id="starting-date" value="<%= String(settings.starting_at).slice(0, 10) %>">
+            <span class="liquidity-field-label">currency</span>
+            <div class="liquidity-pills" data-target="liability-currency" role="group" aria-label="currency">
+              <button type="button" class="liquidity-pill is-active" data-value="USD">USD</button>
+              <button type="button" class="liquidity-pill" data-value="EUR">EUR</button>
+            </div>
+            <input type="hidden" id="liability-currency" value="USD">
+          </div>
+          <div class="form-group">
+            <label for="liability-due">due</label>
+            <input type="date" id="liability-due">
+            <span class="form-hint">empty means as soon as possible</span>
           </div>
         </div>
-        <button type="button" class="btn" id="save-settings-btn">save start</button>
+        <textarea id="liability-name" placeholder="mom's flight, the 1.5k thing..."></textarea>
+        <button type="button" class="btn" id="save-liability-btn">add liability</button>
+        <% const openUsd = (liabilities || []).reduce((sum, item) => sum + Math.abs(Number(item.amount_usd) || 0), 0); %>
+        <p class="liquidity-open-total">open: −$<%= openUsd.toFixed(2) %></p>
+
+        <% if (liabilities && liabilities.length > 0) { %>
+          <div class="entries liquidity-liability-list">
+            <% liabilities.forEach(item => { %>
+              <article class="entry" data-liability-id="<%= item.id %>">
+                <div class="entry-header">
+                  <div class="entry-date"><%= item.name %></div>
+                  <div class="liquidity-entry-actions">
+                    <button type="button" class="liquidity-paid-btn" onclick="payLiquidityLiability('<%= item.id %>')">paid</button>
+                    <button type="button" class="delete-entry-btn" onclick="deleteLiquidityLiability('<%= item.id %>')" aria-label="Delete liability">×</button>
+                  </div>
+                </div>
+                <div class="entry-content">
+                  <p class="liquidity-amount liquidity-out">−$<%= Math.abs(Number(item.amount_usd)).toFixed(2) %></p>
+                  <% if (item.currency === 'EUR') { %>
+                    <p class="form-hint"><%= Number(item.amount).toFixed(2) %> EUR → USD @ <%= Number(item.fx_rate).toFixed(4) %></p>
+                  <% } %>
+                  <p class="form-hint"><%= item.due_date ? `due ${item.due_date}` : 'as soon as possible' %></p>
+                </div>
+              </article>
+            <% }) %>
+          </div>
+        <% } %>
       </div>
 
       <div class="new-entry-box">
+        <h2>log</h2>
         <div id="message-container"></div>
         <div class="liquidity-form-row">
           <div class="form-group">

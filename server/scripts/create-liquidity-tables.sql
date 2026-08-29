@@ -73,3 +73,28 @@ CREATE POLICY "Allow public read access" ON liquidity_recurring
 DROP POLICY IF EXISTS "Allow all operations" ON liquidity_recurring;
 CREATE POLICY "Allow all operations" ON liquidity_recurring
   FOR ALL USING (true);
+
+CREATE TABLE IF NOT EXISTS liquidity_liabilities (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  amount NUMERIC(14, 2) NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'USD',
+  fx_rate NUMERIC(14, 6) NOT NULL DEFAULT 1,
+  amount_usd NUMERIC(14, 2) NOT NULL,
+  due_date DATE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT liquidity_liabilities_currency_check CHECK (currency IN ('USD', 'EUR')),
+  CONSTRAINT liquidity_liabilities_amount_positive CHECK (amount > 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_liquidity_liabilities_due ON liquidity_liabilities (due_date ASC NULLS FIRST);
+
+ALTER TABLE liquidity_liabilities ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read access" ON liquidity_liabilities;
+CREATE POLICY "Allow public read access" ON liquidity_liabilities
+  FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow all operations" ON liquidity_liabilities;
+CREATE POLICY "Allow all operations" ON liquidity_liabilities
+  FOR ALL USING (true);

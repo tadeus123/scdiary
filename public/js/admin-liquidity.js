@@ -24,32 +24,82 @@ function timestampFromDateInput(value) {
   return `${value}T12:00:00.000Z`;
 }
 
-async function saveSettings() {
-  const button = document.getElementById('save-settings-btn');
-  const starting_balance_usd = document.getElementById('starting-balance').value;
-  const starting_at = document.getElementById('starting-date').value;
+async function saveLiability() {
+  const button = document.getElementById('save-liability-btn');
+  const payload = {
+    amount: document.getElementById('liability-amount').value,
+    currency: document.getElementById('liability-currency').value,
+    due_date: document.getElementById('liability-due').value,
+    name: document.getElementById('liability-name').value.trim()
+  };
+
+  if (!payload.amount || !payload.name) {
+    showMessage('liability-message', 'Amount and a name are required.', 'error');
+    return;
+  }
 
   button.disabled = true;
   button.textContent = 'saving...';
 
   try {
-    const response = await fetch('/admin/liquidity/settings', {
-      method: 'PUT',
+    const response = await fetch('/admin/liquidity/liability', {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ starting_balance_usd, starting_at })
+      body: JSON.stringify(payload)
     });
     const data = await response.json();
     if (data.success) {
-      showMessage('settings-message', 'Starting point saved.', 'success');
+      showMessage('liability-message', 'Liability added.', 'success');
+      setTimeout(() => window.location.reload(), 600);
     } else {
-      showMessage('settings-message', data.error || 'Failed to save starting point.', 'error');
+      showMessage('liability-message', data.error || 'Failed to save liability.', 'error');
     }
   } catch (error) {
-    console.error('Save settings error:', error);
-    showMessage('settings-message', 'Network error. Please try again.', 'error');
+    console.error('Save liability error:', error);
+    showMessage('liability-message', 'Network error. Please try again.', 'error');
   } finally {
     button.disabled = false;
-    button.textContent = 'save start';
+    button.textContent = 'add liability';
+  }
+}
+
+async function deleteLiquidityLiability(itemId) {
+  if (!confirm('Remove this liability without logging a payment?')) return;
+
+  try {
+    const response = await fetch(`/admin/liquidity/liability/${itemId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await response.json();
+    if (data.success) {
+      window.location.reload();
+    } else {
+      showMessage('liability-message', data.error || 'Failed to delete liability.', 'error');
+    }
+  } catch (error) {
+    console.error('Delete liability error:', error);
+    showMessage('liability-message', 'Network error. Please try again.', 'error');
+  }
+}
+
+async function payLiquidityLiability(itemId) {
+  if (!confirm('Mark as paid? This logs the cash going out and clears the liability.')) return;
+
+  try {
+    const response = await fetch(`/admin/liquidity/liability/${itemId}/paid`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await response.json();
+    if (data.success) {
+      window.location.reload();
+    } else {
+      showMessage('liability-message', data.error || 'Failed to mark as paid.', 'error');
+    }
+  } catch (error) {
+    console.error('Pay liability error:', error);
+    showMessage('liability-message', 'Network error. Please try again.', 'error');
   }
 }
 
@@ -196,7 +246,12 @@ function bindPills() {
   });
 }
 
-document.getElementById('save-settings-btn')?.addEventListener('click', saveSettings);
+window.deleteLiquidityLiability = deleteLiquidityLiability;
+window.payLiquidityLiability = payLiquidityLiability;
+window.deleteLiquidityEntry = deleteLiquidityEntry;
+window.deleteLiquidityRecurring = deleteLiquidityRecurring;
+
+document.getElementById('save-liability-btn')?.addEventListener('click', saveLiability);
 document.getElementById('save-btn')?.addEventListener('click', saveEntry);
 document.getElementById('recurring-form')?.addEventListener('submit', saveRecurring);
 bindPills();

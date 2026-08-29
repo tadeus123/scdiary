@@ -3639,6 +3639,52 @@ body.selfie-crop-open {
   margin-bottom: 3rem;
 }
 
+.admin-liquidity-page .new-entry-box h2,
+.admin-liquidity-page .liquidity-monthly-section h2 {
+  font-size: 1.5rem;
+  font-weight: 400;
+  margin-bottom: 0.5rem;
+}
+
+.liquidity-start-box > .form-hint {
+  margin-bottom: 1.25rem;
+}
+
+.liquidity-open-total {
+  margin: 1.1rem 0 0;
+  color: var(--accent-color);
+}
+
+.liquidity-liability-list {
+  margin-top: 1.75rem;
+  gap: 1.5rem;
+}
+
+.liquidity-entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.liquidity-paid-btn {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.95rem;
+  background: none;
+  border: none;
+  color: var(--accent-color);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+  padding: 0.4rem 0.2rem;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.liquidity-paid-btn:hover {
+  opacity: 0.7;
+}
+
 .liquidity-monthly-section {
   margin-top: 2rem;
 }
@@ -3731,11 +3777,20 @@ body.selfie-crop-open {
   bottom: 52px;
 }
 
-.liquidity-zero-line {
+.liquidity-line-future {
+  stroke-dasharray: 7 7;
+  opacity: 0.55;
+}
+
+.liquidity-now-line {
   stroke: var(--text-color);
   stroke-width: 1;
-  stroke-dasharray: 4 4;
+  stroke-dasharray: 3 4;
   opacity: 0.35;
+}
+
+.liquidity-dot-future {
+  opacity: 0.45;
 }
 
 .liquidity-tooltip {
@@ -3843,6 +3898,13 @@ body.selfie-crop-open {
     font-size: 2rem;
     align-self: auto;
     flex-shrink: 0;
+  }
+
+  .admin-liquidity-page .liquidity-paid-btn {
+    min-height: 44px;
+    min-width: 48px;
+    font-size: 1rem;
+    padding: 0.5rem 0.35rem;
   }
 
   .admin-liquidity-page .liquidity-pill {

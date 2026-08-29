@@ -1739,7 +1739,7 @@ async function deleteCornerSelfie(year) {
 function defaultLiquiditySettings() {
   return {
     id: 'main',
-    starting_balance_usd: -2.5,
+    starting_balance_usd: 0,
     starting_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
@@ -1953,6 +1953,107 @@ async function deleteLiquidityRecurring(id) {
   }
 }
 
+function sortLiabilities(rows) {
+  return [...(rows || [])].sort((a, b) => {
+    if (!a.due_date && b.due_date) return -1;
+    if (a.due_date && !b.due_date) return 1;
+    if (a.due_date && b.due_date && a.due_date !== b.due_date) {
+      return String(a.due_date).localeCompare(String(b.due_date));
+    }
+    return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+  });
+}
+
+async function getLiquidityLiabilities() {
+  if (!supabase) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from('liquidity_liabilities')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching liquidity liabilities:', error);
+      return [];
+    }
+
+    return sortLiabilities(data);
+  } catch (error) {
+    console.error('Error fetching liquidity liabilities:', error);
+    return [];
+  }
+}
+
+async function getLiquidityLiability(id) {
+  if (!supabase) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from('liquidity_liabilities')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching liquidity liability:', error);
+      return null;
+    }
+
+    return data || null;
+  } catch (error) {
+    console.error('Error fetching liquidity liability:', error);
+    return null;
+  }
+}
+
+async function createLiquidityLiability(item) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('liquidity_liabilities')
+      .insert([item])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating liquidity liability:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, item: data };
+  } catch (error) {
+    console.error('Error creating liquidity liability:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function deleteLiquidityLiability(id) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('liquidity_liabilities')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting liquidity liability:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting liquidity liability:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   getEntries,
   createEntry,
@@ -2007,6 +2108,10 @@ module.exports = {
   getLiquidityRecurring,
   createLiquidityRecurring,
   deleteLiquidityRecurring,
+  getLiquidityLiabilities,
+  getLiquidityLiability,
+  createLiquidityLiability,
+  deleteLiquidityLiability,
   isConfigured: () => supabase !== null
 };
 
