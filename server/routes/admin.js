@@ -325,8 +325,6 @@ router.post('/liquidity/liability', isAuthenticated, async (req, res) => {
   const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
   const amount = parsePositiveAmount(req.body?.amount);
   const currency = normalizeCurrency(req.body?.currency);
-  const dueRaw = String(req.body?.due_date || '').slice(0, 10);
-  const due_date = /^\d{4}-\d{2}-\d{2}$/.test(dueRaw) ? dueRaw : null;
 
   if (!name) {
     return res.status(400).json({ success: false, error: 'What is this liability?' });
@@ -341,7 +339,7 @@ router.post('/liquidity/liability', isAuthenticated, async (req, res) => {
   let fx_rate = 1;
   try {
     if (currency === 'EUR') {
-      fx_rate = await getEurUsdRate(due_date || new Date().toISOString());
+      fx_rate = await getEurUsdRate(new Date().toISOString());
     }
   } catch (error) {
     console.error('FX conversion failed:', error);
@@ -355,7 +353,7 @@ router.post('/liquidity/liability', isAuthenticated, async (req, res) => {
     currency,
     fx_rate,
     amount_usd: roundMoney(amount * fx_rate),
-    due_date
+    due_date: null
   };
 
   const result = await createLiquidityLiability(item);

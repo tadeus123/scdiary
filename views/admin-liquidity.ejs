@@ -105,10 +105,6 @@
             </div>
             <input type="hidden" id="liability-currency" value="USD">
           </div>
-          <div class="form-group">
-            <label for="liability-due">due</label>
-            <input type="date" id="liability-due">
-          </div>
         </div>
         <textarea id="liability-name" placeholder="mom's flight, the 1.5k thing..."></textarea>
         <button type="button" class="btn" id="save-liability-btn">add liability</button>
@@ -128,7 +124,6 @@
                 </div>
                 <div class="entry-content">
                   <p class="liquidity-amount liquidity-out">−$<%= Math.abs(Number(item.amount_usd)).toFixed(2) %></p>
-                  <p class="form-hint"><%= item.due_date ? `due ${item.due_date}` : 'as soon as possible' %></p>
                 </div>
               </article>
             <% }) %>
@@ -193,6 +188,6 @@
   </div>
 
   <script src="/js/main.js"></script>
-  <script src="/js/admin-liquidity.js"></script>
+  <script src="/js/admin-liquidity.js?v=lq-no-due"></script>
 </body>
 </html>

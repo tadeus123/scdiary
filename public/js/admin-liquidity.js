@@ -67,7 +67,6 @@ async function saveLiability() {
   const payload = {
     amount: parsed ? formatSignedAmount(parsed) : document.getElementById('liability-amount').value,
     currency: document.getElementById('liability-currency').value,
-    due_date: document.getElementById('liability-due').value,
     name: document.getElementById('liability-name').value.trim()
   };
 
