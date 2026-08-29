@@ -3665,6 +3665,50 @@ body.selfie-crop-open {
   color: var(--text-color);
 }
 
+.liquidity-field-label,
+.admin-liquidity-page .form-group label {
+  font-size: 0.95rem;
+  color: var(--accent-color);
+  display: block;
+  margin-bottom: 0.15rem;
+}
+
+.liquidity-pills {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.liquidity-pill {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1rem;
+  min-height: 44px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border-color);
+  background: var(--entry-bg);
+  color: var(--text-color);
+  border-radius: 5px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.liquidity-pill.is-active {
+  background: var(--accent-color);
+  color: #FFFFFF;
+  border-color: var(--accent-color);
+}
+
+.liquidity-hit {
+  fill: transparent;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.liquidity-marker .timeline-marker-dot {
+  pointer-events: none;
+}
+
 .liquidity-page {
   margin: 0;
   padding: 0;
@@ -3672,12 +3716,14 @@ body.selfie-crop-open {
   position: fixed;
   width: 100%;
   height: 100%;
+  height: 100dvh;
   background-color: var(--bg-color);
 }
 
 #liquidity-chart {
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   background-color: var(--bg-color);
 }
 
@@ -3715,10 +3761,115 @@ body.selfie-crop-open {
 @media (max-width: 768px) {
   .liquidity-form-row {
     grid-template-columns: 1fr;
+    gap: 1.1rem;
+  }
+
+  .admin-liquidity-page {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .admin-liquidity-page .corner-btn-left {
+    width: 44px;
+    height: 44px;
   }
 
   .admin-liquidity-page .container {
-    padding-bottom: 4rem;
+    padding: 1.25rem 0.9rem calc(3.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .admin-liquidity-page nav {
+    margin-bottom: 1.75rem;
+  }
+
+  .admin-liquidity-page .site-title {
+    font-size: 1.45rem;
+  }
+
+  .admin-liquidity-page .form-group input,
+  .admin-liquidity-page .form-group input[type="date"],
+  .admin-liquidity-page .form-group input[type="number"],
+  .admin-liquidity-page .book-form input,
+  .admin-liquidity-page .book-form input[type="date"],
+  .admin-liquidity-page .book-form input[type="number"],
+  .admin-liquidity-page .book-form input[type="text"] {
+    font-size: 16px;
+    min-height: 48px;
+    padding: 0.85rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 5px;
+  }
+
+  .admin-liquidity-page .new-entry-box textarea {
+    font-size: 16px;
+    min-height: 96px;
+    padding: 0.85rem;
+    width: 100%;
+    -webkit-appearance: none;
+  }
+
+  .admin-liquidity-page .btn,
+  .admin-liquidity-page .book-form .btn {
+    width: 100%;
+    max-width: none;
+    min-height: 48px;
+    align-self: stretch;
+  }
+
+  .admin-liquidity-page .new-entry-box,
+  .admin-liquidity-page .liquidity-start-box,
+  .admin-liquidity-page .liquidity-monthly-section {
+    margin-bottom: 2.25rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .admin-liquidity-page .add-book-section h2 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .admin-liquidity-page .entry-header {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .admin-liquidity-page .delete-entry-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 2rem;
+    align-self: auto;
+    flex-shrink: 0;
+  }
+
+  .admin-liquidity-page .liquidity-pill {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  .liquidity-header {
+    padding: 1.15rem 1.15rem 0;
+  }
+
+  .liquidity-header .site-title {
+    font-size: 1.45rem;
+  }
+
+  .liquidity-page .reading-time-summary {
+    top: 3.55rem;
+    left: 1.15rem;
+    right: auto;
+    bottom: auto;
+    font-size: 0.95rem;
+    opacity: 0.7;
+  }
+
+  .liquidity-tooltip {
+    font-size: 0.95rem;
+    max-width: min(240px, calc(100vw - 24px));
   }
 }
 

@@ -19,10 +19,15 @@ function formatAxisUsd(value) {
   return `${n < 0 ? '−' : ''}$${abs.toFixed(abs >= 100 ? 0 : 2)}`;
 }
 
-function formatDateLabel(iso) {
+function formatDateLabel(iso, mode = false) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  if (mode === 'time') {
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+  return date.toLocaleDateString('en-US', mode
+    ? { month: 'short', day: 'numeric' }
+    : { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function niceTicks(min, max, count = 5) {
@@ -52,14 +57,35 @@ function niceTicks(min, max, count = 5) {
   return { min: niceMin, max: niceMax, ticks };
 }
 
-function timeTicks(startMs, endMs) {
+function timeTicks(startMs, endMs, count = 5) {
   const span = Math.max(1, endMs - startMs);
-  const count = span > 1000 * 60 * 60 * 24 * 180 ? 6 : 5;
   const ticks = [];
-  for (let i = 0; i < count; i++) {
-    ticks.push(startMs + (span * i) / (count - 1));
+  const steps = Math.max(2, count);
+  for (let i = 0; i < steps; i++) {
+    ticks.push(startMs + (span * i) / (steps - 1));
   }
   return ticks;
+}
+
+function uniqueLabeledTicks(ticks, formatter) {
+  const seen = new Set();
+  const unique = [];
+  for (const tick of ticks) {
+    const label = formatter(tick);
+    if (seen.has(label)) continue;
+    seen.add(label);
+    unique.push(tick);
+  }
+  if (unique.length >= 2) return unique;
+  return [ticks[0], ticks[ticks.length - 1]].filter((tick, index, list) => list.indexOf(tick) === index);
+}
+
+function viewportSize() {
+  const visual = window.visualViewport;
+  return {
+    width: Math.round(visual?.width || window.innerWidth),
+    height: Math.round(visual?.height || window.innerHeight)
+  };
 }
 
 function escapeXml(text) {
@@ -81,13 +107,13 @@ function renderChart(series) {
     balanceEl.textContent = `now: ${formatUsd(series.current)}`;
   }
 
-  const width = window.innerWidth;
-  const height = window.innerHeight;
+  const { width, height } = viewportSize();
+  const compact = width < 700;
   const padding = {
-    top: Math.max(96, height * 0.16),
-    right: 48,
-    bottom: 72,
-    left: width < 640 ? 56 : 72
+    top: compact ? 108 : Math.max(96, height * 0.16),
+    right: compact ? 20 : 48,
+    bottom: compact ? 64 : 72,
+    left: compact ? 52 : 72
   };
   const graphWidth = Math.max(40, width - padding.left - padding.right);
   const graphHeight = Math.max(40, height - padding.top - padding.bottom);
@@ -102,7 +128,7 @@ function renderChart(series) {
   if (minBalance > 0) minBalance = 0;
   if (maxBalance < 0) maxBalance = 0;
 
-  const yScale = niceTicks(minBalance, maxBalance, 5);
+  const yScale = niceTicks(minBalance, maxBalance, compact ? 4 : 5);
   const xOf = (ms) => padding.left + ((ms - startMs) / span) * graphWidth;
   const yOf = (value) => padding.top + ((yScale.max - value) / (yScale.max - yScale.min || 1)) * graphHeight;
 
@@ -118,46 +144,74 @@ function renderChart(series) {
   }
 
   const zeroY = yScale.min <= 0 && yScale.max >= 0 ? yOf(0) : null;
-  const xTickValues = timeTicks(startMs, endMs);
+  const sameDay = new Date(startMs).toDateString() === new Date(endMs).toDateString();
+  const labelMode = sameDay ? 'time' : compact;
+  const xTickValues = uniqueLabeledTicks(
+    timeTicks(startMs, endMs, compact ? 3 : (span > 1000 * 60 * 60 * 24 * 180 ? 6 : 5)),
+    (ms) => formatDateLabel(ms, labelMode)
+  );
+  const yTitleX = compact ? 14 : 18;
+  const xLabelY = height - (compact ? 22 : 28);
+  const xTitleY = height - (compact ? 8 : 10);
+  const dotRadius = compact ? 6 : 4.5;
+  const hitRadius = compact ? 18 : 10;
 
   container.innerHTML = `
     <svg class="liquidity-svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Liquidity over time">
       ${yScale.ticks.map((tick) => `
         <line x1="${padding.left}" y1="${yOf(tick)}" x2="${width - padding.right}" y2="${yOf(tick)}" class="timeline-grid-line" />
-        <text x="${padding.left - 10}" y="${yOf(tick) + 4}" class="timeline-axis-label" text-anchor="end">${escapeXml(formatAxisUsd(tick))}</text>
+        <text x="${padding.left - 8}" y="${yOf(tick) + 4}" class="timeline-axis-label" text-anchor="end">${escapeXml(formatAxisUsd(tick))}</text>
       `).join('')}
       ${zeroY !== null ? `<line x1="${padding.left}" y1="${zeroY}" x2="${width - padding.right}" y2="${zeroY}" class="liquidity-zero-line" />` : ''}
       <path d="${path}" class="timeline-line" />
       ${mapped.filter((point) => point.kind === 'entry' || point.kind === 'monthly').map((point) => `
-        <circle cx="${point.x}" cy="${point.y}" r="4.5" class="timeline-marker-dot" data-at="${escapeXml(point.at)}" data-balance="${point.balance}" data-note="${escapeXml(point.note || '')}" />
+        <g class="liquidity-marker">
+          <circle cx="${point.x}" cy="${point.y}" r="${hitRadius}" class="liquidity-hit" data-at="${escapeXml(point.at)}" data-balance="${point.balance}" data-note="${escapeXml(point.note || '')}" />
+          <circle cx="${point.x}" cy="${point.y}" r="${dotRadius}" class="timeline-marker-dot" />
+        </g>
       `).join('')}
       ${xTickValues.map((ms) => `
-        <text x="${xOf(ms)}" y="${height - 28}" class="timeline-axis-label" text-anchor="middle">${escapeXml(formatDateLabel(ms))}</text>
+        <text x="${xOf(ms)}" y="${xLabelY}" class="timeline-axis-label" text-anchor="middle">${escapeXml(formatDateLabel(ms, labelMode))}</text>
       `).join('')}
-      <text x="${padding.left + graphWidth / 2}" y="${height - 10}" class="timeline-axis-title" text-anchor="middle">time</text>
-      <text x="18" y="${padding.top + graphHeight / 2}" class="timeline-axis-title" text-anchor="middle" transform="rotate(-90 18 ${padding.top + graphHeight / 2})">USD</text>
+      <text x="${padding.left + graphWidth / 2}" y="${xTitleY}" class="timeline-axis-title" text-anchor="middle">time</text>
+      <text x="${yTitleX}" y="${padding.top + graphHeight / 2}" class="timeline-axis-title" text-anchor="middle" transform="rotate(-90 ${yTitleX} ${padding.top + graphHeight / 2})">USD</text>
     </svg>
   `;
 
   const tooltip = document.getElementById('liquidity-tooltip');
-  container.querySelectorAll('.timeline-marker-dot').forEach((dot) => {
-    dot.addEventListener('mouseenter', (event) => {
-      if (!tooltip) return;
-      const note = event.target.getAttribute('data-note');
-      const at = event.target.getAttribute('data-at');
-      const balance = event.target.getAttribute('data-balance');
-      tooltip.innerHTML = `${escapeXml(formatDateLabel(at))}<br>${escapeXml(formatUsd(balance))}${note ? `<br>${escapeXml(note)}` : ''}`;
-      tooltip.classList.remove('hidden');
-    });
-    dot.addEventListener('mousemove', (event) => {
-      if (!tooltip) return;
-      tooltip.style.left = `${event.clientX + 12}px`;
-      tooltip.style.top = `${event.clientY + 12}px`;
-    });
-    dot.addEventListener('mouseleave', () => {
-      tooltip?.classList.add('hidden');
+  const showTip = (event, target) => {
+    if (!tooltip || !target) return;
+    const note = target.getAttribute('data-note');
+    const at = target.getAttribute('data-at');
+    const balance = target.getAttribute('data-balance');
+    tooltip.innerHTML = `${escapeXml(formatDateLabel(at))}<br>${escapeXml(formatUsd(balance))}${note ? `<br>${escapeXml(note)}` : ''}`;
+    tooltip.classList.remove('hidden');
+    const x = event.clientX ?? (target.getBoundingClientRect().left);
+    const y = event.clientY ?? (target.getBoundingClientRect().top);
+    const tipWidth = 160;
+    tooltip.style.left = `${Math.min(width - tipWidth - 12, Math.max(12, x + 12))}px`;
+    tooltip.style.top = `${Math.max(12, y - 72)}px`;
+  };
+
+  container.querySelectorAll('.liquidity-hit').forEach((hit) => {
+    hit.addEventListener('mouseenter', (event) => showTip(event, event.target));
+    hit.addEventListener('mousemove', (event) => showTip(event, event.target));
+    hit.addEventListener('mouseleave', () => tooltip?.classList.add('hidden'));
+    hit.addEventListener('click', (event) => {
+      event.stopPropagation();
+      if (tooltip && !tooltip.classList.contains('hidden') && tooltip.dataset.at === event.target.getAttribute('data-at')) {
+        tooltip.classList.add('hidden');
+        return;
+      }
+      if (tooltip) tooltip.dataset.at = event.target.getAttribute('data-at') || '';
+      showTip(event, event.target);
     });
   });
+
+  container.onclick = (event) => {
+    if (event.target.closest('.liquidity-hit')) return;
+    tooltip?.classList.add('hidden');
+  };
 }
 
 async function loadLiquidity() {
@@ -180,10 +234,12 @@ async function loadLiquidity() {
 }
 
 let resizeTimer = null;
-window.addEventListener('resize', () => {
+function scheduleRedraw() {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(loadLiquidity, 150);
-});
+}
+window.addEventListener('resize', scheduleRedraw);
+window.visualViewport?.addEventListener('resize', scheduleRedraw);
 
 document.addEventListener('themeChanged', loadLiquidity);
 loadLiquidity();

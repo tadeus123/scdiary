@@ -183,9 +183,23 @@ async function deleteLiquidityRecurring(itemId) {
   }
 }
 
+function bindPills() {
+  document.querySelectorAll('.liquidity-pills').forEach((group) => {
+    group.addEventListener('click', (event) => {
+      const button = event.target.closest('.liquidity-pill');
+      if (!button || !group.contains(button)) return;
+      group.querySelectorAll('.liquidity-pill').forEach((pill) => pill.classList.remove('is-active'));
+      button.classList.add('is-active');
+      const input = document.getElementById(group.dataset.target);
+      if (input) input.value = button.dataset.value;
+    });
+  });
+}
+
 document.getElementById('save-settings-btn')?.addEventListener('click', saveSettings);
 document.getElementById('save-btn')?.addEventListener('click', saveEntry);
 document.getElementById('recurring-form')?.addEventListener('submit', saveRecurring);
+bindPills();
 
 document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
