@@ -42,6 +42,18 @@ function formatDateLabel(iso, compact = false) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function localDayKey(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function localDayStartMs(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return 0;
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
 function formatTooltipWhen(iso) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
@@ -272,9 +284,9 @@ function renderChart(series) {
     return;
   }
 
-  const times = points.map((point) => new Date(point.at).getTime());
-  const startMs = times[0];
-  const endMs = times[times.length - 1];
+  const dayMs = points.map((point) => localDayStartMs(point.at));
+  const startMs = dayMs[0];
+  const endMs = dayMs[dayMs.length - 1];
   const span = Math.max(24 * 60 * 60 * 1000, endMs - startMs);
   const balances = points.map((point) => Number(point.balance));
   let minBalance = Math.min(...balances);
@@ -288,17 +300,23 @@ function renderChart(series) {
 
   const mapped = points.map((point, index) => ({
     ...point,
-    x: xOf(times[index]),
+    dayKey: localDayKey(point.at),
+    x: xOf(dayMs[index]),
     y: yOf(Number(point.balance))
   }));
 
-  const seenX = new Map();
+  const pointsByDay = new Map();
   mapped.forEach((point) => {
-    const key = Math.round(point.x);
-    const count = seenX.get(key) || 0;
-    seenX.set(key, count + 1);
-    if (count > 0) point.x += count * (compact ? 8 : 6);
+    const group = pointsByDay.get(point.dayKey) || [];
+    group.push(point);
+    pointsByDay.set(point.dayKey, group);
   });
+
+  const sticks = [...pointsByDay.values()].map((group) => ({
+    dayKey: group[0].dayKey,
+    x: group[0].x,
+    topY: Math.min(...group.map((point) => point.y))
+  }));
 
   const linePath = mapped.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
   const xTickValues = dayAxisTicks(startMs, endMs, compact);
@@ -313,10 +331,12 @@ function renderChart(series) {
         <text x="${padding.left - 8}" y="${yOf(tick) + 4}" class="timeline-axis-label" text-anchor="end">${escapeXml(formatAxisUsd(tick))}</text>
       `).join('')}
       <path d="${linePath}" class="timeline-line" />
+      ${sticks.map((stick) => `
+        <line x1="${stick.x}" y1="${stick.topY}" x2="${stick.x}" y2="${axisBottom}" class="timeline-marker-line liquidity-hit" data-day="${escapeXml(stick.dayKey)}" />
+      `).join('')}
       ${mapped.map((point) => `
         <g class="timeline-marker liquidity-marker">
-          <line x1="${point.x}" y1="${point.y}" x2="${point.x}" y2="${axisBottom}" class="timeline-marker-line liquidity-hit" data-id="${escapeXml(point.id || point.at)}" data-at="${escapeXml(point.at)}" data-balance="${point.balance}" data-delta="${point.delta}" data-note="${escapeXml(point.note || '')}" data-amount="${point.amount}" data-currency="${escapeXml(point.currency || '')}" />
-          <circle cx="${point.x}" cy="${point.y}" r="${hitRadius}" class="liquidity-hit" data-id="${escapeXml(point.id || point.at)}" data-at="${escapeXml(point.at)}" data-balance="${point.balance}" data-delta="${point.delta}" data-note="${escapeXml(point.note || '')}" data-amount="${point.amount}" data-currency="${escapeXml(point.currency || '')}" />
+          <circle cx="${point.x}" cy="${point.y}" r="${hitRadius}" class="liquidity-hit" data-id="${escapeXml(point.id || point.at)}" data-day="${escapeXml(point.dayKey)}" data-at="${escapeXml(point.at)}" data-balance="${point.balance}" data-delta="${point.delta}" data-note="${escapeXml(point.note || '')}" data-amount="${point.amount}" data-currency="${escapeXml(point.currency || '')}" />
           <circle cx="${point.x}" cy="${point.y}" r="${dotRadius}" class="timeline-marker-dot" />
         </g>
       `).join('')}
@@ -330,35 +350,36 @@ function renderChart(series) {
 
   const tooltip = document.getElementById('liquidity-tooltip');
   let pinnedId = null;
+  let pinnedDay = null;
 
   const hideTip = () => {
     pinnedId = null;
+    pinnedDay = null;
     tooltip?.classList.add('hidden');
     if (tooltip) tooltip.dataset.id = '';
   };
 
-  const showTip = (event, target, pin = false) => {
-    if (!tooltip || !target) return;
-    const id = target.getAttribute('data-id') || '';
-    const note = target.getAttribute('data-note');
-    const at = target.getAttribute('data-at');
-    const balance = Number(target.getAttribute('data-balance'));
-    const delta = Number(target.getAttribute('data-delta'));
+  const pointId = (point) => point.id || point.at || '';
+
+  const showPoint = (point, event, pin = false) => {
+    if (!tooltip || !point) return;
+    const id = pointId(point);
+    const delta = Number(point.delta);
     const deltaClass = delta < 0 ? ' liquidity-tooltip-out' : '';
     tooltip.innerHTML = `
-      <span class="liquidity-tooltip-when">${escapeXml(formatTooltipWhen(at))}</span>
-      ${note ? `<span class="liquidity-tooltip-note">${escapeTooltipNote(note)}</span>` : ''}
+      <span class="liquidity-tooltip-when">${escapeXml(formatTooltipWhen(point.at))}</span>
+      ${point.note ? `<span class="liquidity-tooltip-note">${escapeTooltipNote(point.note)}</span>` : ''}
       <span class="liquidity-tooltip-delta${deltaClass}">${escapeXml(formatSignedUsd(delta))}</span>
-      <span class="liquidity-tooltip-balance">${escapeXml(formatUsd(balance))}</span>
+      <span class="liquidity-tooltip-balance">${escapeXml(formatUsd(point.balance))}</span>
     `;
     tooltip.classList.remove('hidden');
     if (pin) {
       pinnedId = id;
+      pinnedDay = point.dayKey;
       tooltip.dataset.id = id;
     }
-    const rect = target.getBoundingClientRect();
-    const x = event.clientX ?? rect.left + rect.width / 2;
-    const y = event.clientY ?? rect.top;
+    const x = event.clientX ?? point.x;
+    const y = event.clientY ?? point.y;
     const tipWidth = tooltip.offsetWidth || 200;
     const tipHeight = tooltip.offsetHeight || 72;
     tooltip.style.left = `${Math.min(width - tipWidth - 12, Math.max(12, x + 12))}px`;
@@ -366,14 +387,22 @@ function renderChart(series) {
     tooltip.style.top = `${above >= 12 ? above : Math.min(height - tipHeight - 12, y + 16)}px`;
   };
 
+  const pointFromTarget = (target) => {
+    const id = target.getAttribute('data-id') || '';
+    const day = target.getAttribute('data-day') || '';
+    const group = pointsByDay.get(day) || [];
+    if (id) return group.find((point) => pointId(point) === id) || group[0];
+    return group[0];
+  };
+
   container.querySelectorAll('.liquidity-hit').forEach((hit) => {
     hit.addEventListener('mouseenter', (event) => {
       if (pinnedId) return;
-      showTip(event, event.currentTarget);
+      showPoint(pointFromTarget(event.currentTarget), event);
     });
     hit.addEventListener('mousemove', (event) => {
       if (pinnedId) return;
-      showTip(event, event.currentTarget);
+      showPoint(pointFromTarget(event.currentTarget), event);
     });
     hit.addEventListener('mouseleave', () => {
       if (pinnedId) return;
@@ -381,12 +410,23 @@ function renderChart(series) {
     });
     hit.addEventListener('click', (event) => {
       event.stopPropagation();
+      const day = event.currentTarget.getAttribute('data-day') || '';
       const id = event.currentTarget.getAttribute('data-id') || '';
-      if (pinnedId && pinnedId === id) {
+      const group = pointsByDay.get(day) || [];
+      if (!group.length) return;
+
+      if (group.length === 1 && pinnedId === pointId(group[0])) {
         hideTip();
         return;
       }
-      showTip(event, event.currentTarget, true);
+
+      let idx = id ? group.findIndex((point) => pointId(point) === id) : 0;
+      if (idx < 0) idx = 0;
+      if (pinnedDay === day && pinnedId) {
+        const current = group.findIndex((point) => pointId(point) === pinnedId);
+        idx = current < 0 ? 0 : (current + 1) % group.length;
+      }
+      showPoint(group[idx], event, true);
     });
   });
 
