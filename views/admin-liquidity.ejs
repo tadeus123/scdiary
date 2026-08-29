@@ -87,6 +87,9 @@
                 <% if (entry.note) { %>
                   <p><%= entry.note %></p>
                 <% } %>
+                <% if (entry.recurring_id) { %>
+                  <p class="form-hint">monthly</p>
+                <% } %>
                 <% if (entry.currency === 'EUR') { %>
                   <p class="form-hint"><%= Number(entry.amount).toFixed(2) %> EUR → USD @ <%= Number(entry.fx_rate).toFixed(4) %></p>
                 <% } %>
@@ -151,7 +154,7 @@
 
       <div class="add-book-section liquidity-monthly-section">
         <h2>monthly</h2>
-        <p class="form-hint">fixed spendings, listed on the graph page. they are not forecasted on the line.</p>
+        <p class="form-hint">on that day of the month, a log and a dot are written automatically.</p>
         <div id="recurring-message"></div>
         <form id="recurring-form" class="book-form">
           <div class="liquidity-form-row">

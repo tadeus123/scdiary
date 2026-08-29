@@ -2,11 +2,80 @@ const {
   getLiquiditySettings,
   getLiquidityEntries,
   getLiquidityRecurring,
-  getLiquidityLiabilities
+  getLiquidityLiabilities,
+  createLiquidityEntries
 } = require('../db/supabase');
-const { buildLiquiditySeries } = require('./liquidity');
+const { getEurUsdRate } = require('./fx');
+const {
+  buildLiquiditySeries,
+  dueMonthlyLogs,
+  signedUsd,
+  toNumber
+} = require('./liquidity');
 
-async function loadLiquidityGraph() {
+function occurrenceKey(entry) {
+  if (entry.recurring_id && entry.occurrence_date) {
+    return `${entry.recurring_id}|${String(entry.occurrence_date).slice(0, 10)}`;
+  }
+  return entry.id;
+}
+
+async function materializeDueMonthlyLogs(now = new Date()) {
+  const [recurring, entries] = await Promise.all([
+    getLiquidityRecurring(),
+    getLiquidityEntries()
+  ]);
+
+  if (!recurring.length) return { inserted: 0 };
+
+  const existing = new Set(entries.map(occurrenceKey));
+  const due = dueMonthlyLogs(recurring, now);
+  const missing = due.filter((log) => {
+    return !existing.has(log.id) && !existing.has(`${log.recurring_id}|${log.occurrence_date}`);
+  });
+
+  if (!missing.length) return { inserted: 0 };
+
+  const rows = [];
+  for (const log of missing) {
+    const item = log.item;
+    let fx_rate = 1;
+    try {
+      if (String(item.currency).toUpperCase() === 'EUR') {
+        fx_rate = await getEurUsdRate(log.occurrence_date);
+      }
+    } catch (error) {
+      console.error('Monthly FX conversion failed:', error);
+      continue;
+    }
+
+    rows.push({
+      id: log.id,
+      timestamp: `${log.occurrence_date}T12:00:00.000Z`,
+      amount: toNumber(item.amount),
+      currency: item.currency,
+      fx_rate,
+      amount_usd: signedUsd(item.amount, item.direction, fx_rate),
+      direction: item.direction,
+      note: item.name || '',
+      recurring_id: item.id,
+      occurrence_date: log.occurrence_date
+    });
+  }
+
+  if (!rows.length) return { inserted: 0 };
+
+  const result = await createLiquidityEntries(rows);
+  if (!result.success) {
+    console.error('Failed to materialize monthly logs:', result.error);
+    return { inserted: 0 };
+  }
+  return { inserted: rows.length };
+}
+
+async function loadLiquidityGraph(now = new Date()) {
+  await materializeDueMonthlyLogs(now);
+
   const [settings, entries, recurring, liabilities] = await Promise.all([
     getLiquiditySettings(),
     getLiquidityEntries(),
@@ -23,5 +92,6 @@ async function loadLiquidityGraph() {
 }
 
 module.exports = {
+  materializeDueMonthlyLogs,
   loadLiquidityGraph
 };

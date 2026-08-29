@@ -134,6 +134,42 @@ function rateForDate(currency, key, ratesByDate, latestRate) {
   return Number.isFinite(Number(latestRate)) && Number(latestRate) > 0 ? Number(latestRate) : 1;
 }
 
+function monthlyLogId(recurringId, occurrenceKey) {
+  return `lq-m-${recurringId}-${occurrenceKey}`;
+}
+
+function dueMonthlyLogs(recurring = [], now = new Date()) {
+  const todayKey = dateKey(now);
+  const today = utcDateFromKey(todayKey);
+  if (!today) return [];
+
+  const logs = [];
+  for (const item of recurring) {
+    const startKey = String(item.start_date || '').slice(0, 10);
+    const from = utcDateFromKey(startKey);
+    if (!from) continue;
+
+    let to = today;
+    const endKey = String(item.end_date || '').slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(endKey)) {
+      const end = utcDateFromKey(endKey);
+      if (end && end < to) to = end;
+    }
+
+    for (const at of monthlyOccurrences(item.day_of_month, from, to)) {
+      const occurrence_date = dateKey(at);
+      logs.push({
+        id: monthlyLogId(item.id, occurrence_date),
+        recurring_id: item.id,
+        occurrence_date,
+        at,
+        item
+      });
+    }
+  }
+  return logs;
+}
+
 function liabilitiesTotalUsd(liabilities = []) {
   const total = liabilities.reduce((sum, item) => sum + Math.abs(toNumber(item.amount_usd)), 0);
   return roundMoney(-total);
@@ -203,6 +239,8 @@ module.exports = {
   dateKey,
   utcDateFromKey,
   monthlyOccurrences,
+  monthlyLogId,
+  dueMonthlyLogs,
   horizonEndAt,
   liabilitiesTotalUsd,
   buildLiquiditySeries

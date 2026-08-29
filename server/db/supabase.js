@@ -1862,6 +1862,32 @@ async function createLiquidityEntry(entry) {
   }
 }
 
+async function createLiquidityEntries(entries) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+  if (!entries.length) {
+    return { success: true, entries: [] };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('liquidity_entries')
+      .upsert(entries, { onConflict: 'id', ignoreDuplicates: true })
+      .select();
+
+    if (error) {
+      console.error('Error creating liquidity entries:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, entries: data || [] };
+  } catch (error) {
+    console.error('Error creating liquidity entries:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 async function deleteLiquidityEntry(id) {
   if (!supabase) {
     return { success: false, error: 'Supabase not configured' };
@@ -2104,6 +2130,7 @@ module.exports = {
   upsertLiquiditySettings,
   getLiquidityEntries,
   createLiquidityEntry,
+  createLiquidityEntries,
   deleteLiquidityEntry,
   getLiquidityRecurring,
   createLiquidityRecurring,

@@ -15,14 +15,10 @@ const {
   getCornerSelfie,
   upsertCornerSelfie,
   deleteCornerSelfie,
-  getLiquiditySettings,
-  getLiquidityEntries,
   createLiquidityEntry,
   deleteLiquidityEntry,
-  getLiquidityRecurring,
   createLiquidityRecurring,
   deleteLiquidityRecurring,
-  getLiquidityLiabilities,
   getLiquidityLiability,
   createLiquidityLiability,
   deleteLiquidityLiability,
@@ -37,6 +33,7 @@ const {
   roundMoney,
   toNumber
 } = require('../utils/liquidity');
+const { loadLiquidityGraph, materializeDueMonthlyLogs } = require('../utils/liquidity-graph');
 // Admin password (in production, use environment variable)
 // WARNING: Never hardcode passwords in production!
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || null;
@@ -316,12 +313,7 @@ function newLiquidityId(prefix) {
 }
 
 router.get('/liquidity', isAuthenticated, async (req, res) => {
-  const [settings, entries, recurring, liabilities] = await Promise.all([
-    getLiquiditySettings(),
-    getLiquidityEntries(),
-    getLiquidityRecurring(),
-    getLiquidityLiabilities()
-  ]);
+  const { settings, entries, recurring, liabilities } = await loadLiquidityGraph();
   res.render('admin-liquidity', { settings, entries, recurring, liabilities });
 });
 
@@ -514,6 +506,7 @@ router.post('/liquidity/recurring', isAuthenticated, async (req, res) => {
 
   const result = await createLiquidityRecurring(item);
   if (result.success) {
+    await materializeDueMonthlyLogs();
     res.json({ success: true, item: result.item });
   } else {
     res.status(500).json({ success: false, error: result.error || 'Failed to save monthly payment' });

@@ -89,6 +89,14 @@ CREATE TABLE IF NOT EXISTS liquidity_liabilities (
 
 CREATE INDEX IF NOT EXISTS idx_liquidity_liabilities_due ON liquidity_liabilities (due_date ASC NULLS FIRST);
 
+ALTER TABLE liquidity_entries
+  ADD COLUMN IF NOT EXISTS recurring_id TEXT,
+  ADD COLUMN IF NOT EXISTS occurrence_date DATE;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_liquidity_entries_monthly_occurrence
+  ON liquidity_entries (recurring_id, occurrence_date)
+  WHERE recurring_id IS NOT NULL;
+
 ALTER TABLE liquidity_liabilities ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow public read access" ON liquidity_liabilities;
