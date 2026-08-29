@@ -134,6 +134,16 @@ function escapeXml(text) {
     .replace(/\n/g, ' ');
 }
 
+function escapeTooltipNote(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/\n/g, '<br>');
+}
+
 function monthlyItemUsd(item) {
   const usd = Number(item.amount_usd);
   if (Number.isFinite(usd)) return usd;
@@ -294,7 +304,7 @@ function renderChart(series) {
   const xTickValues = dayAxisTicks(startMs, endMs, compact);
   const labelMode = (endMs - startMs) / (24 * 60 * 60 * 1000) > 80 ? 'month' : (compact ? 'short' : 'day');
   const dotRadius = compact ? 6 : 5;
-  const hitRadius = compact ? 18 : 10;
+  const hitRadius = compact ? 22 : 16;
 
   container.innerHTML = `
     <svg class="liquidity-svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Liquidity over time">
@@ -319,8 +329,17 @@ function renderChart(series) {
   `;
 
   const tooltip = document.getElementById('liquidity-tooltip');
-  const showTip = (event, target) => {
+  let pinnedId = null;
+
+  const hideTip = () => {
+    pinnedId = null;
+    tooltip?.classList.add('hidden');
+    if (tooltip) tooltip.dataset.id = '';
+  };
+
+  const showTip = (event, target, pin = false) => {
     if (!tooltip || !target) return;
+    const id = target.getAttribute('data-id') || '';
     const note = target.getAttribute('data-note');
     const at = target.getAttribute('data-at');
     const balance = Number(target.getAttribute('data-balance'));
@@ -328,38 +347,52 @@ function renderChart(series) {
     const deltaClass = delta < 0 ? ' liquidity-tooltip-out' : '';
     tooltip.innerHTML = `
       <span class="liquidity-tooltip-when">${escapeXml(formatTooltipWhen(at))}</span>
-      ${note ? `<span class="liquidity-tooltip-note">${escapeXml(note)}</span>` : ''}
+      ${note ? `<span class="liquidity-tooltip-note">${escapeTooltipNote(note)}</span>` : ''}
       <span class="liquidity-tooltip-delta${deltaClass}">${escapeXml(formatSignedUsd(delta))}</span>
       <span class="liquidity-tooltip-balance">${escapeXml(formatUsd(balance))}</span>
     `;
     tooltip.classList.remove('hidden');
-    const x = event.clientX ?? (target.getBoundingClientRect().left);
-    const y = event.clientY ?? (target.getBoundingClientRect().top);
-    const tipWidth = tooltip.offsetWidth || 180;
+    if (pin) {
+      pinnedId = id;
+      tooltip.dataset.id = id;
+    }
+    const rect = target.getBoundingClientRect();
+    const x = event.clientX ?? rect.left + rect.width / 2;
+    const y = event.clientY ?? rect.top;
+    const tipWidth = tooltip.offsetWidth || 200;
     const tipHeight = tooltip.offsetHeight || 72;
     tooltip.style.left = `${Math.min(width - tipWidth - 12, Math.max(12, x + 12))}px`;
-    tooltip.style.top = `${Math.max(12, y - tipHeight - 12)}px`;
+    const above = y - tipHeight - 12;
+    tooltip.style.top = `${above >= 12 ? above : Math.min(height - tipHeight - 12, y + 16)}px`;
   };
 
   container.querySelectorAll('.liquidity-hit').forEach((hit) => {
-    hit.addEventListener('mouseenter', (event) => showTip(event, event.target));
-    hit.addEventListener('mousemove', (event) => showTip(event, event.target));
-    hit.addEventListener('mouseleave', () => tooltip?.classList.add('hidden'));
+    hit.addEventListener('mouseenter', (event) => {
+      if (pinnedId) return;
+      showTip(event, event.currentTarget);
+    });
+    hit.addEventListener('mousemove', (event) => {
+      if (pinnedId) return;
+      showTip(event, event.currentTarget);
+    });
+    hit.addEventListener('mouseleave', () => {
+      if (pinnedId) return;
+      tooltip?.classList.add('hidden');
+    });
     hit.addEventListener('click', (event) => {
       event.stopPropagation();
-      const id = event.target.getAttribute('data-id');
-      if (tooltip && !tooltip.classList.contains('hidden') && tooltip.dataset.id === id) {
-        tooltip.classList.add('hidden');
+      const id = event.currentTarget.getAttribute('data-id') || '';
+      if (pinnedId && pinnedId === id) {
+        hideTip();
         return;
       }
-      if (tooltip) tooltip.dataset.id = id || '';
-      showTip(event, event.target);
+      showTip(event, event.currentTarget, true);
     });
   });
 
   container.onclick = (event) => {
     if (event.target.closest('.liquidity-hit')) return;
-    tooltip?.classList.add('hidden');
+    hideTip();
   };
 }
 

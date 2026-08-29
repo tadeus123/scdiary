@@ -3975,7 +3975,7 @@ body.selfie-crop-open {
   padding: 0.7rem 0.85rem;
   border-radius: 8px;
   min-width: 8.5rem;
-  max-width: 220px;
+  max-width: min(280px, calc(100vw - 32px));
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
@@ -3989,9 +3989,9 @@ body.selfie-crop-open {
 }
 
 .liquidity-tooltip-note {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
 }
 
 .liquidity-tooltip-delta {
@@ -4154,7 +4154,7 @@ body.selfie-crop-open {
 
   .liquidity-tooltip {
     font-size: 0.95rem;
-    max-width: min(240px, calc(100vw - 24px));
+    max-width: min(280px, calc(100vw - 32px));
   }
 }
 
