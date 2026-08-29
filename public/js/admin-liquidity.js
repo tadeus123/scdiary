@@ -19,11 +19,6 @@ function localNowTimestamp() {
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.000Z`;
 }
 
-function timestampFromDateInput(value) {
-  if (!value) return localNowTimestamp();
-  return `${value}T12:00:00.000Z`;
-}
-
 function normalizeMoneyString(value) {
   let s = String(value).trim().replace(/\s/g, '').replace(/[−–—]/g, '-');
   if (!s) return '';
@@ -150,7 +145,6 @@ async function saveEntry() {
   const parsed = parseSignedAmount(document.getElementById('entry-amount').value);
   const currency = document.getElementById('entry-currency').value;
   const note = document.getElementById('entry-content').value.trim();
-  const date = document.getElementById('entry-date').value;
   const saveBtn = document.getElementById('save-btn');
 
   if (!parsed) {
@@ -172,7 +166,7 @@ async function saveEntry() {
         amount,
         currency,
         note,
-        timestamp: timestampFromDateInput(date)
+        timestamp: localNowTimestamp()
       })
     });
     const data = await response.json();
