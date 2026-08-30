@@ -2057,6 +2057,31 @@ async function createLiquidityLiability(item) {
   }
 }
 
+async function updateLiquidityLiability(id, fields) {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('liquidity_liabilities')
+      .update(fields)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating liquidity liability:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, item: data };
+  } catch (error) {
+    console.error('Error updating liquidity liability:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 async function deleteLiquidityLiability(id) {
   if (!supabase) {
     return { success: false, error: 'Supabase not configured' };
@@ -2138,6 +2163,7 @@ module.exports = {
   getLiquidityLiabilities,
   getLiquidityLiability,
   createLiquidityLiability,
+  updateLiquidityLiability,
   deleteLiquidityLiability,
   isConfigured: () => supabase !== null
 };

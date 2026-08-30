@@ -3,7 +3,8 @@ const {
   getLiquidityEntries,
   getLiquidityRecurring,
   getLiquidityLiabilities,
-  createLiquidityEntries
+  createLiquidityEntries,
+  updateLiquidityLiability
 } = require('../db/supabase');
 const { getEurUsdRate, getLatestEurUsdRate } = require('./fx');
 const {
@@ -13,7 +14,8 @@ const {
   toNumber,
   cashRunwayMonths,
   formatCashRunway,
-  monthlyFlowUsd
+  monthlyFlowUsd,
+  reservationEntryFromLiability
 } = require('./liquidity');
 
 function occurrenceKey(entry) {
@@ -76,20 +78,47 @@ async function materializeDueMonthlyLogs(now = new Date()) {
   return { inserted: rows.length };
 }
 
+async function ensureLiabilityReservationLogs(liabilities = []) {
+  const missing = (liabilities || []).filter((item) => item && item.id && !item.entry_id);
+  if (!missing.length) return liabilities;
+
+  const rows = missing.map((item) => (
+    reservationEntryFromLiability(item, item.created_at || new Date().toISOString())
+  ));
+  const logged = await createLiquidityEntries(rows);
+  if (!logged.success) {
+    console.error('Failed to backfill liability reservation logs:', logged.error);
+    return liabilities;
+  }
+
+  for (const item of missing) {
+    const updated = await updateLiquidityLiability(item.id, {
+      entry_id: reservationEntryFromLiability(item).id
+    });
+    if (!updated.success) {
+      console.error('Failed to link liability reservation log:', item.id, updated.error);
+    }
+  }
+
+  return getLiquidityLiabilities();
+}
+
 async function loadLiquidityGraph(now = new Date()) {
   await materializeDueMonthlyLogs(now);
 
-  const [settings, entries, recurring, liabilities] = await Promise.all([
+  const [settings, rawEntries, recurring, rawLiabilities] = await Promise.all([
     getLiquiditySettings(),
     getLiquidityEntries(),
     getLiquidityRecurring(),
     getLiquidityLiabilities()
   ]);
 
-  const series = buildLiquiditySeries({
-    entries,
-    liabilities
-  });
+  const liabilities = await ensureLiabilityReservationLogs(rawLiabilities);
+  const entries = liabilities === rawLiabilities
+    ? rawEntries
+    : await getLiquidityEntries();
+
+  const series = buildLiquiditySeries({ entries });
 
   let latestRate = 1;
   if (recurring.some((item) => String(item.currency).toUpperCase() === 'EUR')) {

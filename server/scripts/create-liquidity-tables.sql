@@ -82,12 +82,20 @@ CREATE TABLE IF NOT EXISTS liquidity_liabilities (
   fx_rate NUMERIC(14, 6) NOT NULL DEFAULT 1,
   amount_usd NUMERIC(14, 2) NOT NULL,
   due_date DATE,
+  entry_id TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT liquidity_liabilities_currency_check CHECK (currency IN ('USD', 'EUR')),
   CONSTRAINT liquidity_liabilities_amount_positive CHECK (amount > 0)
 );
 
 CREATE INDEX IF NOT EXISTS idx_liquidity_liabilities_due ON liquidity_liabilities (due_date ASC NULLS FIRST);
+
+ALTER TABLE liquidity_liabilities
+  ADD COLUMN IF NOT EXISTS entry_id TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_liquidity_liabilities_entry_id
+  ON liquidity_liabilities (entry_id)
+  WHERE entry_id IS NOT NULL;
 
 ALTER TABLE liquidity_entries
   ADD COLUMN IF NOT EXISTS recurring_id TEXT,

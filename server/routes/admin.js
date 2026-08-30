@@ -16,6 +16,7 @@ const {
   upsertCornerSelfie,
   deleteCornerSelfie,
   createLiquidityEntry,
+  createLiquidityEntries,
   deleteLiquidityEntry,
   createLiquidityRecurring,
   deleteLiquidityRecurring,
@@ -31,7 +32,9 @@ const {
   normalizeCurrency,
   signedUsd,
   roundMoney,
-  toNumber
+  toNumber,
+  reservationEntryFromLiability,
+  dropEntryFromLiability
 } = require('../utils/liquidity');
 const { loadLiquidityGraph, materializeDueMonthlyLogs } = require('../utils/liquidity-graph');
 // Admin password (in production, use environment variable)
@@ -346,20 +349,31 @@ router.post('/liquidity/liability', isAuthenticated, async (req, res) => {
     return res.status(502).json({ success: false, error: 'Could not convert EUR to USD. Try again, or log in USD.' });
   }
 
+  const liabilityId = newLiquidityId('lb');
+  const timestamp = new Date().toISOString();
   const item = {
-    id: newLiquidityId('lb'),
+    id: liabilityId,
     name,
     amount,
     currency,
     fx_rate,
     amount_usd: roundMoney(amount * fx_rate),
-    due_date: null
+    due_date: null,
+    entry_id: null
   };
+  const entry = reservationEntryFromLiability(item, timestamp);
+  item.entry_id = entry.id;
+
+  const logged = await createLiquidityEntry(entry);
+  if (!logged.success) {
+    return res.status(500).json({ success: false, error: logged.error || 'Failed to log liability' });
+  }
 
   const result = await createLiquidityLiability(item);
   if (result.success) {
-    res.json({ success: true, item: result.item });
+    res.json({ success: true, item: result.item, entry: logged.entry });
   } else {
+    await deleteLiquidityEntry(entry.id);
     res.status(500).json({ success: false, error: result.error || 'Failed to save liability' });
   }
 });
@@ -374,36 +388,35 @@ router.post('/liquidity/liability/:id/paid', isAuthenticated, async (req, res) =
     return res.status(404).json({ success: false, error: 'Liability not found' });
   }
 
-  const entry = {
-    id: newLiquidityId('lq'),
-    timestamp: new Date().toISOString(),
-    amount: toNumber(liability.amount),
-    currency: liability.currency,
-    fx_rate: toNumber(liability.fx_rate, 1),
-    amount_usd: signedUsd(liability.amount, 'out', toNumber(liability.fx_rate, 1)),
-    direction: 'out',
-    note: liability.name
-  };
-
-  const logged = await createLiquidityEntry(entry);
-  if (!logged.success) {
-    return res.status(500).json({ success: false, error: logged.error || 'Failed to log payment' });
-  }
-
   const removed = await deleteLiquidityLiability(liability.id);
   if (!removed.success) {
-    return res.status(500).json({ success: false, error: removed.error || 'Payment logged, but the liability could not be removed' });
+    return res.status(500).json({ success: false, error: removed.error || 'Failed to mark as paid' });
   }
 
-  res.json({ success: true, entry: logged.entry });
+  res.json({ success: true });
 });
 
 router.delete('/liquidity/liability/:id', isAuthenticated, async (req, res) => {
-  const result = await deleteLiquidityLiability(req.params.id);
+  if (!isConfigured()) {
+    return res.status(503).json({ success: false, error: 'Supabase is not configured on the server.' });
+  }
+
+  const liability = await getLiquidityLiability(req.params.id);
+  if (!liability) {
+    return res.status(404).json({ success: false, error: 'Liability not found' });
+  }
+
+  const dropLog = dropEntryFromLiability(liability, new Date().toISOString());
+  const logged = await createLiquidityEntries([dropLog]);
+  if (!logged.success) {
+    return res.status(500).json({ success: false, error: logged.error || 'Failed to return liquidity' });
+  }
+
+  const result = await deleteLiquidityLiability(liability.id);
   if (result.success) {
-    res.json({ success: true });
+    res.json({ success: true, entry: dropLog });
   } else {
-    res.status(500).json({ success: false, error: result.error || 'Failed to delete liability' });
+    res.status(500).json({ success: false, error: result.error || 'Liquidity returned, but the liability could not be removed' });
   }
 });
 

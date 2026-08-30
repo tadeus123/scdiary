@@ -206,8 +206,47 @@ function liabilitiesTotalUsd(liabilities = []) {
   return roundMoney(-total);
 }
 
-function buildLiquiditySeries({ entries = [], liabilities = [] }) {
-  const startingBalance = liabilitiesTotalUsd(liabilities);
+function liabilityReservationEntryId(liabilityId) {
+  return `lq-lb-${liabilityId}`;
+}
+
+function liabilityDropEntryId(liabilityId) {
+  return `lq-drop-${liabilityId}`;
+}
+
+function reservationEntryFromLiability(liability, timestamp) {
+  const fx_rate = toNumber(liability.fx_rate, 1);
+  const amount = toNumber(liability.amount);
+  return {
+    id: liability.entry_id || liabilityReservationEntryId(liability.id),
+    timestamp,
+    amount,
+    currency: liability.currency,
+    fx_rate,
+    amount_usd: signedUsd(amount, 'out', fx_rate),
+    direction: 'out',
+    note: liability.name || ''
+  };
+}
+
+function dropEntryFromLiability(liability, timestamp) {
+  const fx_rate = toNumber(liability.fx_rate, 1);
+  const amount = toNumber(liability.amount);
+  const name = String(liability.name || '').trim();
+  return {
+    id: liabilityDropEntryId(liability.id),
+    timestamp,
+    amount,
+    currency: liability.currency,
+    fx_rate,
+    amount_usd: signedUsd(amount, 'in', fx_rate),
+    direction: 'in',
+    note: name ? `dropped: ${name}` : 'dropped'
+  };
+}
+
+function buildLiquiditySeries({ entries = [] }) {
+  const startingBalance = 0;
   const events = [];
 
   for (const entry of entries) {
@@ -277,5 +316,9 @@ module.exports = {
   formatCashRunway,
   horizonEndAt,
   liabilitiesTotalUsd,
+  liabilityReservationEntryId,
+  liabilityDropEntryId,
+  reservationEntryFromLiability,
+  dropEntryFromLiability,
   buildLiquiditySeries
 };

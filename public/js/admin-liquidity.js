@@ -101,7 +101,7 @@ async function saveLiability() {
 }
 
 async function deleteLiquidityLiability(itemId) {
-  if (!confirm('Remove this liability without logging a payment?')) return;
+  if (!confirm('Remove this without paying? Liquidity comes back (up-dot).')) return;
 
   try {
     const response = await fetch(`/admin/liquidity/liability/${itemId}`, {
@@ -121,7 +121,7 @@ async function deleteLiquidityLiability(itemId) {
 }
 
 async function payLiquidityLiability(itemId) {
-  if (!confirm('Mark as paid? This logs the cash going out and clears the liability.')) return;
+  if (!confirm('Mark as paid? This only clears it from the list. The graph already moved when you added it.')) return;
 
   try {
     const response = await fetch(`/admin/liquidity/liability/${itemId}/paid`, {
