@@ -58,6 +58,25 @@ function signedUsd(amount, direction, rate = 1) {
   return direction === 'out' ? -Math.abs(usd) : Math.abs(usd);
 }
 
+function rateForCurrency(currency, eurUsdRate = 1) {
+  return String(currency || 'USD').trim().toUpperCase() === 'EUR'
+    ? toNumber(eurUsdRate, 1)
+    : 1;
+}
+
+function liveUsd(amount, currency, direction, eurUsdRate = 1) {
+  return signedUsd(amount, direction, rateForCurrency(currency, eurUsdRate));
+}
+
+function withLiveUsd(item, eurUsdRate, direction = item.direction || 'out') {
+  const fx_rate = rateForCurrency(item.currency, eurUsdRate);
+  return {
+    ...item,
+    fx_rate,
+    amount_usd: liveUsd(item.amount, item.currency, direction, eurUsdRate)
+  };
+}
+
 function toDate(value) {
   if (value instanceof Date) return value;
   const d = new Date(value);
@@ -201,8 +220,10 @@ function formatCashRunway(months) {
   return `cash runway: ${value} ${label}`;
 }
 
-function liabilitiesTotalUsd(liabilities = []) {
-  const total = liabilities.reduce((sum, item) => sum + Math.abs(toNumber(item.amount_usd)), 0);
+function liabilitiesTotalUsd(liabilities = [], eurUsdRate = 1) {
+  const total = liabilities.reduce((sum, item) => {
+    return sum + Math.abs(liveUsd(item.amount, item.currency, 'out', eurUsdRate));
+  }, 0);
   return roundMoney(-total);
 }
 
@@ -245,23 +266,24 @@ function dropEntryFromLiability(liability, timestamp) {
   };
 }
 
-function buildLiquiditySeries({ entries = [] }) {
+function buildLiquiditySeries({ entries = [], eurUsdRate = 1 }) {
   const startingBalance = 0;
   const events = [];
 
   for (const entry of entries) {
     const at = toDate(entry.timestamp);
     if (!at) continue;
+    const rate = rateForCurrency(entry.currency, eurUsdRate);
     events.push({
       at,
-      delta: roundMoney(entry.amount_usd),
+      delta: liveUsd(entry.amount, entry.currency, entry.direction, eurUsdRate),
       kind: 'entry',
       id: entry.id,
       note: entry.note || '',
       direction: entry.direction,
       amount: toNumber(entry.amount),
       currency: entry.currency,
-      fx_rate: toNumber(entry.fx_rate, 1)
+      fx_rate: rate
     });
   }
 
@@ -292,6 +314,7 @@ function buildLiquiditySeries({ entries = [] }) {
   return {
     starting_balance_usd: startingBalance,
     current: balance,
+    eur_usd_rate: toNumber(eurUsdRate, 1),
     points
   };
 }
@@ -306,6 +329,9 @@ module.exports = {
   normalizeCurrency,
   normalizeDirection,
   signedUsd,
+  rateForCurrency,
+  liveUsd,
+  withLiveUsd,
   dateKey,
   utcDateFromKey,
   monthlyOccurrences,

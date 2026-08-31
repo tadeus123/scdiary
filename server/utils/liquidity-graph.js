@@ -6,7 +6,7 @@ const {
   createLiquidityEntries,
   updateLiquidityLiability
 } = require('../db/supabase');
-const { getEurUsdRate, getLatestEurUsdRate } = require('./fx');
+const { getLatestEurUsdRate } = require('./fx');
 const {
   buildLiquiditySeries,
   dueMonthlyLogs,
@@ -15,7 +15,8 @@ const {
   cashRunwayMonths,
   formatCashRunway,
   monthlyFlowUsd,
-  reservationEntryFromLiability
+  reservationEntryFromLiability,
+  withLiveUsd
 } = require('./liquidity');
 
 function occurrenceKey(entry) {
@@ -41,20 +42,20 @@ async function materializeDueMonthlyLogs(now = new Date()) {
 
   if (!missing.length) return { inserted: 0 };
 
-  const rows = [];
-  for (const log of missing) {
-    const item = log.item;
-    let fx_rate = 1;
-    try {
-      if (String(item.currency).toUpperCase() === 'EUR') {
-        fx_rate = await getEurUsdRate(log.occurrence_date);
-      }
-    } catch (error) {
-      console.error('Monthly FX conversion failed:', error);
-      continue;
+  let latestRate = 1;
+  try {
+    if (missing.some((log) => String(log.item.currency).toUpperCase() === 'EUR')) {
+      latestRate = await getLatestEurUsdRate();
     }
+  } catch (error) {
+    console.error('Monthly FX conversion failed:', error);
+  }
 
-    rows.push({
+  const rows = missing.map((log) => {
+    const item = log.item;
+    const currency = String(item.currency || 'USD').toUpperCase();
+    const fx_rate = currency === 'EUR' ? latestRate : 1;
+    return {
       id: log.id,
       timestamp: `${log.occurrence_date}T12:00:00.000Z`,
       amount: toNumber(item.amount),
@@ -65,8 +66,8 @@ async function materializeDueMonthlyLogs(now = new Date()) {
       note: item.name || '',
       recurring_id: item.id,
       occurrence_date: log.occurrence_date
-    });
-  }
+    };
+  });
 
   if (!rows.length) return { inserted: 0 };
 
@@ -103,6 +104,19 @@ async function ensureLiabilityReservationLogs(liabilities = []) {
   return getLiquidityLiabilities();
 }
 
+async function resolveEurUsdRate(items = []) {
+  try {
+    return await getLatestEurUsdRate();
+  } catch (error) {
+    console.error('Latest FX rate failed:', error);
+    const fallback = [...items]
+      .filter((item) => String(item?.currency || '').toUpperCase() === 'EUR')
+      .map((item) => toNumber(item.fx_rate, 0))
+      .find((rate) => rate > 0);
+    return fallback || 1;
+  }
+}
+
 async function loadLiquidityGraph(now = new Date()) {
   await materializeDueMonthlyLogs(now);
 
@@ -114,20 +128,17 @@ async function loadLiquidityGraph(now = new Date()) {
   ]);
 
   const liabilities = await ensureLiabilityReservationLogs(rawLiabilities);
-  const entries = liabilities === rawLiabilities
+  const rawLoadedEntries = liabilities === rawLiabilities
     ? rawEntries
     : await getLiquidityEntries();
 
-  const series = buildLiquiditySeries({ entries });
-
-  let latestRate = 1;
-  if (recurring.some((item) => String(item.currency).toUpperCase() === 'EUR')) {
-    try {
-      latestRate = await getLatestEurUsdRate();
-    } catch (error) {
-      console.error('Latest FX rate failed:', error);
-    }
-  }
+  const latestRate = await resolveEurUsdRate([...rawLoadedEntries, ...recurring, ...liabilities]);
+  const entries = rawLoadedEntries.map((item) => withLiveUsd(item, latestRate, item.direction));
+  const liabilitiesView = liabilities.map((item) => withLiveUsd(item, latestRate, 'out'));
+  const series = buildLiquiditySeries({
+    entries: rawLoadedEntries,
+    eurUsdRate: latestRate
+  });
 
   const flow = monthlyFlowUsd(recurring, latestRate);
   const months = cashRunwayMonths(series.current, recurring, latestRate);
@@ -139,15 +150,9 @@ async function loadLiquidityGraph(now = new Date()) {
     combined_usd: flow.combined
   };
 
-  const recurringView = recurring.map((item) => {
-    const rate = String(item.currency).toUpperCase() === 'EUR' ? latestRate : 1;
-    return {
-      ...item,
-      amount_usd: signedUsd(item.amount, item.direction, rate)
-    };
-  });
+  const recurringView = recurring.map((item) => withLiveUsd(item, latestRate, item.direction));
 
-  return { settings, entries, recurring: recurringView, liabilities, series, runway };
+  return { settings, entries, recurring: recurringView, liabilities: liabilitiesView, series, runway };
 }
 
 module.exports = {

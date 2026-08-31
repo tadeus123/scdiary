@@ -27,7 +27,7 @@ const {
   deleteLiquidityLiability,
   isConfigured
 } = require('../db/supabase');
-const { getEurUsdRate } = require('../utils/fx');
+const { getLatestEurUsdRate } = require('../utils/fx');
 const {
   parsePositiveAmount,
   parseSignedAmount,
@@ -344,7 +344,7 @@ router.post('/liquidity/liability', isAuthenticated, async (req, res) => {
   let fx_rate = 1;
   try {
     if (currency === 'EUR') {
-      fx_rate = await getEurUsdRate(new Date().toISOString());
+      fx_rate = await getLatestEurUsdRate();
     }
   } catch (error) {
     console.error('FX conversion failed:', error);
@@ -390,12 +390,9 @@ function readLiabilityFields(body) {
   return { name, amount, currency };
 }
 
-async function fxRateForLiabilityEdit(currency, previous) {
-  if (currency === 'USD') return 1;
-  const prevCurrency = normalizeCurrency(previous?.currency);
-  const prevRate = toNumber(previous?.fx_rate, 0);
-  if (prevCurrency === 'EUR' && prevRate > 0) return prevRate;
-  return getEurUsdRate(previous?.created_at || new Date().toISOString());
+async function snapshotFxRate(currency) {
+  if (currency !== 'EUR') return 1;
+  return getLatestEurUsdRate();
 }
 
 async function writeReservationLog(liability, timestamp) {
@@ -435,7 +432,7 @@ router.put('/liquidity/liability/:id', isAuthenticated, async (req, res) => {
   const { name, amount, currency } = fields;
   let fx_rate = 1;
   try {
-    fx_rate = await fxRateForLiabilityEdit(currency, liability);
+    fx_rate = await snapshotFxRate(currency);
   } catch (error) {
     console.error('FX conversion failed:', error);
     return res.status(502).json({ success: false, error: 'Could not convert EUR to USD. Try again, or log in USD.' });
@@ -533,7 +530,7 @@ router.post('/liquidity/entry', isAuthenticated, async (req, res) => {
   let fx_rate = 1;
   try {
     if (currency === 'EUR') {
-      fx_rate = await getEurUsdRate(timestamp);
+      fx_rate = await getLatestEurUsdRate();
     }
   } catch (error) {
     console.error('FX conversion failed:', error);

@@ -8,14 +8,14 @@ function formatUsd(value) {
   return `${n < 0 ? '−' : ''}$${formatted}`;
 }
 
-function formatSignedUsd(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return '$0.00';
-  const formatted = Math.abs(n).toLocaleString('en-US', {
+function formatDeltaWithNative(point) {
+  const usd = formatSignedUsd(point.delta);
+  if (String(point.currency || '').toUpperCase() !== 'EUR') return usd;
+  const amount = Math.abs(Number(point.amount) || 0).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
-  return `${n < 0 ? '−' : '+'}$${formatted}`;
+  return `${usd} (€${amount})`;
 }
 
 function formatAxisUsd(value) {
@@ -370,7 +370,7 @@ function renderChart(series) {
       return `
         <div class="liquidity-tooltip-log">
           ${note}
-          <span class="liquidity-tooltip-delta${deltaClass}">${escapeXml(formatSignedUsd(delta))}</span>
+          <span class="liquidity-tooltip-delta${deltaClass}">${escapeXml(formatDeltaWithNative(point))}</span>
         </div>
       `;
     }).join('');

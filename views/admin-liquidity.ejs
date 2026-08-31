@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <%- include('partials/seo-head') %>
-  <link rel="stylesheet" href="/css/style.css?v=lq-edit-liability">
+  <link rel="stylesheet" href="/css/style.css?v=lq-live-fx">
 </head>
 <body class="admin-page admin-liquidity-page">
   <a href="/admin" class="corner-btn-left" aria-label="Back to Admin"></a>
@@ -73,9 +73,9 @@
                 <button type="button" class="delete-entry-btn" onclick="deleteLiquidityEntry('<%= entry.id %>')" aria-label="Delete entry">×</button>
               </div>
               <div class="entry-content">
-                <% const usd = Number(entry.amount_usd); %>
-                <p class="liquidity-amount <%= usd < 0 ? 'liquidity-out' : 'liquidity-in' %>">
-                  <%= usd < 0 ? '−' : '+' %>$<%= Math.abs(usd).toFixed(2) %>
+                <% const native = Number(entry.amount); %>
+                <p class="liquidity-amount <%= entry.direction === 'out' ? 'liquidity-out' : 'liquidity-in' %>">
+                  <%= entry.direction === 'out' ? '−' : '+' %><%= String(entry.currency).toUpperCase() === 'EUR' ? '€' : '$' %><%= Math.abs(native).toFixed(2) %>
                 </p>
                 <% if (entry.note) { %>
                   <p><%= entry.note %></p>
@@ -134,7 +134,9 @@
                   </div>
                 </div>
                 <div class="entry-content">
-                  <p class="liquidity-amount liquidity-out">−$<%= Math.abs(Number(item.amount_usd)).toFixed(2) %></p>
+                  <p class="liquidity-amount liquidity-out">
+                    −<%= String(item.currency).toUpperCase() === 'EUR' ? '€' : '$' %><%= Math.abs(Number(item.amount)).toFixed(2) %>
+                  </p>
                 </div>
               </article>
             <% }) %>
@@ -184,7 +186,7 @@
                 </div>
                 <div class="entry-content">
                   <p class="liquidity-amount <%= item.direction === 'out' ? 'liquidity-out' : 'liquidity-in' %>">
-                    <%= item.direction === 'out' ? '−' : '+' %><%= Number(item.amount).toFixed(2) %> <%= item.currency %>
+                    <%= item.direction === 'out' ? '−' : '+' %><%= String(item.currency).toUpperCase() === 'EUR' ? '€' : '$' %><%= Number(item.amount).toFixed(2) %>
                   </p>
                 </div>
               </article>
@@ -197,6 +199,6 @@
   </div>
 
   <script src="/js/main.js"></script>
-  <script src="/js/admin-liquidity.js?v=lq-edit-liability"></script>
+  <script src="/js/admin-liquidity.js?v=lq-live-fx"></script>
 </body>
 </html>
