@@ -8,6 +8,16 @@ function formatUsd(value) {
   return `${n < 0 ? '−' : ''}$${formatted}`;
 }
 
+function formatSignedUsd(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '$0.00';
+  const formatted = Math.abs(n).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+  return `${n < 0 ? '−' : '+'}$${formatted}`;
+}
+
 function formatDeltaWithNative(point) {
   const usd = formatSignedUsd(point.delta);
   if (String(point.currency || '').toUpperCase() !== 'EUR') return usd;
