@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <%- include('partials/seo-head') %>
-  <link rel="stylesheet" href="/css/style.css?v=lq-tight-rows2">
+  <link rel="stylesheet" href="/css/style.css?v=lq-edit-liability">
 </head>
 <body class="admin-page admin-liquidity-page">
   <a href="/admin" class="corner-btn-left" aria-label="Back to Admin"></a>
@@ -107,17 +107,28 @@
           </div>
         </div>
         <textarea id="liability-name" placeholder="mom's flight, the 1.5k thing..."></textarea>
-        <button type="button" class="btn" id="save-liability-btn">add liability</button>
+        <div class="liquidity-liability-save-row">
+          <button type="button" class="btn" id="save-liability-btn">add liability</button>
+          <button type="button" class="liquidity-paid-btn" id="cancel-liability-edit-btn" hidden>cancel</button>
+        </div>
+        <input type="hidden" id="liability-edit-id" value="">
         <% const openUsd = (liabilities || []).reduce((sum, item) => sum + Math.abs(Number(item.amount_usd) || 0), 0); %>
         <p class="liquidity-open-total">open: −$<%= openUsd.toFixed(2) %></p>
 
         <% if (liabilities && liabilities.length > 0) { %>
           <div class="entries liquidity-liability-list">
             <% liabilities.forEach(item => { %>
-              <article class="entry" data-liability-id="<%= item.id %>">
+              <article
+                class="entry"
+                data-liability-id="<%= item.id %>"
+                data-name="<%= item.name %>"
+                data-amount="<%= Number(item.amount).toFixed(2) %>"
+                data-currency="<%= item.currency %>"
+              >
                 <div class="entry-header">
                   <div class="entry-date"><%= item.name %></div>
                   <div class="liquidity-entry-actions">
+                    <button type="button" class="liquidity-paid-btn" onclick="editLiquidityLiability(this)">edit</button>
                     <button type="button" class="liquidity-paid-btn" onclick="payLiquidityLiability('<%= item.id %>')">paid</button>
                     <button type="button" class="delete-entry-btn" onclick="deleteLiquidityLiability('<%= item.id %>')" aria-label="Delete liability">×</button>
                   </div>
@@ -186,6 +197,6 @@
   </div>
 
   <script src="/js/main.js"></script>
-  <script src="/js/admin-liquidity.js?v=lq-liability-logs"></script>
+  <script src="/js/admin-liquidity.js?v=lq-edit-liability"></script>
 </body>
 </html>

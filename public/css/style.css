@@ -3713,6 +3713,17 @@ body.selfie-crop-open {
   flex-shrink: 0;
 }
 
+.liquidity-liability-save-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.admin-liquidity-page .liquidity-liability-list .entry.is-editing .entry-date {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
 .liquidity-paid-btn {
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 0.95rem;
@@ -4128,6 +4139,14 @@ body.selfie-crop-open {
     max-width: none;
     min-height: 48px;
     align-self: stretch;
+  }
+
+  .admin-liquidity-page .liquidity-liability-save-row {
+    flex-wrap: wrap;
+  }
+
+  .admin-liquidity-page .liquidity-liability-save-row .btn {
+    flex: 1 1 auto;
   }
 
   .admin-liquidity-page .new-entry-box,

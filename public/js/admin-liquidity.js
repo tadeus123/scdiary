@@ -61,6 +61,67 @@ function bindAmountInputs() {
   });
 }
 
+function setCurrencyPill(targetId, value) {
+  const input = document.getElementById(targetId);
+  const group = document.querySelector(`.liquidity-pills[data-target="${targetId}"]`);
+  if (input) input.value = value;
+  if (!group) return;
+  group.querySelectorAll('.liquidity-pill').forEach((pill) => {
+    pill.classList.toggle('is-active', pill.dataset.value === value);
+  });
+}
+
+function editingLiabilityId() {
+  return (document.getElementById('liability-edit-id')?.value || '').trim();
+}
+
+function clearLiabilityForm() {
+  const amount = document.getElementById('liability-amount');
+  const name = document.getElementById('liability-name');
+  const editId = document.getElementById('liability-edit-id');
+  const saveBtn = document.getElementById('save-liability-btn');
+  const cancelBtn = document.getElementById('cancel-liability-edit-btn');
+  if (amount) amount.value = '';
+  if (name) name.value = '';
+  if (editId) editId.value = '';
+  if (saveBtn) saveBtn.textContent = 'add liability';
+  if (cancelBtn) cancelBtn.hidden = true;
+  setCurrencyPill('liability-currency', 'USD');
+  document.querySelectorAll('.liquidity-liability-list .entry.is-editing').forEach((row) => {
+    row.classList.remove('is-editing');
+  });
+}
+
+function editLiquidityLiability(button) {
+  const row = button?.closest?.('[data-liability-id]');
+  if (!row) return;
+  const id = row.getAttribute('data-liability-id');
+  const name = row.getAttribute('data-name') || '';
+  const amount = Number(row.getAttribute('data-amount'));
+  const currency = row.getAttribute('data-currency') === 'EUR' ? 'EUR' : 'USD';
+  const nameInput = document.getElementById('liability-name');
+  const amountInput = document.getElementById('liability-amount');
+  const editId = document.getElementById('liability-edit-id');
+  const saveBtn = document.getElementById('save-liability-btn');
+  const cancelBtn = document.getElementById('cancel-liability-edit-btn');
+  if (nameInput) nameInput.value = name;
+  if (amountInput) {
+    amountInput.value = Number.isFinite(amount) && amount > 0
+      ? formatSignedAmount({ amount, direction: 'out' })
+      : '';
+  }
+  setCurrencyPill('liability-currency', currency);
+  if (editId) editId.value = id;
+  if (saveBtn) saveBtn.textContent = 'save changes';
+  if (cancelBtn) cancelBtn.hidden = false;
+  document.querySelectorAll('.liquidity-liability-list .entry.is-editing').forEach((item) => {
+    item.classList.remove('is-editing');
+  });
+  row.classList.add('is-editing');
+  amountInput?.focus();
+  amountInput?.select();
+}
+
 async function saveLiability() {
   const button = document.getElementById('save-liability-btn');
   const parsed = parseSignedAmount(document.getElementById('liability-amount').value);
@@ -75,18 +136,19 @@ async function saveLiability() {
     return;
   }
 
+  const editId = editingLiabilityId();
   button.disabled = true;
   button.textContent = 'saving...';
 
   try {
-    const response = await fetch('/admin/liquidity/liability', {
-      method: 'POST',
+    const response = await fetch(editId ? `/admin/liquidity/liability/${editId}` : '/admin/liquidity/liability', {
+      method: editId ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
     const data = await response.json();
     if (data.success) {
-      showMessage('liability-message', 'Liability added.', 'success');
+      showMessage('liability-message', editId ? 'Liability updated.' : 'Liability added.', 'success');
       setTimeout(() => window.location.reload(), 600);
     } else {
       showMessage('liability-message', data.error || 'Failed to save liability.', 'error');
@@ -96,7 +158,7 @@ async function saveLiability() {
     showMessage('liability-message', 'Network error. Please try again.', 'error');
   } finally {
     button.disabled = false;
-    button.textContent = 'add liability';
+    button.textContent = editId ? 'save changes' : 'add liability';
   }
 }
 
@@ -291,11 +353,13 @@ function bindPills() {
 }
 
 window.deleteLiquidityLiability = deleteLiquidityLiability;
+window.editLiquidityLiability = editLiquidityLiability;
 window.payLiquidityLiability = payLiquidityLiability;
 window.deleteLiquidityEntry = deleteLiquidityEntry;
 window.deleteLiquidityRecurring = deleteLiquidityRecurring;
 
 document.getElementById('save-liability-btn')?.addEventListener('click', saveLiability);
+document.getElementById('cancel-liability-edit-btn')?.addEventListener('click', clearLiabilityForm);
 document.getElementById('save-btn')?.addEventListener('click', saveEntry);
 document.getElementById('recurring-form')?.addEventListener('submit', saveRecurring);
 bindPills();

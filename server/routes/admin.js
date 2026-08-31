@@ -17,11 +17,13 @@ const {
   deleteCornerSelfie,
   createLiquidityEntry,
   createLiquidityEntries,
+  updateLiquidityEntry,
   deleteLiquidityEntry,
   createLiquidityRecurring,
   deleteLiquidityRecurring,
   getLiquidityLiability,
   createLiquidityLiability,
+  updateLiquidityLiability,
   deleteLiquidityLiability,
   isConfigured
 } = require('../db/supabase');
@@ -376,6 +378,96 @@ router.post('/liquidity/liability', isAuthenticated, async (req, res) => {
     await deleteLiquidityEntry(entry.id);
     res.status(500).json({ success: false, error: result.error || 'Failed to save liability' });
   }
+});
+
+function readLiabilityFields(body) {
+  const name = typeof body?.name === 'string' ? body.name.trim() : '';
+  const amount = parsePositiveAmount(body?.amount);
+  const currency = normalizeCurrency(body?.currency);
+  if (!name) return { error: 'What is this liability?' };
+  if (!amount) return { error: 'Amount must be a number other than 0, like -25.32.' };
+  if (!currency) return { error: 'Currency must be USD or EUR.' };
+  return { name, amount, currency };
+}
+
+async function fxRateForLiabilityEdit(currency, previous) {
+  if (currency === 'USD') return 1;
+  const prevCurrency = normalizeCurrency(previous?.currency);
+  const prevRate = toNumber(previous?.fx_rate, 0);
+  if (prevCurrency === 'EUR' && prevRate > 0) return prevRate;
+  return getEurUsdRate(previous?.created_at || new Date().toISOString());
+}
+
+async function writeReservationLog(liability, timestamp) {
+  const entry = reservationEntryFromLiability(liability, timestamp);
+  const fields = {
+    amount: entry.amount,
+    currency: entry.currency,
+    fx_rate: entry.fx_rate,
+    amount_usd: entry.amount_usd,
+    direction: entry.direction,
+    note: entry.note
+  };
+  const updated = await updateLiquidityEntry(entry.id, fields);
+  if (!updated.success) return updated;
+  if (updated.entry) return updated;
+  return createLiquidityEntry({
+    ...entry,
+    timestamp: timestamp || new Date().toISOString()
+  });
+}
+
+router.put('/liquidity/liability/:id', isAuthenticated, async (req, res) => {
+  if (!isConfigured()) {
+    return res.status(503).json({ success: false, error: 'Supabase is not configured on the server.' });
+  }
+
+  const liability = await getLiquidityLiability(req.params.id);
+  if (!liability) {
+    return res.status(404).json({ success: false, error: 'Liability not found' });
+  }
+
+  const fields = readLiabilityFields(req.body);
+  if (fields.error) {
+    return res.status(400).json({ success: false, error: fields.error });
+  }
+
+  const { name, amount, currency } = fields;
+  let fx_rate = 1;
+  try {
+    fx_rate = await fxRateForLiabilityEdit(currency, liability);
+  } catch (error) {
+    console.error('FX conversion failed:', error);
+    return res.status(502).json({ success: false, error: 'Could not convert EUR to USD. Try again, or log in USD.' });
+  }
+
+  const next = {
+    ...liability,
+    name,
+    amount,
+    currency,
+    fx_rate,
+    amount_usd: roundMoney(amount * fx_rate)
+  };
+  const logged = await writeReservationLog(next, liability.created_at);
+  if (!logged.success) {
+    return res.status(500).json({ success: false, error: logged.error || 'Failed to update the graph log' });
+  }
+
+  const entryId = logged.entry?.id || reservationEntryFromLiability(next, liability.created_at).id;
+  const result = await updateLiquidityLiability(liability.id, {
+    name,
+    amount,
+    currency,
+    fx_rate,
+    amount_usd: next.amount_usd,
+    entry_id: entryId
+  });
+  if (!result.success) {
+    return res.status(500).json({ success: false, error: result.error || 'Failed to save liability' });
+  }
+
+  res.json({ success: true, item: result.item, entry: logged.entry });
 });
 
 router.post('/liquidity/liability/:id/paid', isAuthenticated, async (req, res) => {
