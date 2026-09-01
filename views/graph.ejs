@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css?v=graph-zh1">
+  <link rel="stylesheet" href="/css/style.css?v=graph-q2">
 </head>
 <body class="people-graph-page<%= lang === 'zh' ? ' is-zh' : '' %>">
   <a href="/" class="corner-btn-left" aria-label="<%= lang === 'zh' ? '返回日记' : 'Back to Diary' %>"></a>
@@ -31,7 +31,14 @@
       </button>
     </div>
     <button type="button" class="people-graph-question" id="people-lang-toggle" aria-label="<%= lang === 'zh' ? '切换为英文' : 'Switch to Chinese' %>">
-      <span id="people-graph-question-text"><%= lang === 'zh' ? '你亲自共事过、在这件事上比你更强的两位硬件人是谁？' : 'Who are the 2 best hardware people you have personally worked with who are stronger than you at this?' %></span>
+      <span id="people-graph-question-text" class="people-graph-question-text"><% if (lang === 'zh') { %>
+        <span class="people-graph-q-line">你亲自共事过、比你更强的</span>
+        <span class="people-graph-q-line">两位硬件人是谁？</span>
+      <% } else { %>
+        <span class="people-graph-q-line">Who are the 2 best hardware people</span>
+        <span class="people-graph-q-line">you have personally worked with</span>
+        <span class="people-graph-q-line">who are stronger than you?</span>
+      <% } %></span>
       <span class="people-lang-seal" id="people-lang-seal" aria-hidden="true"><%= lang === 'zh' ? '英' : '中' %></span>
     </button>
   </nav>
@@ -55,6 +62,6 @@
   </div>
 
   <script src="/js/main.js"></script>
-  <script src="/js/graph.js?v=graph-zh1"></script>
+  <script src="/js/graph.js?v=graph-q2"></script>
 </body>
 </html>

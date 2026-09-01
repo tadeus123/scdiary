@@ -10,7 +10,11 @@ const LANG_KEY = 'graph-lang';
 const COPY = {
   en: {
     title: 'graph',
-    question: 'Who are the 2 best hardware people you have personally worked with who are stronger than you at this?',
+    questionLines: [
+      'Who are the 2 best hardware people',
+      'you have personally worked with',
+      'who are stronger than you?'
+    ],
     seal: '中',
     switchTo: 'Switch to Chinese',
     back: 'Back to Diary',
@@ -24,7 +28,10 @@ const COPY = {
   },
   zh: {
     title: '图谱',
-    question: '你亲自共事过、在这件事上比你更强的两位硬件人是谁？',
+    questionLines: [
+      '你亲自共事过、比你更强的',
+      '两位硬件人是谁？'
+    ],
     seal: '英',
     switchTo: '切换为英文',
     back: '返回日记',
@@ -318,7 +325,11 @@ function applyChrome() {
     titleEl.textContent = copy.title;
     titleEl.setAttribute('href', copy.href);
   }
-  if (questionTextEl) questionTextEl.textContent = copy.question;
+  if (questionTextEl) {
+    questionTextEl.innerHTML = copy.questionLines
+      .map((line) => `<span class="people-graph-q-line">${escapeHtml(line)}</span>`)
+      .join('');
+  }
   if (langSeal) langSeal.textContent = copy.seal;
   if (langToggle) langToggle.setAttribute('aria-label', copy.switchTo);
   if (graphEl) graphEl.setAttribute('aria-label', copy.graph);

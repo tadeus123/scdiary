@@ -4245,20 +4245,37 @@ body.people-graph-page {
 }
 
 .people-graph-question {
-  max-width: 24rem;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  max-width: min(28rem, calc(100vw - 11rem));
   margin: 0;
-  padding: 0.35rem 0 0;
+  padding: 0.2rem 0.2rem 0 0;
   border: none;
   background: none;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 0.92rem;
-  line-height: 1.45;
+  font-size: clamp(0.78rem, 1.05vw, 0.95rem);
+  line-height: 1.38;
   font-style: italic;
   color: var(--text-color);
   opacity: 0.62;
   text-align: right;
   pointer-events: auto;
   cursor: pointer;
+}
+
+.people-graph-question-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.08em;
+}
+
+.people-graph-q-line {
+  display: block;
+  white-space: nowrap;
 }
 
 .people-graph-question:hover {
@@ -4615,9 +4632,14 @@ body.people-graph-page.is-zh .people-graph-question {
   }
 
   .people-graph-question {
-    text-align: left;
-    max-width: 100%;
-    font-size: 0.85rem;
+    align-self: flex-start;
+    justify-content: flex-start;
+    max-width: calc(100vw - 3rem);
+    font-size: clamp(0.72rem, 3.4vw, 0.88rem);
+  }
+
+  .people-graph-question-text {
+    align-items: flex-start;
   }
 
   .people-details {
