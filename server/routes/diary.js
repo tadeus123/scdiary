@@ -93,8 +93,11 @@ router.get('/ce', (req, res) => {
 });
 
 // Graph page
-router.get('/graph', (req, res) => {
-  res.render('graph');
+router.get(['/graph', '/graph/'], (req, res) => {
+  res.render('graph', { graphLang: 'en' });
+});
+router.get(['/graph/zh', '/graph/zh/'], (req, res) => {
+  res.render('graph', { graphLang: 'zh' });
 });
 
 router.get('/api/graph', async (req, res) => {

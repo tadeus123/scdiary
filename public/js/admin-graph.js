@@ -1,6 +1,8 @@
 const nameInput = document.getElementById('people-name');
+const nameZhInput = document.getElementById('people-name-zh');
 const photoInput = document.getElementById('people-photo');
 const descInput = document.getElementById('people-description');
+const descZhInput = document.getElementById('people-description-zh');
 const fromSelect = document.getElementById('people-from');
 const editIdInput = document.getElementById('people-edit-id');
 const form = document.getElementById('people-form');
@@ -19,6 +21,13 @@ let edges = [];
 function showMessage(text, kind) {
   messageEl.textContent = text;
   messageEl.className = `form-message ${kind || ''}`;
+}
+
+function formatAdded(iso) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function outgoingCount(id) {
@@ -73,7 +82,9 @@ function startEdit(id) {
   saveBtn.textContent = 'save';
   cancelBtn.classList.remove('hidden');
   nameInput.value = node.name;
+  if (nameZhInput) nameZhInput.value = node.name_zh || '';
   descInput.value = node.description || '';
+  if (descZhInput) descZhInput.value = node.description_zh || '';
   photoInput.value = '';
   fillFromSelect(id);
   fromSelect.value = parentId(id);
@@ -106,8 +117,9 @@ function renderList() {
         <div class="people-admin-photo">${photo}</div>
         <div class="people-admin-meta">
           <div class="entry-date">${escapeHtml(node.name)}</div>
-          <p class="people-admin-from">${from ? `from ${escapeHtml(from)}` : 'starting node'} · ${given}/2 intros</p>
+          <p class="people-admin-from">${from ? `from ${escapeHtml(from)}` : 'starting node'} · ${given}/2 intros · added ${escapeHtml(formatAdded(node.created_at) || '—')}</p>
           ${node.description ? `<div class="entry-content"><p>${escapeHtml(node.description)}</p></div>` : ''}
+          ${node.name_zh || node.description_zh ? `<p class="people-admin-zh">${escapeHtml([node.name_zh, node.description_zh].filter(Boolean).join(' · '))}</p>` : ''}
         </div>
         <div class="people-admin-actions">
           <button type="button" class="people-edit-btn" data-edit="${escapeHtml(node.id)}">edit</button>
@@ -170,6 +182,8 @@ form.addEventListener('submit', async (e) => {
   const body = new FormData();
   body.append('name', name);
   body.append('description', descInput.value.trim());
+  body.append('name_zh', nameZhInput ? nameZhInput.value.trim() : '');
+  body.append('description_zh', descZhInput ? descZhInput.value.trim() : '');
   body.append('from_id', fromSelect.value);
   if (photoInput.files && photoInput.files[0]) {
     body.append('photo', photoInput.files[0]);

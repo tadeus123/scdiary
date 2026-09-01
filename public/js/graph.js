@@ -5,6 +5,38 @@ const MIN_SCALE = 0.28;
 const MAX_SCALE = 2.8;
 const ZOOM_FACTOR = 0.0012;
 const FIT_PAD = 72;
+const LANG_KEY = 'graph-lang';
+
+const COPY = {
+  en: {
+    title: 'graph',
+    question: 'Who are the 2 best hardware people you have personally worked with who are stronger than you at this?',
+    seal: '中',
+    switchTo: 'Switch to Chinese',
+    back: 'Back to Diary',
+    theme: 'Toggle theme',
+    graph: 'People intro graph',
+    close: 'Close',
+    from: (name) => `from ${name}`,
+    starting: 'starting node',
+    added: (date) => `added ${date}`,
+    href: '/graph'
+  },
+  zh: {
+    title: '图谱',
+    question: '你亲自共事过、在这件事上比你更强的两位硬件人是谁？',
+    seal: '英',
+    switchTo: '切换为英文',
+    back: '返回日记',
+    theme: '切换主题',
+    graph: '引荐图谱',
+    close: '关闭',
+    from: (name) => `由 ${name} 引荐`,
+    starting: '起点',
+    added: (date) => `${date}加入`,
+    href: '/graph/zh'
+  }
+};
 
 let nodes = [];
 let edges = [];
@@ -12,6 +44,8 @@ let positions = new Map();
 let viewport = { x: 0, y: 0, scale: 1 };
 let viewWidth = 0;
 let viewHeight = 0;
+let lang = document.documentElement.getAttribute('data-graph-lang') === 'zh' ? 'zh' : 'en';
+let openDetailsId = null;
 
 const graphEl = document.getElementById('people-graph');
 const worldEl = document.getElementById('people-graph-world');
@@ -21,8 +55,15 @@ const detailsEl = document.getElementById('people-details');
 const detailsPhoto = document.getElementById('people-details-photo');
 const detailsName = document.getElementById('people-details-name');
 const detailsFrom = document.getElementById('people-details-from');
+const detailsAdded = document.getElementById('people-details-added');
 const detailsDesc = document.getElementById('people-details-desc');
 const detailsClose = document.getElementById('people-details-close');
+const titleEl = document.getElementById('people-graph-title');
+const questionTextEl = document.getElementById('people-graph-question-text');
+const langToggle = document.getElementById('people-lang-toggle');
+const langSeal = document.getElementById('people-lang-seal');
+const themeToggle = document.getElementById('theme-toggle');
+const backLink = document.querySelector('.corner-btn-left');
 
 function hashId(id) {
   let h = 0;
@@ -216,9 +257,27 @@ function circleAnchor(x1, y1, x2, y2, radius) {
   };
 }
 
+function t() {
+  return COPY[lang] || COPY.en;
+}
+
+function displayName(node) {
+  if (!node) return '';
+  if (lang === 'zh' && node.name_zh) return node.name_zh;
+  return node.name || '';
+}
+
+function displayDesc(node) {
+  if (!node) return '';
+  if (lang === 'zh' && node.description_zh) return node.description_zh;
+  return node.description || '';
+}
+
 function initialFor(name) {
   const trimmed = (name || '').trim();
-  return trimmed ? trimmed.charAt(0).toUpperCase() : '?';
+  if (!trimmed) return '?';
+  const first = trimmed.charAt(0);
+  return /[a-z]/i.test(first) ? first.toUpperCase() : first;
 }
 
 function nodeById(id) {
@@ -230,15 +289,74 @@ function parentName(id) {
   const parents = incoming.get(id) || [];
   if (!parents.length) return '';
   return parents
-    .map((pid) => nodeById(pid)?.name)
+    .map((pid) => displayName(nodeById(pid)))
     .filter(Boolean)
-    .join(', ');
+    .join(lang === 'zh' ? '、' : ', ');
 }
 
-function render() {
+function formatAdded(iso) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  if (lang === 'zh') {
+    return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function pathForLang(next) {
+  return next === 'zh' ? '/graph/zh' : '/graph';
+}
+
+function applyChrome() {
+  const copy = t();
+  document.documentElement.lang = lang === 'zh' ? 'zh-Hans' : 'en';
+  document.documentElement.setAttribute('data-graph-lang', lang);
+  document.body.classList.toggle('is-zh', lang === 'zh');
+  document.title = lang === 'zh' ? 'Tade Mehl — 图谱' : 'Tade Mehl — graph';
+  if (titleEl) {
+    titleEl.textContent = copy.title;
+    titleEl.setAttribute('href', copy.href);
+  }
+  if (questionTextEl) questionTextEl.textContent = copy.question;
+  if (langSeal) langSeal.textContent = copy.seal;
+  if (langToggle) langToggle.setAttribute('aria-label', copy.switchTo);
+  if (graphEl) graphEl.setAttribute('aria-label', copy.graph);
+  if (detailsClose) detailsClose.setAttribute('aria-label', copy.close);
+  if (themeToggle) themeToggle.setAttribute('aria-label', copy.theme);
+  if (backLink) backLink.setAttribute('aria-label', copy.back);
+}
+
+function setLang(next, { stamp = false, updateHistory = true } = {}) {
+  if (next !== 'zh' && next !== 'en') return;
+  const changed = next !== lang;
+  lang = next;
+  try { localStorage.setItem(LANG_KEY, lang); } catch {}
+  applyChrome();
+  if (stamp && langSeal) {
+    langSeal.classList.remove('is-stamping');
+    void langSeal.offsetWidth;
+    langSeal.classList.add('is-stamping');
+    questionTextEl?.classList.remove('is-inking');
+    void questionTextEl?.offsetWidth;
+    questionTextEl?.classList.add('is-inking');
+  }
+  if (updateHistory) {
+    const url = pathForLang(lang);
+    if (location.pathname.replace(/\/$/, '') !== url) {
+      history.pushState({ graphLang: lang }, '', url);
+    }
+  }
+  if (changed) render({ keepView: true });
+  if (openDetailsId) showDetails(openDetailsId);
+}
+
+function render(options = {}) {
   const outgoing = outgoingMap();
-  positions = computeLayout();
-  viewport = fitViewport(positions);
+  if (!options.keepView || positions.size === 0) {
+    positions = computeLayout();
+    viewport = fitViewport(positions);
+  }
   applyViewport();
 
   const color = edgeStroke();
@@ -276,15 +394,16 @@ function render() {
     if (!p) return '';
     const open = isOpen(node.id, outgoing);
     const given = (outgoing.get(node.id) || []).length;
+    const name = displayName(node);
     const photo = node.photo_url
       ? `<img src="${escapeAttr(node.photo_url)}" alt="">`
-      : `<span>${escapeHtml(initialFor(node.name))}</span>`;
+      : `<span>${escapeHtml(initialFor(name))}</span>`;
     const slots = [0, 1].map((i) =>
       `<span class="people-node-slot${i < given ? ' is-filled' : ''}"></span>`
     ).join('');
     return `<button type="button" class="people-node${open ? ' is-open' : ''}" data-id="${escapeAttr(node.id)}" style="left:${p.x}px;top:${p.y}px">
       <span class="people-node-photo">${photo}</span>
-      <span class="people-node-name">${escapeHtml(node.name)}</span>
+      <span class="people-node-name">${escapeHtml(name)}</span>
       <span class="people-node-slots" aria-hidden="true">${slots}</span>
     </button>`;
   }).join('');
@@ -305,18 +424,26 @@ function escapeAttr(value) {
 function showDetails(id) {
   const node = nodeById(id);
   if (!node) return;
-  detailsName.textContent = node.name;
-  detailsDesc.textContent = node.description || '';
-  detailsDesc.classList.toggle('hidden', !node.description);
+  openDetailsId = id;
+  const copy = t();
+  const name = displayName(node);
+  const desc = displayDesc(node);
+  detailsName.textContent = name;
+  detailsDesc.textContent = desc;
+  detailsDesc.classList.toggle('hidden', !desc);
   const from = parentName(id);
-  detailsFrom.textContent = from ? `from ${from}` : 'starting node';
+  detailsFrom.textContent = from ? copy.from(from) : copy.starting;
+  const added = formatAdded(node.created_at);
+  detailsAdded.textContent = added ? copy.added(added) : '';
+  detailsAdded.classList.toggle('hidden', !added);
   detailsPhoto.innerHTML = node.photo_url
     ? `<img src="${escapeAttr(node.photo_url)}" alt="">`
-    : `<span>${escapeHtml(initialFor(node.name))}</span>`;
+    : `<span>${escapeHtml(initialFor(name))}</span>`;
   detailsEl.classList.remove('hidden');
 }
 
 function hideDetails() {
+  openDetailsId = null;
   detailsEl.classList.add('hidden');
 }
 
@@ -343,7 +470,7 @@ function setupPanZoom() {
 
   graphEl.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
-    if (e.target.closest('.people-node, .people-details, button, a')) return;
+    if (e.target.closest('.people-node, .people-details, .people-graph-question, button, a')) return;
     hideDetails();
     pan = {
       pointerId: e.pointerId,
@@ -400,7 +527,19 @@ detailsEl.addEventListener('click', (e) => {
   if (e.target === detailsEl) hideDetails();
 });
 
-document.addEventListener('themeChanged', () => render());
+if (langToggle) {
+  langToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setLang(lang === 'zh' ? 'en' : 'zh', { stamp: true });
+  });
+}
+
+window.addEventListener('popstate', () => {
+  const next = location.pathname.replace(/\/$/, '').endsWith('/zh') ? 'zh' : 'en';
+  setLang(next, { updateHistory: false });
+});
+
+document.addEventListener('themeChanged', () => render({ keepView: true }));
 window.addEventListener('resize', () => {
   measure();
   render();
@@ -408,4 +547,21 @@ window.addEventListener('resize', () => {
 
 setupPanZoom();
 measure();
+
+(function rememberLang() {
+  let stored = null;
+  try { stored = localStorage.getItem(LANG_KEY); } catch {}
+  const pathZh = location.pathname.replace(/\/$/, '').endsWith('/zh');
+  if (pathZh) {
+    setLang('zh', { updateHistory: false });
+    return;
+  }
+  if (stored === 'zh' || stored === 'en') {
+    if (stored !== lang) setLang(stored, { updateHistory: true });
+    return;
+  }
+  const browserZh = String(navigator.language || '').toLowerCase().startsWith('zh');
+  if (browserZh) setLang('zh', { updateHistory: true });
+})();
+
 loadGraph().catch((error) => console.error('Failed to load graph', error));

@@ -21,7 +21,12 @@
 <meta property="og:description" content="<%= seo.description %>">
 <% } %>
 <meta property="og:url" content="<%= canonical %>">
-<meta property="og:locale" content="en_US">
+<meta property="og:locale" content="<%= seo.ogLocale || 'en_US' %>">
+<% if (seo.hreflang && seo.hreflang.length) { %>
+<% seo.hreflang.forEach((alt) => { %>
+<link rel="alternate" hreflang="<%= alt.lang %>" href="<%= getCanonicalUrl(alt.path) %>">
+<% }) %>
+<% } %>
 <% if (seo.ogImage) { %>
 <meta property="og:image" content="<%= SITE_URL %><%= seo.ogImage %>">
 <meta property="og:image:width" content="1200">

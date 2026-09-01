@@ -4245,9 +4245,12 @@ body.people-graph-page {
 }
 
 .people-graph-question {
-  max-width: 22rem;
+  max-width: 24rem;
   margin: 0;
-  padding-top: 0.35rem;
+  padding: 0.35rem 0 0;
+  border: none;
+  background: none;
+  font-family: Georgia, 'Times New Roman', serif;
   font-size: 0.92rem;
   line-height: 1.45;
   font-style: italic;
@@ -4255,6 +4258,75 @@ body.people-graph-page {
   opacity: 0.62;
   text-align: right;
   pointer-events: auto;
+  cursor: pointer;
+}
+
+.people-graph-question:hover {
+  opacity: 0.88;
+}
+
+.people-lang-seal {
+  display: inline-flex;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-left: 0.45rem;
+  vertical-align: middle;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #B44A2A;
+  color: #B44A2A;
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "Noto Serif SC", Georgia, serif;
+  font-size: 0.72rem;
+  font-style: normal;
+  line-height: 1;
+  transform: rotate(-9deg);
+  opacity: 0.85;
+}
+
+.people-lang-seal.is-stamping {
+  animation: people-seal-stamp 0.48s ease;
+}
+
+@keyframes people-seal-stamp {
+  0% { transform: rotate(-9deg) scale(1); }
+  30% { transform: rotate(-2deg) scale(0.78); }
+  58% { transform: rotate(-14deg) scale(1.16); }
+  100% { transform: rotate(-9deg) scale(1); }
+}
+
+#people-graph-question-text.is-inking {
+  animation: people-ink 0.55s ease;
+}
+
+@keyframes people-ink {
+  0% { opacity: 1; filter: blur(0); }
+  42% { opacity: 0; filter: blur(5px); }
+  100% { opacity: 1; filter: blur(0); }
+}
+
+body.people-graph-page.is-zh,
+body.people-graph-page.is-zh .people-graph-question,
+body.people-graph-page.is-zh .people-node,
+body.people-graph-page.is-zh .people-details,
+body.people-graph-page.is-zh .site-title {
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "Source Han Serif SC", "FangSong", Georgia, 'Times New Roman', serif;
+}
+
+body.people-graph-page.is-zh .people-graph-question {
+  font-style: normal;
+  letter-spacing: 0.04em;
+}
+
+.people-details-added {
+  margin: 0;
+  font-size: 0.88rem;
+  opacity: 0.55;
+}
+
+.people-admin-zh {
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+  opacity: 0.72;
 }
 
 .people-graph {

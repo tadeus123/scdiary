@@ -34,6 +34,22 @@ const PAGES = {
   '/graph': {
     title: 'Tade Mehl — graph',
     description: 'A growing graph of the best hardware people Tade Mehl has been introduced to.',
+    ogLocale: 'en_US',
+    hreflang: [
+      { lang: 'en', path: '/graph' },
+      { lang: 'zh-Hans', path: '/graph/zh' },
+      { lang: 'x-default', path: '/graph' },
+    ],
+  },
+  '/graph/zh': {
+    title: 'Tade Mehl — 图谱',
+    description: 'Tade Mehl 不断向外生长的硬件引荐图谱。',
+    ogLocale: 'zh_CN',
+    hreflang: [
+      { lang: 'en', path: '/graph' },
+      { lang: 'zh-Hans', path: '/graph/zh' },
+      { lang: 'x-default', path: '/graph' },
+    ],
   },
   '/edu': {
     title: 'Tade Mehl — edu',
@@ -41,7 +57,7 @@ const PAGES = {
   },
 };
 
-const SITEMAP_PATHS = ['/', '/bookshelf', '/eisenkind', '/cause', '/want', '/corner', '/ce', '/liquidity', '/graph'];
+const SITEMAP_PATHS = ['/', '/bookshelf', '/eisenkind', '/cause', '/want', '/corner', '/ce', '/liquidity', '/graph', '/graph/zh'];
 
 function normalizePath(pathname) {
   if (!pathname || pathname === '/') return '/';
@@ -84,6 +100,8 @@ function getSeoForPath(pathname) {
     includePersonSchema: Boolean(page.includePersonSchema),
     googleSiteVerification: page.googleSiteVerification || null,
     ogImage: page.ogImage || null,
+    ogLocale: page.ogLocale || 'en_US',
+    hreflang: page.hreflang || null,
   };
 }
 

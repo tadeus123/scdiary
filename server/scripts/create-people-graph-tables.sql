@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS public.people_graph_nodes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
+  name_zh TEXT NOT NULL DEFAULT '',
+  description_zh TEXT NOT NULL DEFAULT '',
   photo_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

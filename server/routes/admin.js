@@ -696,6 +696,8 @@ router.post('/graph/node', isAuthenticated, peoplePhotoUpload, async (req, res) 
   try {
     const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
     const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
+    const nameZh = typeof req.body?.name_zh === 'string' ? req.body.name_zh.trim() : '';
+    const descriptionZh = typeof req.body?.description_zh === 'string' ? req.body.description_zh.trim() : '';
     const fromId = typeof req.body?.from_id === 'string' ? req.body.from_id.trim() : '';
     if (!name) {
       return res.status(400).json({ success: false, error: 'Name is required' });
@@ -713,6 +715,8 @@ router.post('/graph/node', isAuthenticated, peoplePhotoUpload, async (req, res) 
     const result = await createPeopleGraphNode({
       name,
       description,
+      name_zh: nameZh,
+      description_zh: descriptionZh,
       photo_url
     });
     if (!result.success) {
@@ -739,12 +743,16 @@ router.put('/graph/node/:id', isAuthenticated, peoplePhotoUpload, async (req, re
     const id = req.params.id;
     const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
     const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
+    const nameZh = typeof req.body?.name_zh === 'string' ? req.body.name_zh.trim() : '';
+    const descriptionZh = typeof req.body?.description_zh === 'string' ? req.body.description_zh.trim() : '';
     const fromIdRaw = req.body?.from_id;
     const fromId = typeof fromIdRaw === 'string' ? fromIdRaw.trim() : '';
 
     const updates = {};
     if (name) updates.name = name;
     if (typeof req.body?.description === 'string') updates.description = description;
+    if (typeof req.body?.name_zh === 'string') updates.name_zh = nameZh;
+    if (typeof req.body?.description_zh === 'string') updates.description_zh = descriptionZh;
 
     if (req.file) {
       try {

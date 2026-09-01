@@ -1,18 +1,22 @@
+<% const lang = (typeof graphLang !== 'undefined' && graphLang === 'zh') ? 'zh' : 'en'; %>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<%= lang === 'zh' ? 'zh-Hans' : 'en' %>" data-graph-lang="<%= lang %>">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <%- include('partials/seo-head') %>
-  <link rel="stylesheet" href="/css/style.css?v=graph1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css?v=graph-zh1">
 </head>
-<body class="people-graph-page">
-  <a href="/" class="corner-btn-left" aria-label="Back to Diary"></a>
+<body class="people-graph-page<%= lang === 'zh' ? ' is-zh' : '' %>">
+  <a href="/" class="corner-btn-left" aria-label="<%= lang === 'zh' ? '返回日记' : 'Back to Diary' %>"></a>
 
   <nav class="bookshelf-header people-graph-header">
     <div class="nav-left">
-      <a href="/graph" class="site-title">graph</a>
-      <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme" type="button">
+      <a href="<%= lang === 'zh' ? '/graph/zh' : '/graph' %>" class="site-title" id="people-graph-title"><%= lang === 'zh' ? '图谱' : 'graph' %></a>
+      <button id="theme-toggle" class="theme-toggle" aria-label="<%= lang === 'zh' ? '切换主题' : 'Toggle theme' %>" type="button">
         <svg class="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <circle cx="12" cy="12" r="5"></circle>
           <line x1="12" y1="6.5" x2="12" y2="3"></line>
@@ -26,10 +30,13 @@
         </svg>
       </button>
     </div>
-    <p class="people-graph-question">Who are the 2 best hardware people you have personally worked with who are stronger than you at this?</p>
+    <button type="button" class="people-graph-question" id="people-lang-toggle" aria-label="<%= lang === 'zh' ? '切换为英文' : 'Switch to Chinese' %>">
+      <span id="people-graph-question-text"><%= lang === 'zh' ? '你亲自共事过、在这件事上比你更强的两位硬件人是谁？' : 'Who are the 2 best hardware people you have personally worked with who are stronger than you at this?' %></span>
+      <span class="people-lang-seal" id="people-lang-seal" aria-hidden="true"><%= lang === 'zh' ? '英' : '中' %></span>
+    </button>
   </nav>
 
-  <div id="people-graph" class="people-graph" aria-label="People intro graph">
+  <div id="people-graph" class="people-graph" aria-label="<%= lang === 'zh' ? '引荐图谱' : 'People intro graph' %>">
     <div id="people-graph-world" class="people-graph-world">
       <svg id="people-graph-svg" class="people-graph-svg"></svg>
       <div id="people-graph-nodes" class="people-graph-nodes"></div>
@@ -41,12 +48,13 @@
       <div id="people-details-photo" class="people-details-photo"></div>
       <h2 id="people-details-name"></h2>
       <p id="people-details-from" class="people-details-from"></p>
+      <p id="people-details-added" class="people-details-added"></p>
       <p id="people-details-desc" class="people-details-desc"></p>
     </div>
-    <button type="button" id="people-details-close" class="close-details" aria-label="Close">✕</button>
+    <button type="button" id="people-details-close" class="close-details" aria-label="<%= lang === 'zh' ? '关闭' : 'Close' %>">✕</button>
   </div>
 
   <script src="/js/main.js"></script>
-  <script src="/js/graph.js?v=graph2"></script>
+  <script src="/js/graph.js?v=graph-zh1"></script>
 </body>
 </html>

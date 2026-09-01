@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <%- include('partials/seo-head') %>
-  <link rel="stylesheet" href="/css/style.css?v=graph1">
+  <link rel="stylesheet" href="/css/style.css?v=graph-zh1">
 </head>
 <body class="admin-page admin-graph-page">
   <a href="/admin" class="corner-btn-left" aria-label="Back to Admin"></a>
@@ -38,6 +38,10 @@
           <input type="text" id="people-name" name="name" required autocomplete="off">
         </div>
         <div class="form-group">
+          <label for="people-name-zh">中文名</label>
+          <input type="text" id="people-name-zh" name="name_zh" autocomplete="off" placeholder="optional, shown on the Chinese page">
+        </div>
+        <div class="form-group">
           <label for="people-photo">picture</label>
           <input type="file" id="people-photo" name="photo" accept="image/*">
           <div id="people-photo-preview" class="cover-preview people-photo-preview hidden">
@@ -47,6 +51,10 @@
         <div class="form-group">
           <label for="people-description">what they got done</label>
           <textarea id="people-description" name="description" rows="4" placeholder="a short note on what they built or did..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="people-description-zh">他们做成了什么</label>
+          <textarea id="people-description-zh" name="description_zh" rows="4" placeholder="中文页上的简介，选填"></textarea>
         </div>
         <div class="form-group">
           <label for="people-from">comes from</label>
@@ -72,6 +80,6 @@
   </div>
 
   <script src="/js/main.js"></script>
-  <script src="/js/admin-graph.js?v=graph1"></script>
+  <script src="/js/admin-graph.js?v=graph-zh1"></script>
 </body>
 </html>
