@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <%- include('partials/seo-head') %>
-  <link rel="stylesheet" href="/css/style.css?v=lq-live-fx">
+  <link rel="stylesheet" href="/css/style.css?v=lq-day-end">
 </head>
 <body class="admin-page admin-liquidity-page">
   <a href="/admin" class="corner-btn-left" aria-label="Back to Admin"></a>
@@ -36,7 +36,15 @@
         <div class="liquidity-form-row">
           <div class="form-group">
             <label for="entry-amount">amount</label>
-            <input type="text" id="entry-amount" inputmode="decimal" placeholder="-25.32" autocomplete="off" autocapitalize="off" spellcheck="false">
+            <input type="text" id="entry-amount" inputmode="decimal" placeholder="25.32" autocomplete="off" autocapitalize="off" spellcheck="false">
+          </div>
+          <div class="form-group">
+            <span class="liquidity-field-label">in / out</span>
+            <div class="liquidity-pills" data-target="entry-direction" role="group" aria-label="in or out">
+              <button type="button" class="liquidity-pill" data-value="in">+</button>
+              <button type="button" class="liquidity-pill is-active" data-value="out">−</button>
+            </div>
+            <input type="hidden" id="entry-direction" value="out">
           </div>
           <div class="form-group">
             <span class="liquidity-field-label">currency</span>
@@ -95,7 +103,7 @@
         <div class="liquidity-form-row">
           <div class="form-group">
             <label for="liability-amount">amount</label>
-            <input type="text" id="liability-amount" inputmode="decimal" placeholder="-25.32" autocomplete="off" autocapitalize="off" spellcheck="false">
+            <input type="text" id="liability-amount" inputmode="decimal" placeholder="25.32" autocomplete="off" autocapitalize="off" spellcheck="false">
           </div>
           <div class="form-group">
             <span class="liquidity-field-label">currency</span>
@@ -155,7 +163,15 @@
             </div>
             <div class="form-group">
               <label for="recurring-amount">amount</label>
-              <input type="text" id="recurring-amount" inputmode="decimal" placeholder="-25.32" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+              <input type="text" id="recurring-amount" inputmode="decimal" placeholder="25.32" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+            </div>
+            <div class="form-group">
+              <span class="liquidity-field-label">in / out</span>
+              <div class="liquidity-pills" data-target="recurring-direction" role="group" aria-label="in or out">
+                <button type="button" class="liquidity-pill" data-value="in">+</button>
+                <button type="button" class="liquidity-pill is-active" data-value="out">−</button>
+              </div>
+              <input type="hidden" id="recurring-direction" value="out">
             </div>
             <div class="form-group">
               <span class="liquidity-field-label">currency</span>
@@ -199,6 +215,6 @@
   </div>
 
   <script src="/js/main.js"></script>
-  <script src="/js/admin-liquidity.js?v=lq-live-fx"></script>
+  <script src="/js/admin-liquidity.js?v=lq-sign-pills"></script>
 </body>
 </html>

@@ -298,37 +298,49 @@ function renderChart(series) {
   const startMs = dayMs[0];
   const endMs = dayMs[dayMs.length - 1];
   const span = Math.max(24 * 60 * 60 * 1000, endMs - startMs);
-  const balances = points.map((point) => Number(point.balance));
+  const xOf = (ms) => padding.left + ((ms - startMs) / span) * graphWidth;
+
+  const logs = points.map((point, index) => ({
+    ...point,
+    dayKey: localDayKey(point.at),
+    dayMs: dayMs[index]
+  }));
+
+  const pointsByDay = new Map();
+  logs.forEach((point) => {
+    const group = pointsByDay.get(point.dayKey) || [];
+    group.push(point);
+    pointsByDay.set(point.dayKey, group);
+  });
+
+  const dailyPoints = [...pointsByDay.values()].map((group) => {
+    const last = group[group.length - 1];
+    return {
+      ...last,
+      x: xOf(last.dayMs)
+    };
+  });
+
+  const balances = dailyPoints.map((point) => Number(point.balance));
   let minBalance = Math.min(...balances);
   let maxBalance = Math.max(...balances);
   if (minBalance > 0) minBalance = 0;
   if (maxBalance < 0) maxBalance = 0;
 
   const yScale = niceTicks(minBalance, maxBalance, compact ? 4 : 5);
-  const xOf = (ms) => padding.left + ((ms - startMs) / span) * graphWidth;
   const yOf = (value) => padding.top + ((yScale.max - value) / (yScale.max - yScale.min || 1)) * graphHeight;
 
-  const mapped = points.map((point, index) => ({
-    ...point,
-    dayKey: localDayKey(point.at),
-    x: xOf(dayMs[index]),
-    y: yOf(Number(point.balance))
-  }));
-
-  const pointsByDay = new Map();
-  mapped.forEach((point) => {
-    const group = pointsByDay.get(point.dayKey) || [];
-    group.push(point);
-    pointsByDay.set(point.dayKey, group);
+  dailyPoints.forEach((point) => {
+    point.y = yOf(Number(point.balance));
   });
 
-  const sticks = [...pointsByDay.values()].map((group) => ({
-    dayKey: group[0].dayKey,
-    x: group[0].x,
-    topY: Math.min(...group.map((point) => point.y))
+  const sticks = dailyPoints.map((point) => ({
+    dayKey: point.dayKey,
+    x: point.x,
+    topY: point.y
   }));
 
-  const linePath = mapped.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+  const linePath = dailyPoints.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
   const xTickValues = dayAxisTicks(startMs, endMs, compact);
   const labelMode = (endMs - startMs) / (24 * 60 * 60 * 1000) > 80 ? 'month' : (compact ? 'short' : 'day');
   const dotRadius = compact ? 6 : 5;
@@ -344,7 +356,7 @@ function renderChart(series) {
       ${sticks.map((stick) => `
         <line x1="${stick.x}" y1="${stick.topY}" x2="${stick.x}" y2="${axisBottom}" class="timeline-marker-line liquidity-hit" data-day="${escapeXml(stick.dayKey)}" />
       `).join('')}
-      ${mapped.map((point) => `
+      ${dailyPoints.map((point) => `
         <g class="timeline-marker liquidity-marker">
           <circle cx="${point.x}" cy="${point.y}" r="${hitRadius}" class="liquidity-hit" data-id="${escapeXml(point.id || point.at)}" data-day="${escapeXml(point.dayKey)}" data-at="${escapeXml(point.at)}" data-balance="${point.balance}" data-delta="${point.delta}" data-note="${escapeXml(point.note || '')}" data-amount="${point.amount}" data-currency="${escapeXml(point.currency || '')}" />
           <circle cx="${point.x}" cy="${point.y}" r="${dotRadius}" class="timeline-marker-dot" />
@@ -371,6 +383,7 @@ function renderChart(series) {
     const group = pointsByDay.get(dayKey) || [];
     if (!group.length) return;
     const last = group[group.length - 1];
+    const daily = dailyPoints.find((point) => point.dayKey === dayKey) || last;
     const logs = group.map((point) => {
       const delta = Number(point.delta);
       const deltaClass = delta < 0 ? ' liquidity-tooltip-out' : '';
@@ -391,8 +404,8 @@ function renderChart(series) {
     `;
     tooltip.classList.remove('hidden');
     if (pin) pinnedDay = dayKey;
-    const x = event.clientX ?? last.x;
-    const y = event.clientY ?? last.y;
+    const x = event.clientX ?? daily.x;
+    const y = event.clientY ?? daily.y;
     const tipWidth = tooltip.offsetWidth || 200;
     const tipHeight = tooltip.offsetHeight || 72;
     tooltip.style.left = `${Math.min(width - tipWidth - 12, Math.max(12, x + 12))}px`;

@@ -45,9 +45,21 @@ function parseSignedAmount(value) {
   return { amount, direction: n < 0 ? 'out' : 'in' };
 }
 
+function formatUnsignedAmount(amount) {
+  return Math.abs(Number(amount) || 0).toFixed(2);
+}
+
 function formatSignedAmount(parsed) {
   const formatted = parsed.amount.toFixed(2);
   return parsed.direction === 'out' ? `-${formatted}` : formatted;
+}
+
+function readAmountWithDirection(amountId, directionId, fallbackDirection) {
+  const parsed = parseSignedAmount(document.getElementById(amountId)?.value);
+  if (!parsed) return null;
+  const pill = document.getElementById(directionId)?.value;
+  const direction = pill === 'in' || pill === 'out' ? pill : (fallbackDirection || parsed.direction);
+  return { amount: parsed.amount, direction };
 }
 
 function bindAmountInputs() {
@@ -56,7 +68,7 @@ function bindAmountInputs() {
     if (!input) return;
     input.addEventListener('blur', () => {
       const parsed = parseSignedAmount(input.value);
-      if (parsed) input.value = formatSignedAmount(parsed);
+      if (parsed) input.value = formatUnsignedAmount(parsed.amount);
     });
   });
 }
@@ -107,7 +119,7 @@ function editLiquidityLiability(button) {
   if (nameInput) nameInput.value = name;
   if (amountInput) {
     amountInput.value = Number.isFinite(amount) && amount > 0
-      ? formatSignedAmount({ amount, direction: 'out' })
+      ? formatUnsignedAmount(amount)
       : '';
   }
   setCurrencyPill('liability-currency', currency);
@@ -126,7 +138,7 @@ async function saveLiability() {
   const button = document.getElementById('save-liability-btn');
   const parsed = parseSignedAmount(document.getElementById('liability-amount').value);
   const payload = {
-    amount: parsed ? formatSignedAmount(parsed) : document.getElementById('liability-amount').value,
+    amount: parsed ? formatSignedAmount({ amount: parsed.amount, direction: 'out' }) : document.getElementById('liability-amount').value,
     currency: document.getElementById('liability-currency').value,
     name: document.getElementById('liability-name').value.trim()
   };
@@ -203,18 +215,18 @@ async function payLiquidityLiability(itemId) {
 }
 
 async function saveEntry() {
-  const parsed = parseSignedAmount(document.getElementById('entry-amount').value);
+  const parsed = readAmountWithDirection('entry-amount', 'entry-direction', 'out');
   const currency = document.getElementById('entry-currency').value;
   const note = document.getElementById('entry-content').value.trim();
   const saveBtn = document.getElementById('save-btn');
 
   if (!parsed) {
-    showMessage('message-container', 'Amount is required. Use -25.32 for out, 25.32 for in.', 'error');
+    showMessage('message-container', 'Amount is required.', 'error');
     return;
   }
 
   const amount = formatSignedAmount(parsed);
-  document.getElementById('entry-amount').value = amount;
+  document.getElementById('entry-amount').value = formatUnsignedAmount(parsed.amount);
 
   saveBtn.disabled = true;
   saveBtn.textContent = 'saving...';
@@ -278,9 +290,9 @@ async function deleteLiquidityEntry(entryId) {
 async function saveRecurring(event) {
   event.preventDefault();
   const button = document.getElementById('save-recurring-btn');
-  const parsed = parseSignedAmount(document.getElementById('recurring-amount').value);
+  const parsed = readAmountWithDirection('recurring-amount', 'recurring-direction', 'out');
   if (parsed) {
-    document.getElementById('recurring-amount').value = formatSignedAmount(parsed);
+    document.getElementById('recurring-amount').value = formatUnsignedAmount(parsed.amount);
   }
   const payload = {
     name: document.getElementById('recurring-name').value,
@@ -290,7 +302,7 @@ async function saveRecurring(event) {
   };
 
   if (!parsed) {
-    showMessage('recurring-message', 'Amount is required. Use -25.32 for out, 25.32 for in.', 'error');
+    showMessage('recurring-message', 'Amount is required.', 'error');
     return;
   }
 
