@@ -33,7 +33,7 @@ const PAGES = {
   },
   '/graph': {
     title: 'Tade Mehl — graph',
-    description: 'Graph — Tade Mehl.',
+    description: 'A growing graph of the best hardware people Tade Mehl has been introduced to.',
   },
   '/edu': {
     title: 'Tade Mehl — edu',

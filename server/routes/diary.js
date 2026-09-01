@@ -26,6 +26,7 @@ const {
   updateCeVideoOrder,
   deleteCeVideo,
   addCeVideo,
+  getPeopleGraph,
   isConfigured
 } = require('../db/supabase');
 const { loadLiquidityGraph } = require('../utils/liquidity-graph');
@@ -94,6 +95,21 @@ router.get('/ce', (req, res) => {
 // Graph page
 router.get('/graph', (req, res) => {
   res.render('graph');
+});
+
+router.get('/api/graph', async (req, res) => {
+  try {
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    const { nodes, edges } = await getPeopleGraph();
+    res.json({ success: true, nodes, edges });
+  } catch (error) {
+    console.error('Error fetching people graph:', error);
+    res.status(500).json({ success: false, error: 'Failed to load graph' });
+  }
 });
 
 const EDU_PASSWORD = process.env.EDU_PASSWORD || 'kernel';

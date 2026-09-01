@@ -25,6 +25,11 @@ const {
   createLiquidityLiability,
   updateLiquidityLiability,
   deleteLiquidityLiability,
+  getPeopleGraph,
+  createPeopleGraphNode,
+  updatePeopleGraphNode,
+  deletePeopleGraphNode,
+  setPeopleGraphParent,
   isConfigured
 } = require('../db/supabase');
 const { getLatestEurUsdRate } = require('../utils/fx');
@@ -646,6 +651,149 @@ router.put('/eisenkind/notes', isAuthenticated, async (req, res) => {
     res.json({ success: true, notes: result.notes });
   } else {
     res.status(500).json({ error: result.error || 'Failed to save story' });
+  }
+});
+
+function peoplePhotoUpload(req, res, next) {
+  selfieUpload.single('photo')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, error: err.message || 'Upload failed' });
+    }
+    next();
+  });
+}
+
+async function uploadPeoplePhoto(file) {
+  const fileExt = path.extname(file.originalname || '') || '.jpg';
+  const fileName = `people-${Date.now()}-${Math.round(Math.random() * 1e9)}${fileExt}`;
+  const { error: uploadError } = await supabase.storage
+    .from('people-photos')
+    .upload(fileName, file.buffer, {
+      contentType: file.mimetype,
+      cacheControl: '3600',
+      upsert: false
+    });
+  if (uploadError) {
+    throw new Error(uploadError.message);
+  }
+  const { data: urlData } = supabase.storage
+    .from('people-photos')
+    .getPublicUrl(fileName);
+  return urlData.publicUrl;
+}
+
+async function removePeoplePhoto(url) {
+  const oldPath = storagePathFromPublicUrl(url, 'people-photos');
+  if (!oldPath) return;
+  await supabase.storage.from('people-photos').remove([oldPath]);
+}
+
+router.get('/graph', isAuthenticated, (req, res) => {
+  res.render('admin-graph');
+});
+
+router.post('/graph/node', isAuthenticated, peoplePhotoUpload, async (req, res) => {
+  try {
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
+    const fromId = typeof req.body?.from_id === 'string' ? req.body.from_id.trim() : '';
+    if (!name) {
+      return res.status(400).json({ success: false, error: 'Name is required' });
+    }
+
+    let photo_url = null;
+    if (req.file) {
+      try {
+        photo_url = await uploadPeoplePhoto(req.file);
+      } catch (error) {
+        return res.status(500).json({ success: false, error: 'Failed to upload image: ' + error.message });
+      }
+    }
+
+    const result = await createPeopleGraphNode({
+      name,
+      description,
+      photo_url
+    });
+    if (!result.success) {
+      if (photo_url) await removePeoplePhoto(photo_url);
+      return res.status(500).json(result);
+    }
+
+    if (fromId) {
+      const edge = await setPeopleGraphParent(result.node.id, fromId);
+      if (!edge.success) {
+        return res.status(500).json({ success: false, error: edge.error, node: result.node });
+      }
+    }
+
+    res.json({ success: true, node: result.node });
+  } catch (error) {
+    console.error('Error creating people graph node:', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to add person' });
+  }
+});
+
+router.put('/graph/node/:id', isAuthenticated, peoplePhotoUpload, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
+    const fromIdRaw = req.body?.from_id;
+    const fromId = typeof fromIdRaw === 'string' ? fromIdRaw.trim() : '';
+
+    const updates = {};
+    if (name) updates.name = name;
+    if (typeof req.body?.description === 'string') updates.description = description;
+
+    if (req.file) {
+      try {
+        updates.photo_url = await uploadPeoplePhoto(req.file);
+      } catch (error) {
+        return res.status(500).json({ success: false, error: 'Failed to upload image: ' + error.message });
+      }
+    }
+
+    const existing = (await getPeopleGraph()).nodes.find((n) => n.id === id);
+    const result = Object.keys(updates).length
+      ? await updatePeopleGraphNode(id, updates)
+      : { success: true, node: existing };
+    if (!result.success) {
+      if (updates.photo_url) await removePeoplePhoto(updates.photo_url);
+      return res.status(500).json(result);
+    }
+
+    if (updates.photo_url && existing?.photo_url) {
+      await removePeoplePhoto(existing.photo_url);
+    }
+
+    if (typeof fromIdRaw === 'string') {
+      const edge = await setPeopleGraphParent(id, fromId || null);
+      if (!edge.success) {
+        return res.status(500).json({ success: false, error: edge.error, node: result.node });
+      }
+    }
+
+    res.json({ success: true, node: result.node });
+  } catch (error) {
+    console.error('Error updating people graph node:', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to update person' });
+  }
+});
+
+router.delete('/graph/node/:id', isAuthenticated, async (req, res) => {
+  try {
+    const result = await deletePeopleGraphNode(req.params.id);
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+    if (result.node?.photo_url) {
+      await removePeoplePhoto(result.node.photo_url);
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting people graph node:', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to delete person' });
   }
 });
 

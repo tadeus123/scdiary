@@ -4,35 +4,49 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <%- include('partials/seo-head') %>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=graph1">
 </head>
-<body>
+<body class="people-graph-page">
   <a href="/" class="corner-btn-left" aria-label="Back to Diary"></a>
 
-  <div class="container">
-    <nav>
-      <div class="nav-left">
-        <a href="/graph" class="site-title">graph</a>
-        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
-          <svg class="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <circle cx="12" cy="12" r="5"></circle>
-            <line x1="12" y1="6.5" x2="12" y2="3"></line>
-            <line x1="17.5" y1="12" x2="21" y2="12"></line>
-            <line x1="12" y1="17.5" x2="12" y2="21"></line>
-            <line x1="6.5" y1="12" x2="3" y2="12"></line>
-            <line x1="16.96" y1="7.04" x2="19.07" y2="4.93"></line>
-            <line x1="16.96" y1="16.96" x2="19.07" y2="19.07"></line>
-            <line x1="7.04" y1="16.96" x2="4.93" y2="19.07"></line>
-            <line x1="7.04" y1="7.04" x2="4.93" y2="4.93"></line>
-          </svg>
-        </button>
-      </div>
-    </nav>
+  <nav class="bookshelf-header people-graph-header">
+    <div class="nav-left">
+      <a href="/graph" class="site-title">graph</a>
+      <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme" type="button">
+        <svg class="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="6.5" x2="12" y2="3"></line>
+          <line x1="17.5" y1="12" x2="21" y2="12"></line>
+          <line x1="12" y1="17.5" x2="12" y2="21"></line>
+          <line x1="6.5" y1="12" x2="3" y2="12"></line>
+          <line x1="16.96" y1="7.04" x2="19.07" y2="4.93"></line>
+          <line x1="16.96" y1="16.96" x2="19.07" y2="19.07"></line>
+          <line x1="7.04" y1="16.96" x2="4.93" y2="19.07"></line>
+          <line x1="7.04" y1="7.04" x2="4.93" y2="4.93"></line>
+        </svg>
+      </button>
+    </div>
+    <p class="people-graph-question">Who are the 2 best hardware people you have personally worked with who are stronger than you at this?</p>
+  </nav>
 
-    <main>
-    </main>
+  <div id="people-graph" class="people-graph" aria-label="People intro graph">
+    <div id="people-graph-world" class="people-graph-world">
+      <svg id="people-graph-svg" class="people-graph-svg"></svg>
+      <div id="people-graph-nodes" class="people-graph-nodes"></div>
+    </div>
+  </div>
+
+  <div id="people-details" class="people-details hidden">
+    <div class="people-details-content">
+      <div id="people-details-photo" class="people-details-photo"></div>
+      <h2 id="people-details-name"></h2>
+      <p id="people-details-from" class="people-details-from"></p>
+      <p id="people-details-desc" class="people-details-desc"></p>
+    </div>
+    <button type="button" id="people-details-close" class="close-details" aria-label="Close">✕</button>
   </div>
 
   <script src="/js/main.js"></script>
+  <script src="/js/graph.js?v=graph2"></script>
 </body>
 </html>

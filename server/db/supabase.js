@@ -2130,6 +2130,166 @@ async function deleteLiquidityLiability(id) {
   }
 }
 
+// ========================================
+// PEOPLE INTRO GRAPH
+// ========================================
+
+async function getPeopleGraphNodes() {
+  if (!supabase) return [];
+  try {
+    const { data, error } = await supabase
+      .from('people_graph_nodes')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) {
+      console.error('Error fetching people graph nodes:', error);
+      return [];
+    }
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching people graph nodes:', error);
+    return [];
+  }
+}
+
+async function getPeopleGraphEdges() {
+  if (!supabase) return [];
+  try {
+    const { data, error } = await supabase
+      .from('people_graph_edges')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) {
+      console.error('Error fetching people graph edges:', error);
+      return [];
+    }
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching people graph edges:', error);
+    return [];
+  }
+}
+
+async function getPeopleGraph() {
+  const [nodes, edges] = await Promise.all([
+    getPeopleGraphNodes(),
+    getPeopleGraphEdges()
+  ]);
+  return { nodes, edges };
+}
+
+async function createPeopleGraphNode(node) {
+  if (!supabase) return { success: false, error: 'Supabase not configured' };
+  try {
+    const { data, error } = await supabase
+      .from('people_graph_nodes')
+      .insert([node])
+      .select()
+      .single();
+    if (error) {
+      console.error('Error creating people graph node:', error);
+      return { success: false, error: error.message };
+    }
+    return { success: true, node: data };
+  } catch (error) {
+    console.error('Error creating people graph node:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function updatePeopleGraphNode(id, updates) {
+  if (!supabase) return { success: false, error: 'Supabase not configured' };
+  try {
+    const { data, error } = await supabase
+      .from('people_graph_nodes')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) {
+      console.error('Error updating people graph node:', error);
+      return { success: false, error: error.message };
+    }
+    return { success: true, node: data };
+  } catch (error) {
+    console.error('Error updating people graph node:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function deletePeopleGraphNode(id) {
+  if (!supabase) return { success: false, error: 'Supabase not configured' };
+  try {
+    const { data: existing, error: fetchError } = await supabase
+      .from('people_graph_nodes')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (fetchError) {
+      console.error('Error fetching people graph node:', fetchError);
+      return { success: false, error: fetchError.message };
+    }
+    const { error } = await supabase
+      .from('people_graph_nodes')
+      .delete()
+      .eq('id', id);
+    if (error) {
+      console.error('Error deleting people graph node:', error);
+      return { success: false, error: error.message };
+    }
+    return { success: true, node: existing };
+  } catch (error) {
+    console.error('Error deleting people graph node:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function createPeopleGraphEdge(fromId, toId) {
+  if (!supabase) return { success: false, error: 'Supabase not configured' };
+  try {
+    const { data: existing } = await supabase
+      .from('people_graph_edges')
+      .select('id')
+      .eq('from_id', fromId)
+      .eq('to_id', toId)
+      .maybeSingle();
+    if (existing) return { success: true, edge: existing, already: true };
+
+    const { data, error } = await supabase
+      .from('people_graph_edges')
+      .insert([{ from_id: fromId, to_id: toId }])
+      .select()
+      .single();
+    if (error) {
+      console.error('Error creating people graph edge:', error);
+      return { success: false, error: error.message };
+    }
+    return { success: true, edge: data };
+  } catch (error) {
+    console.error('Error creating people graph edge:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function setPeopleGraphParent(toId, fromId) {
+  if (!supabase) return { success: false, error: 'Supabase not configured' };
+  try {
+    const { error: deleteError } = await supabase
+      .from('people_graph_edges')
+      .delete()
+      .eq('to_id', toId);
+    if (deleteError) {
+      console.error('Error clearing people graph parent:', deleteError);
+      return { success: false, error: deleteError.message };
+    }
+    if (!fromId) return { success: true };
+    return createPeopleGraphEdge(fromId, toId);
+  } catch (error) {
+    console.error('Error setting people graph parent:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   getEntries,
   createEntry,
@@ -2191,6 +2351,15 @@ module.exports = {
   createLiquidityLiability,
   updateLiquidityLiability,
   deleteLiquidityLiability,
+  // People intro graph
+  getPeopleGraph,
+  getPeopleGraphNodes,
+  getPeopleGraphEdges,
+  createPeopleGraphNode,
+  updatePeopleGraphNode,
+  deletePeopleGraphNode,
+  createPeopleGraphEdge,
+  setPeopleGraphParent,
   isConfigured: () => supabase !== null
 };
 
