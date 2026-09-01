@@ -91,6 +91,11 @@ router.get('/ce', (req, res) => {
   res.render('ce');
 });
 
+// Graph page
+router.get('/graph', (req, res) => {
+  res.render('graph');
+});
+
 const EDU_PASSWORD = process.env.EDU_PASSWORD || 'kernel';
 const EDU_COOKIE = 'edu_auth';
 const EDU_SECRET = process.env.SESSION_SECRET || 'diary-secret-key-change-in-production';

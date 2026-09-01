@@ -31,13 +31,17 @@ const PAGES = {
     title: 'Tade Mehl — company education',
     description: 'Company education videos curated by Tade Mehl.',
   },
+  '/graph': {
+    title: 'Tade Mehl — graph',
+    description: 'Graph — Tade Mehl.',
+  },
   '/edu': {
     title: 'Tade Mehl — edu',
     description: 'Conversations and notes on people, collected by Tade Mehl.',
   },
 };
 
-const SITEMAP_PATHS = ['/', '/bookshelf', '/eisenkind', '/cause', '/want', '/corner', '/ce', '/liquidity'];
+const SITEMAP_PATHS = ['/', '/bookshelf', '/eisenkind', '/cause', '/want', '/corner', '/ce', '/liquidity', '/graph'];
 
 function normalizePath(pathname) {
   if (!pathname || pathname === '/') return '/';
