@@ -279,7 +279,6 @@ function buildLiquiditySeries({ entries = [], liabilities = [], eurUsdRate = 1 }
   const events = [];
 
   for (const entry of entries) {
-    if (!isTapeEntry(entry)) continue;
     const at = toDate(entry.timestamp);
     if (!at) continue;
     events.push({
@@ -326,7 +325,7 @@ function buildLiquiditySeries({ entries = [], liabilities = [], eurUsdRate = 1 }
     starting_balance_usd: startingBalance,
     cash,
     open,
-    current: roundMoney(cash - open),
+    current: cash,
     eur_usd_rate: toNumber(eurUsdRate, 1),
     points
   };

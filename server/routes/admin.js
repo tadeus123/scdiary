@@ -16,6 +16,7 @@ const {
   upsertCornerSelfie,
   deleteCornerSelfie,
   createLiquidityEntry,
+  updateLiquidityEntry,
   deleteLiquidityEntry,
   createLiquidityRecurring,
   deleteLiquidityRecurring,
@@ -37,7 +38,10 @@ const {
   normalizeCurrency,
   signedUsd,
   roundMoney,
-  toNumber
+  toNumber,
+  reservationEntryFromLiability,
+  dropEntryFromLiability,
+  liabilityReservationEntryId
 } = require('../utils/liquidity');
 const { loadLiquidityGraph, materializeDueMonthlyLogs } = require('../utils/liquidity-graph');
 // Admin password (in production, use environment variable)
@@ -351,6 +355,20 @@ router.post('/liquidity/liability', isAuthenticated, async (req, res) => {
   }
 
   const liabilityId = newLiquidityId('lb');
+  const timestamp = new Date().toISOString();
+  const entry = reservationEntryFromLiability({
+    id: liabilityId,
+    name,
+    amount,
+    currency,
+    fx_rate
+  }, timestamp);
+
+  const logged = await createLiquidityEntry(entry);
+  if (!logged.success) {
+    return res.status(500).json({ success: false, error: logged.error || 'Failed to log liability' });
+  }
+
   const item = {
     id: liabilityId,
     name,
@@ -359,13 +377,14 @@ router.post('/liquidity/liability', isAuthenticated, async (req, res) => {
     fx_rate,
     amount_usd: roundMoney(amount * fx_rate),
     due_date: null,
-    entry_id: null
+    entry_id: entry.id
   };
 
   const result = await createLiquidityLiability(item);
   if (result.success) {
-    res.json({ success: true, item: result.item });
+    res.json({ success: true, item: result.item, entry: logged.entry });
   } else {
+    await deleteLiquidityEntry(entry.id);
     res.status(500).json({ success: false, error: result.error || 'Failed to save liability' });
   }
 });
@@ -415,8 +434,32 @@ router.put('/liquidity/liability/:id', isAuthenticated, async (req, res) => {
     currency,
     fx_rate,
     amount_usd: roundMoney(amount * fx_rate),
-    entry_id: null
+    entry_id: liability.entry_id || liabilityReservationEntryId(liability.id)
   };
+
+  const reservation = reservationEntryFromLiability({
+    ...liability,
+    ...next
+  }, liability.created_at || new Date().toISOString());
+
+  if (liability.entry_id) {
+    const moved = await updateLiquidityEntry(liability.entry_id, {
+      amount: reservation.amount,
+      currency: reservation.currency,
+      fx_rate: reservation.fx_rate,
+      amount_usd: reservation.amount_usd,
+      note: reservation.note
+    });
+    if (!moved.success) {
+      return res.status(500).json({ success: false, error: moved.error || 'Failed to update the graph' });
+    }
+  } else {
+    const logged = await createLiquidityEntry(reservation);
+    if (!logged.success) {
+      return res.status(500).json({ success: false, error: logged.error || 'Failed to log liability' });
+    }
+  }
+
   const result = await updateLiquidityLiability(liability.id, next);
   if (!result.success) {
     return res.status(500).json({ success: false, error: result.error || 'Failed to save liability' });
@@ -435,43 +478,12 @@ router.post('/liquidity/liability/:id/paid', isAuthenticated, async (req, res) =
     return res.status(404).json({ success: false, error: 'Liability not found' });
   }
 
-  const fill = {
-    id: newLiquidityId('lq'),
-    timestamp: new Date().toISOString(),
-    amount: toNumber(liability.amount),
-    currency: liability.currency,
-    fx_rate: toNumber(liability.fx_rate, 1),
-    amount_usd: signedUsd(liability.amount, 'out', toNumber(liability.fx_rate, 1) || 1),
-    direction: 'out',
-    note: liability.name || ''
-  };
-  if (String(fill.currency).toUpperCase() === 'USD') {
-    try {
-      fill.fx_rate = await getLatestEurUsdRate();
-      fill.amount_usd = signedUsd(fill.amount, 'out', fill.fx_rate);
-    } catch (error) {
-      console.error('FX conversion failed:', error);
-    }
-  } else {
-    fill.fx_rate = 1;
-    fill.amount_usd = signedUsd(fill.amount, 'out', 1);
-  }
-
-  const logged = await createLiquidityEntry(fill);
-  if (!logged.success) {
-    return res.status(500).json({ success: false, error: logged.error || 'Failed to log payment' });
-  }
-
-  if (liability.entry_id) {
-    await deleteLiquidityEntry(liability.entry_id);
-  }
-
   const removed = await deleteLiquidityLiability(liability.id);
   if (!removed.success) {
-    return res.status(500).json({ success: false, error: removed.error || 'Payment logged, but the liability could not be removed' });
+    return res.status(500).json({ success: false, error: removed.error || 'Failed to mark as paid' });
   }
 
-  res.json({ success: true, entry: logged.entry });
+  res.json({ success: true });
 });
 
 router.delete('/liquidity/liability/:id', isAuthenticated, async (req, res) => {
@@ -484,14 +496,17 @@ router.delete('/liquidity/liability/:id', isAuthenticated, async (req, res) => {
     return res.status(404).json({ success: false, error: 'Liability not found' });
   }
 
-  if (liability.entry_id) {
-    await deleteLiquidityEntry(liability.entry_id);
+  const drop = dropEntryFromLiability(liability, new Date().toISOString());
+  const logged = await createLiquidityEntry(drop);
+  if (!logged.success) {
+    return res.status(500).json({ success: false, error: logged.error || 'Failed to return this to the graph' });
   }
 
   const result = await deleteLiquidityLiability(liability.id);
   if (result.success) {
     res.json({ success: true });
   } else {
+    await deleteLiquidityEntry(drop.id);
     res.status(500).json({ success: false, error: result.error || 'Failed to delete liability' });
   }
 });

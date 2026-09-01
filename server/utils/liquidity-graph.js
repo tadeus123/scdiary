@@ -4,7 +4,6 @@ const {
   getLiquidityRecurring,
   getLiquidityLiabilities,
   createLiquidityEntries,
-  deleteLiquidityEntry,
   updateLiquidityLiability
 } = require('../db/supabase');
 const { getLatestEurUsdRate } = require('./fx');
@@ -17,7 +16,8 @@ const {
   formatCashRunway,
   monthlyFlowEur,
   withLiveEur,
-  isTapeEntry
+  reservationEntryFromLiability,
+  liabilityReservationEntryId
 } = require('./liquidity');
 
 function occurrenceKey(entry) {
@@ -80,35 +80,49 @@ async function materializeDueMonthlyLogs(now = new Date()) {
   return { inserted: rows.length };
 }
 
-async function stripReservationLogs(liabilities = [], entries = []) {
-  const ids = new Set();
-  for (const entry of entries) {
-    if (!isTapeEntry(entry)) ids.add(entry.id);
-  }
+async function ensureLiabilityReservationLogs(liabilities = [], entries = []) {
+  const existingIds = new Set((entries || []).map((entry) => entry.id));
+  let changed = false;
+
   for (const item of liabilities) {
-    if (item?.entry_id) ids.add(item.entry_id);
-  }
-  if (!ids.size) {
-    return { liabilities, entries: entries.filter(isTapeEntry) };
+    if (!item?.id || item.entry_id) continue;
+    const id = liabilityReservationEntryId(item.id);
+    if (!existingIds.has(id)) continue;
+    const linked = await updateLiquidityLiability(item.id, { entry_id: id });
+    if (linked.success) changed = true;
   }
 
-  for (const id of ids) {
-    await deleteLiquidityEntry(id);
-  }
-  for (const item of liabilities) {
-    if (item?.entry_id) {
-      await updateLiquidityLiability(item.id, { entry_id: null });
+  const missing = (liabilities || []).filter((item) => {
+    if (!item?.id || item.entry_id) return false;
+    return !existingIds.has(liabilityReservationEntryId(item.id));
+  });
+
+  if (missing.length) {
+    const rows = missing.map((item) => (
+      reservationEntryFromLiability(item, item.created_at || new Date().toISOString())
+    ));
+    const logged = await createLiquidityEntries(rows);
+    if (!logged.success) {
+      console.error('Failed to backfill liability reservation logs:', logged.error);
+    } else {
+      for (const item of missing) {
+        const updated = await updateLiquidityLiability(item.id, {
+          entry_id: liabilityReservationEntryId(item.id)
+        });
+        if (!updated.success) {
+          console.error('Failed to link liability reservation log:', item.id, updated.error);
+        }
+      }
+      changed = true;
     }
   }
 
+  if (!changed) return { liabilities, entries };
   const [nextLiabilities, nextEntries] = await Promise.all([
     getLiquidityLiabilities(),
     getLiquidityEntries()
   ]);
-  return {
-    liabilities: nextLiabilities,
-    entries: nextEntries.filter(isTapeEntry)
-  };
+  return { liabilities: nextLiabilities, entries: nextEntries };
 }
 
 async function resolveEurUsdRate(items = []) {
@@ -134,9 +148,9 @@ async function loadLiquidityGraph(now = new Date()) {
     getLiquidityLiabilities()
   ]);
 
-  const stripped = await stripReservationLogs(rawLiabilities, rawEntries);
-  const liabilities = stripped.liabilities;
-  const tapeEntries = stripped.entries;
+  const ensured = await ensureLiabilityReservationLogs(rawLiabilities, rawEntries);
+  const liabilities = ensured.liabilities;
+  const tapeEntries = ensured.entries;
 
   const latestRate = await resolveEurUsdRate([...tapeEntries, ...recurring, ...liabilities]);
   const entries = tapeEntries.map((item) => withLiveEur(item, latestRate, item.direction));
