@@ -53,27 +53,31 @@ function normalizeDirection(value) {
   return direction === 'in' || direction === 'out' ? direction : null;
 }
 
+function signedAmount(amount, direction) {
+  const value = roundMoney(Math.abs(toNumber(amount)));
+  return direction === 'out' ? -value : value;
+}
+
 function signedUsd(amount, direction, rate = 1) {
-  const usd = roundMoney(toNumber(amount) * toNumber(rate, 1));
-  return direction === 'out' ? -Math.abs(usd) : Math.abs(usd);
+  return signedAmount(toNumber(amount) * toNumber(rate, 1), direction);
 }
 
-function rateForCurrency(currency, eurUsdRate = 1) {
-  return String(currency || 'USD').trim().toUpperCase() === 'EUR'
-    ? toNumber(eurUsdRate, 1)
-    : 1;
+function liveEur(amount, currency, direction, eurUsdRate = 1) {
+  const native = Math.abs(toNumber(amount));
+  const rate = toNumber(eurUsdRate, 1);
+  const eur = String(currency || 'EUR').trim().toUpperCase() === 'USD' && rate > 0
+    ? roundMoney(native / rate)
+    : roundMoney(native);
+  return signedAmount(eur, direction);
 }
 
-function liveUsd(amount, currency, direction, eurUsdRate = 1) {
-  return signedUsd(amount, direction, rateForCurrency(currency, eurUsdRate));
-}
-
-function withLiveUsd(item, eurUsdRate, direction = item.direction || 'out') {
-  const fx_rate = rateForCurrency(item.currency, eurUsdRate);
+function withLiveEur(item, eurUsdRate, direction = item.direction || 'out') {
+  const amount_eur = liveEur(item.amount, item.currency, direction, eurUsdRate);
   return {
     ...item,
-    fx_rate,
-    amount_usd: liveUsd(item.amount, item.currency, direction, eurUsdRate)
+    fx_rate: toNumber(eurUsdRate, 1),
+    amount_eur,
+    amount_usd: amount_eur
   };
 }
 
@@ -189,14 +193,13 @@ function dueMonthlyLogs(recurring = [], now = new Date()) {
   return logs;
 }
 
-function monthlyFlowUsd(recurring = [], latestRate = 1) {
+function monthlyFlowEur(recurring = [], latestRate = 1) {
   let incoming = 0;
   let outgoing = 0;
   for (const item of recurring) {
-    const rate = String(item.currency).toUpperCase() === 'EUR' ? toNumber(latestRate, 1) : 1;
-    const usd = Math.abs(signedUsd(item.amount, item.direction, rate));
-    if (item.direction === 'in') incoming = roundMoney(incoming + usd);
-    else outgoing = roundMoney(outgoing + usd);
+    const eur = Math.abs(liveEur(item.amount, item.currency, item.direction, latestRate));
+    if (item.direction === 'in') incoming = roundMoney(incoming + eur);
+    else outgoing = roundMoney(outgoing + eur);
   }
   return {
     incoming,
@@ -205,10 +208,10 @@ function monthlyFlowUsd(recurring = [], latestRate = 1) {
   };
 }
 
-function cashRunwayMonths(currentUsd, recurring = [], latestRate = 1) {
-  const { combined } = monthlyFlowUsd(recurring, latestRate);
+function cashRunwayMonths(currentEur, recurring = [], latestRate = 1) {
+  const { combined } = monthlyFlowEur(recurring, latestRate);
   if (!(combined > 0)) return null;
-  const cash = toNumber(currentUsd);
+  const cash = toNumber(currentEur);
   if (cash <= 0) return 0;
   return Math.round((cash / combined) * 10) / 10;
 }
@@ -220,11 +223,16 @@ function formatCashRunway(months) {
   return `cash runway: ${value} ${label}`;
 }
 
-function liabilitiesTotalUsd(liabilities = [], eurUsdRate = 1) {
+function liabilitiesOpenEur(liabilities = [], eurUsdRate = 1) {
   const total = liabilities.reduce((sum, item) => {
-    return sum + Math.abs(liveUsd(item.amount, item.currency, 'out', eurUsdRate));
+    return sum + Math.abs(liveEur(item.amount, item.currency, 'out', eurUsdRate));
   }, 0);
-  return roundMoney(-total);
+  return roundMoney(total);
+}
+
+function isTapeEntry(entry) {
+  const id = String(entry?.id || '');
+  return !id.startsWith('lq-lb-') && !id.startsWith('lq-drop-');
 }
 
 function liabilityReservationEntryId(liabilityId) {
@@ -266,24 +274,24 @@ function dropEntryFromLiability(liability, timestamp) {
   };
 }
 
-function buildLiquiditySeries({ entries = [], eurUsdRate = 1 }) {
+function buildLiquiditySeries({ entries = [], liabilities = [], eurUsdRate = 1 }) {
   const startingBalance = 0;
   const events = [];
 
   for (const entry of entries) {
+    if (!isTapeEntry(entry)) continue;
     const at = toDate(entry.timestamp);
     if (!at) continue;
-    const rate = rateForCurrency(entry.currency, eurUsdRate);
     events.push({
       at,
-      delta: liveUsd(entry.amount, entry.currency, entry.direction, eurUsdRate),
+      delta: liveEur(entry.amount, entry.currency, entry.direction, eurUsdRate),
       kind: 'entry',
       id: entry.id,
       note: entry.note || '',
       direction: entry.direction,
       amount: toNumber(entry.amount),
       currency: entry.currency,
-      fx_rate: rate
+      fx_rate: toNumber(eurUsdRate, 1)
     });
   }
 
@@ -311,9 +319,14 @@ function buildLiquiditySeries({ entries = [], eurUsdRate = 1 }) {
     });
   }
 
+  const cash = balance;
+  const open = liabilitiesOpenEur(liabilities, eurUsdRate);
   return {
+    starting_balance_eur: startingBalance,
     starting_balance_usd: startingBalance,
-    current: balance,
+    cash,
+    open,
+    current: roundMoney(cash - open),
     eur_usd_rate: toNumber(eurUsdRate, 1),
     points
   };
@@ -328,20 +341,21 @@ module.exports = {
   parsePositiveAmount,
   normalizeCurrency,
   normalizeDirection,
+  signedAmount,
   signedUsd,
-  rateForCurrency,
-  liveUsd,
-  withLiveUsd,
+  liveEur,
+  withLiveEur,
   dateKey,
   utcDateFromKey,
   monthlyOccurrences,
   monthlyLogId,
   dueMonthlyLogs,
-  monthlyFlowUsd,
+  monthlyFlowEur,
   cashRunwayMonths,
   formatCashRunway,
   horizonEndAt,
-  liabilitiesTotalUsd,
+  liabilitiesOpenEur,
+  isTapeEntry,
   liabilityReservationEntryId,
   liabilityDropEntryId,
   reservationEntryFromLiability,

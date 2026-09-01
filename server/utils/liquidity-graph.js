@@ -4,6 +4,7 @@ const {
   getLiquidityRecurring,
   getLiquidityLiabilities,
   createLiquidityEntries,
+  deleteLiquidityEntry,
   updateLiquidityLiability
 } = require('../db/supabase');
 const { getLatestEurUsdRate } = require('./fx');
@@ -14,9 +15,9 @@ const {
   toNumber,
   cashRunwayMonths,
   formatCashRunway,
-  monthlyFlowUsd,
-  reservationEntryFromLiability,
-  withLiveUsd
+  monthlyFlowEur,
+  withLiveEur,
+  isTapeEntry
 } = require('./liquidity');
 
 function occurrenceKey(entry) {
@@ -79,29 +80,35 @@ async function materializeDueMonthlyLogs(now = new Date()) {
   return { inserted: rows.length };
 }
 
-async function ensureLiabilityReservationLogs(liabilities = []) {
-  const missing = (liabilities || []).filter((item) => item && item.id && !item.entry_id);
-  if (!missing.length) return liabilities;
-
-  const rows = missing.map((item) => (
-    reservationEntryFromLiability(item, item.created_at || new Date().toISOString())
-  ));
-  const logged = await createLiquidityEntries(rows);
-  if (!logged.success) {
-    console.error('Failed to backfill liability reservation logs:', logged.error);
-    return liabilities;
+async function stripReservationLogs(liabilities = [], entries = []) {
+  const ids = new Set();
+  for (const entry of entries) {
+    if (!isTapeEntry(entry)) ids.add(entry.id);
+  }
+  for (const item of liabilities) {
+    if (item?.entry_id) ids.add(item.entry_id);
+  }
+  if (!ids.size) {
+    return { liabilities, entries: entries.filter(isTapeEntry) };
   }
 
-  for (const item of missing) {
-    const updated = await updateLiquidityLiability(item.id, {
-      entry_id: reservationEntryFromLiability(item).id
-    });
-    if (!updated.success) {
-      console.error('Failed to link liability reservation log:', item.id, updated.error);
+  for (const id of ids) {
+    await deleteLiquidityEntry(id);
+  }
+  for (const item of liabilities) {
+    if (item?.entry_id) {
+      await updateLiquidityLiability(item.id, { entry_id: null });
     }
   }
 
-  return getLiquidityLiabilities();
+  const [nextLiabilities, nextEntries] = await Promise.all([
+    getLiquidityLiabilities(),
+    getLiquidityEntries()
+  ]);
+  return {
+    liabilities: nextLiabilities,
+    entries: nextEntries.filter(isTapeEntry)
+  };
 }
 
 async function resolveEurUsdRate(items = []) {
@@ -127,20 +134,20 @@ async function loadLiquidityGraph(now = new Date()) {
     getLiquidityLiabilities()
   ]);
 
-  const liabilities = await ensureLiabilityReservationLogs(rawLiabilities);
-  const rawLoadedEntries = liabilities === rawLiabilities
-    ? rawEntries
-    : await getLiquidityEntries();
+  const stripped = await stripReservationLogs(rawLiabilities, rawEntries);
+  const liabilities = stripped.liabilities;
+  const tapeEntries = stripped.entries;
 
-  const latestRate = await resolveEurUsdRate([...rawLoadedEntries, ...recurring, ...liabilities]);
-  const entries = rawLoadedEntries.map((item) => withLiveUsd(item, latestRate, item.direction));
-  const liabilitiesView = liabilities.map((item) => withLiveUsd(item, latestRate, 'out'));
+  const latestRate = await resolveEurUsdRate([...tapeEntries, ...recurring, ...liabilities]);
+  const entries = tapeEntries.map((item) => withLiveEur(item, latestRate, item.direction));
+  const liabilitiesView = liabilities.map((item) => withLiveEur(item, latestRate, 'out'));
   const series = buildLiquiditySeries({
-    entries: rawLoadedEntries,
+    entries: tapeEntries,
+    liabilities,
     eurUsdRate: latestRate
   });
 
-  const flow = monthlyFlowUsd(recurring, latestRate);
+  const flow = monthlyFlowEur(recurring, latestRate);
   const months = cashRunwayMonths(series.current, recurring, latestRate);
   const runway = {
     months,
@@ -150,7 +157,7 @@ async function loadLiquidityGraph(now = new Date()) {
     combined_usd: flow.combined
   };
 
-  const recurringView = recurring.map((item) => withLiveUsd(item, latestRate, item.direction));
+  const recurringView = recurring.map((item) => withLiveEur(item, latestRate, item.direction));
 
   return { settings, entries, recurring: recurringView, liabilities: liabilitiesView, series, runway };
 }

@@ -1,42 +1,42 @@
-function formatUsd(value) {
+function formatEur(value) {
   const n = Number(value);
-  if (!Number.isFinite(n)) return '$0.00';
+  if (!Number.isFinite(n)) return '€0.00';
   const formatted = Math.abs(n).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
-  return `${n < 0 ? '−' : ''}$${formatted}`;
+  return `${n < 0 ? '−' : ''}€${formatted}`;
 }
 
-function formatSignedUsd(value) {
+function formatSignedEur(value) {
   const n = Number(value);
-  if (!Number.isFinite(n)) return '$0.00';
+  if (!Number.isFinite(n)) return '€0.00';
   const formatted = Math.abs(n).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
-  return `${n < 0 ? '−' : '+'}$${formatted}`;
+  return `${n < 0 ? '−' : '+'}€${formatted}`;
 }
 
 function formatDeltaWithNative(point) {
-  const usd = formatSignedUsd(point.delta);
-  if (String(point.currency || '').toUpperCase() !== 'EUR') return usd;
+  const eur = formatSignedEur(point.delta);
+  if (String(point.currency || '').toUpperCase() !== 'USD') return eur;
   const amount = Math.abs(Number(point.amount) || 0).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
-  return `${usd} (€${amount})`;
+  return `${eur} ($${amount})`;
 }
 
-function formatAxisUsd(value) {
+function formatAxisEur(value) {
   const n = Number(value);
-  if (!Number.isFinite(n)) return '$0';
+  if (!Number.isFinite(n)) return '€0';
   const abs = Math.abs(n);
   if (abs >= 1000) {
     const compact = (abs / 1000).toFixed(abs >= 10000 ? 0 : 1).replace(/\.0$/, '');
-    return `${n < 0 ? '−' : ''}$${compact}k`;
+    return `${n < 0 ? '−' : ''}€${compact}k`;
   }
-  return `${n < 0 ? '−' : ''}$${abs.toFixed(abs >= 100 ? 0 : 2)}`;
+  return `${n < 0 ? '−' : ''}€${abs.toFixed(abs >= 100 ? 0 : 2)}`;
 }
 
 function formatDateLabel(iso, compact = false) {
@@ -202,7 +202,7 @@ function renderMonthlyOverlay(recurring = [], runway) {
             <span class="liquidity-monthly-name">${escapeXml(item.name || '')}</span>
             <span class="liquidity-monthly-meta">day ${escapeXml(String(item.day_of_month))}</span>
           </div>
-          <span class="${sumClass}">${escapeXml(formatSignedUsd(usd))}</span>
+          <span class="${sumClass}">${escapeXml(formatSignedEur(usd))}</span>
         </div>
       `;
     }).join('');
@@ -216,7 +216,7 @@ function renderMonthlyOverlay(recurring = [], runway) {
   totals.innerHTML = `
     <div class="liquidity-monthly-total">
       <span>total monthly lost money</span>
-      <span class="liquidity-monthly-sum">${escapeXml(formatUsd(-Math.abs(total)))}</span>
+      <span class="liquidity-monthly-sum">${escapeXml(formatEur(-Math.abs(total)))}</span>
     </div>
     <p class="liquidity-runway">${escapeXml(runway?.label || 'cash runway: —')}</p>
   `;
@@ -265,7 +265,7 @@ function renderChart(series) {
   if (!container) return;
 
   if (balanceEl) {
-    balanceEl.textContent = `now: ${formatUsd(series?.current ?? 0)}`;
+    balanceEl.textContent = `now: ${formatEur(series?.current ?? 0)}`;
   }
 
   const points = series?.points || [];
@@ -288,7 +288,7 @@ function renderChart(series) {
     container.innerHTML = `
       <svg class="liquidity-svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Liquidity over time">
         <text x="${padding.left + graphWidth / 2}" y="${xTitleY}" class="timeline-axis-title" text-anchor="middle">Time</text>
-        <text x="${yTitleX}" y="${padding.top + graphHeight / 2}" class="timeline-axis-title" text-anchor="middle" transform="rotate(-90 ${yTitleX} ${padding.top + graphHeight / 2})">USD</text>
+        <text x="${yTitleX}" y="${padding.top + graphHeight / 2}" class="timeline-axis-title" text-anchor="middle" transform="rotate(-90 ${yTitleX} ${padding.top + graphHeight / 2})">EUR</text>
       </svg>
     `;
     return;
@@ -350,7 +350,7 @@ function renderChart(series) {
     <svg class="liquidity-svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Liquidity over time">
       ${yScale.ticks.map((tick) => `
         <line x1="${padding.left}" y1="${yOf(tick)}" x2="${width - padding.right}" y2="${yOf(tick)}" class="timeline-grid-line" />
-        <text x="${padding.left - 8}" y="${yOf(tick) + 4}" class="timeline-axis-label" text-anchor="end">${escapeXml(formatAxisUsd(tick))}</text>
+        <text x="${padding.left - 8}" y="${yOf(tick) + 4}" class="timeline-axis-label" text-anchor="end">${escapeXml(formatAxisEur(tick))}</text>
       `).join('')}
       <path d="${linePath}" class="timeline-line" />
       ${sticks.map((stick) => `
@@ -366,7 +366,7 @@ function renderChart(series) {
         <text x="${xOf(ms)}" y="${xLabelY}" class="timeline-axis-label" text-anchor="middle">${escapeXml(formatDateLabel(ms, labelMode))}</text>
       `).join('')}
       <text x="${padding.left + graphWidth / 2}" y="${xTitleY}" class="timeline-axis-title" text-anchor="middle">Time</text>
-      <text x="${yTitleX}" y="${padding.top + graphHeight / 2}" class="timeline-axis-title" text-anchor="middle" transform="rotate(-90 ${yTitleX} ${padding.top + graphHeight / 2})">USD</text>
+      <text x="${yTitleX}" y="${padding.top + graphHeight / 2}" class="timeline-axis-title" text-anchor="middle" transform="rotate(-90 ${yTitleX} ${padding.top + graphHeight / 2})">EUR</text>
     </svg>
   `;
 
@@ -400,7 +400,7 @@ function renderChart(series) {
     tooltip.innerHTML = `
       <span class="liquidity-tooltip-when">${escapeXml(formatTooltipWhen(last.at))}</span>
       ${logs}
-      <span class="liquidity-tooltip-balance">${escapeXml(formatUsd(last.balance))}</span>
+      <span class="liquidity-tooltip-balance">${escapeXml(formatEur(last.balance))}</span>
     `;
     tooltip.classList.remove('hidden');
     if (pin) pinnedDay = dayKey;

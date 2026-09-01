@@ -98,7 +98,7 @@ function clearLiabilityForm() {
   if (editId) editId.value = '';
   if (saveBtn) saveBtn.textContent = 'add liability';
   if (cancelBtn) cancelBtn.hidden = true;
-  setCurrencyPill('liability-currency', 'USD');
+  setCurrencyPill('liability-currency', 'EUR');
   document.querySelectorAll('.liquidity-liability-list .entry.is-editing').forEach((row) => {
     row.classList.remove('is-editing');
   });
@@ -175,7 +175,7 @@ async function saveLiability() {
 }
 
 async function deleteLiquidityLiability(itemId) {
-  if (!confirm('Remove this without paying? Liquidity comes back (up-dot).')) return;
+  if (!confirm('Remove this without paying? It leaves the list. The graph does not move.')) return;
 
   try {
     const response = await fetch(`/admin/liquidity/liability/${itemId}`, {
@@ -195,7 +195,7 @@ async function deleteLiquidityLiability(itemId) {
 }
 
 async function payLiquidityLiability(itemId) {
-  if (!confirm('Mark as paid? This only clears it from the list. The graph already moved when you added it.')) return;
+  if (!confirm('Mark as paid? This logs the money going out and clears the bill.')) return;
 
   try {
     const response = await fetch(`/admin/liquidity/liability/${itemId}/paid`, {

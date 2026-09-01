@@ -16,8 +16,6 @@ const {
   upsertCornerSelfie,
   deleteCornerSelfie,
   createLiquidityEntry,
-  createLiquidityEntries,
-  updateLiquidityEntry,
   deleteLiquidityEntry,
   createLiquidityRecurring,
   deleteLiquidityRecurring,
@@ -39,9 +37,7 @@ const {
   normalizeCurrency,
   signedUsd,
   roundMoney,
-  toNumber,
-  reservationEntryFromLiability,
-  dropEntryFromLiability
+  toNumber
 } = require('../utils/liquidity');
 const { loadLiquidityGraph, materializeDueMonthlyLogs } = require('../utils/liquidity-graph');
 // Admin password (in production, use environment variable)
@@ -348,16 +344,13 @@ router.post('/liquidity/liability', isAuthenticated, async (req, res) => {
 
   let fx_rate = 1;
   try {
-    if (currency === 'EUR') {
-      fx_rate = await getLatestEurUsdRate();
-    }
+    fx_rate = await snapshotFxRate(currency);
   } catch (error) {
     console.error('FX conversion failed:', error);
-    return res.status(502).json({ success: false, error: 'Could not convert EUR to USD. Try again, or log in USD.' });
+    return res.status(502).json({ success: false, error: 'Could not convert USD to EUR. Try again, or log in EUR.' });
   }
 
   const liabilityId = newLiquidityId('lb');
-  const timestamp = new Date().toISOString();
   const item = {
     id: liabilityId,
     name,
@@ -368,19 +361,11 @@ router.post('/liquidity/liability', isAuthenticated, async (req, res) => {
     due_date: null,
     entry_id: null
   };
-  const entry = reservationEntryFromLiability(item, timestamp);
-  item.entry_id = entry.id;
-
-  const logged = await createLiquidityEntry(entry);
-  if (!logged.success) {
-    return res.status(500).json({ success: false, error: logged.error || 'Failed to log liability' });
-  }
 
   const result = await createLiquidityLiability(item);
   if (result.success) {
-    res.json({ success: true, item: result.item, entry: logged.entry });
+    res.json({ success: true, item: result.item });
   } else {
-    await deleteLiquidityEntry(entry.id);
     res.status(500).json({ success: false, error: result.error || 'Failed to save liability' });
   }
 });
@@ -396,27 +381,8 @@ function readLiabilityFields(body) {
 }
 
 async function snapshotFxRate(currency) {
-  if (currency !== 'EUR') return 1;
+  if (currency !== 'USD') return 1;
   return getLatestEurUsdRate();
-}
-
-async function writeReservationLog(liability, timestamp) {
-  const entry = reservationEntryFromLiability(liability, timestamp);
-  const fields = {
-    amount: entry.amount,
-    currency: entry.currency,
-    fx_rate: entry.fx_rate,
-    amount_usd: entry.amount_usd,
-    direction: entry.direction,
-    note: entry.note
-  };
-  const updated = await updateLiquidityEntry(entry.id, fields);
-  if (!updated.success) return updated;
-  if (updated.entry) return updated;
-  return createLiquidityEntry({
-    ...entry,
-    timestamp: timestamp || new Date().toISOString()
-  });
 }
 
 router.put('/liquidity/liability/:id', isAuthenticated, async (req, res) => {
@@ -440,36 +406,23 @@ router.put('/liquidity/liability/:id', isAuthenticated, async (req, res) => {
     fx_rate = await snapshotFxRate(currency);
   } catch (error) {
     console.error('FX conversion failed:', error);
-    return res.status(502).json({ success: false, error: 'Could not convert EUR to USD. Try again, or log in USD.' });
+    return res.status(502).json({ success: false, error: 'Could not convert USD to EUR. Try again, or log in EUR.' });
   }
 
   const next = {
-    ...liability,
     name,
     amount,
     currency,
     fx_rate,
-    amount_usd: roundMoney(amount * fx_rate)
+    amount_usd: roundMoney(amount * fx_rate),
+    entry_id: null
   };
-  const logged = await writeReservationLog(next, liability.created_at);
-  if (!logged.success) {
-    return res.status(500).json({ success: false, error: logged.error || 'Failed to update the graph log' });
-  }
-
-  const entryId = logged.entry?.id || reservationEntryFromLiability(next, liability.created_at).id;
-  const result = await updateLiquidityLiability(liability.id, {
-    name,
-    amount,
-    currency,
-    fx_rate,
-    amount_usd: next.amount_usd,
-    entry_id: entryId
-  });
+  const result = await updateLiquidityLiability(liability.id, next);
   if (!result.success) {
     return res.status(500).json({ success: false, error: result.error || 'Failed to save liability' });
   }
 
-  res.json({ success: true, item: result.item, entry: logged.entry });
+  res.json({ success: true, item: result.item });
 });
 
 router.post('/liquidity/liability/:id/paid', isAuthenticated, async (req, res) => {
@@ -482,12 +435,43 @@ router.post('/liquidity/liability/:id/paid', isAuthenticated, async (req, res) =
     return res.status(404).json({ success: false, error: 'Liability not found' });
   }
 
-  const removed = await deleteLiquidityLiability(liability.id);
-  if (!removed.success) {
-    return res.status(500).json({ success: false, error: removed.error || 'Failed to mark as paid' });
+  const fill = {
+    id: newLiquidityId('lq'),
+    timestamp: new Date().toISOString(),
+    amount: toNumber(liability.amount),
+    currency: liability.currency,
+    fx_rate: toNumber(liability.fx_rate, 1),
+    amount_usd: signedUsd(liability.amount, 'out', toNumber(liability.fx_rate, 1) || 1),
+    direction: 'out',
+    note: liability.name || ''
+  };
+  if (String(fill.currency).toUpperCase() === 'USD') {
+    try {
+      fill.fx_rate = await getLatestEurUsdRate();
+      fill.amount_usd = signedUsd(fill.amount, 'out', fill.fx_rate);
+    } catch (error) {
+      console.error('FX conversion failed:', error);
+    }
+  } else {
+    fill.fx_rate = 1;
+    fill.amount_usd = signedUsd(fill.amount, 'out', 1);
   }
 
-  res.json({ success: true });
+  const logged = await createLiquidityEntry(fill);
+  if (!logged.success) {
+    return res.status(500).json({ success: false, error: logged.error || 'Failed to log payment' });
+  }
+
+  if (liability.entry_id) {
+    await deleteLiquidityEntry(liability.entry_id);
+  }
+
+  const removed = await deleteLiquidityLiability(liability.id);
+  if (!removed.success) {
+    return res.status(500).json({ success: false, error: removed.error || 'Payment logged, but the liability could not be removed' });
+  }
+
+  res.json({ success: true, entry: logged.entry });
 });
 
 router.delete('/liquidity/liability/:id', isAuthenticated, async (req, res) => {
@@ -500,17 +484,15 @@ router.delete('/liquidity/liability/:id', isAuthenticated, async (req, res) => {
     return res.status(404).json({ success: false, error: 'Liability not found' });
   }
 
-  const dropLog = dropEntryFromLiability(liability, new Date().toISOString());
-  const logged = await createLiquidityEntries([dropLog]);
-  if (!logged.success) {
-    return res.status(500).json({ success: false, error: logged.error || 'Failed to return liquidity' });
+  if (liability.entry_id) {
+    await deleteLiquidityEntry(liability.entry_id);
   }
 
   const result = await deleteLiquidityLiability(liability.id);
   if (result.success) {
-    res.json({ success: true, entry: dropLog });
+    res.json({ success: true });
   } else {
-    res.status(500).json({ success: false, error: result.error || 'Liquidity returned, but the liability could not be removed' });
+    res.status(500).json({ success: false, error: result.error || 'Failed to delete liability' });
   }
 });
 
@@ -534,12 +516,10 @@ router.post('/liquidity/entry', isAuthenticated, async (req, res) => {
 
   let fx_rate = 1;
   try {
-    if (currency === 'EUR') {
-      fx_rate = await getLatestEurUsdRate();
-    }
+    fx_rate = await snapshotFxRate(currency);
   } catch (error) {
     console.error('FX conversion failed:', error);
-    return res.status(502).json({ success: false, error: 'Could not convert EUR to USD. Try again, or log in USD.' });
+    return res.status(502).json({ success: false, error: 'Could not convert USD to EUR. Try again, or log in EUR.' });
   }
 
   const entry = {

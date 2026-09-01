@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <%- include('partials/seo-head') %>
-  <link rel="stylesheet" href="/css/style.css?v=lq-day-end">
+  <link rel="stylesheet" href="/css/style.css?v=lq-orderbook-eur">
 </head>
 <body class="admin-page admin-liquidity-page">
   <a href="/admin" class="corner-btn-left" aria-label="Back to Admin"></a>
@@ -49,10 +49,10 @@
           <div class="form-group">
             <span class="liquidity-field-label">currency</span>
             <div class="liquidity-pills" data-target="entry-currency" role="group" aria-label="currency">
-              <button type="button" class="liquidity-pill is-active" data-value="USD">USD</button>
-              <button type="button" class="liquidity-pill" data-value="EUR">EUR</button>
+              <button type="button" class="liquidity-pill" data-value="USD">USD</button>
+              <button type="button" class="liquidity-pill is-active" data-value="EUR">EUR</button>
             </div>
-            <input type="hidden" id="entry-currency" value="USD">
+            <input type="hidden" id="entry-currency" value="EUR">
           </div>
         </div>
         <textarea id="entry-content" placeholder="what was this..."></textarea>
@@ -108,10 +108,10 @@
           <div class="form-group">
             <span class="liquidity-field-label">currency</span>
             <div class="liquidity-pills" data-target="liability-currency" role="group" aria-label="currency">
-              <button type="button" class="liquidity-pill is-active" data-value="USD">USD</button>
-              <button type="button" class="liquidity-pill" data-value="EUR">EUR</button>
+              <button type="button" class="liquidity-pill" data-value="USD">USD</button>
+              <button type="button" class="liquidity-pill is-active" data-value="EUR">EUR</button>
             </div>
-            <input type="hidden" id="liability-currency" value="USD">
+            <input type="hidden" id="liability-currency" value="EUR">
           </div>
         </div>
         <textarea id="liability-name" placeholder="mom's flight, the 1.5k thing..."></textarea>
@@ -120,8 +120,8 @@
           <button type="button" class="liquidity-paid-btn" id="cancel-liability-edit-btn" hidden>cancel</button>
         </div>
         <input type="hidden" id="liability-edit-id" value="">
-        <% const openUsd = (liabilities || []).reduce((sum, item) => sum + Math.abs(Number(item.amount_usd) || 0), 0); %>
-        <p class="liquidity-open-total">open: −$<%= openUsd.toFixed(2) %></p>
+        <% const openEur = (liabilities || []).reduce((sum, item) => sum + Math.abs(Number(item.amount_eur || item.amount_usd) || 0), 0); %>
+        <p class="liquidity-open-total">open: −€<%= openEur.toFixed(2) %></p>
 
         <% if (liabilities && liabilities.length > 0) { %>
           <div class="entries liquidity-liability-list">
@@ -176,10 +176,10 @@
             <div class="form-group">
               <span class="liquidity-field-label">currency</span>
               <div class="liquidity-pills" data-target="recurring-currency" role="group" aria-label="currency">
-                <button type="button" class="liquidity-pill is-active" data-value="USD">USD</button>
-                <button type="button" class="liquidity-pill" data-value="EUR">EUR</button>
+                <button type="button" class="liquidity-pill" data-value="USD">USD</button>
+                <button type="button" class="liquidity-pill is-active" data-value="EUR">EUR</button>
               </div>
-              <input type="hidden" id="recurring-currency" value="USD">
+              <input type="hidden" id="recurring-currency" value="EUR">
             </div>
             <div class="form-group">
               <label for="recurring-day">day of month</label>
@@ -215,6 +215,6 @@
   </div>
 
   <script src="/js/main.js"></script>
-  <script src="/js/admin-liquidity.js?v=lq-sign-pills"></script>
+  <script src="/js/admin-liquidity.js?v=lq-orderbook-eur"></script>
 </body>
 </html>
