@@ -1739,8 +1739,10 @@ async function deleteCornerSelfie(year) {
 function defaultLiquiditySettings() {
   return {
     id: 'main',
-    starting_balance_usd: 0,
-    starting_at: new Date().toISOString(),
+    starting_balance_usd: -499.85,
+    starting_bank_eur: -499.85,
+    cash_eur: 0,
+    starting_at: '2026-08-29T12:00:00.000+02:00',
     updated_at: new Date().toISOString()
   };
 }
@@ -1748,10 +1750,17 @@ function defaultLiquiditySettings() {
 function coerceLiquiditySettings(row) {
   const fallback = defaultLiquiditySettings();
   if (!row) return fallback;
-  const starting = Number(row.starting_balance_usd);
+  const startingUsd = Number(row.starting_balance_usd);
+  const startingBank = Number(row.starting_bank_eur);
+  const cash = Number(row.cash_eur);
+  const bank = Number.isFinite(startingBank)
+    ? startingBank
+    : (Number.isFinite(startingUsd) ? startingUsd : fallback.starting_bank_eur);
   return {
     id: row.id || 'main',
-    starting_balance_usd: Number.isFinite(starting) ? starting : fallback.starting_balance_usd,
+    starting_balance_usd: Number.isFinite(startingUsd) ? startingUsd : bank,
+    starting_bank_eur: bank,
+    cash_eur: Number.isFinite(cash) ? cash : fallback.cash_eur,
     starting_at: row.starting_at || fallback.starting_at,
     updated_at: row.updated_at || fallback.updated_at
   };
@@ -1791,10 +1800,13 @@ async function upsertLiquiditySettings(settings) {
     return { success: false, error: 'Supabase not configured' };
   }
 
+  const coerced = coerceLiquiditySettings(settings);
   const row = {
     id: 'main',
-    starting_balance_usd: settings.starting_balance_usd,
-    starting_at: settings.starting_at,
+    starting_balance_usd: coerced.starting_bank_eur,
+    starting_bank_eur: coerced.starting_bank_eur,
+    cash_eur: coerced.cash_eur,
+    starting_at: coerced.starting_at,
     updated_at: new Date().toISOString()
   };
 

@@ -93,6 +93,54 @@ function dateKey(value) {
   return d.toISOString().slice(0, 10);
 }
 
+function berlinDateKey(value = new Date()) {
+  const d = toDate(value);
+  if (!d) return null;
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Berlin',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(d);
+}
+
+function berlinNoonIso(key) {
+  const day = String(key || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  return `${day}T12:00:00.000+02:00`;
+}
+
+function parseDayInput(value, fallback = null) {
+  const raw = String(value || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  if (/^\d{2}\.\d{2}\.\d{4}$/.test(raw)) {
+    const [dd, mm, yyyy] = raw.split('.');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  if (raw) {
+    const fromDate = berlinDateKey(raw);
+    if (fromDate) return fromDate;
+  }
+  return fallback;
+}
+
+function normalizeStatus(value) {
+  const status = String(value || 'approved').trim().toLowerCase();
+  return status === 'pending' ? 'pending' : status === 'approved' ? 'approved' : null;
+}
+
+function normalizeAccount(value) {
+  const account = String(value || 'bank').trim().toLowerCase();
+  return account === 'cash' ? 'cash' : account === 'bank' ? 'bank' : null;
+}
+
+function formatDayDe(value) {
+  const key = parseDayInput(value, berlinDateKey(value));
+  if (!key) return '';
+  const [yyyy, mm, dd] = key.split('-');
+  return `${dd}.${mm}.${yyyy}`;
+}
+
 function utcDateFromKey(key) {
   return new Date(`${key}T00:00:00.000Z`);
 }
@@ -162,7 +210,7 @@ function monthlyLogId(recurringId, occurrenceKey) {
 }
 
 function dueMonthlyLogs(recurring = [], now = new Date()) {
-  const todayKey = dateKey(now);
+  const todayKey = berlinDateKey(now);
   const today = utcDateFromKey(todayKey);
   if (!today) return [];
 
@@ -225,6 +273,7 @@ function formatCashRunway(months) {
 
 function liabilitiesOpenEur(liabilities = [], eurUsdRate = 1) {
   const total = liabilities.reduce((sum, item) => {
+    if (String(item?.status || 'open') === 'paid') return sum;
     return sum + Math.abs(liveEur(item.amount, item.currency, 'out', eurUsdRate));
   }, 0);
   return roundMoney(total);
@@ -274,58 +323,145 @@ function dropEntryFromLiability(liability, timestamp) {
   };
 }
 
-function buildLiquiditySeries({ entries = [], liabilities = [], eurUsdRate = 1 }) {
-  const startingBalance = 0;
+function buildLiquiditySeries({
+  startingBank = 0,
+  startingAt,
+  cashEur = 0,
+  entries = [],
+  liabilities = [],
+  eurUsdRate = 1
+}) {
+  const startAt = toDate(startingAt) || toDate(berlinNoonIso(berlinDateKey()));
   const events = [];
+  const startBank = roundMoney(startingBank);
+
+  if (startAt) {
+    events.push({
+      at: startAt,
+      kind: 'start',
+      id: 'lq-start',
+      note: 'starting bank',
+      direction: startBank < 0 ? 'out' : 'in',
+      amount: Math.abs(startBank),
+      currency: 'EUR',
+      bankDelta: 0,
+      cashDelta: 0,
+      openDelta: 0,
+      setBank: startBank,
+      delta: startBank
+    });
+  }
 
   for (const entry of entries) {
+    if (normalizeStatus(entry.status || 'approved') !== 'approved') continue;
+    const id = String(entry.id || '');
+    if (id.startsWith('lq-lb-') || id.startsWith('lq-drop-')) continue;
     const at = toDate(entry.timestamp);
     if (!at) continue;
+    const delta = liveEur(entry.amount, entry.currency, entry.direction, eurUsdRate);
+    const account = normalizeAccount(entry.account) || 'bank';
     events.push({
       at,
-      delta: liveEur(entry.amount, entry.currency, entry.direction, eurUsdRate),
       kind: 'entry',
       id: entry.id,
       note: entry.note || '',
       direction: entry.direction,
       amount: toNumber(entry.amount),
       currency: entry.currency,
-      fx_rate: toNumber(eurUsdRate, 1)
+      account,
+      liability_id: entry.liability_id || null,
+      bankDelta: account === 'bank' ? delta : 0,
+      cashDelta: account === 'cash' ? delta : 0,
+      openDelta: 0,
+      delta
     });
+  }
+
+  for (const item of liabilities) {
+    const created = toDate(item.created_at);
+    if (!created) continue;
+    const openAmt = Math.abs(liveEur(item.amount, item.currency, 'out', eurUsdRate));
+    events.push({
+      at: created,
+      kind: 'liability',
+      id: `lb-open-${item.id}`,
+      note: item.name || '',
+      direction: 'out',
+      amount: toNumber(item.amount),
+      currency: item.currency,
+      bankDelta: 0,
+      cashDelta: 0,
+      openDelta: openAmt,
+      delta: -openAmt
+    });
+    if (String(item.status || 'open') === 'paid') {
+      const paidAt = toDate(item.paid_at) || created;
+      events.push({
+        at: paidAt,
+        kind: 'liability-paid',
+        id: `lb-paid-${item.id}`,
+        note: item.name || '',
+        direction: 'in',
+        amount: toNumber(item.amount),
+        currency: item.currency,
+        bankDelta: 0,
+        cashDelta: 0,
+        openDelta: -openAmt,
+        delta: openAmt
+      });
+    }
   }
 
   events.sort((a, b) => {
     const diff = a.at.getTime() - b.at.getTime();
     if (diff !== 0) return diff;
+    const rank = { start: 0, liability: 1, entry: 2, 'liability-paid': 3 };
+    const rankDiff = (rank[a.kind] ?? 9) - (rank[b.kind] ?? 9);
+    if (rankDiff !== 0) return rankDiff;
     return String(a.id).localeCompare(String(b.id));
   });
 
   const points = [];
-  let balance = startingBalance;
+  let bank = 0;
+  let cash = 0;
+  let open = 0;
   for (const event of events) {
-    balance = roundMoney(balance + event.delta);
+    if (Number.isFinite(event.setBank)) bank = event.setBank;
+    bank = roundMoney(bank + event.bankDelta);
+    cash = roundMoney(cash + event.cashDelta);
+    open = roundMoney(open + event.openDelta);
+    const liquidity = roundMoney(bank + cash - open);
     points.push({
       at: event.at.toISOString(),
-      balance,
-      delta: event.delta,
+      balance: liquidity,
+      bank,
+      cash,
+      open,
+      delta: event.kind === 'start' ? 0 : roundMoney(event.bankDelta + event.cashDelta - event.openDelta),
       kind: event.kind,
       id: event.id,
       note: event.note,
       direction: event.direction,
       amount: event.amount,
-      currency: event.currency,
-      fx_rate: event.fx_rate
+      currency: event.currency || 'EUR',
+      fx_rate: toNumber(eurUsdRate, 1)
     });
   }
 
-  const cash = balance;
-  const open = liabilitiesOpenEur(liabilities, eurUsdRate);
+  const last = points[points.length - 1];
+  const nowCash = last ? last.cash : roundMoney(toNumber(cashEur, 0));
+  const nowBank = last ? last.bank : startBank;
+  const nowOpen = last ? last.open : 0;
+  const current = last ? last.balance : roundMoney(nowBank + nowCash - nowOpen);
+
   return {
-    starting_balance_eur: startingBalance,
-    starting_balance_usd: startingBalance,
-    cash,
-    open,
-    current: cash,
+    starting_bank_eur: startBank,
+    starting_balance_eur: startBank,
+    starting_balance_usd: startBank,
+    bank: nowBank,
+    cash: nowCash,
+    open: nowOpen,
+    current,
     eur_usd_rate: toNumber(eurUsdRate, 1),
     points
   };
@@ -345,6 +481,12 @@ module.exports = {
   liveEur,
   withLiveEur,
   dateKey,
+  berlinDateKey,
+  berlinNoonIso,
+  parseDayInput,
+  formatDayDe,
+  normalizeStatus,
+  normalizeAccount,
   utcDateFromKey,
   monthlyOccurrences,
   monthlyLogId,

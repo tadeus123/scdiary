@@ -8,15 +8,13 @@ function showMessage(containerId, text, type) {
   }, 5000);
 }
 
-function localNowTimestamp() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.000Z`;
+function todayInputValue() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Berlin',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date());
 }
 
 function normalizeMoneyString(value) {
@@ -90,11 +88,13 @@ function editingLiabilityId() {
 function clearLiabilityForm() {
   const amount = document.getElementById('liability-amount');
   const name = document.getElementById('liability-name');
+  const date = document.getElementById('liability-date');
   const editId = document.getElementById('liability-edit-id');
   const saveBtn = document.getElementById('save-liability-btn');
   const cancelBtn = document.getElementById('cancel-liability-edit-btn');
   if (amount) amount.value = '';
   if (name) name.value = '';
+  if (date) date.value = todayInputValue();
   if (editId) editId.value = '';
   if (saveBtn) saveBtn.textContent = 'add liability';
   if (cancelBtn) cancelBtn.hidden = true;
@@ -111,8 +111,10 @@ function editLiquidityLiability(button) {
   const name = row.getAttribute('data-name') || '';
   const amount = Number(row.getAttribute('data-amount'));
   const currency = row.getAttribute('data-currency') === 'EUR' ? 'EUR' : 'USD';
+  const date = row.getAttribute('data-date') || todayInputValue();
   const nameInput = document.getElementById('liability-name');
   const amountInput = document.getElementById('liability-amount');
+  const dateInput = document.getElementById('liability-date');
   const editId = document.getElementById('liability-edit-id');
   const saveBtn = document.getElementById('save-liability-btn');
   const cancelBtn = document.getElementById('cancel-liability-edit-btn');
@@ -122,6 +124,7 @@ function editLiquidityLiability(button) {
       ? formatUnsignedAmount(amount)
       : '';
   }
+  if (dateInput) dateInput.value = date;
   setCurrencyPill('liability-currency', currency);
   if (editId) editId.value = id;
   if (saveBtn) saveBtn.textContent = 'save changes';
@@ -134,17 +137,48 @@ function editLiquidityLiability(button) {
   amountInput?.select();
 }
 
+async function saveSettings() {
+  const button = document.getElementById('save-settings-btn');
+  button.disabled = true;
+  button.textContent = 'saving...';
+  try {
+    const response = await fetch('/admin/liquidity/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bank_eur: document.getElementById('settings-bank').value,
+        cash_eur: document.getElementById('settings-cash').value,
+        date: todayInputValue()
+      })
+    });
+    const data = await response.json();
+    if (data.success) {
+      showMessage('settings-message', 'Saved.', 'success');
+      setTimeout(() => window.location.reload(), 500);
+    } else {
+      showMessage('settings-message', data.error || 'Failed to save.', 'error');
+    }
+  } catch (error) {
+    console.error('Save settings error:', error);
+    showMessage('settings-message', 'Network error. Please try again.', 'error');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'save bank / cash';
+  }
+}
+
 async function saveLiability() {
   const button = document.getElementById('save-liability-btn');
   const parsed = parseSignedAmount(document.getElementById('liability-amount').value);
   const payload = {
     amount: parsed ? formatSignedAmount({ amount: parsed.amount, direction: 'out' }) : document.getElementById('liability-amount').value,
     currency: document.getElementById('liability-currency').value,
-    name: document.getElementById('liability-name').value.trim()
+    name: document.getElementById('liability-name').value.trim(),
+    date: document.getElementById('liability-date').value
   };
 
   if (!parsed || !payload.name) {
-    showMessage('liability-message', 'Amount and a name are required.', 'error');
+    showMessage('liability-message', 'Amount, date, and a name are required.', 'error');
     return;
   }
 
@@ -175,7 +209,7 @@ async function saveLiability() {
 }
 
 async function deleteLiquidityLiability(itemId) {
-  if (!confirm('Remove this without paying? Liquidity comes back (up-dot).')) return;
+  if (!confirm('Remove this without paying? Liquidity comes back.')) return;
 
   try {
     const response = await fetch(`/admin/liquidity/liability/${itemId}`, {
@@ -195,12 +229,13 @@ async function deleteLiquidityLiability(itemId) {
 }
 
 async function payLiquidityLiability(itemId) {
-  if (!confirm('Mark as paid? This only clears it from the list. The graph already moved when you added it.')) return;
+  if (!confirm('Mark as paid? Money leaves bank, the liability disappears, liquidity stays the same.')) return;
 
   try {
     const response = await fetch(`/admin/liquidity/liability/${itemId}/paid`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: todayInputValue(), account: 'bank' })
     });
     const data = await response.json();
     if (data.success) {
@@ -239,7 +274,10 @@ async function saveEntry() {
         amount,
         currency,
         note,
-        timestamp: localNowTimestamp()
+        date: document.getElementById('entry-date').value,
+        status: document.getElementById('entry-status').value,
+        account: document.getElementById('entry-account').value,
+        liability_id: document.getElementById('entry-liability').value
       })
     });
     const data = await response.json();
@@ -260,6 +298,24 @@ async function saveEntry() {
   }
 }
 
+async function approveLiquidityEntry(entryId) {
+  try {
+    const response = await fetch(`/admin/liquidity/entry/${entryId}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await response.json();
+    if (data.success) {
+      window.location.reload();
+    } else {
+      showMessage('pending-message', data.error || 'Failed to approve.', 'error');
+    }
+  } catch (error) {
+    console.error('Approve entry error:', error);
+    showMessage('pending-message', 'Network error. Please try again.', 'error');
+  }
+}
+
 async function deleteLiquidityEntry(entryId) {
   if (!confirm('Delete this movement?')) return;
 
@@ -270,14 +326,7 @@ async function deleteLiquidityEntry(entryId) {
     });
     const data = await response.json();
     if (data.success) {
-      const entryElement = document.querySelector(`[data-entry-id="${entryId}"]`);
-      if (entryElement) {
-        entryElement.style.opacity = '0';
-        entryElement.style.transition = 'opacity 0.3s ease';
-        setTimeout(() => window.location.reload(), 300);
-      } else {
-        window.location.reload();
-      }
+      window.location.reload();
     } else {
       showMessage('message-container', data.error || 'Failed to delete entry.', 'error');
     }
@@ -368,8 +417,10 @@ window.deleteLiquidityLiability = deleteLiquidityLiability;
 window.editLiquidityLiability = editLiquidityLiability;
 window.payLiquidityLiability = payLiquidityLiability;
 window.deleteLiquidityEntry = deleteLiquidityEntry;
+window.approveLiquidityEntry = approveLiquidityEntry;
 window.deleteLiquidityRecurring = deleteLiquidityRecurring;
 
+document.getElementById('save-settings-btn')?.addEventListener('click', saveSettings);
 document.getElementById('save-liability-btn')?.addEventListener('click', saveLiability);
 document.getElementById('cancel-liability-edit-btn')?.addEventListener('click', clearLiabilityForm);
 document.getElementById('save-btn')?.addEventListener('click', saveEntry);

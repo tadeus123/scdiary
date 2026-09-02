@@ -4,10 +4,35 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <%- include('partials/seo-head') %>
-  <link rel="stylesheet" href="/css/style.css?v=lq-reserve-eur">
+  <link rel="stylesheet" href="/css/style.css?v=lq-bank-cash">
 </head>
 <body class="admin-page admin-liquidity-page">
   <a href="/admin" class="corner-btn-left" aria-label="Back to Admin"></a>
+  <%
+    const snap = snapshot || {};
+    const deDate = (iso) => {
+      if (!iso) return '';
+      return new Date(iso).toLocaleDateString('de-DE', {
+        timeZone: 'Europe/Berlin',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    };
+    const money = (n) => {
+      const v = Number(n);
+      if (!Number.isFinite(v)) return '€0.00';
+      return `${v < 0 ? '−' : ''}€${Math.abs(v).toFixed(2)}`;
+    };
+    const signedMoney = (amount, currency, direction) => {
+      const symbol = String(currency || 'EUR').toUpperCase() === 'EUR' ? '€' : '$';
+      return `${direction === 'out' ? '−' : '+'}${symbol}${Math.abs(Number(amount) || 0).toFixed(2)}`;
+    };
+    const inputDay = (iso) => {
+      if (!iso) return today;
+      return new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Europe/Berlin' });
+    };
+  %>
 
   <div class="container">
     <nav>
@@ -30,10 +55,49 @@
     </nav>
 
     <main>
+      <div class="new-entry-box liquidity-summary-box">
+        <h2>Liquidity</h2>
+        <p class="liquidity-now"><%= money(snap.current) %></p>
+        <div id="settings-message"></div>
+        <div class="liquidity-calc">
+          <div class="liquidity-calc-row">
+            <span></span>
+            <label for="settings-bank">Bank Account</label>
+            <input type="text" id="settings-bank" inputmode="decimal" value="<%= Number(snap.bank || 0).toFixed(2) %>" autocomplete="off">
+          </div>
+          <div class="liquidity-calc-row">
+            <span>+</span>
+            <label for="settings-cash">Cash</label>
+            <input type="text" id="settings-cash" inputmode="decimal" value="<%= Number(snap.cash || 0).toFixed(2) %>" autocomplete="off">
+          </div>
+          <div class="liquidity-calc-row">
+            <span>−</span>
+            <span>Open Liabilities</span>
+            <strong><%= money(snap.open) %></strong>
+          </div>
+          <div class="liquidity-calc-row liquidity-calc-total">
+            <span>=</span>
+            <span>Liquidity</span>
+            <strong><%= money(snap.current) %></strong>
+          </div>
+        </div>
+        <button type="button" class="btn" id="save-settings-btn">save bank / cash</button>
+      </div>
+
+      <div class="admin-liquidity-chart">
+        <div id="liquidity-chart"></div>
+        <div id="liquidity-balance" class="reading-time-summary"></div>
+        <div id="liquidity-tooltip" class="liquidity-tooltip hidden"></div>
+      </div>
+
       <div class="new-entry-box">
-        <h2>log</h2>
+        <h2>transaction log</h2>
         <div id="message-container"></div>
         <div class="liquidity-form-row">
+          <div class="form-group">
+            <label for="entry-date">date</label>
+            <input type="date" id="entry-date" value="<%= today %>">
+          </div>
           <div class="form-group">
             <label for="entry-amount">amount</label>
             <input type="text" id="entry-amount" inputmode="decimal" placeholder="25.32" autocomplete="off" autocapitalize="off" spellcheck="false">
@@ -54,6 +118,31 @@
             </div>
             <input type="hidden" id="entry-currency" value="EUR">
           </div>
+          <div class="form-group">
+            <span class="liquidity-field-label">account</span>
+            <div class="liquidity-pills" data-target="entry-account" role="group" aria-label="account">
+              <button type="button" class="liquidity-pill is-active" data-value="bank">bank</button>
+              <button type="button" class="liquidity-pill" data-value="cash">cash</button>
+            </div>
+            <input type="hidden" id="entry-account" value="bank">
+          </div>
+          <div class="form-group">
+            <span class="liquidity-field-label">status</span>
+            <div class="liquidity-pills" data-target="entry-status" role="group" aria-label="status">
+              <button type="button" class="liquidity-pill" data-value="pending">pending</button>
+              <button type="button" class="liquidity-pill is-active" data-value="approved">approved</button>
+            </div>
+            <input type="hidden" id="entry-status" value="approved">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="entry-liability">linked liability</label>
+          <select id="entry-liability">
+            <option value="">none</option>
+            <% (openLiabilities || []).forEach(item => { %>
+              <option value="<%= item.id %>"><%= deDate(item.created_at) %> · <%= item.name %></option>
+            <% }) %>
+          </select>
         </div>
         <textarea id="entry-content" placeholder="what was this..."></textarea>
         <button type="button" class="btn" id="save-btn">save</button>
@@ -62,34 +151,24 @@
       <div class="entries">
         <% if (!entries || entries.length === 0) { %>
           <div class="empty-state">
-            <p>no movements yet. log the first one above.</p>
+            <p>no approved transactions yet.</p>
           </div>
         <% } else { %>
           <% entries.forEach(entry => { %>
             <article class="entry" data-entry-id="<%= entry.id %>">
               <div class="entry-header">
                 <div class="entry-date">
-                  <%= new Date(entry.timestamp).toLocaleString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit'
-                  }) %>
+                  <%= deDate(entry.timestamp) %>
+                  <% if (entry.account === 'cash') { %><span class="liquidity-row-meta">cash</span><% } %>
                 </div>
                 <button type="button" class="delete-entry-btn" onclick="deleteLiquidityEntry('<%= entry.id %>')" aria-label="Delete entry">×</button>
               </div>
               <div class="entry-content">
-                <% const native = Number(entry.amount); %>
                 <p class="liquidity-amount <%= entry.direction === 'out' ? 'liquidity-out' : 'liquidity-in' %>">
-                  <%= entry.direction === 'out' ? '−' : '+' %><%= String(entry.currency).toUpperCase() === 'EUR' ? '€' : '$' %><%= Math.abs(native).toFixed(2) %>
+                  <%= signedMoney(entry.amount, entry.currency, entry.direction) %>
                 </p>
                 <% if (entry.note) { %>
                   <p><%= entry.note %></p>
-                <% } %>
-                <% if (entry.recurring_id) { %>
-                  <p class="form-hint">monthly</p>
                 <% } %>
               </div>
             </article>
@@ -97,10 +176,47 @@
         <% } %>
       </div>
 
+      <div class="new-entry-box">
+        <h2>pending</h2>
+        <div id="pending-message"></div>
+        <% if (!pending || pending.length === 0) { %>
+          <p class="form-hint">nothing waiting for approval.</p>
+        <% } else { %>
+          <div class="entries liquidity-pending-list">
+            <% pending.forEach(entry => { %>
+              <article class="entry" data-entry-id="<%= entry.id %>">
+                <div class="entry-header">
+                  <div class="entry-date">
+                    <%= deDate(entry.timestamp) %>
+                    <span class="liquidity-row-meta">pending</span>
+                  </div>
+                  <div class="liquidity-entry-actions">
+                    <button type="button" class="liquidity-paid-btn" onclick="approveLiquidityEntry('<%= entry.id %>')">approve</button>
+                    <button type="button" class="delete-entry-btn" onclick="deleteLiquidityEntry('<%= entry.id %>')" aria-label="Delete entry">×</button>
+                  </div>
+                </div>
+                <div class="entry-content">
+                  <p class="liquidity-amount <%= entry.direction === 'out' ? 'liquidity-out' : 'liquidity-in' %>">
+                    <%= signedMoney(entry.amount, entry.currency, entry.direction) %>
+                  </p>
+                  <% if (entry.note) { %>
+                    <p><%= entry.note %></p>
+                  <% } %>
+                </div>
+              </article>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+
       <div class="new-entry-box liquidity-start-box">
-        <h2>liabilities</h2>
+        <h2>open liabilities</h2>
         <div id="liability-message"></div>
         <div class="liquidity-form-row">
+          <div class="form-group">
+            <label for="liability-date">created date</label>
+            <input type="date" id="liability-date" value="<%= today %>">
+          </div>
           <div class="form-group">
             <label for="liability-amount">amount</label>
             <input type="text" id="liability-amount" inputmode="decimal" placeholder="25.32" autocomplete="off" autocapitalize="off" spellcheck="false">
@@ -114,27 +230,30 @@
             <input type="hidden" id="liability-currency" value="EUR">
           </div>
         </div>
-        <textarea id="liability-name" placeholder="mom's flight, the 1.5k thing..."></textarea>
+        <textarea id="liability-name" placeholder="gift, flight, ..."></textarea>
         <div class="liquidity-liability-save-row">
           <button type="button" class="btn" id="save-liability-btn">add liability</button>
           <button type="button" class="liquidity-paid-btn" id="cancel-liability-edit-btn" hidden>cancel</button>
         </div>
         <input type="hidden" id="liability-edit-id" value="">
-        <% const openEur = (liabilities || []).reduce((sum, item) => sum + Math.abs(Number(item.amount_eur || item.amount_usd) || 0), 0); %>
-        <p class="liquidity-open-total">open: −€<%= openEur.toFixed(2) %></p>
+        <p class="liquidity-open-total">open: <%= money(snap.open) %></p>
 
-        <% if (liabilities && liabilities.length > 0) { %>
+        <% if (openLiabilities && openLiabilities.length > 0) { %>
           <div class="entries liquidity-liability-list">
-            <% liabilities.forEach(item => { %>
+            <% openLiabilities.forEach(item => { %>
               <article
                 class="entry"
                 data-liability-id="<%= item.id %>"
                 data-name="<%= item.name %>"
                 data-amount="<%= Number(item.amount).toFixed(2) %>"
                 data-currency="<%= item.currency %>"
+                data-date="<%= inputDay(item.created_at) %>"
               >
                 <div class="entry-header">
-                  <div class="entry-date"><%= item.name %></div>
+                  <div class="entry-date">
+                    <%= deDate(item.created_at) %>
+                    <span class="liquidity-row-meta"><%= item.name %></span>
+                  </div>
                   <div class="liquidity-entry-actions">
                     <button type="button" class="liquidity-paid-btn" onclick="editLiquidityLiability(this)">edit</button>
                     <button type="button" class="liquidity-paid-btn" onclick="payLiquidityLiability('<%= item.id %>')">paid</button>
@@ -143,7 +262,7 @@
                 </div>
                 <div class="entry-content">
                   <p class="liquidity-amount liquidity-out">
-                    −<%= String(item.currency).toUpperCase() === 'EUR' ? '€' : '$' %><%= Math.abs(Number(item.amount)).toFixed(2) %>
+                    <%= signedMoney(item.amount, item.currency, 'out') %>
                   </p>
                 </div>
               </article>
@@ -196,25 +315,26 @@
                 <div class="entry-header">
                   <div class="entry-date">
                     <%= item.name %>
-                    <span class="liquidity-row-meta">day <%= item.day_of_month %><%= item.end_date ? ` · until ${item.end_date}` : '' %></span>
+                    <span class="liquidity-row-meta">day <%= item.day_of_month %></span>
                   </div>
                   <button type="button" class="delete-entry-btn" onclick="deleteLiquidityRecurring('<%= item.id %>')" aria-label="Delete monthly">×</button>
                 </div>
                 <div class="entry-content">
                   <p class="liquidity-amount <%= item.direction === 'out' ? 'liquidity-out' : 'liquidity-in' %>">
-                    <%= item.direction === 'out' ? '−' : '+' %><%= String(item.currency).toUpperCase() === 'EUR' ? '€' : '$' %><%= Number(item.amount).toFixed(2) %>
+                    <%= signedMoney(item.amount, item.currency, item.direction) %>
                   </p>
                 </div>
               </article>
             <% }) %>
           </div>
-          <p class="liquidity-runway"><%= runway && runway.label ? runway.label : 'cash runway: —' %></p>
         <% } %>
+        <p class="liquidity-runway"><%= runway && runway.label ? runway.label : 'cash runway: —' %></p>
       </div>
     </main>
   </div>
 
   <script src="/js/main.js"></script>
-  <script src="/js/admin-liquidity.js?v=lq-reserve-eur"></script>
+  <script src="/js/liquidity.js?v=lq-bank-cash"></script>
+  <script src="/js/admin-liquidity.js?v=lq-bank-cash"></script>
 </body>
 </html>

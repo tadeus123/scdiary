@@ -90,8 +90,36 @@ CREATE TABLE IF NOT EXISTS liquidity_liabilities (
 
 CREATE INDEX IF NOT EXISTS idx_liquidity_liabilities_due ON liquidity_liabilities (due_date ASC NULLS FIRST);
 
+ALTER TABLE liquidity_settings
+  ADD COLUMN IF NOT EXISTS starting_bank_eur NUMERIC(14, 2) NOT NULL DEFAULT -499.85,
+  ADD COLUMN IF NOT EXISTS cash_eur NUMERIC(14, 2) NOT NULL DEFAULT 0;
+
+ALTER TABLE liquidity_entries
+  ADD COLUMN IF NOT EXISTS recurring_id TEXT,
+  ADD COLUMN IF NOT EXISTS occurrence_date DATE,
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'approved',
+  ADD COLUMN IF NOT EXISTS account TEXT NOT NULL DEFAULT 'bank',
+  ADD COLUMN IF NOT EXISTS liability_id TEXT;
+
+ALTER TABLE liquidity_entries
+  DROP CONSTRAINT IF EXISTS liquidity_entries_status_check;
+ALTER TABLE liquidity_entries
+  ADD CONSTRAINT liquidity_entries_status_check CHECK (status IN ('pending', 'approved'));
+ALTER TABLE liquidity_entries
+  DROP CONSTRAINT IF EXISTS liquidity_entries_account_check;
+ALTER TABLE liquidity_entries
+  ADD CONSTRAINT liquidity_entries_account_check CHECK (account IN ('bank', 'cash'));
+
 ALTER TABLE liquidity_liabilities
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'open',
+  ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS payment_entry_id TEXT,
   ADD COLUMN IF NOT EXISTS entry_id TEXT;
+
+ALTER TABLE liquidity_liabilities
+  DROP CONSTRAINT IF EXISTS liquidity_liabilities_status_check;
+ALTER TABLE liquidity_liabilities
+  ADD CONSTRAINT liquidity_liabilities_status_check CHECK (status IN ('open', 'paid'));
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_liquidity_liabilities_entry_id
   ON liquidity_liabilities (entry_id)

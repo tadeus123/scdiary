@@ -52,22 +52,29 @@ function formatDateLabel(iso, compact = false) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function localDayKey(iso) {
+function berlinDayKey(iso) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Berlin',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(date);
 }
 
-function localDayStartMs(iso) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return 0;
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+function berlinDayStartMs(iso) {
+  const key = berlinDayKey(iso);
+  if (!key) return 0;
+  return new Date(`${key}T00:00:00+02:00`).getTime();
 }
 
 function formatTooltipWhen(iso) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const key = berlinDayKey(iso);
+  if (!key) return '';
+  const [year, month, day] = key.split('-');
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
 function niceTicks(min, max, count = 5) {
@@ -144,6 +151,17 @@ function viewportSize() {
     width: Math.round(visual?.width || window.innerWidth),
     height: Math.round(visual?.height || window.innerHeight)
   };
+}
+
+function chartSize(container) {
+  if (document.body.classList.contains('admin-liquidity-page')) {
+    const rect = container.getBoundingClientRect();
+    return {
+      width: Math.max(280, Math.round(rect.width || window.innerWidth - 48)),
+      height: Math.max(240, Math.round(rect.height || 360))
+    };
+  }
+  return viewportSize();
 }
 
 function escapeXml(text) {
@@ -269,7 +287,7 @@ function renderChart(series) {
   }
 
   const points = series?.points || [];
-  const { width, height } = viewportSize();
+  const { width, height } = chartSize(container);
   const compact = width < 700;
   const padding = {
     top: compact ? 108 : Math.max(96, height * 0.16),
@@ -294,7 +312,7 @@ function renderChart(series) {
     return;
   }
 
-  const dayMs = points.map((point) => localDayStartMs(point.at));
+  const dayMs = points.map((point) => berlinDayStartMs(point.at));
   const startMs = dayMs[0];
   const endMs = dayMs[dayMs.length - 1];
   const span = Math.max(24 * 60 * 60 * 1000, endMs - startMs);
@@ -302,7 +320,7 @@ function renderChart(series) {
 
   const logs = points.map((point, index) => ({
     ...point,
-    dayKey: localDayKey(point.at),
+    dayKey: berlinDayKey(point.at),
     dayMs: dayMs[index]
   }));
 
@@ -324,8 +342,6 @@ function renderChart(series) {
   const balances = dailyPoints.map((point) => Number(point.balance));
   let minBalance = Math.min(...balances);
   let maxBalance = Math.max(...balances);
-  if (minBalance > 0) minBalance = 0;
-  if (maxBalance < 0) maxBalance = 0;
 
   const yScale = niceTicks(minBalance, maxBalance, compact ? 4 : 5);
   const yOf = (value) => padding.top + ((yScale.max - value) / (yScale.max - yScale.min || 1)) * graphHeight;
@@ -384,7 +400,7 @@ function renderChart(series) {
     if (!group.length) return;
     const last = group[group.length - 1];
     const daily = dailyPoints.find((point) => point.dayKey === dayKey) || last;
-    const logs = group.map((point) => {
+    const logs = group.filter((point) => point.kind !== 'start').map((point) => {
       const delta = Number(point.delta);
       const deltaClass = delta < 0 ? ' liquidity-tooltip-out' : '';
       const note = point.note

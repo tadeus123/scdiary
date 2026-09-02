@@ -3,8 +3,7 @@ const {
   getLiquidityEntries,
   getLiquidityRecurring,
   getLiquidityLiabilities,
-  createLiquidityEntries,
-  updateLiquidityLiability
+  createLiquidityEntries
 } = require('../db/supabase');
 const { getLatestEurUsdRate } = require('./fx');
 const {
@@ -16,8 +15,9 @@ const {
   formatCashRunway,
   monthlyFlowEur,
   withLiveEur,
-  reservationEntryFromLiability,
-  liabilityReservationEntryId
+  berlinNoonIso,
+  berlinDateKey,
+  normalizeStatus
 } = require('./liquidity');
 
 function occurrenceKey(entry) {
@@ -25,6 +25,10 @@ function occurrenceKey(entry) {
     return `${entry.recurring_id}|${String(entry.occurrence_date).slice(0, 10)}`;
   }
   return entry.id;
+}
+
+function isApproved(entry) {
+  return normalizeStatus(entry?.status || 'approved') === 'approved';
 }
 
 async function materializeDueMonthlyLogs(now = new Date()) {
@@ -45,7 +49,7 @@ async function materializeDueMonthlyLogs(now = new Date()) {
 
   let latestRate = 1;
   try {
-    if (missing.some((log) => String(log.item.currency).toUpperCase() === 'EUR')) {
+    if (missing.some((log) => String(log.item.currency).toUpperCase() === 'USD')) {
       latestRate = await getLatestEurUsdRate();
     }
   } catch (error) {
@@ -54,11 +58,11 @@ async function materializeDueMonthlyLogs(now = new Date()) {
 
   const rows = missing.map((log) => {
     const item = log.item;
-    const currency = String(item.currency || 'USD').toUpperCase();
-    const fx_rate = currency === 'EUR' ? latestRate : 1;
+    const currency = String(item.currency || 'EUR').toUpperCase();
+    const fx_rate = currency === 'USD' ? latestRate : 1;
     return {
       id: log.id,
-      timestamp: `${log.occurrence_date}T12:00:00.000Z`,
+      timestamp: berlinNoonIso(log.occurrence_date),
       amount: toNumber(item.amount),
       currency: item.currency,
       fx_rate,
@@ -66,7 +70,10 @@ async function materializeDueMonthlyLogs(now = new Date()) {
       direction: item.direction,
       note: item.name || '',
       recurring_id: item.id,
-      occurrence_date: log.occurrence_date
+      occurrence_date: log.occurrence_date,
+      status: 'pending',
+      account: 'bank',
+      liability_id: null
     };
   });
 
@@ -80,83 +87,49 @@ async function materializeDueMonthlyLogs(now = new Date()) {
   return { inserted: rows.length };
 }
 
-async function ensureLiabilityReservationLogs(liabilities = [], entries = []) {
-  const existingIds = new Set((entries || []).map((entry) => entry.id));
-  let changed = false;
-
-  for (const item of liabilities) {
-    if (!item?.id || item.entry_id) continue;
-    const id = liabilityReservationEntryId(item.id);
-    if (!existingIds.has(id)) continue;
-    const linked = await updateLiquidityLiability(item.id, { entry_id: id });
-    if (linked.success) changed = true;
-  }
-
-  const missing = (liabilities || []).filter((item) => {
-    if (!item?.id || item.entry_id) return false;
-    return !existingIds.has(liabilityReservationEntryId(item.id));
-  });
-
-  if (missing.length) {
-    const rows = missing.map((item) => (
-      reservationEntryFromLiability(item, item.created_at || new Date().toISOString())
-    ));
-    const logged = await createLiquidityEntries(rows);
-    if (!logged.success) {
-      console.error('Failed to backfill liability reservation logs:', logged.error);
-    } else {
-      for (const item of missing) {
-        const updated = await updateLiquidityLiability(item.id, {
-          entry_id: liabilityReservationEntryId(item.id)
-        });
-        if (!updated.success) {
-          console.error('Failed to link liability reservation log:', item.id, updated.error);
-        }
-      }
-      changed = true;
-    }
-  }
-
-  if (!changed) return { liabilities, entries };
-  const [nextLiabilities, nextEntries] = await Promise.all([
-    getLiquidityLiabilities(),
-    getLiquidityEntries()
-  ]);
-  return { liabilities: nextLiabilities, entries: nextEntries };
-}
-
 async function resolveEurUsdRate(items = []) {
   try {
     return await getLatestEurUsdRate();
   } catch (error) {
     console.error('Latest FX rate failed:', error);
     const fallback = [...items]
-      .filter((item) => String(item?.currency || '').toUpperCase() === 'EUR')
+      .filter((item) => String(item?.currency || '').toUpperCase() === 'USD')
       .map((item) => toNumber(item.fx_rate, 0))
       .find((rate) => rate > 0);
     return fallback || 1;
   }
 }
 
+function sortByTime(rows, direction = 'asc') {
+  const sign = direction === 'desc' ? -1 : 1;
+  return [...(rows || [])].sort((a, b) => {
+    const diff = new Date(a.timestamp || a.created_at).getTime() - new Date(b.timestamp || b.created_at).getTime();
+    return sign * diff;
+  });
+}
+
 async function loadLiquidityGraph(now = new Date()) {
   await materializeDueMonthlyLogs(now);
 
-  const [settings, rawEntries, recurring, rawLiabilities] = await Promise.all([
+  const [settings, rawEntries, recurring, liabilities] = await Promise.all([
     getLiquiditySettings(),
     getLiquidityEntries(),
     getLiquidityRecurring(),
     getLiquidityLiabilities()
   ]);
 
-  const ensured = await ensureLiabilityReservationLogs(rawLiabilities, rawEntries);
-  const liabilities = ensured.liabilities;
-  const tapeEntries = ensured.entries;
-
-  const latestRate = await resolveEurUsdRate([...tapeEntries, ...recurring, ...liabilities]);
-  const entries = tapeEntries.map((item) => withLiveEur(item, latestRate, item.direction));
+  const latestRate = await resolveEurUsdRate([...rawEntries, ...recurring, ...liabilities]);
+  const entries = rawEntries.map((item) => withLiveEur(item, latestRate, item.direction));
   const liabilitiesView = liabilities.map((item) => withLiveEur(item, latestRate, 'out'));
+  const pending = sortByTime(entries.filter((item) => !isApproved(item)), 'asc');
+  const approved = sortByTime(entries.filter(isApproved), 'desc');
+  const openLiabilities = liabilitiesView.filter((item) => String(item.status || 'open') !== 'paid');
+
   const series = buildLiquiditySeries({
-    entries: tapeEntries,
+    startingBank: toNumber(settings.starting_bank_eur, settings.starting_balance_usd),
+    startingAt: settings.starting_at,
+    cashEur: toNumber(settings.cash_eur, 0),
+    entries: rawEntries,
     liabilities,
     eurUsdRate: latestRate
   });
@@ -172,8 +145,25 @@ async function loadLiquidityGraph(now = new Date()) {
   };
 
   const recurringView = recurring.map((item) => withLiveEur(item, latestRate, item.direction));
+  const snapshot = {
+    bank: series.bank,
+    cash: series.cash,
+    open: series.open,
+    current: series.current
+  };
 
-  return { settings, entries, recurring: recurringView, liabilities: liabilitiesView, series, runway };
+  return {
+    settings,
+    entries: approved,
+    pending,
+    recurring: recurringView,
+    liabilities: liabilitiesView,
+    openLiabilities,
+    series,
+    snapshot,
+    runway,
+    today: berlinDateKey(now)
+  };
 }
 
 module.exports = {

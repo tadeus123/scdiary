@@ -24,6 +24,7 @@ const {
   createLiquidityLiability,
   updateLiquidityLiability,
   deleteLiquidityLiability,
+  upsertLiquiditySettings,
   getPeopleGraph,
   createPeopleGraphNode,
   updatePeopleGraphNode,
@@ -36,12 +37,14 @@ const {
   parsePositiveAmount,
   parseSignedAmount,
   normalizeCurrency,
+  normalizeStatus,
+  normalizeAccount,
   signedUsd,
   roundMoney,
   toNumber,
-  reservationEntryFromLiability,
-  dropEntryFromLiability,
-  liabilityReservationEntryId
+  parseDayInput,
+  berlinDateKey,
+  berlinNoonIso
 } = require('../utils/liquidity');
 const { loadLiquidityGraph, materializeDueMonthlyLogs } = require('../utils/liquidity-graph');
 // Admin password (in production, use environment variable)
@@ -322,9 +325,123 @@ function newLiquidityId(prefix) {
   return `${prefix}-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
 }
 
+function readLiabilityFields(body) {
+  const name = typeof body?.name === 'string' ? body.name.trim() : '';
+  const amount = parsePositiveAmount(body?.amount);
+  const currency = normalizeCurrency(body?.currency);
+  const createdKey = parseDayInput(body?.date || body?.created_at, berlinDateKey());
+  if (!name) return { error: 'What is this liability?' };
+  if (!amount) return { error: 'Amount must be a number other than 0, like -25.32.' };
+  if (!currency) return { error: 'Currency must be USD or EUR.' };
+  if (!createdKey) return { error: 'Date is required.' };
+  return { name, amount, currency, createdKey };
+}
+
+async function snapshotFxRate(currency) {
+  if (currency !== 'USD') return 1;
+  return getLatestEurUsdRate();
+}
+
+async function markLiabilityPaid(liability, payment) {
+  return updateLiquidityLiability(liability.id, {
+    status: 'paid',
+    paid_at: payment.timestamp,
+    payment_entry_id: payment.id,
+    entry_id: null
+  });
+}
+
+function timestampFromBody(body, fallbackKey = berlinDateKey()) {
+  if (typeof body?.timestamp === 'string' && body.timestamp.trim()) {
+    const parsed = new Date(body.timestamp);
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+  }
+  const key = parseDayInput(body?.date, fallbackKey);
+  return berlinNoonIso(key);
+}
+
 router.get('/liquidity', isAuthenticated, async (req, res) => {
-  const { settings, entries, recurring, liabilities, runway } = await loadLiquidityGraph();
-  res.render('admin-liquidity', { settings, entries, recurring, liabilities, runway });
+  const graph = await loadLiquidityGraph();
+  res.render('admin-liquidity', graph);
+});
+
+router.put('/liquidity/settings', isAuthenticated, async (req, res) => {
+  if (!isConfigured()) {
+    return res.status(503).json({ success: false, error: 'Supabase is not configured on the server.' });
+  }
+
+  const graph = await loadLiquidityGraph();
+  const nextCash = parseSignedAmount(req.body?.cash_eur);
+  const nextBank = parseSignedAmount(req.body?.bank_eur);
+  const dateKey = parseDayInput(req.body?.date, berlinDateKey());
+  const timestamp = berlinNoonIso(dateKey);
+  const updates = { ...graph.settings };
+
+  if (req.body?.cash_eur !== undefined && req.body?.cash_eur !== '') {
+    const cashValue = nextCash
+      ? (nextCash.direction === 'out' ? -nextCash.amount : nextCash.amount)
+      : Number(req.body.cash_eur);
+    if (!Number.isFinite(Number(cashValue))) {
+      return res.status(400).json({ success: false, error: 'Cash must be a number.' });
+    }
+    const target = roundMoney(cashValue);
+    const diff = roundMoney(target - graph.series.cash);
+    if (diff !== 0) {
+      const logged = await createLiquidityEntry({
+        id: newLiquidityId('lq'),
+        timestamp,
+        amount: Math.abs(diff),
+        currency: 'EUR',
+        fx_rate: 1,
+        amount_usd: signedUsd(Math.abs(diff), diff < 0 ? 'out' : 'in', 1),
+        direction: diff < 0 ? 'out' : 'in',
+        note: 'cash',
+        status: 'approved',
+        account: 'cash',
+        liability_id: null
+      });
+      if (!logged.success) {
+        return res.status(500).json({ success: false, error: logged.error || 'Failed to update cash' });
+      }
+    }
+    updates.cash_eur = target;
+  }
+
+  if (req.body?.bank_eur !== undefined && req.body?.bank_eur !== '') {
+    const bankValue = nextBank
+      ? (nextBank.direction === 'out' ? -nextBank.amount : nextBank.amount)
+      : Number(req.body.bank_eur);
+    if (!Number.isFinite(Number(bankValue))) {
+      return res.status(400).json({ success: false, error: 'Bank account must be a number.' });
+    }
+    const target = roundMoney(bankValue);
+    const diff = roundMoney(target - graph.series.bank);
+    if (diff !== 0) {
+      const logged = await createLiquidityEntry({
+        id: newLiquidityId('lq'),
+        timestamp,
+        amount: Math.abs(diff),
+        currency: 'EUR',
+        fx_rate: 1,
+        amount_usd: signedUsd(Math.abs(diff), diff < 0 ? 'out' : 'in', 1),
+        direction: diff < 0 ? 'out' : 'in',
+        note: 'bank account',
+        status: 'approved',
+        account: 'bank',
+        liability_id: null
+      });
+      if (!logged.success) {
+        return res.status(500).json({ success: false, error: logged.error || 'Failed to update bank account' });
+      }
+    }
+  }
+
+  const result = await upsertLiquiditySettings(updates);
+  if (result.success) {
+    res.json({ success: true, settings: result.settings });
+  } else {
+    res.status(500).json({ success: false, error: result.error || 'Failed to save' });
+  }
 });
 
 router.post('/liquidity/liability', isAuthenticated, async (req, res) => {
@@ -332,20 +449,12 @@ router.post('/liquidity/liability', isAuthenticated, async (req, res) => {
     return res.status(503).json({ success: false, error: 'Supabase is not configured on the server.' });
   }
 
-  const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
-  const amount = parsePositiveAmount(req.body?.amount);
-  const currency = normalizeCurrency(req.body?.currency);
-
-  if (!name) {
-    return res.status(400).json({ success: false, error: 'What is this liability?' });
-  }
-  if (!amount) {
-    return res.status(400).json({ success: false, error: 'Amount must be a number other than 0, like -25.32.' });
-  }
-  if (!currency) {
-    return res.status(400).json({ success: false, error: 'Currency must be USD or EUR.' });
+  const fields = readLiabilityFields(req.body);
+  if (fields.error) {
+    return res.status(400).json({ success: false, error: fields.error });
   }
 
+  const { name, amount, currency, createdKey } = fields;
   let fx_rate = 1;
   try {
     fx_rate = await snapshotFxRate(currency);
@@ -354,55 +463,28 @@ router.post('/liquidity/liability', isAuthenticated, async (req, res) => {
     return res.status(502).json({ success: false, error: 'Could not convert USD to EUR. Try again, or log in EUR.' });
   }
 
-  const liabilityId = newLiquidityId('lb');
-  const timestamp = new Date().toISOString();
-  const entry = reservationEntryFromLiability({
-    id: liabilityId,
-    name,
-    amount,
-    currency,
-    fx_rate
-  }, timestamp);
-
-  const logged = await createLiquidityEntry(entry);
-  if (!logged.success) {
-    return res.status(500).json({ success: false, error: logged.error || 'Failed to log liability' });
-  }
-
   const item = {
-    id: liabilityId,
+    id: newLiquidityId('lb'),
     name,
     amount,
     currency,
     fx_rate,
     amount_usd: roundMoney(amount * fx_rate),
     due_date: null,
-    entry_id: entry.id
+    created_at: berlinNoonIso(createdKey),
+    status: 'open',
+    paid_at: null,
+    payment_entry_id: null,
+    entry_id: null
   };
 
   const result = await createLiquidityLiability(item);
   if (result.success) {
-    res.json({ success: true, item: result.item, entry: logged.entry });
+    res.json({ success: true, item: result.item });
   } else {
-    await deleteLiquidityEntry(entry.id);
     res.status(500).json({ success: false, error: result.error || 'Failed to save liability' });
   }
 });
-
-function readLiabilityFields(body) {
-  const name = typeof body?.name === 'string' ? body.name.trim() : '';
-  const amount = parsePositiveAmount(body?.amount);
-  const currency = normalizeCurrency(body?.currency);
-  if (!name) return { error: 'What is this liability?' };
-  if (!amount) return { error: 'Amount must be a number other than 0, like -25.32.' };
-  if (!currency) return { error: 'Currency must be USD or EUR.' };
-  return { name, amount, currency };
-}
-
-async function snapshotFxRate(currency) {
-  if (currency !== 'USD') return 1;
-  return getLatestEurUsdRate();
-}
 
 router.put('/liquidity/liability/:id', isAuthenticated, async (req, res) => {
   if (!isConfigured()) {
@@ -419,7 +501,7 @@ router.put('/liquidity/liability/:id', isAuthenticated, async (req, res) => {
     return res.status(400).json({ success: false, error: fields.error });
   }
 
-  const { name, amount, currency } = fields;
+  const { name, amount, currency, createdKey } = fields;
   let fx_rate = 1;
   try {
     fx_rate = await snapshotFxRate(currency);
@@ -428,39 +510,14 @@ router.put('/liquidity/liability/:id', isAuthenticated, async (req, res) => {
     return res.status(502).json({ success: false, error: 'Could not convert USD to EUR. Try again, or log in EUR.' });
   }
 
-  const next = {
+  const result = await updateLiquidityLiability(liability.id, {
     name,
     amount,
     currency,
     fx_rate,
     amount_usd: roundMoney(amount * fx_rate),
-    entry_id: liability.entry_id || liabilityReservationEntryId(liability.id)
-  };
-
-  const reservation = reservationEntryFromLiability({
-    ...liability,
-    ...next
-  }, liability.created_at || new Date().toISOString());
-
-  if (liability.entry_id) {
-    const moved = await updateLiquidityEntry(liability.entry_id, {
-      amount: reservation.amount,
-      currency: reservation.currency,
-      fx_rate: reservation.fx_rate,
-      amount_usd: reservation.amount_usd,
-      note: reservation.note
-    });
-    if (!moved.success) {
-      return res.status(500).json({ success: false, error: moved.error || 'Failed to update the graph' });
-    }
-  } else {
-    const logged = await createLiquidityEntry(reservation);
-    if (!logged.success) {
-      return res.status(500).json({ success: false, error: logged.error || 'Failed to log liability' });
-    }
-  }
-
-  const result = await updateLiquidityLiability(liability.id, next);
+    created_at: berlinNoonIso(createdKey)
+  });
   if (!result.success) {
     return res.status(500).json({ success: false, error: result.error || 'Failed to save liability' });
   }
@@ -477,13 +534,45 @@ router.post('/liquidity/liability/:id/paid', isAuthenticated, async (req, res) =
   if (!liability) {
     return res.status(404).json({ success: false, error: 'Liability not found' });
   }
-
-  const removed = await deleteLiquidityLiability(liability.id);
-  if (!removed.success) {
-    return res.status(500).json({ success: false, error: removed.error || 'Failed to mark as paid' });
+  if (String(liability.status || 'open') === 'paid') {
+    return res.json({ success: true, item: liability });
   }
 
-  res.json({ success: true });
+  let fx_rate = toNumber(liability.fx_rate, 1);
+  try {
+    fx_rate = await snapshotFxRate(liability.currency);
+  } catch (error) {
+    console.error('FX conversion failed:', error);
+    return res.status(502).json({ success: false, error: 'Could not convert USD to EUR. Try again, or log in EUR.' });
+  }
+
+  const account = normalizeAccount(req.body?.account) || 'bank';
+  const payment = {
+    id: newLiquidityId('lq'),
+    timestamp: timestampFromBody(req.body),
+    amount: toNumber(liability.amount),
+    currency: liability.currency,
+    fx_rate,
+    amount_usd: signedUsd(liability.amount, 'out', fx_rate),
+    direction: 'out',
+    note: liability.name || '',
+    status: 'approved',
+    account,
+    liability_id: liability.id
+  };
+
+  const logged = await createLiquidityEntry(payment);
+  if (!logged.success) {
+    return res.status(500).json({ success: false, error: logged.error || 'Failed to log payment' });
+  }
+
+  const result = await markLiabilityPaid(liability, logged.entry || payment);
+  if (!result.success) {
+    await deleteLiquidityEntry(payment.id);
+    return res.status(500).json({ success: false, error: result.error || 'Failed to mark as paid' });
+  }
+
+  res.json({ success: true, item: result.item, entry: logged.entry });
 });
 
 router.delete('/liquidity/liability/:id', isAuthenticated, async (req, res) => {
@@ -496,17 +585,10 @@ router.delete('/liquidity/liability/:id', isAuthenticated, async (req, res) => {
     return res.status(404).json({ success: false, error: 'Liability not found' });
   }
 
-  const drop = dropEntryFromLiability(liability, new Date().toISOString());
-  const logged = await createLiquidityEntry(drop);
-  if (!logged.success) {
-    return res.status(500).json({ success: false, error: logged.error || 'Failed to return this to the graph' });
-  }
-
   const result = await deleteLiquidityLiability(liability.id);
   if (result.success) {
     res.json({ success: true });
   } else {
-    await deleteLiquidityEntry(drop.id);
     res.status(500).json({ success: false, error: result.error || 'Failed to delete liability' });
   }
 });
@@ -519,7 +601,9 @@ router.post('/liquidity/entry', isAuthenticated, async (req, res) => {
   const signed = parseSignedAmount(req.body?.amount);
   const currency = normalizeCurrency(req.body?.currency);
   const note = typeof req.body?.note === 'string' ? req.body.note.trim() : '';
-  const timestamp = req.body?.timestamp || new Date().toISOString();
+  const status = normalizeStatus(req.body?.status) || 'approved';
+  const account = normalizeAccount(req.body?.account) || 'bank';
+  const liabilityId = typeof req.body?.liability_id === 'string' ? req.body.liability_id.trim() : '';
 
   if (!signed) {
     return res.status(400).json({ success: false, error: 'Amount must be a number other than 0, like -25.32 or 25.32.' });
@@ -539,21 +623,58 @@ router.post('/liquidity/entry', isAuthenticated, async (req, res) => {
 
   const entry = {
     id: newLiquidityId('lq'),
-    timestamp,
+    timestamp: timestampFromBody(req.body),
     amount,
     currency,
     fx_rate,
     amount_usd: signedUsd(amount, direction, fx_rate),
     direction,
-    note
+    note,
+    status,
+    account,
+    liability_id: liabilityId || null
   };
 
   const result = await createLiquidityEntry(entry);
-  if (result.success) {
-    res.json({ success: true, entry: result.entry });
-  } else {
-    res.status(500).json({ success: false, error: result.error || 'Failed to save entry' });
+  if (!result.success) {
+    return res.status(500).json({ success: false, error: result.error || 'Failed to save entry' });
   }
+
+  if (status === 'approved' && liabilityId) {
+    const liability = await getLiquidityLiability(liabilityId);
+    if (liability && String(liability.status || 'open') !== 'paid') {
+      await markLiabilityPaid(liability, result.entry || entry);
+    }
+  }
+
+  res.json({ success: true, entry: result.entry });
+});
+
+router.post('/liquidity/entry/:id/approve', isAuthenticated, async (req, res) => {
+  if (!isConfigured()) {
+    return res.status(503).json({ success: false, error: 'Supabase is not configured on the server.' });
+  }
+
+  const fields = {
+    status: 'approved'
+  };
+  if (req.body?.date || req.body?.timestamp) {
+    fields.timestamp = timestampFromBody(req.body);
+  }
+
+  const result = await updateLiquidityEntry(req.params.id, fields);
+  if (!result.success || !result.entry) {
+    return res.status(500).json({ success: false, error: result.error || 'Failed to approve' });
+  }
+
+  if (result.entry.liability_id) {
+    const liability = await getLiquidityLiability(result.entry.liability_id);
+    if (liability && String(liability.status || 'open') !== 'paid') {
+      await markLiabilityPaid(liability, result.entry);
+    }
+  }
+
+  res.json({ success: true, entry: result.entry });
 });
 
 router.delete('/liquidity/entry/:id', isAuthenticated, async (req, res) => {
@@ -574,8 +695,7 @@ router.post('/liquidity/recurring', isAuthenticated, async (req, res) => {
   const signed = parseSignedAmount(req.body?.amount);
   const currency = normalizeCurrency(req.body?.currency);
   const day = Math.round(toNumber(req.body?.day_of_month, 0));
-  const now = new Date();
-  const start_date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const start_date = parseDayInput(req.body?.start_date, berlinDateKey());
 
   if (!name) {
     return res.status(400).json({ success: false, error: 'Name is required.' });
