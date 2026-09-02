@@ -36,6 +36,7 @@ const { getLatestEurUsdRate } = require('../utils/fx');
 const {
   parsePositiveAmount,
   parseSignedAmount,
+  parseTypedMoney,
   normalizeCurrency,
   normalizeStatus,
   normalizeAccount,
@@ -598,18 +599,16 @@ router.post('/liquidity/entry', isAuthenticated, async (req, res) => {
     return res.status(503).json({ success: false, error: 'Supabase is not configured on the server.' });
   }
 
-  const signed = parseSignedAmount(req.body?.amount);
-  const currency = normalizeCurrency(req.body?.currency);
+  const typed = parseTypedMoney(req.body?.amount);
+  const signed = typed || parseSignedAmount(req.body?.amount);
+  const currency = typed?.currency || normalizeCurrency(req.body?.currency) || 'EUR';
   const note = typeof req.body?.note === 'string' ? req.body.note.trim() : '';
   const status = normalizeStatus(req.body?.status) || 'approved';
   const account = normalizeAccount(req.body?.account) || 'bank';
   const liabilityId = typeof req.body?.liability_id === 'string' ? req.body.liability_id.trim() : '';
 
   if (!signed) {
-    return res.status(400).json({ success: false, error: 'Amount must be a number other than 0, like -25.32 or 25.32.' });
-  }
-  if (!currency) {
-    return res.status(400).json({ success: false, error: 'Currency must be USD or EUR.' });
+    return res.status(400).json({ success: false, error: 'Type an amount like -25€ or $23.' });
   }
   const { amount, direction } = signed;
 

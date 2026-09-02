@@ -38,6 +38,26 @@ function parseSignedAmount(value) {
   return { amount, direction: n < 0 ? 'out' : 'in' };
 }
 
+function parseTypedMoney(value, defaultCurrency = 'EUR') {
+  if (value === null || value === undefined) return null;
+  let raw = String(value).trim();
+  if (!raw) return null;
+  raw = raw.replace(/[−–—]/g, '-');
+
+  let currency = defaultCurrency;
+  if (/€|EUR/i.test(raw)) currency = 'EUR';
+  else if (/\$|USD/i.test(raw)) currency = 'USD';
+
+  const cleaned = raw
+    .replace(/EUR/gi, '')
+    .replace(/USD/gi, '')
+    .replace(/€/g, '')
+    .replace(/\$/g, '');
+  const parsed = parseSignedAmount(cleaned);
+  if (!parsed) return null;
+  return { ...parsed, currency };
+}
+
 function parsePositiveAmount(value) {
   const parsed = parseSignedAmount(value);
   return parsed ? parsed.amount : null;
@@ -473,6 +493,7 @@ module.exports = {
   normalizeMoneyString,
   formatSignedAmount,
   parseSignedAmount,
+  parseTypedMoney,
   parsePositiveAmount,
   normalizeCurrency,
   normalizeDirection,

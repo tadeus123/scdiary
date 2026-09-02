@@ -1,4 +1,4 @@
-const { buildLiquiditySeries } = require('../utils/liquidity');
+const { buildLiquiditySeries, parseTypedMoney } = require('../utils/liquidity');
 
 function assert(condition, message) {
   if (!condition) {
@@ -6,6 +6,13 @@ function assert(condition, message) {
     process.exit(1);
   }
 }
+
+const euroOut = parseTypedMoney('-25€');
+assert(euroOut && euroOut.amount === 25 && euroOut.direction === 'out' && euroOut.currency === 'EUR', `euro out ${JSON.stringify(euroOut)}`);
+const dollarIn = parseTypedMoney('$23');
+assert(dollarIn && dollarIn.amount === 23 && dollarIn.direction === 'in' && dollarIn.currency === 'USD', `dollar in ${JSON.stringify(dollarIn)}`);
+const dollarOut = parseTypedMoney('-$23');
+assert(dollarOut && dollarOut.amount === 23 && dollarOut.direction === 'out' && dollarOut.currency === 'USD', `dollar out ${JSON.stringify(dollarOut)}`);
 
 const start = '2026-08-29T12:00:00.000+02:00';
 

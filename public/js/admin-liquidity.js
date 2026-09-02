@@ -43,6 +43,26 @@ function parseSignedAmount(value) {
   return { amount, direction: n < 0 ? 'out' : 'in' };
 }
 
+function parseTypedMoney(value) {
+  if (value === null || value === undefined) return null;
+  let raw = String(value).trim();
+  if (!raw) return null;
+  raw = raw.replace(/[−–—]/g, '-');
+
+  let currency = 'EUR';
+  if (/€|EUR/i.test(raw)) currency = 'EUR';
+  else if (/\$|USD/i.test(raw)) currency = 'USD';
+
+  const cleaned = raw
+    .replace(/EUR/gi, '')
+    .replace(/USD/gi, '')
+    .replace(/€/g, '')
+    .replace(/\$/g, '');
+  const parsed = parseSignedAmount(cleaned);
+  if (!parsed) return null;
+  return { ...parsed, currency };
+}
+
 function formatUnsignedAmount(amount) {
   return Math.abs(Number(amount) || 0).toFixed(2);
 }
@@ -61,7 +81,7 @@ function readAmountWithDirection(amountId, directionId, fallbackDirection) {
 }
 
 function bindAmountInputs() {
-  ['liability-amount', 'entry-amount', 'recurring-amount'].forEach((id) => {
+  ['liability-amount', 'recurring-amount'].forEach((id) => {
     const input = document.getElementById(id);
     if (!input) return;
     input.addEventListener('blur', () => {
@@ -250,18 +270,16 @@ async function payLiquidityLiability(itemId) {
 }
 
 async function saveEntry() {
-  const parsed = readAmountWithDirection('entry-amount', 'entry-direction', 'out');
-  const currency = document.getElementById('entry-currency').value;
+  const parsed = parseTypedMoney(document.getElementById('entry-amount').value);
   const note = document.getElementById('entry-content').value.trim();
   const saveBtn = document.getElementById('save-btn');
 
   if (!parsed) {
-    showMessage('message-container', 'Amount is required.', 'error');
+    showMessage('message-container', 'Type an amount like -25€ or $23.', 'error');
     return;
   }
 
   const amount = formatSignedAmount(parsed);
-  document.getElementById('entry-amount').value = formatUnsignedAmount(parsed.amount);
 
   saveBtn.disabled = true;
   saveBtn.textContent = 'saving...';
@@ -272,7 +290,7 @@ async function saveEntry() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         amount,
-        currency,
+        currency: parsed.currency,
         note,
         timestamp: new Date().toISOString(),
         account: document.getElementById('entry-account').value,
