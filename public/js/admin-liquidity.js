@@ -274,7 +274,7 @@ async function saveEntry() {
         amount,
         currency,
         note,
-        date: document.getElementById('entry-date').value,
+        timestamp: new Date().toISOString(),
         status: document.getElementById('entry-status').value,
         account: document.getElementById('entry-account').value,
         liability_id: document.getElementById('entry-liability').value
