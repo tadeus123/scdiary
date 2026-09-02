@@ -18,6 +18,7 @@ const {
   createLiquidityEntry,
   updateLiquidityEntry,
   deleteLiquidityEntry,
+  getLiquidityEntries,
   createLiquidityRecurring,
   deleteLiquidityRecurring,
   getLiquidityLiability,
@@ -559,7 +560,7 @@ router.post('/liquidity/liability/:id/paid', isAuthenticated, async (req, res) =
     amount_usd: signedUsd(liability.amount, 'out', fx_rate),
     direction: 'out',
     note: liability.name || '',
-    status: 'approved',
+    status: 'pending',
     account,
     liability_id: liability.id
   };
@@ -679,12 +680,25 @@ router.post('/liquidity/entry/:id/approve', isAuthenticated, async (req, res) =>
 });
 
 router.delete('/liquidity/entry/:id', isAuthenticated, async (req, res) => {
+  const entries = await getLiquidityEntries();
+  const entry = (entries || []).find((item) => item.id === req.params.id);
   const result = await deleteLiquidityEntry(req.params.id);
-  if (result.success) {
-    res.json({ success: true });
-  } else {
-    res.status(500).json({ success: false, error: result.error || 'Failed to delete entry' });
+  if (!result.success) {
+    return res.status(500).json({ success: false, error: result.error || 'Failed to delete entry' });
   }
+
+  if (entry && entry.liability_id && String(entry.status || '') === 'pending') {
+    const liability = await getLiquidityLiability(entry.liability_id);
+    if (liability && String(liability.status || 'open') === 'paid') {
+      await updateLiquidityLiability(liability.id, {
+        status: 'open',
+        paid_at: null,
+        payment_entry_id: null
+      });
+    }
+  }
+
+  res.json({ success: true });
 });
 
 router.post('/liquidity/recurring', isAuthenticated, async (req, res) => {

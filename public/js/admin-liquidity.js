@@ -236,13 +236,13 @@ async function deleteLiquidityLiability(itemId) {
 }
 
 async function payLiquidityLiability(itemId) {
-  if (!confirm('Mark as paid? Money leaves bank, the liability disappears, liquidity stays the same.')) return;
+  if (!confirm('Take this off the open list and create a pending payment? Approve it when it hits the bank.')) return;
 
   try {
     const response = await fetch(`/admin/liquidity/liability/${itemId}/paid`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: todayInputValue(), account: 'bank' })
+      body: JSON.stringify({ timestamp: new Date().toISOString(), account: 'bank' })
     });
     const data = await response.json();
     if (data.success) {
