@@ -79,17 +79,16 @@
       <div class="new-entry-box liquidity-summary-box">
         <h2>Liquidity</h2>
         <p class="liquidity-now"><%= money(snap.current) %></p>
-        <div id="settings-message"></div>
         <div class="liquidity-calc">
           <div class="liquidity-calc-row">
             <span></span>
-            <label for="settings-bank">Bank Account</label>
-            <input type="text" id="settings-bank" value="<%= Number(snap.bank || 0).toFixed(2) %>" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+            <span>Bank Account</span>
+            <strong><%= money(snap.bank) %></strong>
           </div>
           <div class="liquidity-calc-row">
             <span>+</span>
-            <label for="settings-cash">Cash</label>
-            <input type="text" id="settings-cash" value="<%= Number(snap.cash || 0).toFixed(2) %>" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+            <span>Cash</span>
+            <strong><%= money(snap.cash) %></strong>
           </div>
           <div class="liquidity-calc-row">
             <span>−</span>
@@ -102,7 +101,6 @@
             <strong><%= money(snap.current) %></strong>
           </div>
         </div>
-        <button type="button" class="btn" id="save-settings-btn">save bank / cash</button>
       </div>
 
       <% if (pending && pending.length > 0) { %>
@@ -265,6 +263,6 @@
   </div>
 
   <script src="/js/main.js"></script>
-  <script src="/js/admin-liquidity.js?v=lq-paid-pending"></script>
+  <script src="/js/admin-liquidity.js?v=lq-readonly-sum"></script>
 </body>
 </html>

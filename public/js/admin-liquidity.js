@@ -144,36 +144,6 @@ function editLiquidityLiability(button) {
   amountInput?.select();
 }
 
-async function saveSettings() {
-  const button = document.getElementById('save-settings-btn');
-  button.disabled = true;
-  button.textContent = 'saving...';
-  try {
-    const response = await fetch('/admin/liquidity/settings', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        bank_eur: document.getElementById('settings-bank').value,
-        cash_eur: document.getElementById('settings-cash').value,
-        date: todayInputValue()
-      })
-    });
-    const data = await response.json();
-    if (data.success) {
-      showMessage('settings-message', 'Saved.', 'success');
-      setTimeout(() => window.location.reload(), 500);
-    } else {
-      showMessage('settings-message', data.error || 'Failed to save.', 'error');
-    }
-  } catch (error) {
-    console.error('Save settings error:', error);
-    showMessage('settings-message', 'Network error. Please try again.', 'error');
-  } finally {
-    button.disabled = false;
-    button.textContent = 'save bank / cash';
-  }
-}
-
 async function saveLiability() {
   const button = document.getElementById('save-liability-btn');
   const parsed = parseTypedMoney(document.getElementById('liability-amount').value);
@@ -420,7 +390,6 @@ window.deleteLiquidityEntry = deleteLiquidityEntry;
 window.approveLiquidityEntry = approveLiquidityEntry;
 window.deleteLiquidityRecurring = deleteLiquidityRecurring;
 
-document.getElementById('save-settings-btn')?.addEventListener('click', saveSettings);
 document.getElementById('save-liability-btn')?.addEventListener('click', saveLiability);
 document.getElementById('cancel-liability-edit-btn')?.addEventListener('click', clearLiabilityForm);
 document.getElementById('save-btn')?.addEventListener('click', saveEntry);
