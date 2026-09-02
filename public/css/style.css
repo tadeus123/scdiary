@@ -3696,10 +3696,15 @@ body.selfie-crop-open {
 }
 
 .admin-liquidity-page .new-entry-box h2,
-.admin-liquidity-page .liquidity-monthly-section h2 {
+.admin-liquidity-page .liquidity-monthly-section h2,
+.admin-liquidity-page .liquidity-pending-block h2 {
   font-size: 1.5rem;
   font-weight: 400;
   margin-bottom: 0.5rem;
+}
+
+.admin-liquidity-page .liquidity-pending-block {
+  margin: 0 0 2.5rem;
 }
 
 .liquidity-start-box > .form-hint {

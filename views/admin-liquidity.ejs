@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <%- include('partials/seo-head') %>
-  <link rel="stylesheet" href="/css/style.css?v=lq-bank-cash">
+  <link rel="stylesheet" href="/css/style.css?v=lq-bank-cash-2">
 </head>
 <body class="admin-page admin-liquidity-page">
   <a href="/admin" class="corner-btn-left" aria-label="Back to Admin"></a>
@@ -148,6 +148,37 @@
         <button type="button" class="btn" id="save-btn">save</button>
       </div>
 
+      <% if (pending && pending.length > 0) { %>
+        <div class="liquidity-pending-block">
+          <h2>pending</h2>
+          <div id="pending-message"></div>
+          <div class="entries liquidity-pending-list">
+            <% pending.forEach(entry => { %>
+              <article class="entry" data-entry-id="<%= entry.id %>">
+                <div class="entry-header">
+                  <div class="entry-date">
+                    <%= deDate(entry.timestamp) %>
+                    <span class="liquidity-row-meta">pending</span>
+                  </div>
+                  <div class="liquidity-entry-actions">
+                    <button type="button" class="liquidity-paid-btn" onclick="approveLiquidityEntry('<%= entry.id %>')">approve</button>
+                    <button type="button" class="delete-entry-btn" onclick="deleteLiquidityEntry('<%= entry.id %>')" aria-label="Delete entry">×</button>
+                  </div>
+                </div>
+                <div class="entry-content">
+                  <p class="liquidity-amount <%= entry.direction === 'out' ? 'liquidity-out' : 'liquidity-in' %>">
+                    <%= signedMoney(entry.amount, entry.currency, entry.direction) %>
+                  </p>
+                  <% if (entry.note) { %>
+                    <p><%= entry.note %></p>
+                  <% } %>
+                </div>
+              </article>
+            <% }) %>
+          </div>
+        </div>
+      <% } %>
+
       <div class="entries">
         <% if (!entries || entries.length === 0) { %>
           <div class="empty-state">
@@ -173,39 +204,6 @@
               </div>
             </article>
           <% }) %>
-        <% } %>
-      </div>
-
-      <div class="new-entry-box">
-        <h2>pending</h2>
-        <div id="pending-message"></div>
-        <% if (!pending || pending.length === 0) { %>
-          <p class="form-hint">nothing waiting for approval.</p>
-        <% } else { %>
-          <div class="entries liquidity-pending-list">
-            <% pending.forEach(entry => { %>
-              <article class="entry" data-entry-id="<%= entry.id %>">
-                <div class="entry-header">
-                  <div class="entry-date">
-                    <%= deDate(entry.timestamp) %>
-                    <span class="liquidity-row-meta">pending</span>
-                  </div>
-                  <div class="liquidity-entry-actions">
-                    <button type="button" class="liquidity-paid-btn" onclick="approveLiquidityEntry('<%= entry.id %>')">approve</button>
-                    <button type="button" class="delete-entry-btn" onclick="deleteLiquidityEntry('<%= entry.id %>')" aria-label="Delete entry">×</button>
-                  </div>
-                </div>
-                <div class="entry-content">
-                  <p class="liquidity-amount <%= entry.direction === 'out' ? 'liquidity-out' : 'liquidity-in' %>">
-                    <%= signedMoney(entry.amount, entry.currency, entry.direction) %>
-                  </p>
-                  <% if (entry.note) { %>
-                    <p><%= entry.note %></p>
-                  <% } %>
-                </div>
-              </article>
-            <% }) %>
-          </div>
         <% } %>
       </div>
 
