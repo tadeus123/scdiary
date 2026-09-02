@@ -328,12 +328,12 @@ function newLiquidityId(prefix) {
 
 function readLiabilityFields(body) {
   const name = typeof body?.name === 'string' ? body.name.trim() : '';
-  const amount = parsePositiveAmount(body?.amount);
-  const currency = normalizeCurrency(body?.currency);
+  const typed = parseTypedMoney(body?.amount);
+  const amount = typed ? typed.amount : parsePositiveAmount(body?.amount);
+  const currency = typed?.currency || normalizeCurrency(body?.currency) || 'EUR';
   const createdKey = parseDayInput(body?.date || body?.created_at, berlinDateKey());
   if (!name) return { error: 'What is this liability?' };
-  if (!amount) return { error: 'Amount must be a number other than 0, like -25.32.' };
-  if (!currency) return { error: 'Currency must be USD or EUR.' };
+  if (!amount) return { error: 'Type an amount like -250€ or $300.' };
   if (!createdKey) return { error: 'Date is required.' };
   return { name, amount, currency, createdKey };
 }
@@ -372,8 +372,10 @@ router.put('/liquidity/settings', isAuthenticated, async (req, res) => {
   }
 
   const graph = await loadLiquidityGraph();
-  const nextCash = parseSignedAmount(req.body?.cash_eur);
-  const nextBank = parseSignedAmount(req.body?.bank_eur);
+  const cashTyped = parseTypedMoney(req.body?.cash_eur);
+  const bankTyped = parseTypedMoney(req.body?.bank_eur);
+  const nextCash = cashTyped || parseSignedAmount(req.body?.cash_eur);
+  const nextBank = bankTyped || parseSignedAmount(req.body?.bank_eur);
   const dateKey = parseDayInput(req.body?.date, berlinDateKey());
   const timestamp = berlinNoonIso(dateKey);
   const updates = { ...graph.settings };
@@ -691,8 +693,9 @@ router.post('/liquidity/recurring', isAuthenticated, async (req, res) => {
   }
 
   const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
-  const signed = parseSignedAmount(req.body?.amount);
-  const currency = normalizeCurrency(req.body?.currency);
+  const typed = parseTypedMoney(req.body?.amount);
+  const signed = typed || parseSignedAmount(req.body?.amount);
+  const currency = typed?.currency || normalizeCurrency(req.body?.currency) || 'EUR';
   const day = Math.round(toNumber(req.body?.day_of_month, 0));
   const start_date = parseDayInput(req.body?.start_date, berlinDateKey());
 
@@ -700,10 +703,7 @@ router.post('/liquidity/recurring', isAuthenticated, async (req, res) => {
     return res.status(400).json({ success: false, error: 'Name is required.' });
   }
   if (!signed) {
-    return res.status(400).json({ success: false, error: 'Amount must be a number other than 0, like -25.32 or 25.32.' });
-  }
-  if (!currency) {
-    return res.status(400).json({ success: false, error: 'Currency must be USD or EUR.' });
+    return res.status(400).json({ success: false, error: 'Type an amount like -25€ or $20.' });
   }
   const { amount, direction } = signed;
   if (!Number.isInteger(day) || day < 1 || day > 31) {

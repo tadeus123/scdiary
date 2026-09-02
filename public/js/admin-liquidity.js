@@ -72,23 +72,12 @@ function formatSignedAmount(parsed) {
   return parsed.direction === 'out' ? `-${formatted}` : formatted;
 }
 
-function readAmountWithDirection(amountId, directionId, fallbackDirection) {
-  const parsed = parseSignedAmount(document.getElementById(amountId)?.value);
-  if (!parsed) return null;
-  const pill = document.getElementById(directionId)?.value;
-  const direction = pill === 'in' || pill === 'out' ? pill : (fallbackDirection || parsed.direction);
-  return { amount: parsed.amount, direction };
-}
-
-function bindAmountInputs() {
-  ['liability-amount', 'recurring-amount'].forEach((id) => {
-    const input = document.getElementById(id);
-    if (!input) return;
-    input.addEventListener('blur', () => {
-      const parsed = parseSignedAmount(input.value);
-      if (parsed) input.value = formatUnsignedAmount(parsed.amount);
-    });
-  });
+function formatTypedAmount(parsed) {
+  const n = parsed.amount.toFixed(2);
+  if (parsed.currency === 'USD') {
+    return parsed.direction === 'out' ? `-$${n}` : `$${n}`;
+  }
+  return parsed.direction === 'out' ? `-${n}€` : `${n}€`;
 }
 
 function setCurrencyPill(targetId, value) {
@@ -118,7 +107,6 @@ function clearLiabilityForm() {
   if (editId) editId.value = '';
   if (saveBtn) saveBtn.textContent = 'add liability';
   if (cancelBtn) cancelBtn.hidden = true;
-  setCurrencyPill('liability-currency', 'EUR');
   document.querySelectorAll('.liquidity-liability-list .entry.is-editing').forEach((row) => {
     row.classList.remove('is-editing');
   });
@@ -141,11 +129,10 @@ function editLiquidityLiability(button) {
   if (nameInput) nameInput.value = name;
   if (amountInput) {
     amountInput.value = Number.isFinite(amount) && amount > 0
-      ? formatUnsignedAmount(amount)
+      ? formatTypedAmount({ amount, direction: 'out', currency })
       : '';
   }
   if (dateInput) dateInput.value = date;
-  setCurrencyPill('liability-currency', currency);
   if (editId) editId.value = id;
   if (saveBtn) saveBtn.textContent = 'save changes';
   if (cancelBtn) cancelBtn.hidden = false;
@@ -189,16 +176,16 @@ async function saveSettings() {
 
 async function saveLiability() {
   const button = document.getElementById('save-liability-btn');
-  const parsed = parseSignedAmount(document.getElementById('liability-amount').value);
+  const parsed = parseTypedMoney(document.getElementById('liability-amount').value);
   const payload = {
-    amount: parsed ? formatSignedAmount({ amount: parsed.amount, direction: 'out' }) : document.getElementById('liability-amount').value,
-    currency: document.getElementById('liability-currency').value,
+    amount: parsed ? formatSignedAmount(parsed) : document.getElementById('liability-amount').value,
+    currency: parsed ? parsed.currency : 'EUR',
     name: document.getElementById('liability-name').value.trim(),
     date: document.getElementById('liability-date').value
   };
 
   if (!parsed || !payload.name) {
-    showMessage('liability-message', 'Amount, date, and a name are required.', 'error');
+    showMessage('liability-message', 'Type an amount like -250€ and a name.', 'error');
     return;
   }
 
@@ -356,19 +343,16 @@ async function deleteLiquidityEntry(entryId) {
 async function saveRecurring(event) {
   event.preventDefault();
   const button = document.getElementById('save-recurring-btn');
-  const parsed = readAmountWithDirection('recurring-amount', 'recurring-direction', 'out');
-  if (parsed) {
-    document.getElementById('recurring-amount').value = formatUnsignedAmount(parsed.amount);
-  }
+  const parsed = parseTypedMoney(document.getElementById('recurring-amount').value);
   const payload = {
     name: document.getElementById('recurring-name').value,
     amount: parsed ? formatSignedAmount(parsed) : document.getElementById('recurring-amount').value,
-    currency: document.getElementById('recurring-currency').value,
+    currency: parsed ? parsed.currency : 'EUR',
     day_of_month: document.getElementById('recurring-day').value
   };
 
   if (!parsed) {
-    showMessage('recurring-message', 'Amount is required.', 'error');
+    showMessage('recurring-message', 'Type an amount like -25€ or $20.', 'error');
     return;
   }
 
@@ -443,7 +427,6 @@ document.getElementById('cancel-liability-edit-btn')?.addEventListener('click', 
 document.getElementById('save-btn')?.addEventListener('click', saveEntry);
 document.getElementById('recurring-form')?.addEventListener('submit', saveRecurring);
 bindPills();
-bindAmountInputs();
 
 document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {

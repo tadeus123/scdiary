@@ -93,12 +93,12 @@
           <div class="liquidity-calc-row">
             <span></span>
             <label for="settings-bank">Bank Account</label>
-            <input type="text" id="settings-bank" inputmode="decimal" value="<%= Number(snap.bank || 0).toFixed(2) %>" autocomplete="off">
+            <input type="text" id="settings-bank" value="<%= Number(snap.bank || 0).toFixed(2) %>" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
           </div>
           <div class="liquidity-calc-row">
             <span>+</span>
             <label for="settings-cash">Cash</label>
-            <input type="text" id="settings-cash" inputmode="decimal" value="<%= Number(snap.cash || 0).toFixed(2) %>" autocomplete="off">
+            <input type="text" id="settings-cash" value="<%= Number(snap.cash || 0).toFixed(2) %>" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
           </div>
           <div class="liquidity-calc-row">
             <span>−</span>
@@ -189,15 +189,7 @@
           </div>
           <div class="form-group">
             <label for="liability-amount">amount</label>
-            <input type="text" id="liability-amount" inputmode="decimal" placeholder="25.32" autocomplete="off" autocapitalize="off" spellcheck="false">
-          </div>
-          <div class="form-group">
-            <span class="liquidity-field-label">currency</span>
-            <div class="liquidity-pills" data-target="liability-currency" role="group" aria-label="currency">
-              <button type="button" class="liquidity-pill" data-value="USD">USD</button>
-              <button type="button" class="liquidity-pill is-active" data-value="EUR">EUR</button>
-            </div>
-            <input type="hidden" id="liability-currency" value="EUR">
+            <input type="text" id="liability-amount" placeholder="-250€" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">
           </div>
         </div>
         <textarea id="liability-name" placeholder="gift, flight, ..."></textarea>
@@ -252,23 +244,7 @@
             </div>
             <div class="form-group">
               <label for="recurring-amount">amount</label>
-              <input type="text" id="recurring-amount" inputmode="decimal" placeholder="25.32" autocomplete="off" autocapitalize="off" spellcheck="false" required>
-            </div>
-            <div class="form-group">
-              <span class="liquidity-field-label">in / out</span>
-              <div class="liquidity-pills" data-target="recurring-direction" role="group" aria-label="in or out">
-                <button type="button" class="liquidity-pill" data-value="in">+</button>
-                <button type="button" class="liquidity-pill is-active" data-value="out">−</button>
-              </div>
-              <input type="hidden" id="recurring-direction" value="out">
-            </div>
-            <div class="form-group">
-              <span class="liquidity-field-label">currency</span>
-              <div class="liquidity-pills" data-target="recurring-currency" role="group" aria-label="currency">
-                <button type="button" class="liquidity-pill" data-value="USD">USD</button>
-                <button type="button" class="liquidity-pill is-active" data-value="EUR">EUR</button>
-              </div>
-              <input type="hidden" id="recurring-currency" value="EUR">
+              <input type="text" id="recurring-amount" placeholder="-25€" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required enterkeyhint="done">
             </div>
             <div class="form-group">
               <label for="recurring-day">day of month</label>
@@ -305,6 +281,6 @@
 
   <script src="/js/main.js"></script>
   <script src="/js/liquidity.js?v=lq-bank-cash"></script>
-  <script src="/js/admin-liquidity.js?v=lq-type-amount"></script>
+  <script src="/js/admin-liquidity.js?v=lq-type-amount-2"></script>
 </body>
 </html>
