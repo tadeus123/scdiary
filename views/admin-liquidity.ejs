@@ -105,12 +105,6 @@
         <button type="button" class="btn" id="save-settings-btn">save bank / cash</button>
       </div>
 
-      <div class="admin-liquidity-chart">
-        <div id="liquidity-chart"></div>
-        <div id="liquidity-balance" class="reading-time-summary"></div>
-        <div id="liquidity-tooltip" class="liquidity-tooltip hidden"></div>
-      </div>
-
       <% if (pending && pending.length > 0) { %>
         <div class="liquidity-pending-block">
           <h2>pending</h2>
@@ -271,7 +265,6 @@
   </div>
 
   <script src="/js/main.js"></script>
-  <script src="/js/liquidity.js?v=lq-bank-cash"></script>
   <script src="/js/admin-liquidity.js?v=lq-paid-pending"></script>
 </body>
 </html>
