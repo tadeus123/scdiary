@@ -76,33 +76,6 @@
         <button type="button" class="btn" id="save-btn">save</button>
       </div>
 
-      <div class="new-entry-box liquidity-summary-box">
-        <h2>Liquidity</h2>
-        <p class="liquidity-now"><%= money(snap.current) %></p>
-        <div class="liquidity-calc">
-          <div class="liquidity-calc-row">
-            <span></span>
-            <span>Bank Account</span>
-            <strong><%= money(snap.bank) %></strong>
-          </div>
-          <div class="liquidity-calc-row">
-            <span>+</span>
-            <span>Cash</span>
-            <strong><%= money(snap.cash) %></strong>
-          </div>
-          <div class="liquidity-calc-row">
-            <span>−</span>
-            <span>Open Liabilities</span>
-            <strong><%= money(snap.open) %></strong>
-          </div>
-          <div class="liquidity-calc-row liquidity-calc-total">
-            <span>=</span>
-            <span>Liquidity</span>
-            <strong><%= money(snap.current) %></strong>
-          </div>
-        </div>
-      </div>
-
       <% if (pending && pending.length > 0) { %>
         <div class="liquidity-pending-block">
           <h2>pending</h2>
@@ -133,6 +106,33 @@
           </div>
         </div>
       <% } %>
+
+      <div class="new-entry-box liquidity-summary-box">
+        <h2>Liquidity</h2>
+        <p class="liquidity-now"><%= money(snap.current) %></p>
+        <div class="liquidity-calc">
+          <div class="liquidity-calc-row">
+            <span></span>
+            <span>Bank Account</span>
+            <strong><%= money(snap.bank) %></strong>
+          </div>
+          <div class="liquidity-calc-row">
+            <span>+</span>
+            <span>Cash</span>
+            <strong><%= money(snap.cash) %></strong>
+          </div>
+          <div class="liquidity-calc-row">
+            <span>−</span>
+            <span>Open Liabilities</span>
+            <strong><%= money(snap.open) %></strong>
+          </div>
+          <div class="liquidity-calc-row liquidity-calc-total">
+            <span>=</span>
+            <span>Liquidity</span>
+            <strong><%= money(snap.current) %></strong>
+          </div>
+        </div>
+      </div>
 
       <div class="entries">
         <% if (!entries || entries.length === 0) { %>
