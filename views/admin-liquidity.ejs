@@ -55,41 +55,6 @@
     </nav>
 
     <main>
-      <div class="new-entry-box liquidity-summary-box">
-        <h2>Liquidity</h2>
-        <p class="liquidity-now"><%= money(snap.current) %></p>
-        <div id="settings-message"></div>
-        <div class="liquidity-calc">
-          <div class="liquidity-calc-row">
-            <span></span>
-            <label for="settings-bank">Bank Account</label>
-            <input type="text" id="settings-bank" inputmode="decimal" value="<%= Number(snap.bank || 0).toFixed(2) %>" autocomplete="off">
-          </div>
-          <div class="liquidity-calc-row">
-            <span>+</span>
-            <label for="settings-cash">Cash</label>
-            <input type="text" id="settings-cash" inputmode="decimal" value="<%= Number(snap.cash || 0).toFixed(2) %>" autocomplete="off">
-          </div>
-          <div class="liquidity-calc-row">
-            <span>−</span>
-            <span>Open Liabilities</span>
-            <strong><%= money(snap.open) %></strong>
-          </div>
-          <div class="liquidity-calc-row liquidity-calc-total">
-            <span>=</span>
-            <span>Liquidity</span>
-            <strong><%= money(snap.current) %></strong>
-          </div>
-        </div>
-        <button type="button" class="btn" id="save-settings-btn">save bank / cash</button>
-      </div>
-
-      <div class="admin-liquidity-chart">
-        <div id="liquidity-chart"></div>
-        <div id="liquidity-balance" class="reading-time-summary"></div>
-        <div id="liquidity-tooltip" class="liquidity-tooltip hidden"></div>
-      </div>
-
       <div class="new-entry-box">
         <h2>transaction log</h2>
         <div id="message-container"></div>
@@ -146,6 +111,41 @@
         </div>
         <textarea id="entry-content" placeholder="what was this..."></textarea>
         <button type="button" class="btn" id="save-btn">save</button>
+      </div>
+
+      <div class="new-entry-box liquidity-summary-box">
+        <h2>Liquidity</h2>
+        <p class="liquidity-now"><%= money(snap.current) %></p>
+        <div id="settings-message"></div>
+        <div class="liquidity-calc">
+          <div class="liquidity-calc-row">
+            <span></span>
+            <label for="settings-bank">Bank Account</label>
+            <input type="text" id="settings-bank" inputmode="decimal" value="<%= Number(snap.bank || 0).toFixed(2) %>" autocomplete="off">
+          </div>
+          <div class="liquidity-calc-row">
+            <span>+</span>
+            <label for="settings-cash">Cash</label>
+            <input type="text" id="settings-cash" inputmode="decimal" value="<%= Number(snap.cash || 0).toFixed(2) %>" autocomplete="off">
+          </div>
+          <div class="liquidity-calc-row">
+            <span>−</span>
+            <span>Open Liabilities</span>
+            <strong><%= money(snap.open) %></strong>
+          </div>
+          <div class="liquidity-calc-row liquidity-calc-total">
+            <span>=</span>
+            <span>Liquidity</span>
+            <strong><%= money(snap.current) %></strong>
+          </div>
+        </div>
+        <button type="button" class="btn" id="save-settings-btn">save bank / cash</button>
+      </div>
+
+      <div class="admin-liquidity-chart">
+        <div id="liquidity-chart"></div>
+        <div id="liquidity-balance" class="reading-time-summary"></div>
+        <div id="liquidity-tooltip" class="liquidity-tooltip hidden"></div>
       </div>
 
       <% if (pending && pending.length > 0) { %>
