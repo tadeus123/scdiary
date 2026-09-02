@@ -280,8 +280,7 @@ async function saveEntry() {
         currency: parsed.currency,
         note,
         timestamp: new Date().toISOString(),
-        account: document.getElementById('entry-account').value,
-        liability_id: document.getElementById('entry-liability').value
+        account: document.getElementById('entry-account').value
       })
     });
     const data = await response.json();
