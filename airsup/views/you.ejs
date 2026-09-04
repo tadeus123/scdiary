@@ -9,7 +9,7 @@
   <%- include('partials/nav') %>
   <div class="container airsup-shell">
     <main class="airsup-main">
-      <h1 class="airsup-title">This is you.</h1>
+      <h1 class="airsup-title">Listing</h1>
 
       <% if (loadError) { %>
         <p class="airsup-note airsup-note-error"><%= loadError %></p>
@@ -26,7 +26,6 @@
         <p class="airsup-note airsup-note-error">Saving needs SUPABASE_SERVICE_ROLE_KEY. Answers will not persist until that is set.</p>
       <% } %>
       <form id="airsup-you-form" class="airsup-form" data-airsup-page="you" data-draft-key="<%= user.googleId %>" data-server-updated="<%= serverUpdatedAt || '' %>">
-        <h2 class="airsup-group">listing</h2>
         <div class="airsup-questions">
           <% questions.filter((q) => !q.private).forEach((q) => { %>
             <label class="airsup-field">
