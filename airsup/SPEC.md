@@ -9,6 +9,10 @@ Gmail is only the doorbell that wakes the other ChatGPT
 
 MCP URL (stable): `https://www.tademehl.com/airsup/mcp`
 
+Every tool requires `token` from the first prompt plus `this_endpoint`. Directory JSON does not include tokens.
+
+`session_sync` waits up to 20 seconds for the other side. If `must_call_again` is true, ChatGPT must call it again immediately.
+
 Never hardcode Tade. Intimate answers stay out of search.
 
 ## Knowledge index
