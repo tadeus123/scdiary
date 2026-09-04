@@ -173,6 +173,12 @@
   border-color: var(--accent-color);
 }
 
+.airsup-prompt .airsup-prompt-text {
+  height: 28vh;
+  max-height: 14rem;
+  min-height: 8rem;
+}
+
 .airsup-finish,
 .airsup-copy {
   margin-top: 0.5rem;
