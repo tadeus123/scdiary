@@ -84,7 +84,7 @@ function toolList() {
         name: 'session_sync',
         title: 'Session sync',
         description:
-          'Live talk. Waits up to 20s for the other AI. If must_call_again is true, call this again immediately before talking to the user. Always pass since_seq from the previous next_since_seq (0 the first time).',
+          'Live talk. Waits up to 12s. If new_from_other has lines, say those to the user, then session_sync again. If MUST_CALL_AGAIN=true, call this again immediately without talking. Always pass since_seq (0 first, then next_since_seq).',
         inputSchema: {
           type: 'object',
           properties: {
@@ -92,9 +92,9 @@ function toolList() {
             token: tokenArg(),
             call_id: { type: 'string' },
             message: { type: 'string', description: 'Optional outbound chat' },
-            since_seq: { type: 'number', description: 'Use next_since_seq from the last session_sync. First call: 0.' },
+            since_seq: { type: 'number', description: 'Required. 0 the first time, then always next_since_seq.' },
           },
-          required: ['this_endpoint', 'token', 'call_id'],
+          required: ['this_endpoint', 'token', 'call_id', 'since_seq'],
         },
         annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
       },
@@ -166,11 +166,31 @@ function rpcErrorCode(error) {
   return Number.isInteger(code) ? code : -32603;
 }
 
+function formatToolResult(data) {
+  const parts = [];
+  if (data && typeof data === 'object' && typeof data.must_call_again === 'boolean') {
+    const count = Array.isArray(data.new_from_other) ? data.new_from_other.length : 0;
+    parts.push(`MUST_CALL_AGAIN=${data.must_call_again} next_since_seq=${data.next_since_seq} new_from_other=${count}`);
+    if (data.instruction) parts.push(data.instruction);
+    if (count > 0) {
+      parts.push('SPEECH:');
+      for (const row of data.new_from_other) {
+        parts.push(String(row.body || ''));
+      }
+    }
+  }
+  parts.push(JSON.stringify(data));
+  return {
+    structuredContent: data,
+    content: [{ type: 'text', text: parts.join('\n') }],
+  };
+}
+
 async function callTool(name, args) {
   const a = args || {};
   const token = a.token;
   if (name === 'find_people') return callFindPeople(a);
-  if (name === 'start_call' || name === 'create_network_request') {
+  if (name === 'start_call') {
     return startCall({
       thisEndpoint: a.this_endpoint || a.from_endpoint,
       token,
@@ -205,11 +225,15 @@ async function callTool(name, args) {
       body: a.body || a.message,
     });
   }
-  if (name === 'create_network_response' || name === 'record_network_response') {
+  if (
+    name === 'create_network_request'
+    || name === 'create_network_response'
+    || name === 'record_network_response'
+  ) {
     return {
       ok: false,
       action: 'ignore',
-      instruction: 'Do not send REQUEST/RESPONSE email. Use session_sync on the live call.',
+      instruction: 'Use start_call and session_sync. Do not send Gmail for conversation.',
     };
   }
   const error = new Error(`Unknown tool: ${name}`);
@@ -225,9 +249,9 @@ async function dispatch(message) {
     return {
       protocolVersion: MCP_PROTOCOL,
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: 'airsup', version: '2.1.0' },
+      serverInfo: { name: 'airsup', version: '2.2.0' },
       instructions:
-        `Airsup MCP ${MCP_URL}. Pass token from the Airsup first prompt on every tool. Gmail is only a doorbell. Live talk: find_people → start_call → send [A2A-RING] → session_sync (it waits; if must_call_again, call it again immediately). Incoming RING: handle_ring. Never answer the email. Never invent people.`,
+        `Airsup MCP ${MCP_URL}. Pass token from the Airsup first prompt on every tool. Gmail is only a doorbell. Live talk: find_people → start_call → send [A2A-RING] → session_sync. If new_from_other has lines, say them, then sync again. If MUST_CALL_AGAIN=true, sync again immediately without talking. Incoming RING: handle_ring. Never answer the email. Never invent people.`,
     };
   }
 
@@ -237,10 +261,7 @@ async function dispatch(message) {
   if (method === 'prompts/list') return { prompts: [] };
   if (method === 'tools/call') {
     const data = await callTool(params.name, params.arguments || {});
-    return {
-      structuredContent: data,
-      content: [{ type: 'text', text: JSON.stringify(data) }],
-    };
+    return formatToolResult(data);
   }
 
   const error = new Error(`Unknown method: ${method}`);
@@ -304,5 +325,6 @@ module.exports = {
   callFindPeople,
   callTool,
   toolList,
+  formatToolResult,
   mcpCors,
 };

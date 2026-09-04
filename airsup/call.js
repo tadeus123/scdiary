@@ -6,13 +6,15 @@ const {
   isUuid,
   roleOnCall,
   snapshot,
-  filterNewFromOther,
   pollInstruction,
+  splitFromOther,
+  parseSinceSeq,
   parseCallId,
   isRingMessage,
+  shapeSessionSync,
 } = require('./call-state');
 
-const DEFAULT_WAIT_MS = Number(process.env.AIRSUP_SYNC_WAIT_MS || 20000);
+const DEFAULT_WAIT_MS = Number(process.env.AIRSUP_SYNC_WAIT_MS || 12000);
 
 function requireDb() {
   if (!supabase) {
@@ -43,12 +45,12 @@ function doorbellEmail({ call, from, to, opening }) {
     `TO-ENDPOINT: ${to.endpoint_id}`,
     `MCP: ${MCP_URL}`,
     '',
-    'This is only a doorbell. It is not a question. Do not answer this email.',
-    'Do not use Gmail Reply.',
+    'This is only a doorbell. Do not answer this email. Do not use Gmail Reply.',
     '',
-    'Use the Airsup plugin, then:',
-    `join_call with this_endpoint ${to.endpoint_id} and call_id ${call.call_id}`,
-    'Then session_sync in this same chat. Pass your token from the Airsup prompt.',
+    'Use the Airsup plugin in ChatGPT.',
+    `Call handle_ring with this_endpoint ${to.endpoint_id}, this email subject, and this email body.`,
+    'Use YOUR token from your Airsup first prompt. This email does not contain it.',
+    'Then session_sync in that same chat. First since_seq=0, then always next_since_seq.',
     '',
     opening ? `Opening:\n${opening}` : '',
   ].filter(Boolean).join('\n').trim();
@@ -83,17 +85,29 @@ async function expireStale() {
 async function findOpenCall(a, b) {
   requireDb();
   if (!isUuid(a) || !isUuid(b)) throw invalid('endpoint ids must be UUIDs');
-  const { data, error } = await supabase
-    .from('airsup_calls')
-    .select('*')
-    .in('status', ['ringing', 'live'])
-    .or(
-      `and(caller_endpoint.eq.${a},callee_endpoint.eq.${b}),and(caller_endpoint.eq.${b},callee_endpoint.eq.${a})`
-    )
-    .order('created_at', { ascending: false })
-    .limit(1);
-  if (error) throw error;
-  return data && data[0] ? data[0] : null;
+  const [forward, reverse] = await Promise.all([
+    supabase
+      .from('airsup_calls')
+      .select('*')
+      .eq('caller_endpoint', a)
+      .eq('callee_endpoint', b)
+      .in('status', ['ringing', 'live', 'ending'])
+      .order('created_at', { ascending: false })
+      .limit(1),
+    supabase
+      .from('airsup_calls')
+      .select('*')
+      .eq('caller_endpoint', b)
+      .eq('callee_endpoint', a)
+      .in('status', ['ringing', 'live', 'ending'])
+      .order('created_at', { ascending: false })
+      .limit(1),
+  ]);
+  if (forward.error) throw forward.error;
+  if (reverse.error) throw reverse.error;
+  const rows = [...(forward.data || []), ...(reverse.data || [])]
+    .sort((x, y) => String(y.created_at).localeCompare(String(x.created_at)));
+  return rows[0] || null;
 }
 
 async function insertCall(row) {
@@ -106,6 +120,9 @@ async function insertCall(row) {
     })
     .select('*')
     .single();
+  if (error && (error.code === '23505' || /duplicate key/i.test(error.message || ''))) {
+    return null;
+  }
   if (error) throw error;
   return data;
 }
@@ -126,7 +143,7 @@ async function appendMessage(callId, { fromEndpoint, kind, body }) {
 
 async function messagesSince(callId, sinceSeq) {
   requireDb();
-  const after = Number(sinceSeq) || 0;
+  const after = Number(sinceSeq);
   const { data, error } = await supabase
     .from('airsup_call_messages')
     .select('seq, from_endpoint, kind, body, created_at')
@@ -156,7 +173,37 @@ async function startCall({ thisEndpoint, token, targetEndpoint, opening }) {
   if (!to.active || !to.contactable) throw invalid('That endpoint is not contactable');
 
   await expireStale();
-  const existing = await findOpenCall(from.endpoint_id, to.endpoint_id);
+  let existing = await findOpenCall(from.endpoint_id, to.endpoint_id);
+  if (!existing) {
+    const call = await insertCall({
+      call_id: newId('call'),
+      caller_endpoint: from.endpoint_id,
+      callee_endpoint: to.endpoint_id,
+      status: 'ringing',
+      opening: String(opening || '').trim(),
+      caller_hangup: false,
+      callee_hangup: false,
+      last_seq: 0,
+    });
+    if (call) {
+      if (call.opening) {
+        await appendMessage(call.call_id, {
+          fromEndpoint: from.endpoint_id,
+          kind: 'chat',
+          body: call.opening,
+        });
+      }
+      const fresh = await getCall(call.call_id);
+      return withPoll(fresh, from.endpoint_id, {
+        reused: false,
+        email: doorbellEmail({ call: fresh, from, to, opening: fresh.opening }),
+        must_call_again: false,
+        keep_polling: true,
+        instruction: 'Send that doorbell as a brand-new Gmail message. Never Reply. Then call session_sync immediately in THIS chat with since_seq=0, then always next_since_seq.',
+      });
+    }
+    existing = await findOpenCall(from.endpoint_id, to.endpoint_id);
+  }
   if (existing) {
     const role = roleOnCall(existing, from.endpoint_id);
     if (existing.status === 'ringing' && role === 'callee') {
@@ -166,43 +213,30 @@ async function startCall({ thisEndpoint, token, targetEndpoint, opening }) {
         instruction: 'They are already ringing you. Call join_call, then session_sync. Do not send another doorbell.',
       });
     }
+    if (existing.status === 'ending') {
+      return withPoll(existing, from.endpoint_id, {
+        reused: true,
+        email: null,
+        instruction: 'A call with this person is still closing. session_sync or hang_up on that call_id. Do not start a new ring.',
+      });
+    }
     if (existing.status === 'live') {
       return withPoll(existing, from.endpoint_id, {
         reused: true,
         email: null,
+        instruction: 'Already on a live line with this person. Call session_sync. Do not send another doorbell.',
       });
     }
     return withPoll(existing, from.endpoint_id, {
       reused: true,
-      email: role === 'caller'
-        ? doorbellEmail({ call: existing, from, to, opening: existing.opening || opening })
-        : null,
+      email: null,
+      instruction: role === 'caller'
+        ? 'Already ringing this person. Do not send another doorbell. Call session_sync with this call_id and since_seq=0.'
+        : 'They are already ringing you. Call join_call, then session_sync. Do not send another doorbell.',
     });
   }
 
-  const call = await insertCall({
-    call_id: newId('call'),
-    caller_endpoint: from.endpoint_id,
-    callee_endpoint: to.endpoint_id,
-    status: 'ringing',
-    opening: String(opening || '').trim(),
-    caller_hangup: false,
-    callee_hangup: false,
-    last_seq: 0,
-  });
-  if (call.opening) {
-    await appendMessage(call.call_id, {
-      fromEndpoint: from.endpoint_id,
-      kind: 'chat',
-      body: call.opening,
-    });
-  }
-  const fresh = await getCall(call.call_id);
-  return withPoll(fresh, from.endpoint_id, {
-    reused: false,
-    email: doorbellEmail({ call: fresh, from, to, opening: fresh.opening }),
-    instruction: 'Send that doorbell as a brand-new Gmail message. Never Reply. Then call session_sync immediately in THIS chat. It waits for them. Pass since_seq=0 the first time, then always next_since_seq.',
-  });
+  throw invalid('Could not open a call. Try session_sync or list_calls.');
 }
 
 async function joinCall({ thisEndpoint, token, callId }) {
@@ -231,12 +265,14 @@ async function joinCall({ thisEndpoint, token, callId }) {
   }
   const fresh = await getCall(callId);
   return withPoll(fresh, me.endpoint_id, {
-    instruction: 'You are on the line. Call session_sync now. If must_call_again is true, call it again immediately.',
+    instruction: 'You are on the line. Call session_sync now with since_seq=0, then always next_since_seq.',
   });
 }
 
 async function sessionSync({ thisEndpoint, token, callId, message, sinceSeq, waitMs }) {
   const me = await requireEndpoint(thisEndpoint, token);
+  const parsed = parseSinceSeq(sinceSeq);
+  if (!parsed.ok) throw invalid(parsed.error);
   let call = await getCall(callId);
   if (!call) throw invalid('Unknown call_id');
   const role = roleOnCall(call, me.endpoint_id);
@@ -272,12 +308,13 @@ async function sessionSync({ thisEndpoint, token, callId, message, sinceSeq, wai
 
   const wait = waitMs === 0 ? 0 : Math.min(Math.max(Number(waitMs || DEFAULT_WAIT_MS), 0), 25000);
   const started = Date.now();
-  let incoming = await messagesSince(callId, sinceSeq);
-  let others = filterNewFromOther(incoming, me.endpoint_id);
+  let incoming = await messagesSince(callId, parsed.value);
+  let { speech, events } = splitFromOther(incoming, me.endpoint_id);
   let fresh = await getCall(callId);
   while (
     wait > 0
-    && others.length === 0
+    && speech.length === 0
+    && events.length === 0
     && fresh
     && fresh.status !== 'ended'
     && Date.now() - started < wait
@@ -286,15 +323,13 @@ async function sessionSync({ thisEndpoint, token, callId, message, sinceSeq, wai
     if (snap.you_hung_up || snap.other_hung_up) break;
     await sleep(400);
     fresh = await getCall(callId);
-    incoming = await messagesSince(callId, sinceSeq);
-    others = filterNewFromOther(incoming, me.endpoint_id);
+    incoming = await messagesSince(callId, parsed.value);
+    ({ speech, events } = splitFromOther(incoming, me.endpoint_id));
   }
 
+  if (!fresh) throw invalid('Call disappeared');
   return {
-    ...withPoll(fresh, me.endpoint_id),
-    messages: incoming,
-    new_from_other: others,
-    last_seq: fresh.last_seq,
+    ...shapeSessionSync({ call: fresh, endpointId: me.endpoint_id, incoming }),
     waited_ms: Date.now() - started,
   };
 }
@@ -335,7 +370,7 @@ async function listCalls({ thisEndpoint, token }) {
     incoming_rings: rows.filter((row) => row.status === 'ringing' && sameId(row.callee_endpoint, id)).map((row) => snapshot(row, id)),
     outgoing_rings: rows.filter((row) => row.status === 'ringing' && sameId(row.caller_endpoint, id)).map((row) => snapshot(row, id)),
     live: rows.filter((row) => row.status === 'live' || row.status === 'ending').map((row) => snapshot(row, id)),
-    instruction: 'Incoming rings: join_call. Live lines: session_sync. Gmail is only a doorbell.',
+    instruction: 'Incoming rings: join_call with that call_id. Live lines: session_sync. A Gmail doorbell: handle_ring. Never reply to mail.',
   };
 }
 
@@ -345,7 +380,7 @@ async function handleRing({ thisEndpoint, token, subject, body }) {
     return {
       ok: false,
       action: 'ignore',
-      reason: 'Not an Airsup doorbell. Do not answer REQUEST/RESPONSE email.',
+      reason: 'Not an Airsup doorbell. Do not answer this email.',
     };
   }
   const callId = parseCallId({ subject, body });

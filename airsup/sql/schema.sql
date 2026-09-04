@@ -135,3 +135,5 @@ revoke all on table public.airsup_call_messages from anon, authenticated, public
 grant all on table public.airsup_knowledge to service_role;
 grant all on table public.airsup_calls to service_role;
 grant all on table public.airsup_call_messages to service_role;
+
+-- Live-call RPCs: apply airsup/sql/rpc.sql after this file.

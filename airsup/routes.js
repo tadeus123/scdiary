@@ -188,6 +188,7 @@ router.get('/prompt', async (req, res) => {
   } catch (error) {
     console.error('Airsup prompt load error:', error);
   }
+  if (!endpointId || !mcpToken) return res.redirect('/airsup/you');
   renderAirsup(req, res, 'prompt.ejs', {
     user,
     mcpUrl: MCP_URL,

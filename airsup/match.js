@@ -38,10 +38,20 @@ async function findPeople({
   const text = queryText({ query, currentNeed, whatRequesterCanOffer, desiredPerson }) || query || '';
 
   if (!people.length) {
-    return { matches: [], note: 'No other listed endpoints yet.' };
+    return {
+      matches: [],
+      do_not_invent: true,
+      action: 'ask_user',
+      note: 'No other listed endpoints yet. Ask the user. Never invent a name or endpoint_id.',
+    };
   }
   if (!String(text).trim()) {
-    return { matches: [], note: 'Pass query (a name or a need).' };
+    return {
+      matches: [],
+      do_not_invent: true,
+      action: 'ask_user',
+      note: 'Pass query (a name or a need). Ask the user. Never invent a name or endpoint_id.',
+    };
   }
 
   const nameHits = people.filter((row) => nameMatchScore(row, text) > 0);
@@ -106,7 +116,11 @@ async function findPeople({
 
   return {
     matches: ranked,
-    note: 'Matches use each person’s real public answers, not generated cards. Intimate answers are not searchable. To talk, start_call then keep session_sync in this chat. Gmail is only the doorbell.',
+    do_not_invent: true,
+    action: ranked.length ? 'show_user_then_start_call' : 'ask_user',
+    note: ranked.length
+      ? 'Matches use each person’s real public answers, not generated cards. Intimate answers are not searchable. To talk, start_call then keep session_sync in this chat. Gmail is only the doorbell.'
+      : 'No matches. Ask the user. Never invent a name or endpoint_id.',
   };
 }
 

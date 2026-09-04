@@ -80,4 +80,6 @@ assert.deepStrictEqual(names, [
   'handle_ring',
 ]);
 assert.ok(toolList().tools.every((tool) => tool.inputSchema.properties.token));
+const session = toolList().tools.find((tool) => tool.name === 'session_sync');
+assert.ok(session.inputSchema.required.includes('since_seq'));
 console.log('mcp tool list tests passed');
