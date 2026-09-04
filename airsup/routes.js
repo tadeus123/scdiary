@@ -188,7 +188,6 @@ router.get('/prompt', async (req, res) => {
   const liveDirectory = directoryUrl(req);
   renderAirsup(req, res, 'prompt.ejs', {
     user,
-    directoryUrl: liveDirectory,
     promptText: generatePrompt({
       questions: QUESTIONS,
       answers,
