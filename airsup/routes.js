@@ -192,6 +192,7 @@ router.get('/prompt', async (req, res) => {
   renderAirsup(req, res, 'prompt.ejs', {
     user,
     mcpUrl: MCP_URL,
+    chatgptSetupUrl: CHATGPT_SETUP_URL,
     promptText: generatePrompt({
       questions: QUESTIONS,
       answers,

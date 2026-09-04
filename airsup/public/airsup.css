@@ -184,6 +184,18 @@
   margin-top: 0.5rem;
 }
 
+.airsup-prompt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.airsup-prompt-actions .airsup-copy {
+  margin-top: 0;
+}
+
 .airsup-save-status {
   min-height: 1.2em;
   font-size: 0.9rem;

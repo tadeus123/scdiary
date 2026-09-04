@@ -50,7 +50,7 @@ function generatePrompt({
     '',
     profile,
     '',
-    'First action now: list_calls to confirm the plugin works, then find_people with query taken only from help / dreams / who I want to meet.',
+    'First action now: list_calls to confirm the plugin works. Then wait for me. Only find_people when I ask to talk to someone. If a RING arrives, handle_ring.',
     `Skip requester endpoint_id ${myEndpoint}.`,
   ].join('\n');
 }

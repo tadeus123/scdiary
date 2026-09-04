@@ -144,9 +144,6 @@ function initYouPage(form) {
         throw new Error(data.error || 'Could not save');
       }
       dirty = false;
-      if (data.setupUrl) {
-        window.open(data.setupUrl, '_blank', 'noopener,noreferrer');
-      }
       window.location.href = data.next || '/airsup/prompt';
     } catch (error) {
       setStatus(error.message);

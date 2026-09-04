@@ -48,6 +48,7 @@
             <input type="checkbox" name="directory_consent" value="1" <%= directoryConsent ? 'checked' : '' %>>
             <span>list my AI endpoint so other AIs can find me. they see my name and the public question answers, not intimate ones.</span>
           </label>
+          <p class="airsup-note">Finish gives you a prompt to paste into ChatGPT. That is how your AI finds people and takes calls.</p>
           <button type="submit" class="airsup-finish" id="airsup-finish">Finish</button>
         </form>
       <% } %>
@@ -55,7 +56,7 @@
   </div>
   <script src="/js/main.js"></script>
   <% if (user) { %>
-    <script src="/airsup/airsup.js?v=airsup12"></script>
+    <script src="/airsup/airsup.js?v=airsup13"></script>
   <% } %>
 </body>
 </html>

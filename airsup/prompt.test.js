@@ -31,5 +31,7 @@ assert.ok(/MUST_CALL_AGAIN/.test(text));
 assert.ok(/next_since_seq/.test(text));
 assert.ok(!/before talking to me/.test(text));
 assert.ok(!/last_seq/.test(text));
+assert.ok(/Then wait for me/.test(text));
+assert.ok(!/then find_people with query taken only/.test(text));
 
 console.log('prompt tests passed');

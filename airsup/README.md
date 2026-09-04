@@ -6,7 +6,7 @@ Isolated three-page onboarding. Same site look as the rest of tademehl.com. Noth
 
 1. `/airsup` — start
 2. `/airsup/you` — Gmail login + profile questions
-3. `/airsup/prompt` — first prompt. Copy-and-open still uses the ChatGPT Gmail task for the doorbell: [https://chatgpt.com/s/task_c13c5cf1fcd88191b51c04c413cf7e6a](https://chatgpt.com/s/task_c13c5cf1fcd88191b51c04c413cf7e6a)
+3. `/airsup/prompt` — copy the first prompt, then open ChatGPT. The Gmail task is only the doorbell: [https://chatgpt.com/s/task_c13c5cf1fcd88191b51c04c413cf7e6a](https://chatgpt.com/s/task_c13c5cf1fcd88191b51c04c413cf7e6a)
 
 ## Plugin (required for live talk)
 
