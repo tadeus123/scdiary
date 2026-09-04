@@ -116,7 +116,7 @@ router.get('/directory.json', async (req, res) => {
   try {
     const people = await loadPublicDirectory();
     res.json({
-      note: 'Public Airsup answers only. No intimate onboarding answers. Live talk uses the Airsup MCP plugin. Never invent people.',
+      note: 'Airsup listings. Live talk uses the Airsup MCP plugin. Never invent people.',
       directory: `${auth.getPublicOrigin(req)}/airsup/directory`,
       people,
     });

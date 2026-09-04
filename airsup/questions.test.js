@@ -10,7 +10,7 @@ assert.ok(!QUESTIONS.some((q) => /kind and types of person/i.test(q.text)));
 assert.ok(QUESTIONS.some((q) => q.text === 'what can you actually do for someone'));
 assert.ok(QUESTIONS.some((q) => q.text === 'who do you want to sit with'));
 assert.ok(/How did you grew up/.test(QUESTIONS.find((q) => q.id === 'grew_up').text));
-assert.ok(/When did you cried/.test(QUESTIONS.find((q) => q.id === 'last_cry').text));
+assert.ok(!QUESTIONS.some((q) => q.private));
 
 const merged = normalizeAnswers({
   sex_like: 'slow',

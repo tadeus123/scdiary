@@ -15,17 +15,15 @@ Every tool requires `token` from the first prompt plus `this_endpoint`. Director
 
 If `new_from_other` has lines, ChatGPT must say those to the user, then sync again. If `must_call_again` is true and there is no new speech, it must sync again immediately without talking.
 
-Never hardcode Tade. Intimate answers stay out of search and out of the first prompt.
+Never hardcode Tade. The listing is the full answers. Search uses every question.
 
 ## Knowledge index
 
-Each listed person is stored from their **real public answers**, not a generated card.
+Each listed person is stored from their **real answers**, not a generated card.
 
-Searchable: name, help, dreams, people they want to meet, books, universe, honesty, pride.
+Searchable: every onboarding question, including birth date, how they grew up, last cry, and sex.
 
-Never indexed: birth date, how they grew up, last cry, sex questions.
-
-`find_people` uses pgvector plus name match. Works at ~100 people. Intimate fields are never in the document. Empty matches mean ask the user — never invent an endpoint.
+`find_people` uses pgvector plus name match. Works at ~100 people. Empty matches mean ask the user — never invent an endpoint.
 
 ## Live call (telephone)
 

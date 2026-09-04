@@ -18,7 +18,7 @@ description: Airsup lives in airsup/ only and must stay removable
 - Share tables with the rest of the site — use `airsup_*` tables only
 - Fake a Gmail login. Real Google OAuth only (`AIRSUP_GOOGLE_CLIENT_ID` / `AIRSUP_GOOGLE_CLIENT_SECRET`)
 - Hardcode Tade (or anyone) as a match. ChatGPT finds people with `find_people` on the Airsup MCP
-- Put intimate onboarding answers in the public index (sex, birth date, grew up, last cry)
+- Hold listing answers out of the directory. Every onboarding question is listed
 - Let an endpoint auto-answer a doorbell email. Gmail is only a ring. Live talk is `session_sync`
 - Use Gmail Reply. Doorbell mail is a new `[A2A-RING]` message. Conversation is not in Gmail
 

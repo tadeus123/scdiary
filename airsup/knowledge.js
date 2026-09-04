@@ -1,16 +1,12 @@
 const { QUESTIONS } = require('./questions');
 const { clip, publicDisplayName } = require('./directory');
 
-/** Never embed or list these. Sex, childhood, crying, and birth date stay private. */
-const PRIVATE_IDS = new Set(QUESTIONS.filter((q) => q.private).map((q) => q.id));
-
-const SEARCHABLE_IDS = QUESTIONS.map((q) => q.id).filter((id) => !PRIVATE_IDS.has(id));
+const SEARCHABLE_IDS = QUESTIONS.map((q) => q.id);
 
 function publicAnswers(answers) {
   const source = answers && typeof answers === 'object' ? answers : {};
   const out = {};
   for (const q of QUESTIONS) {
-    if (PRIVATE_IDS.has(q.id)) continue;
     const value = clip(source[q.id], 800);
     if (value) out[q.id] = value;
   }
@@ -92,7 +88,6 @@ function keywordScore(document, query) {
 }
 
 module.exports = {
-  PRIVATE_IDS,
   SEARCHABLE_IDS,
   publicAnswers,
   knowledgeDocument,

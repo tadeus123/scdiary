@@ -21,10 +21,10 @@ const text = generatePrompt({
 
 assert.ok(text.includes('My token: tok_test'));
 assert.ok(text.includes('Anna Schmidt'));
-assert.ok(!text.includes('SECRET SEX ANSWER'));
-assert.ok(!text.includes('SECRET CRY'));
-assert.ok(!text.includes('SECRET CHILDHOOD'));
-assert.ok(!text.includes('1990-01-01'));
+assert.ok(text.includes('SECRET SEX ANSWER'));
+assert.ok(text.includes('SECRET CRY'));
+assert.ok(text.includes('SECRET CHILDHOOD'));
+assert.ok(text.includes('1990-01-01'));
 assert.ok(!/A2A-REQUEST/.test(text));
 assert.ok(!/A2A-RESPONSE/.test(text));
 assert.ok(/MUST_CALL_AGAIN/.test(text));

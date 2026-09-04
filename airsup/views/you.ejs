@@ -27,16 +27,7 @@
       <% } %>
       <form id="airsup-you-form" class="airsup-form" data-airsup-page="you" data-draft-key="<%= user.googleId %>" data-server-updated="<%= serverUpdatedAt || '' %>">
         <div class="airsup-questions">
-          <% questions.filter((q) => !q.private).forEach((q) => { %>
-            <label class="airsup-field">
-              <span><%= q.text %></span>
-              <textarea name="<%= q.id %>" rows="3"><%= answers[q.id] || '' %></textarea>
-            </label>
-          <% }) %>
-        </div>
-        <h2 class="airsup-group">only your ChatGPT</h2>
-        <div class="airsup-questions">
-          <% questions.filter((q) => q.private).forEach((q) => { %>
+          <% questions.forEach((q) => { %>
             <label class="airsup-field">
               <span><%= q.text %></span>
               <textarea name="<%= q.id %>" rows="3"><%= answers[q.id] || '' %></textarea>

@@ -1,19 +1,6 @@
 /**
  * Public AI endpoint directory.
- * Never copy intimate onboarding answers into searchable cards.
  */
-const INTIMATE_IDS = new Set([
-  'full_name',
-  'geburtsdatum',
-  'sex',
-  'sex_like',
-  'grew_up',
-  'sex_frequency',
-  'honest_person',
-  'last_cry',
-  'sex_life',
-  'most_proud',
-]);
 
 function clip(value, max = 500) {
   return String(value || '').trim().slice(0, max);
@@ -106,7 +93,6 @@ function rankEndpoints(rows, query) {
 }
 
 module.exports = {
-  INTIMATE_IDS,
   clip,
   displayNameFrom,
   publicDisplayName,
