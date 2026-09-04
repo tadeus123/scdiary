@@ -134,7 +134,7 @@
 .airsup-field {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
 .airsup-field span {
@@ -143,8 +143,14 @@
   color: var(--accent-color);
 }
 
+.airsup-questions .airsup-field {
+  display: grid;
+  grid-template-rows: 3.9em auto;
+  row-gap: 0.3rem;
+}
+
 .airsup-questions .airsup-field span {
-  min-height: calc(1.3em * 3);
+  align-self: end;
 }
 
 .airsup-field textarea,
