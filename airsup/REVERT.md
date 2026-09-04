@@ -12,7 +12,9 @@ node airsup/revert-airsup.js
 
 Then commit + push (project rule: push to `origin main` unless the user says otherwise).
 
-If any `airsup_*` tables were created, also run `airsup/sql/drop.sql` in the Supabase SQL editor.
+Then run `airsup/sql/drop.sql` in the Supabase SQL editor (drops `airsup_profiles`).
+
+Remove these env vars if you added them: `AIRSUP_GOOGLE_CLIENT_ID`, `AIRSUP_GOOGLE_CLIENT_SECRET`, `AIRSUP_PUBLIC_ORIGIN`, `AIRSUP_SESSION_SECRET`.
 
 ## What this install added
 

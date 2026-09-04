@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <%- include('partials/head') %>
+</head>
+<body class="airsup-page">
+  <div class="container airsup-shell">
+    <%- include('partials/nav') %>
+    <main class="airsup-main">
+      <h1 class="airsup-title">Google login is not configured yet.</h1>
+      <p class="airsup-sub">This page does not fake a login. Add a real Google OAuth client, then the Gmail button will sign people in.</p>
+      <ol class="airsup-setup">
+        <li>In Google Cloud, create an OAuth 2.0 Client ID (Web application).</li>
+        <li>Add these authorized redirect URIs:
+          <ul>
+            <% redirectUris.forEach((uri) => { %>
+              <li><code><%= uri %></code></li>
+            <% }) %>
+          </ul>
+        </li>
+        <li>Set these environment variables, then restart:
+          <ul>
+            <li><code>AIRSUP_GOOGLE_CLIENT_ID</code></li>
+            <li><code>AIRSUP_GOOGLE_CLIENT_SECRET</code></li>
+          </ul>
+        </li>
+        <li>On Vercel, add the same two variables for production.</li>
+      </ol>
+      <p class="airsup-note">Details: <code>airsup/README.md</code></p>
+      <a class="airsup-text-btn" href="/airsup/you">back</a>
+    </main>
+  </div>
+  <script src="/js/main.js"></script>
+</body>
+</html>

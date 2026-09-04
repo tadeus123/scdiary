@@ -16,6 +16,7 @@ description: Airsup lives in airsup/ only and must stay removable
 - Add Airsup links, buttons, or data to other pages
 - Put Airsup styles in `public/css/style.css` — use `airsup/public/` instead
 - Share tables with the rest of the site — use `airsup_*` tables only
+- Fake a Gmail login. Real Google OAuth only (`AIRSUP_GOOGLE_CLIENT_ID` / `AIRSUP_GOOGLE_CLIENT_SECRET`)
 
 ## Revert
 ```bash

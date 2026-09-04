@@ -87,7 +87,7 @@ app.set('views', path.join(__dirname, '../views'));
 
 // AIRSUP-BEGIN
 const airsupRoutes = require('../airsup/routes');
-app.use('/airsup', express.static(path.join(__dirname, '../airsup/public')));
+app.use('/airsup', express.static(path.join(__dirname, '../airsup/public'), { index: false, redirect: false }));
 app.use('/airsup', airsupRoutes);
 // AIRSUP-END
 

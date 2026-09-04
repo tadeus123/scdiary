@@ -3,34 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <%- include('partials/seo-head') %>
-  <link rel="stylesheet" href="/css/style.css">
+  <%- include('partials/head') %>
 </head>
-<body>
-  <div class="container">
-    <nav>
-      <div class="nav-left">
-        <a href="/airsup" class="site-title">airsup</a>
-        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
-          <svg class="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <circle cx="12" cy="12" r="5"></circle>
-            <line x1="12" y1="6.5" x2="12" y2="3"></line>
-            <line x1="17.5" y1="12" x2="21" y2="12"></line>
-            <line x1="12" y1="17.5" x2="12" y2="21"></line>
-            <line x1="6.5" y1="12" x2="3" y2="12"></line>
-            <line x1="16.96" y1="7.04" x2="19.07" y2="4.93"></line>
-            <line x1="16.96" y1="16.96" x2="19.07" y2="19.07"></line>
-            <line x1="7.04" y1="16.96" x2="4.93" y2="19.07"></line>
-            <line x1="7.04" y1="7.04" x2="4.93" y2="4.93"></line>
-          </svg>
-        </button>
-      </div>
-    </nav>
-
-    <main>
+<body class="airsup-page airsup-start">
+  <div class="container airsup-shell">
+    <%- include('partials/nav') %>
+    <main class="airsup-main airsup-main-center">
+      <p class="airsup-headline">This is only for ChatGPT junkies that <em>hate</em> social media.</p>
+      <a class="airsup-start-btn" href="/airsup/you">Start</a>
     </main>
+    <p class="airsup-production">A Tade Mehl production</p>
   </div>
-
   <script src="/js/main.js"></script>
 </body>
 </html>

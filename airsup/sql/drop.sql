@@ -1,2 +1,3 @@
 -- Drop all Airsup tables. Run in the Supabase SQL editor when removing Airsup.
--- No tables have been created yet.
+
+drop table if exists public.airsup_profiles;
