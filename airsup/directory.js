@@ -5,6 +5,7 @@
 const INTIMATE_IDS = new Set([
   'full_name',
   'geburtsdatum',
+  'sex',
   'sex_like',
   'grew_up',
   'sex_frequency',

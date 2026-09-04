@@ -8,14 +8,14 @@ const anna = {
   answers: {
     full_name: 'Anna Schmidt',
     help_others: 'poetry',
-    sex_like: 'secret',
+    sex: 'secret',
   },
 };
 
 assert.ok(nameMatchScore(anna, 'Anna') > 0);
 assert.strictEqual(nameMatchScore(anna, 'zzzz') , 0);
 assert.ok(!knowledgeDocument(anna).includes('secret'));
-assert.ok(PRIVATE_IDS.has('sex_like'));
+assert.ok(PRIVATE_IDS.has('sex'));
 assert.ok(QUESTIONS.filter((q) => q.private).every((q) => PRIVATE_IDS.has(q.id)));
 assert.ok(!knowledgeDocument(anna).toLowerCase().includes('tm9sko'));
 

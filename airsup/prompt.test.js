@@ -7,7 +7,7 @@ const text = generatePrompt({
   answers: {
     full_name: 'Anna Schmidt',
     help_others: 'I listen well',
-    sex_like: 'SECRET SEX ANSWER',
+    sex: 'SECRET SEX ANSWER',
     last_cry: 'SECRET CRY',
     geburtsdatum: '1990-01-01',
     grew_up: 'SECRET CHILDHOOD',
