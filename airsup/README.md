@@ -6,54 +6,29 @@ Isolated three-page onboarding. Same site look as the rest of tademehl.com. Noth
 
 1. `/airsup` — start
 2. `/airsup/you` — Gmail login + profile questions
-3. `/airsup/prompt` — generated first prompt. Copy-and-open uses the ChatGPT Gmail endpoint task: [https://chatgpt.com/s/task_c13c5cf1fcd88191b51c04c413cf7e6a](https://chatgpt.com/s/task_c13c5cf1fcd88191b51c04c413cf7e6a). Finish on `/airsup/you` opens the same link.
+3. `/airsup/prompt` — first prompt. Copy-and-open still uses the ChatGPT Gmail task for the doorbell: [https://chatgpt.com/s/task_c13c5cf1fcd88191b51c04c413cf7e6a](https://chatgpt.com/s/task_c13c5cf1fcd88191b51c04c413cf7e6a)
+
+## Plugin (required for live talk)
+
+Both sides install the Airsup MCP connector:
+
+`https://www.tademehl.com/airsup/mcp`
+
+Gmail only rings the other ChatGPT. The conversation is `session_sync` on that MCP. Stay in the ChatGPT chat until `hang_up`.
 
 ## Google OAuth (required for real login)
 
-Do not fake a successful Gmail login. Until these are set, the Gmail button opens the setup notes page.
+Do not fake a successful Gmail login.
 
-1. Google Cloud Console → APIs & Services → Credentials → Create OAuth client ID → Web application
-2. Authorized redirect URIs:
-   - `http://localhost:3000/airsup/auth/google/callback`
-   - `https://www.tademehl.com/airsup/auth/google/callback`
-   - `https://tademehl.com/airsup/auth/google/callback`
-3. Environment variables (local `.env` and Vercel):
-   - `AIRSUP_GOOGLE_CLIENT_ID`
-   - `AIRSUP_GOOGLE_CLIENT_SECRET`
-4. Optional: `AIRSUP_PUBLIC_ORIGIN` if the public URL cannot be inferred (example: `https://www.tademehl.com`)
+Env: `AIRSUP_GOOGLE_CLIENT_ID`, `AIRSUP_GOOGLE_CLIENT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY` (embeddings + optional).
 
-Saving profiles also needs `SUPABASE_SERVICE_ROLE_KEY` (already used by some local scripts). The anon key cannot read `airsup_profiles` or `airsup_endpoints`.
+## How matching works
 
-## AI endpoint directory
+Public onboarding answers are embedded in `airsup_knowledge` (pgvector). `find_people` searches that index plus name. No generated cards. Intimate answers are excluded.
 
-Consenting users are registered in `airsup_endpoints` with public fields only. Intimate onboarding answers stay private.
+## Live calls
 
-- Live page ChatGPT can open: `/airsup/directory`
-- JSON: `/airsup/directory.json`
-- Spec: `airsup/SPEC.md`
-
-## How matching actually works
-
-A prompt cannot read Supabase. ChatGPT looks at a live public page.
-
-1. Onboarding answers stay private.
-2. A compact **public card** is generated (no intimate answers). Finish approves it into `airsup_endpoints`.
-3. ChatGPT opens `https://www.tademehl.com/airsup/directory` (or `/airsup/directory.json`) before contacting anyone. No plugin.
-4. It ranks the listed cards itself, then emails the chosen endpoint.
-
-Needs `OPENAI_API_KEY` for card generation. MCP `/airsup/mcp` still exists but is not part of onboarding.
-
-## A2A request / response split
-
-Two logical channels plus durable state. The network server, not the email body, decides the type.
-
-- `create_network_request` stores `status: waiting` and returns a **new** `[A2A-REQUEST]` email. Do not use Gmail Reply.
-- The request worker only runs when the subject contains `[A2A-REQUEST]`. It answers once, then `create_network_response` sends a **new** `[A2A-RESPONSE]`.
-- The response worker only runs when the subject contains `[A2A-RESPONSE]`. It records the answer for the originating endpoint and **never answers**.
-- Later chats call `get_network_results()`. The original ChatGPT conversation does not stay open.
-
-REST: `POST /airsup/api/a2a/validate_incoming_message` (and the other `/airsup/api/a2a/*` tools).  
-Tables: `airsup_network_requests`, `airsup_network_messages` (unique `message_id` and `gmail_message_id`).
+Tables: `airsup_calls`, `airsup_call_messages`. Status: `ringing` → `live` → `ending` → `ended`.
 
 ## Remove
 
@@ -61,6 +36,4 @@ Tables: `airsup_network_requests`, `airsup_network_messages` (unique `message_id
 node airsup/revert-airsup.js
 ```
 
-Then delete the `airsup/` folder and run `airsup/sql/drop.sql` in Supabase.
-
-See `REVERT.md`.
+Then `airsup/sql/drop.sql` in Supabase. See `REVERT.md`.

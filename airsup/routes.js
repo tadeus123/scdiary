@@ -16,7 +16,8 @@ const {
   listActiveEndpoints,
 } = require('./db');
 const { publicDisplayName } = require('./directory');
-const { generateMatchCard, normalizeCard, emptyCard, publicDirectory } = require('./card');
+const { publicDirectory } = require('./knowledge');
+const { MCP_URL } = require('./config');
 const { buildOpenApi } = require('./openapi');
 const { handleMcp, callFindPeople, callTool } = require('./mcp');
 const { isOpenAiConfigured } = require('./openai');
@@ -113,7 +114,7 @@ router.get('/directory.json', async (req, res) => {
   try {
     const people = await loadPublicDirectory();
     res.json({
-      note: 'Public Airsup AI endpoint cards only. No intimate onboarding answers. Never invent people.',
+      note: 'Public Airsup answers only. No intimate onboarding answers. Live talk uses the Airsup MCP plugin. Never invent people.',
       directory: `${auth.getPublicOrigin(req)}/airsup/directory`,
       people,
     });
@@ -138,7 +139,6 @@ router.get('/you', async (req, res) => {
   let answers = normalizeAnswers({});
   let loadError = null;
   let directoryConsent = true;
-  let matchCard = emptyCard();
   let serverUpdatedAt = '';
   if (user) {
     try {
@@ -150,7 +150,6 @@ router.get('/you', async (req, res) => {
       const endpoint = await getEndpointByGoogleId(user.googleId);
       if (endpoint) {
         directoryConsent = Boolean(endpoint.active && endpoint.contactable);
-        matchCard = normalizeCard(endpoint.match_card);
       }
     } catch (error) {
       console.error('Airsup profile load error:', error);
@@ -161,7 +160,6 @@ router.get('/you', async (req, res) => {
     user,
     questions: QUESTIONS,
     answers,
-    matchCard,
     directoryConsent,
     googleConfigured: auth.isGoogleConfigured(),
     oauthError: req.query.error === 'oauth' ? 'Google sign-in failed. Try again.' : null,
@@ -189,6 +187,7 @@ router.get('/prompt', async (req, res) => {
   const liveDirectory = directoryUrl(req);
   renderAirsup(req, res, 'prompt.ejs', {
     user,
+    mcpUrl: MCP_URL,
     promptText: generatePrompt({
       questions: QUESTIONS,
       answers,
@@ -196,6 +195,7 @@ router.get('/prompt', async (req, res) => {
       displayName: userDisplayName(user, profile),
       endpointId,
       directoryUrl: liveDirectory,
+      mcpUrl: MCP_URL,
     }),
   });
 });
@@ -269,7 +269,6 @@ router.put('/api/profile', async (req, res) => {
         email: user.email,
         displayName: userDisplayName(user, profile),
         answers: profile.answers,
-        matchCard: req.body && req.body.matchCard,
         consent: consentFromBody === null
           ? Boolean(existing && existing.active && existing.contactable)
           : consentFromBody,
@@ -283,16 +282,7 @@ router.put('/api/profile', async (req, res) => {
 });
 
 router.post('/api/card/generate', async (req, res) => {
-  const user = auth.readUser(req);
-  if (!user) return res.status(401).json({ ok: false, error: 'Not signed in' });
-  if (!auth.allowedOrigin(req)) return res.status(403).json({ ok: false, error: 'Bad origin' });
-  try {
-    const card = await generateMatchCard(req.body && req.body.answers);
-    res.json({ ok: true, card });
-  } catch (error) {
-    console.error('Airsup card generate error:', error);
-    res.status(500).json({ ok: false, error: 'Could not build the public card' });
-  }
+  res.status(410).json({ ok: false, error: 'Public cards are no longer generated. The directory uses your real answers.' });
 });
 
 router.post('/api/finish', async (req, res) => {
@@ -307,16 +297,11 @@ router.post('/api/finish', async (req, res) => {
       displayName: user.displayName,
       answers: req.body && req.body.answers,
     });
-    let matchCard = normalizeCard(req.body && req.body.matchCard);
-    if (consent && !matchCard.can_help_with.length && !matchCard.short_context) {
-      matchCard = await generateMatchCard(profile.answers);
-    }
     const endpoint = await syncDirectory({
       googleId: user.googleId,
       email: user.email,
       displayName: userDisplayName(user, profile),
       answers: profile.answers,
-      matchCard,
       consent,
     });
     res.json({
@@ -403,11 +388,23 @@ router.options('/api/a2a/:tool', (req, res) => {
   res.status(204).end();
 });
 
+router.options('/api/calls/:tool', (req, res) => {
+  setSearchCors(res);
+  res.status(204).end();
+});
+
 router.post('/api/a2a/create_network_request', (req, res) => handleA2aTool(req, res, 'create_network_request'));
 router.post('/api/a2a/validate_incoming_message', (req, res) => handleA2aTool(req, res, 'validate_incoming_message'));
 router.post('/api/a2a/create_network_response', (req, res) => handleA2aTool(req, res, 'create_network_response'));
 router.post('/api/a2a/record_network_response', (req, res) => handleA2aTool(req, res, 'record_network_response'));
 router.post('/api/a2a/get_network_results', (req, res) => handleA2aTool(req, res, 'get_network_results'));
+
+router.post('/api/calls/start_call', (req, res) => handleA2aTool(req, res, 'start_call'));
+router.post('/api/calls/join_call', (req, res) => handleA2aTool(req, res, 'join_call'));
+router.post('/api/calls/session_sync', (req, res) => handleA2aTool(req, res, 'session_sync'));
+router.post('/api/calls/hang_up', (req, res) => handleA2aTool(req, res, 'hang_up'));
+router.post('/api/calls/list_calls', (req, res) => handleA2aTool(req, res, 'list_calls'));
+router.post('/api/calls/handle_ring', (req, res) => handleA2aTool(req, res, 'handle_ring'));
 
 router.all('/mcp', handleMcp);
 

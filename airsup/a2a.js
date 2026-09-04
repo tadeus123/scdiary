@@ -66,6 +66,7 @@ function bodyAfterEnvelope(body) {
 function classifyMessage({ subject, envelope }) {
   const sub = String(subject || '');
   const envelopeType = envelope && envelope.messageType;
+  if (/\[A2A-RING\]/i.test(sub) || envelopeType === 'RING') return 'RING';
   if (/\[A2A-RESPONSE\]/i.test(sub)) return 'RESPONSE';
   if (envelopeType === 'RESPONSE') return 'RESPONSE';
   if (/\[A2A-REQUEST\]/i.test(sub)) return 'REQUEST';

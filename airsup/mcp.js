@@ -1,21 +1,24 @@
 const { findPeople } = require('./match');
 const { listActiveEndpoints } = require('./db');
+const { MCP_PROTOCOL, MCP_URL } = require('./config');
 const {
-  createNetworkRequest,
-  createNetworkResponse,
-  recordNetworkResponse,
-  validateIncomingMessage,
-  getNetworkResults,
-} = require('./a2a');
-
-const PROTOCOL = '2025-03-26';
-const RULE = 'REQUESTS are answered. RESPONSES are delivered. RESPONSES are never automatically answered.';
+  startCall,
+  joinCall,
+  sessionSync,
+  hangUp,
+  listCalls,
+  handleRing,
+} = require('./call');
 
 function mcpCors(res) {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Airsup-Key, Mcp-Session-Id, MCP-Protocol-Version');
   res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.set('Access-Control-Expose-Headers', 'Mcp-Session-Id, MCP-Protocol-Version');
+}
+
+function endpointArg(description) {
+  return { type: 'string', description };
 }
 
 function toolList() {
@@ -25,36 +28,121 @@ function toolList() {
         name: 'find_people',
         title: 'Find people',
         description:
-          'Search the Airsup AI endpoint directory. Loads every active, contactable, approved compact profile except the requester, compares them in one pass for reciprocal fit, and returns the best matches with evidence. Use this instead of guessing or hardcoding a person. Do not expect complete onboarding answers — only public match cards.',
+          'Search listed Airsup people using their real public onboarding answers (vector + name). Never invent people. Intimate answers are not in the index. Then start_call to talk.',
         inputSchema: {
           type: 'object',
           properties: {
-            requester_id: { type: 'string', description: 'The caller’s own endpoint_id, excluded from results' },
-            current_need: { type: 'string', description: 'One concrete thing the requester needs help with' },
-            what_requester_can_offer: { type: 'string', description: 'One valuable thing the requester can offer' },
-            desired_person: { type: 'string', description: 'The type of person who would create a positive-sum connection' },
-            maximum_results: { type: 'number', description: 'How many matches to return, default 3, max 5' },
+            requester_id: endpointArg('Your own endpoint_id, excluded from results'),
+            query: { type: 'string', description: 'Free text, a name like “Anna”, or what you need' },
+            current_need: { type: 'string' },
+            what_requester_can_offer: { type: 'string' },
+            desired_person: { type: 'string' },
+            maximum_results: { type: 'number' },
           },
-          required: ['requester_id', 'current_need'],
+          required: ['requester_id'],
         },
-        annotations: {
-          readOnlyHint: true,
-          openWorldHint: false,
-          destructiveHint: false,
+        annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+      },
+      {
+        name: 'start_call',
+        title: 'Start call',
+        description:
+          'Open a live Airsup line to another endpoint. Returns a Gmail doorbell to wake them. After sending that one email, stay in this chat and call session_sync. Do not wait for a Gmail reply.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            this_endpoint: endpointArg('Your endpoint_id'),
+            target_endpoint: endpointArg('The other person’s endpoint_id'),
+            opening: { type: 'string', description: 'First message waiting on the line when they pick up' },
+          },
+          required: ['this_endpoint', 'target_endpoint'],
         },
+        annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+      },
+      {
+        name: 'join_call',
+        title: 'Join call',
+        description: 'Pick up an incoming Airsup ring. Then session_sync in this same chat. Never answer the doorbell email.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            this_endpoint: endpointArg('Your endpoint_id'),
+            call_id: { type: 'string' },
+          },
+          required: ['this_endpoint', 'call_id'],
+        },
+        annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+      },
+      {
+        name: 'session_sync',
+        title: 'Session sync',
+        description:
+          'Live talk. Send an optional message and receive everything new on this call. Keep calling this until hang_up. This is the conversation. Gmail is not.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            this_endpoint: endpointArg('Your endpoint_id'),
+            call_id: { type: 'string' },
+            message: { type: 'string', description: 'Optional outbound chat to the other AI' },
+            since_seq: { type: 'number', description: 'Last seq you already saw. Default 0.' },
+          },
+          required: ['this_endpoint', 'call_id'],
+        },
+        annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+      },
+      {
+        name: 'hang_up',
+        title: 'Hang up',
+        description: 'Leave the line. The call stays until the other side also hangs up, unless you cancel a ring you started.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            this_endpoint: endpointArg('Your endpoint_id'),
+            call_id: { type: 'string' },
+          },
+          required: ['this_endpoint', 'call_id'],
+        },
+        annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+      },
+      {
+        name: 'list_calls',
+        title: 'List calls',
+        description: 'Incoming rings, outgoing rings, and live lines for this endpoint. Source of truth even if Gmail never arrived.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            this_endpoint: endpointArg('Your endpoint_id'),
+          },
+          required: ['this_endpoint'],
+        },
+        annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+      },
+      {
+        name: 'handle_ring',
+        title: 'Handle ring',
+        description: 'Classify inbound Gmail. Only [A2A-RING] doorbells are acted on, and the action is join_call — never answer the email.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            this_endpoint: endpointArg('Your endpoint_id'),
+            subject: { type: 'string' },
+            body: { type: 'string' },
+          },
+          required: ['this_endpoint', 'subject'],
+        },
+        annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
       },
       {
         name: 'create_network_request',
-        title: 'Create network request',
-        description:
-          'Create a durable waiting request and a brand-new [A2A-REQUEST] email. Do not use Gmail Reply. The original chat will not stay open; later call get_network_results.',
+        title: 'Deprecated: use start_call',
+        description: 'Deprecated alias. Opens a live call instead of a waiting email request.',
         inputSchema: {
           type: 'object',
           properties: {
-            this_endpoint: { type: 'string', description: 'The caller’s own endpoint_id' },
-            target_endpoint: { type: 'string', description: 'The other person’s endpoint_id' },
-            request: { type: 'string', description: 'The request to send to their AI' },
-            conversation_id: { type: 'string', description: 'Optional. Reuse to link a follow-up. Follow-ups still get a new request_id.' },
+            this_endpoint: { type: 'string' },
+            target_endpoint: { type: 'string' },
+            request: { type: 'string' },
+            conversation_id: { type: 'string' },
           },
           required: ['this_endpoint', 'target_endpoint', 'request'],
         },
@@ -62,16 +150,15 @@ function toolList() {
       },
       {
         name: 'validate_incoming_message',
-        title: 'Validate incoming message',
-        description:
-          'The network server decides whether an email is a REQUEST or a RESPONSE. Subject [A2A-RESPONSE] and envelope MESSAGE-TYPE: RESPONSE can never be auto-answered. Gmail labels are not enough.',
+        title: 'Deprecated: use handle_ring',
+        description: 'Deprecated alias. Rings become join_call. Old REQUEST/RESPONSE mail is ignored so channels cannot mix.',
         inputSchema: {
           type: 'object',
           properties: {
-            this_endpoint: { type: 'string', description: 'The mailbox owner’s endpoint_id' },
+            this_endpoint: { type: 'string' },
             subject: { type: 'string' },
             body: { type: 'string' },
-            gmail_message_id: { type: 'string', description: 'Gmail’s id for webhook idempotency' },
+            gmail_message_id: { type: 'string' },
           },
           required: ['this_endpoint', 'subject', 'body'],
         },
@@ -79,50 +166,23 @@ function toolList() {
       },
       {
         name: 'create_network_response',
-        title: 'Create network response',
-        description:
-          'After answering a REQUEST, create a brand-new [A2A-RESPONSE] email. Never use Gmail Reply. Never call this for a RESPONSE.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            this_endpoint: { type: 'string' },
-            request_id: { type: 'string' },
-            answer: { type: 'string' },
-            inbound_message_id: { type: 'string', description: 'MESSAGE-ID of the REQUEST that was just answered' },
-          },
-          required: ['this_endpoint', 'request_id', 'answer'],
-        },
+        title: 'Deprecated: use session_sync',
+        description: 'Deprecated. Live answers go through session_sync, not a second email channel.',
+        inputSchema: { type: 'object', properties: { this_endpoint: { type: 'string' }, request_id: { type: 'string' }, answer: { type: 'string' } } },
         annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
       },
       {
         name: 'record_network_response',
-        title: 'Record network response',
-        description:
-          'Attach an arrived [A2A-RESPONSE] to the durable waiting request (waiting → answered). Notify the user. Never answer a RESPONSE automatically.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            this_endpoint: { type: 'string', description: 'Must be the endpoint that created the original request' },
-            request_id: { type: 'string' },
-            answer: { type: 'string' },
-            inbound_message_id: { type: 'string' },
-          },
-          required: ['this_endpoint', 'request_id', 'answer'],
-        },
+        title: 'Deprecated: use session_sync',
+        description: 'Deprecated. Live answers go through session_sync.',
+        inputSchema: { type: 'object', properties: { this_endpoint: { type: 'string' }, request_id: { type: 'string' }, answer: { type: 'string' } } },
         annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
       },
       {
         name: 'get_network_results',
-        title: 'Get network results',
-        description:
-          'Read durable A2A state from any later conversation. waiting = requests this endpoint sent that are still unanswered. answered = replies that arrived. inbox = REQUESTS this endpoint still needs to answer. Never treat answered items as new questions.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            this_endpoint: { type: 'string' },
-          },
-          required: ['this_endpoint'],
-        },
+        title: 'Deprecated: use list_calls',
+        description: 'Deprecated alias for list_calls.',
+        inputSchema: { type: 'object', properties: { this_endpoint: { type: 'string' } }, required: ['this_endpoint'] },
         annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
       },
     ],
@@ -132,7 +192,8 @@ function toolList() {
 async function callFindPeople(args) {
   const rows = await listActiveEndpoints();
   return findPeople({
-    requesterId: args.requester_id,
+    requesterId: args.requester_id || args.this_endpoint,
+    query: args.query,
     currentNeed: args.current_need,
     whatRequesterCanOffer: args.what_requester_can_offer,
     desiredPerson: args.desired_person,
@@ -141,42 +202,63 @@ async function callFindPeople(args) {
   });
 }
 
+function deprecatedTalk() {
+  return {
+    deprecated: true,
+    action: 'use_session_sync',
+    instruction: 'Do not send REQUEST/RESPONSE email. Use start_call, join_call, and session_sync. Gmail is only the doorbell.',
+  };
+}
+
 async function callTool(name, args) {
-  if (name === 'find_people') return callFindPeople(args);
-  if (name === 'create_network_request') {
-    return createNetworkRequest({
-      fromEndpoint: args.this_endpoint || args.from_endpoint,
-      targetEndpoint: args.target_endpoint,
-      request: args.request,
-      conversationId: args.conversation_id,
+  const a = args || {};
+  if (name === 'find_people') return callFindPeople(a);
+  if (name === 'start_call') {
+    return startCall({
+      thisEndpoint: a.this_endpoint,
+      targetEndpoint: a.target_endpoint,
+      opening: a.opening || a.request,
     });
+  }
+  if (name === 'join_call') {
+    return joinCall({ thisEndpoint: a.this_endpoint, callId: a.call_id });
+  }
+  if (name === 'session_sync') {
+    return sessionSync({
+      thisEndpoint: a.this_endpoint,
+      callId: a.call_id,
+      message: a.message,
+      sinceSeq: a.since_seq,
+    });
+  }
+  if (name === 'hang_up') {
+    return hangUp({ thisEndpoint: a.this_endpoint, callId: a.call_id });
+  }
+  if (name === 'list_calls' || name === 'get_network_results') {
+    return listCalls({ thisEndpoint: a.this_endpoint || a.endpoint_id });
+  }
+  if (name === 'handle_ring') {
+    return handleRing({ thisEndpoint: a.this_endpoint, subject: a.subject, body: a.body });
+  }
+  if (name === 'create_network_request') {
+    const started = await startCall({
+      thisEndpoint: a.this_endpoint || a.from_endpoint,
+      targetEndpoint: a.target_endpoint,
+      opening: a.request,
+    });
+    return { ...started, deprecated: true, note: 'create_network_request now starts a live call. Use session_sync after the doorbell.' };
   }
   if (name === 'validate_incoming_message') {
-    return validateIncomingMessage({
-      thisEndpoint: args.this_endpoint,
-      subject: args.subject,
-      body: args.body || args.message,
-      gmailMessageId: args.gmail_message_id,
-    });
+    const ring = await handleRing({ thisEndpoint: a.this_endpoint, subject: a.subject, body: a.body || a.message });
+    if (ring && ring.ok) return ring;
+    return {
+      ok: false,
+      action: 'ignore',
+      reason: 'Not an Airsup doorbell. Do not answer REQUEST/RESPONSE email. Use list_calls and session_sync.',
+    };
   }
-  if (name === 'create_network_response') {
-    return createNetworkResponse({
-      thisEndpoint: args.this_endpoint,
-      requestId: args.request_id,
-      answer: args.answer,
-      inboundMessageId: args.inbound_message_id,
-    });
-  }
-  if (name === 'record_network_response') {
-    return recordNetworkResponse({
-      thisEndpoint: args.this_endpoint,
-      requestId: args.request_id,
-      answer: args.answer,
-      inboundMessageId: args.inbound_message_id,
-    });
-  }
-  if (name === 'get_network_results') {
-    return getNetworkResults({ endpointId: args.this_endpoint || args.endpoint_id });
+  if (name === 'create_network_response' || name === 'record_network_response') {
+    return deprecatedTalk();
   }
   const error = new Error(`Unknown tool: ${name}`);
   error.code = -32601;
@@ -189,11 +271,11 @@ async function dispatch(message) {
 
   if (method === 'initialize') {
     return {
-      protocolVersion: PROTOCOL,
+      protocolVersion: MCP_PROTOCOL,
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: 'airsup', version: '1.1.0' },
+      serverInfo: { name: 'airsup', version: '2.0.0' },
       instructions:
-        `${RULE} Call find_people to compare compact cards. To contact someone, create_network_request and send a new [A2A-REQUEST] email — never Gmail Reply. Incoming mail must go through validate_incoming_message. The original ChatGPT chat will not stay open; call get_network_results later. Never invent people. Never use intimate onboarding answers.`,
+        `Airsup MCP ${MCP_URL}. Gmail is only a doorbell. Live talk: find_people → start_call → send the [A2A-RING] email → session_sync in the same chat until hang_up. Incoming [A2A-RING]: handle_ring or join_call, never answer the email. Never invent people. Never use intimate onboarding answers.`,
     };
   }
 
@@ -217,6 +299,14 @@ async function handleMcp(req, res) {
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
   }
+  if (req.method === 'GET') {
+    return res.json({
+      name: 'airsup',
+      url: MCP_URL,
+      transport: 'streamable HTTP JSON-RPC POST',
+      note: 'POST JSON-RPC to this URL. Gmail is a doorbell. Live talk is session_sync.',
+    });
+  }
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'MCP uses POST (streamable HTTP JSON)' });
   }
@@ -228,7 +318,7 @@ async function handleMcp(req, res) {
 
   try {
     const result = await dispatch(message);
-    res.set('MCP-Protocol-Version', PROTOCOL);
+    res.set('MCP-Protocol-Version', MCP_PROTOCOL);
     res.json({ jsonrpc: '2.0', id: message.id ?? null, result });
   } catch (error) {
     console.error('Airsup MCP error:', error);

@@ -6,7 +6,8 @@
 const { createClient } = require('@supabase/supabase-js');
 const { normalizeAnswers } = require('./questions');
 const { publicFieldsFromAnswers, publicDisplayName } = require('./directory');
-const { normalizeCard } = require('./card');
+const { knowledgeDocument } = require('./knowledge');
+const { embed, isOpenAiConfigured } = require('./openai');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
@@ -64,17 +65,10 @@ async function upsertProfile({ googleId, email, displayName, answers }) {
   };
 }
 
-async function syncDirectory({ googleId, email, displayName, answers, consent, matchCard }) {
+async function syncDirectory({ googleId, email, displayName, answers, consent }) {
   const existing = await getEndpointByGoogleId(googleId);
   const fields = publicFieldsFromAnswers(answers);
-  const card = normalizeCard(matchCard);
   const listed = Boolean(consent);
-  const approved = listed && Boolean(
-    card.can_help_with.length ||
-    card.wants_help_with.length ||
-    card.people_they_want_to_meet.length ||
-    card.short_context
-  );
   const row = {
     google_id: googleId,
     display_name: publicDisplayName({ answers, displayName, email }),
@@ -82,8 +76,8 @@ async function syncDirectory({ googleId, email, displayName, answers, consent, m
     help_with: fields.help_with,
     need_help_with: fields.need_help_with,
     desired_person: fields.desired_person,
-    match_card: card,
-    card_approved: approved,
+    match_card: {},
+    card_approved: listed,
     active: listed,
     contactable: listed,
     share_help: true,
@@ -91,7 +85,47 @@ async function syncDirectory({ googleId, email, displayName, answers, consent, m
     share_desired_person: true,
   };
   if (existing && existing.endpoint_id) row.endpoint_id = existing.endpoint_id;
-  return upsertEndpoint(row);
+  const saved = await upsertEndpoint(row);
+  await upsertKnowledge({
+    ...saved,
+    answers,
+  });
+  return saved;
+}
+
+async function upsertKnowledge(row) {
+  if (!supabase || !row || !row.endpoint_id) return null;
+  const document = knowledgeDocument(row);
+  let embedding = null;
+  if (document && isOpenAiConfigured()) {
+    try {
+      embedding = await embed(document);
+    } catch (error) {
+      console.error('Airsup embed error:', error.message || error);
+    }
+  }
+  const payload = {
+    endpoint_id: row.endpoint_id,
+    document,
+    embedding,
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await supabase
+    .from('airsup_knowledge')
+    .upsert(payload, { onConflict: 'endpoint_id' })
+    .select('endpoint_id')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function listKnowledge() {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('airsup_knowledge')
+    .select('endpoint_id, document, embedding');
+  if (error) throw error;
+  return data || [];
 }
 
 async function getEndpointById(endpointId) {
@@ -147,8 +181,7 @@ async function listActiveEndpoints() {
     .from('airsup_endpoints')
     .select('endpoint_id, google_id, display_name, endpoint_email, help_with, need_help_with, desired_person, match_card, card_approved, active, contactable, share_help, share_need, share_desired_person')
     .eq('active', true)
-    .eq('contactable', true)
-    .eq('card_approved', true);
+    .eq('contactable', true);
   if (error) throw error;
   return overlayFullNames(data || []);
 }
@@ -166,6 +199,7 @@ async function overlayFullNames(rows) {
     const profile = byGoogleId.get(row.google_id);
     return {
       ...row,
+      answers: (profile && profile.answers) || {},
       display_name: publicDisplayName({
         answers: profile && profile.answers,
         displayName: row.display_name,
@@ -185,4 +219,6 @@ module.exports = {
   getEndpointByGoogleId,
   upsertEndpoint,
   listActiveEndpoints,
+  upsertKnowledge,
+  listKnowledge,
 };

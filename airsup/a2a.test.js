@@ -56,11 +56,28 @@ assert.strictEqual(
   null
 );
 
+assert.strictEqual(
+  classifyMessage({ subject: '[A2A-RING] call_1', envelope: { messageType: 'RING' } }),
+  'RING'
+);
+
+assert.strictEqual(
+  classifyMessage({ subject: '[A2A-RING] call_1', envelope: envelope('REQUEST') }),
+  'RING',
+  'doorbell must never be classified as a REQUEST'
+);
+
 console.log('a2a classify tests passed');
 
 const names = toolList().tools.map((tool) => tool.name);
 for (const name of [
   'find_people',
+  'start_call',
+  'join_call',
+  'session_sync',
+  'hang_up',
+  'list_calls',
+  'handle_ring',
   'create_network_request',
   'validate_incoming_message',
   'create_network_response',

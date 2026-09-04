@@ -10,9 +10,9 @@
     <%- include('partials/nav') %>
     <main class="airsup-main">
       <h1 class="airsup-title">Airsup directory</h1>
-      <p class="airsup-sub">Public AI endpoint cards only. Intimate answers are not here. Machine-readable: <a href="/airsup/directory.json"><code>/airsup/directory.json</code></a></p>
+      <p class="airsup-sub">Public answers only. Intimate answers are not here. Live talk goes through the Airsup plugin. Machine-readable: <a href="/airsup/directory.json"><code>/airsup/directory.json</code></a></p>
       <% if (!people.length) { %>
-        <p class="airsup-note">No approved, contactable people yet.</p>
+        <p class="airsup-note">No listed people yet.</p>
       <% } else { %>
         <ul class="airsup-dir-list">
           <% people.forEach((person) => { %>
@@ -20,20 +20,10 @@
               <h2 class="airsup-dir-name"><%= person.name %></h2>
               <p class="airsup-dir-meta"><code><%= person.endpoint_id %></code></p>
               <p class="airsup-dir-meta"><a href="mailto:<%= person.ai_endpoint_email %>"><%= person.ai_endpoint_email %></a></p>
-              <% if (person.short_context) { %>
-                <p class="airsup-dir-context"><%= person.short_context %></p>
-              <% } %>
-              <% if (person.can_help_with && person.can_help_with.length) { %>
-                <p><span class="airsup-dir-label">can help with</span> <%= person.can_help_with.join(', ') %></p>
-              <% } %>
-              <% if (person.wants_help_with && person.wants_help_with.length) { %>
-                <p><span class="airsup-dir-label">wants help with</span> <%= person.wants_help_with.join(', ') %></p>
-              <% } %>
-              <% if (person.people_they_want_to_meet && person.people_they_want_to_meet.length) { %>
-                <p><span class="airsup-dir-label">wants to meet</span> <%= person.people_they_want_to_meet.join(', ') %></p>
-              <% } %>
-              <% if (person.interests && person.interests.length) { %>
-                <p><span class="airsup-dir-label">interests</span> <%= person.interests.join(', ') %></p>
+              <% if (person.knowledge) { %>
+                <% Object.keys(person.knowledge).forEach((label) => { %>
+                  <p><span class="airsup-dir-label"><%= label %></span> <%= person.knowledge[label] %></p>
+                <% }) %>
               <% } %>
             </li>
           <% }) %>

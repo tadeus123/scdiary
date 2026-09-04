@@ -17,11 +17,13 @@ description: Airsup lives in airsup/ only and must stay removable
 - Put Airsup styles in `public/css/style.css` — use `airsup/public/` instead
 - Share tables with the rest of the site — use `airsup_*` tables only
 - Fake a Gmail login. Real Google OAuth only (`AIRSUP_GOOGLE_CLIENT_ID` / `AIRSUP_GOOGLE_CLIENT_SECRET`)
-- Hardcode Tade (or anyone) as a match. ChatGPT looks at `/airsup/directory` when it needs to find someone new. If the user already named a known person, it does not need to reload the list. Do not require a ChatGPT plugin
-- Put complete onboarding answers in the directory. Only approved compact match cards are searchable
-- Build embeddings or recommendation graphs. Compare the ~20 compact cards in one model call
-- Let an endpoint auto-answer an [A2A-RESPONSE]. REQUESTS are answered. RESPONSES are delivered. RESPONSES are never automatically answered.
-- Use Gmail Reply for A2A mail. Always send a new message so the subject stays [A2A-REQUEST] or [A2A-RESPONSE]
+- Hardcode Tade (or anyone) as a match. ChatGPT finds people with `find_people` on the Airsup MCP
+- Put intimate onboarding answers in the public index (sex, birth date, grew up, last cry)
+- Let an endpoint auto-answer a doorbell email. Gmail is only a ring. Live talk is `session_sync`
+- Use Gmail Reply. Doorbell mail is a new `[A2A-RING]` message. Conversation is not in Gmail
+
+## Live calls
+MCP URL is always `https://www.tademehl.com/airsup/mcp`. Both ChatGPTs use the plugin. `start_call` / `join_call` / `session_sync` / `hang_up`. The caller’s chat stays open. The line ends when both hang up.
 
 ## Revert
 ```bash

@@ -2,81 +2,41 @@
 
 Isolated onboarding at `/airsup`. Same site look. Removable via `airsup/REVERT.md`.
 
-A prompt cannot read Supabase. ChatGPT looks at the live public directory before contacting anyone. No plugin.
-
 ```text
-Onboarding answers → approved compact match card → /airsup/directory → Gmail [A2A-REQUEST]
+Onboarding answers → public knowledge index → Airsup MCP live call
+Gmail is only the doorbell that wakes the other ChatGPT
 ```
 
-Never hardcode Tade. Do not build embeddings, graphs, or multi-turn negotiation yet.
+MCP URL (stable): `https://www.tademehl.com/airsup/mcp`
 
-## Match cards
+Never hardcode Tade. Intimate answers stay out of search.
 
-Raw answers stay private. During onboarding they are converted once into a compact public card:
+## Knowledge index
 
-- can_help_with
-- wants_help_with
-- people_they_want_to_meet
-- interests
-- short_context
+Each listed person is stored from their **real public answers**, not a generated card.
 
-The user can correct the card. Only an approved card becomes searchable. Sexual and intimate answers never go into the card.
+Searchable: name, help, dreams, people they want to meet, books, universe, honesty, pride.
 
-## find_people
+Never indexed: birth date, how they grew up, last cry, sex questions.
 
-```text
-find_people({
-  requester_id,
-  current_need,
-  what_requester_can_offer,
-  desired_person,
-  maximum_results
-})
-```
+`find_people` uses pgvector plus name match. Works at ~100 people. Intimate fields are never in the document.
 
-The server:
+## Live call (telephone)
 
-1. Loads every active, contactable, approved card except the requester.
-2. Sends the request plus all compact cards to one model call.
-3. Scores complementarity (help 40%, reciprocal value 25%, desired person 20%, shared context 10%, evidence 5%).
-4. Returns the best three with evidence.
+Both ChatGPTs use the Airsup plugin.
 
-With ~20 users this is a few thousand tokens. No embeddings.
+1. `find_people`
+2. `start_call` — server opens `call_id` (`ringing`) and returns one `[A2A-RING]` Gmail
+3. Caller sends that email as a **new** message, then **stays in the same chat** and calls `session_sync`
+4. Callee’s Gmail wakes ChatGPT → `handle_ring` / `join_call` → `session_sync` in that chat
+5. The line stays until **both** hang up (`hang_up`). Cancelling your own unanswered ring also ends it.
 
-## How ChatGPT finds people
+Gmail is not the conversation. `list_calls` is the source of truth if mail is late.
 
-No plugin. ChatGPT opens the live directory, then contacts someone by Gmail.
+Do not send `[A2A-REQUEST]` / `[A2A-RESPONSE]`. A RING is never answered as a question.
 
-- Page: `https://www.tademehl.com/airsup/directory`
-- JSON: `https://www.tademehl.com/airsup/directory.json`
+## MCP tools
 
-Both are `noindex`. Nothing else on the site links here. Only approved public cards. Intimate answers are not listed.
+`find_people`, `start_call`, `join_call`, `session_sync`, `hang_up`, `list_calls`, `handle_ring`
 
-MCP still exists at `/airsup/mcp` for later, but onboarding does not ask the user to install it.
-
-## A2A protocol
-
-Gmail labels are not enough. The server decides whether a message is a REQUEST or a RESPONSE.
-
-```text
-REQUESTS are answered.
-RESPONSES are delivered.
-RESPONSES are never automatically answered.
-```
-
-| Type | Subject | Worker |
-|---|---|---|
-| New request | `[A2A-REQUEST] {request_id}` | Answer once, then send a new `[A2A-RESPONSE]` |
-| Response | `[A2A-RESPONSE] {request_id}` | Deliver to the originating AI. Never auto-answer |
-| Follow-up | `[A2A-REQUEST] {new_id}` | New request, optionally linked by `conversation_id` |
-
-Never use Gmail Reply. Reply keeps the request subject and can retrigger the request worker.
-
-Every message has an envelope (`A2A-PROTOCOL`, `MESSAGE-TYPE`, `MESSAGE-ID`, `REQUEST-ID`, `CONVERSATION-ID`, `FROM-ENDPOINT`, `TO-ENDPOINT`, `IN-REPLY-TO`, `RESPONSE-EXPECTED`). Subject `[A2A-RESPONSE]` and envelope `MESSAGE-TYPE: RESPONSE` always classify as RESPONSE, even if the body claims otherwise.
-
-Outgoing requests create a durable row (`waiting`). The original ChatGPT chat will not stay open. Later, any conversation calls `get_network_results()`. When the response arrives: `waiting → answered`.
-
-`MESSAGE-ID` and Gmail message ID are unique so webhook retries cannot produce a second answer.
-
-MCP tools: `find_people`, `create_network_request`, `validate_incoming_message`, `create_network_response`, `record_network_response`, `get_network_results`.
-
+Old A2A tool names still exist as redirects so a stale prompt cannot reopen the mixed email channels.
