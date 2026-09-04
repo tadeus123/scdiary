@@ -49,10 +49,6 @@ function publicPerson(row) {
   };
 }
 
-function publicDirectory(rows) {
-  return (rows || []).map(publicPerson).filter(Boolean);
-}
-
 function tokens(value) {
   return String(value || '')
     .toLowerCase()
@@ -92,7 +88,6 @@ module.exports = {
   publicAnswers,
   knowledgeDocument,
   publicPerson,
-  publicDirectory,
   nameMatchScore,
   keywordScore,
 };

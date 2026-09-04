@@ -13,10 +13,8 @@ const {
   syncDirectory,
   getEndpointByGoogleId,
   isConfigured: isDbConfigured,
-  listActiveEndpoints,
 } = require('./db');
 const { publicDisplayName } = require('./directory');
-const { publicDirectory } = require('./knowledge');
 const { MCP_URL } = require('./config');
 const { buildOpenApi } = require('./openapi');
 const { handleMcp, callFindPeople, callTool } = require('./mcp');
@@ -73,15 +71,11 @@ function userDisplayName(user, profile) {
   });
 }
 
-function directoryUrl(req) {
-  return `${auth.getPublicOrigin(req)}/airsup/directory`;
-}
-
-async function loadPublicDirectory() {
-  if (!isDbConfigured()) return [];
-  const rows = await listActiveEndpoints();
-  return publicDirectory(rows);
-}
+router.get(['/', ''], (req, res) => {
+  renderAirsup(req, res, 'index.ejs', {
+    oauthError: req.query.error === 'oauth' ? 'Google sign-in failed. Try again.' : null,
+  });
+});
 
 function directoryAuthorized(req) {
   const expected = process.env.AIRSUP_DIRECTORY_KEY;
@@ -97,44 +91,6 @@ function setSearchCors(res) {
   res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Airsup-Key');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
 }
-
-router.get(['/', ''], (req, res) => {
-  renderAirsup(req, res, 'index.ejs', {
-    oauthError: req.query.error === 'oauth' ? 'Google sign-in failed. Try again.' : null,
-  });
-});
-
-router.options('/directory.json', (req, res) => {
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.status(204).end();
-});
-
-router.get('/directory.json', async (req, res) => {
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Cache-Control', 'public, max-age=60');
-  try {
-    const people = await loadPublicDirectory();
-    res.json({
-      note: 'Airsup listings. Live talk uses the Airsup MCP plugin. Never invent people.',
-      directory: `${auth.getPublicOrigin(req)}/airsup/directory`,
-      people,
-    });
-  } catch (error) {
-    console.error('Airsup directory.json error:', error);
-    res.status(500).json({ people: [], error: 'Could not load directory' });
-  }
-});
-
-router.get('/directory', async (req, res) => {
-  let people = [];
-  try {
-    people = await loadPublicDirectory();
-  } catch (error) {
-    console.error('Airsup directory error:', error);
-  }
-  renderAirsup(req, res, 'directory.ejs', { people });
-});
 
 router.get('/you', async (req, res) => {
   const user = auth.readUser(req);
@@ -286,10 +242,6 @@ router.put('/api/profile', async (req, res) => {
     console.error('Airsup save error:', error);
     res.status(500).json({ ok: false, error: 'Could not save' });
   }
-});
-
-router.post('/api/card/generate', async (req, res) => {
-  res.status(410).json({ ok: false, error: 'Public cards are no longer generated. The directory uses your real answers.' });
 });
 
 router.post('/api/finish', async (req, res) => {

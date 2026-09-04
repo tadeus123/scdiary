@@ -24,7 +24,7 @@ Env: `AIRSUP_GOOGLE_CLIENT_ID`, `AIRSUP_GOOGLE_CLIENT_SECRET`, `SUPABASE_SERVICE
 
 ## How matching works
 
-Public onboarding answers are embedded in `airsup_knowledge` (pgvector). `find_people` searches that index plus name. No generated cards. Intimate answers are excluded.
+Listing answers are embedded in `airsup_knowledge` (pgvector). `find_people` searches that index plus name.
 
 ## Live calls
 
