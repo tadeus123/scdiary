@@ -15,7 +15,7 @@ const {
   isConfigured: isDbConfigured,
   listActiveEndpoints,
 } = require('./db');
-const { displayNameFrom } = require('./directory');
+const { publicDisplayName } = require('./directory');
 const { generateMatchCard, normalizeCard, emptyCard, publicDirectory } = require('./card');
 const { buildOpenApi } = require('./openapi');
 const { handleMcp, callFindPeople, callTool } = require('./mcp');
@@ -65,7 +65,8 @@ function renderAirsup(req, res, viewName, extra = {}) {
 }
 
 function userDisplayName(user, profile) {
-  return displayNameFrom({
+  return publicDisplayName({
+    answers: profile && profile.answers,
     displayName: (profile && profile.displayName) || (user && user.displayName) || '',
     email: (user && user.email) || '',
   });

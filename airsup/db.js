@@ -5,7 +5,7 @@
  */
 const { createClient } = require('@supabase/supabase-js');
 const { normalizeAnswers } = require('./questions');
-const { publicFieldsFromAnswers, displayNameFrom } = require('./directory');
+const { publicFieldsFromAnswers, publicDisplayName } = require('./directory');
 const { normalizeCard } = require('./card');
 
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -77,7 +77,7 @@ async function syncDirectory({ googleId, email, displayName, answers, consent, m
   );
   const row = {
     google_id: googleId,
-    display_name: displayNameFrom({ displayName, email }),
+    display_name: publicDisplayName({ answers, displayName, email }),
     endpoint_email: email,
     help_with: fields.help_with,
     need_help_with: fields.need_help_with,
@@ -145,12 +145,34 @@ async function listActiveEndpoints() {
   }
   const { data, error } = await supabase
     .from('airsup_endpoints')
-    .select('endpoint_id, display_name, endpoint_email, help_with, need_help_with, desired_person, match_card, card_approved, active, contactable, share_help, share_need, share_desired_person')
+    .select('endpoint_id, google_id, display_name, endpoint_email, help_with, need_help_with, desired_person, match_card, card_approved, active, contactable, share_help, share_need, share_desired_person')
     .eq('active', true)
     .eq('contactable', true)
     .eq('card_approved', true);
   if (error) throw error;
-  return data || [];
+  return overlayFullNames(data || []);
+}
+
+async function overlayFullNames(rows) {
+  const ids = [...new Set((rows || []).map((row) => row.google_id).filter(Boolean))];
+  if (!ids.length) return rows || [];
+  const { data: profiles, error } = await supabase
+    .from('airsup_profiles')
+    .select('google_id, answers')
+    .in('google_id', ids);
+  if (error) throw error;
+  const byGoogleId = new Map((profiles || []).map((profile) => [profile.google_id, profile]));
+  return (rows || []).map((row) => {
+    const profile = byGoogleId.get(row.google_id);
+    return {
+      ...row,
+      display_name: publicDisplayName({
+        answers: profile && profile.answers,
+        displayName: row.display_name,
+        email: row.endpoint_email,
+      }),
+    };
+  });
 }
 
 module.exports = {

@@ -26,6 +26,13 @@ function displayNameFrom(user) {
   return local || 'the user';
 }
 
+/** Public directory heading. Prefer onboarding full name over the Google account name. */
+function publicDisplayName({ answers, displayName, email } = {}) {
+  const fromAnswers = clip(answers && answers.full_name, 120);
+  if (fromAnswers) return fromAnswers;
+  return displayNameFrom({ displayName, email });
+}
+
 function publicFieldsFromAnswers(answers) {
   const source = answers && typeof answers === 'object' ? answers : {};
   return {
@@ -101,6 +108,7 @@ module.exports = {
   INTIMATE_IDS,
   clip,
   displayNameFrom,
+  publicDisplayName,
   publicFieldsFromAnswers,
   publicCard,
   rankEndpoints,

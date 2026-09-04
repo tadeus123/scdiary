@@ -1,5 +1,5 @@
 const { QUESTIONS } = require('./questions');
-const { clip, displayNameFrom } = require('./directory');
+const { clip, publicDisplayName } = require('./directory');
 const { isOpenAiConfigured, chatJson } = require('./openai');
 
 const CARD_SOURCE_IDS = [
@@ -85,7 +85,11 @@ function compactDirectoryCard(row) {
   const card = normalizeCard(row.match_card);
   return {
     endpoint_id: row.endpoint_id,
-    name: row.display_name || displayNameFrom({ email: row.endpoint_email }),
+    name: publicDisplayName({
+      answers: row.answers,
+      displayName: row.display_name,
+      email: row.endpoint_email,
+    }),
     ai_endpoint_email: row.endpoint_email,
     can_help_with: card.can_help_with,
     wants_help_with: card.wants_help_with,
