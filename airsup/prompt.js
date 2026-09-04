@@ -46,7 +46,7 @@ function generatePrompt({
     'First action now: list_calls to confirm the plugin works. Then STOP. No tools until I say a name or a RING arrives.',
     `Skip requester endpoint_id ${myEndpoint}.`,
     '',
-    'INDEX ONLY — not call procedure:',
+    'listing — not call procedure:',
     '',
     profile,
   ].join('\n');

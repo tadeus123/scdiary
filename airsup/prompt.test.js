@@ -32,7 +32,7 @@ assert.ok(/next_since_seq/.test(text));
 assert.ok(!/before talking to me/.test(text));
 assert.ok(!/last_seq/.test(text));
 assert.ok(/LIVE LOOP/.test(text));
-assert.ok(text.indexOf('LIVE LOOP') < text.indexOf('INDEX ONLY'));
+assert.ok(text.indexOf('LIVE LOOP') < text.indexOf('listing — not call procedure'));
 assert.ok(/Then STOP/.test(text));
 assert.ok(/Do not start_call in the same turn/.test(text));
 assert.ok(!/then find_people with query taken only/.test(text));

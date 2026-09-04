@@ -171,6 +171,16 @@
   margin: 0 0 1rem;
 }
 
+.airsup-group {
+  font-size: 1.05rem;
+  font-weight: 400;
+  margin: 1.75rem 0 0.75rem;
+}
+
+.airsup-form .airsup-group:first-child {
+  margin-top: 0;
+}
+
 .airsup-questions {
   display: grid;
   grid-template-columns: 1fr;

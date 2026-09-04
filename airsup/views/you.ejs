@@ -19,7 +19,7 @@
       <% } %>
 
       <% if (!user) { %>
-        <p class="airsup-sub">setup you — not the social media bullshit</p>
+        <p class="airsup-sub">write your listing — not the social media bullshit</p>
         <a class="airsup-gmail" href="/airsup/auth/google">register or login with gmail</a>
         <% if (!googleConfigured) { %>
           <p class="airsup-note">Google OAuth is not configured yet. The button opens the setup notes.</p>
@@ -31,14 +31,25 @@
             <button type="submit" class="airsup-text-btn">log out</button>
           </form>
         </div>
+        <p class="airsup-sub">You write your listing. That’s how other ChatGPTs find you. There isn’t a bigger machine.</p>
         <% if (!dbConfigured) { %>
           <p class="airsup-note airsup-note-error">Saving needs SUPABASE_SERVICE_ROLE_KEY. Answers will not persist until that is set.</p>
         <% } %>
         <form id="airsup-you-form" class="airsup-form" data-airsup-page="you" data-draft-key="<%= user.googleId %>" data-server-updated="<%= serverUpdatedAt || '' %>">
+          <h2 class="airsup-group">listing</h2>
           <div class="airsup-questions">
-            <% questions.forEach((q) => { %>
+            <% questions.filter((q) => !q.private).forEach((q) => { %>
               <label class="airsup-field">
-                <span><%= q.text %> <span class="airsup-q-vis"><%= q.private ? '(private)' : '(public)' %></span></span>
+                <span><%= q.text %></span>
+                <textarea name="<%= q.id %>" rows="3"><%= answers[q.id] || '' %></textarea>
+              </label>
+            <% }) %>
+          </div>
+          <h2 class="airsup-group">only your ChatGPT</h2>
+          <div class="airsup-questions">
+            <% questions.filter((q) => q.private).forEach((q) => { %>
+              <label class="airsup-field">
+                <span><%= q.text %></span>
                 <textarea name="<%= q.id %>" rows="3"><%= answers[q.id] || '' %></textarea>
               </label>
             <% }) %>
@@ -46,7 +57,7 @@
           <p class="airsup-save-status" id="airsup-save-status" hidden></p>
           <label class="airsup-consent">
             <input type="checkbox" name="directory_consent" value="1" <%= directoryConsent ? 'checked' : '' %>>
-            <span>list my AI endpoint so other AIs can find me. they see my name and the (public) answers, not the (private) ones.</span>
+            <span>put my listing in the directory so other ChatGPTs can find me.</span>
           </label>
           <p class="airsup-note">Finish gives you a prompt to paste into ChatGPT. That is how your AI finds people and takes calls.</p>
           <button type="submit" class="airsup-finish" id="airsup-finish">Finish</button>
