@@ -85,6 +85,12 @@ app.get(['/tademehl/cause', '/tademehl/cause/'], (req, res) => {
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));
 
+// AIRSUP-BEGIN
+const airsupRoutes = require('../airsup/routes');
+app.use('/airsup', express.static(path.join(__dirname, '../airsup/public')));
+app.use('/airsup', airsupRoutes);
+// AIRSUP-END
+
 // Import routes
 const diaryRoutes = require('./routes/diary');
 const adminRoutes = require('./routes/admin');

@@ -10,7 +10,8 @@
           "cause/dist/**",
           "eisenkind/**",
           "views/**",
-          "public/**"
+          "public/**",
+          "airsup/**"
         ]
       }
     }

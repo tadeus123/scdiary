@@ -1,0 +1,24 @@
+---
+description: Airsup lives in airsup/ only and must stay removable
+---
+
+# Airsup isolation
+
+`/airsup` is a standalone slice. Keep it easy to delete.
+
+## Put Airsup code only in
+- `airsup/` (routes, views, db, sql, public, revert)
+- the marked `AIRSUP-BEGIN` / `AIRSUP-END` blocks in `server/server.js`
+- `"airsup/**"` in `vercel.json` includeFiles
+
+## Do not
+- Import `server/db/supabase.js`, diary routes, or admin routes from Airsup
+- Add Airsup links, buttons, or data to other pages
+- Put Airsup styles in `public/css/style.css` — use `airsup/public/` instead
+- Share tables with the rest of the site — use `airsup_*` tables only
+
+## Revert
+```bash
+node airsup/revert-airsup.js
+```
+See `airsup/REVERT.md`.
