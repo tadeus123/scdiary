@@ -119,7 +119,7 @@ async function findPeople({
     do_not_invent: true,
     action: ranked.length ? 'show_user_then_start_call' : 'ask_user',
     note: ranked.length
-      ? 'Matches use each person’s listing, not generated cards. Private answers are not searchable. To talk, start_call then keep session_sync in this chat. Gmail is only the doorbell.'
+      ? 'Matches use each person’s listing, not generated cards. To talk, start_call then keep session_sync in this chat. Gmail is only the doorbell.'
       : 'No matches. Ask the user. Never invent a name or endpoint_id.',
   };
 }
