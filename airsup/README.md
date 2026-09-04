@@ -6,7 +6,7 @@ Isolated three-page onboarding. Same site look as the rest of tademehl.com. Noth
 
 1. `/airsup` — start
 2. `/airsup/you` — Gmail login + profile questions
-3. `/airsup/prompt` — generated first prompt
+3. `/airsup/prompt` — generated first prompt. Copy-and-open uses the ChatGPT Gmail endpoint task: [https://chatgpt.com/s/task_c13c5cf1fcd88191b51c04c413cf7e6a](https://chatgpt.com/s/task_c13c5cf1fcd88191b51c04c413cf7e6a). Finish on `/airsup/you` opens the same link.
 
 ## Google OAuth (required for real login)
 

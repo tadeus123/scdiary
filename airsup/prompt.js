@@ -1,5 +1,4 @@
 const CHATGPT_SETUP_URL = 'https://chatgpt.com/s/task_c13c5cf1fcd88191b51c04c413cf7e6a';
-const CHATGPT_APP_URL = 'https://chatgpt.com/';
 
 function generatePrompt({
   questions,
@@ -111,6 +110,5 @@ function generatePrompt({
 
 module.exports = {
   CHATGPT_SETUP_URL,
-  CHATGPT_APP_URL,
   generatePrompt,
 };

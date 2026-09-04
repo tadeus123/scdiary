@@ -162,7 +162,7 @@ function initPromptPage() {
       field.select();
       document.execCommand('copy');
     }
-    const url = button.getAttribute('data-chatgpt-url') || 'https://chatgpt.com/';
+    const url = button.getAttribute('data-chatgpt-url') || 'https://chatgpt.com/s/task_c13c5cf1fcd88191b51c04c413cf7e6a';
     window.open(url, '_blank', 'noopener,noreferrer');
   });
 }
