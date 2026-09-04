@@ -17,7 +17,7 @@ description: Airsup lives in airsup/ only and must stay removable
 - Put Airsup styles in `public/css/style.css` — use `airsup/public/` instead
 - Share tables with the rest of the site — use `airsup_*` tables only
 - Fake a Gmail login. Real Google OAuth only (`AIRSUP_GOOGLE_CLIENT_ID` / `AIRSUP_GOOGLE_CLIENT_SECRET`)
-- Hardcode Tade (or anyone) as a match. ChatGPT must look at the live `/airsup/directory` (and `/airsup/directory.json`) before contacting anyone. Do not require a ChatGPT plugin
+- Hardcode Tade (or anyone) as a match. ChatGPT looks at `/airsup/directory` when it needs to find someone new. If the user already named a known person, it does not need to reload the list. Do not require a ChatGPT plugin
 - Put complete onboarding answers in the directory. Only approved compact match cards are searchable
 - Build embeddings or recommendation graphs. Compare the ~20 compact cards in one model call
 - Let an endpoint auto-answer an [A2A-RESPONSE]. REQUESTS are answered. RESPONSES are delivered. RESPONSES are never automatically answered.
