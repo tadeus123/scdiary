@@ -21,33 +21,40 @@ body.airsup-start .airsup-shell {
 }
 
 body.airsup-start .airsup-shell nav {
-  margin-bottom: 0.55rem;
+  margin-bottom: 0.7rem;
 }
 
-body.airsup-start .airsup-welcome {
-  padding: 0.1rem 0 0;
+body.airsup-start .airsup-main {
+  padding: 0;
+}
+
+body.airsup-start .airsup-board {
+  max-width: 34rem;
+  border: 1px solid var(--text-color);
+  padding: 1rem 1.15rem 1.15rem;
+  box-sizing: border-box;
 }
 
 body.airsup-start .airsup-title {
-  font-size: clamp(1.35rem, 3vw, 1.75rem);
-  margin-bottom: 0.5rem;
+  font-size: clamp(1.3rem, 2.8vw, 1.65rem);
+  margin-bottom: 0.55rem;
 }
 
 body.airsup-start .airsup-lead {
   max-width: 28rem;
-  margin-bottom: 0.65rem;
-}
-
-body.airsup-start .airsup-dir {
-  margin-bottom: 0.5rem;
-}
-
-body.airsup-start .airsup-can {
   margin-bottom: 0.7rem;
 }
 
+body.airsup-start .airsup-dir {
+  margin-bottom: 0.55rem;
+}
+
+body.airsup-start .airsup-can {
+  margin: 0 0 0.75rem 1.15rem;
+}
+
 body.airsup-start .airsup-can li {
-  margin-bottom: 0.15rem;
+  margin-bottom: 0.2rem;
 }
 
 body.airsup-start .airsup-production {
