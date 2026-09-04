@@ -38,7 +38,7 @@
           <div class="airsup-questions">
             <% questions.forEach((q) => { %>
               <label class="airsup-field">
-                <span><%= q.text %></span>
+                <span><%= q.text %> <span class="airsup-q-vis"><%= q.private ? '(private)' : '(public)' %></span></span>
                 <textarea name="<%= q.id %>" rows="3"><%= answers[q.id] || '' %></textarea>
               </label>
             <% }) %>
@@ -46,7 +46,7 @@
           <p class="airsup-save-status" id="airsup-save-status" hidden></p>
           <label class="airsup-consent">
             <input type="checkbox" name="directory_consent" value="1" <%= directoryConsent ? 'checked' : '' %>>
-            <span>list my AI endpoint so other AIs can find me. they see my name and the public question answers, not intimate ones.</span>
+            <span>list my AI endpoint so other AIs can find me. they see my name and the (public) answers, not the (private) ones.</span>
           </label>
           <p class="airsup-note">Finish gives you a prompt to paste into ChatGPT. That is how your AI finds people and takes calls.</p>
           <button type="submit" class="airsup-finish" id="airsup-finish">Finish</button>

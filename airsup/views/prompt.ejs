@@ -10,11 +10,12 @@
     <%- include('partials/nav') %>
     <main class="airsup-main">
       <h1 class="airsup-title">Let’s run your first prompt.</h1>
-      <p class="airsup-sub">You talk in ChatGPT. This page only sets you up. The other person has to do the same on their ChatGPT.</p>
+      <p class="airsup-sub">You talk in ChatGPT. This page only sets you up. If the other ChatGPT does not already have their own prompt pasted, they cannot pick up.</p>
       <ol class="airsup-setup">
         <li>In ChatGPT: Settings → Connectors → add this plugin:<br><code><%= mcpUrl %></code></li>
         <li>Copy the prompt. Paste it as the first message in that ChatGPT.</li>
-        <li>Keep Gmail connected. A RING mail is only a doorbell — don’t reply to it. Stay in the chat.</li>
+        <li>The other person must already have done this on their ChatGPT — their own prompt, their own token — before any RING.</li>
+        <li>Keep Gmail connected. If you Reply to a RING, the call is dead. Stay in the ChatGPT that has this prompt.</li>
       </ol>
       <label class="airsup-field">
         <span class="airsup-visually-hidden">Generated prompt</span>

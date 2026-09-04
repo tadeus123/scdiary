@@ -2,14 +2,7 @@ const { QUESTIONS } = require('./questions');
 const { clip, publicDisplayName } = require('./directory');
 
 /** Never embed or list these. Sex, childhood, crying, and birth date stay private. */
-const PRIVATE_IDS = new Set([
-  'geburtsdatum',
-  'grew_up',
-  'last_cry',
-  'sex_like',
-  'sex_frequency',
-  'sex_life',
-]);
+const PRIVATE_IDS = new Set(QUESTIONS.filter((q) => q.private).map((q) => q.id));
 
 const SEARCHABLE_IDS = QUESTIONS.map((q) => q.id).filter((id) => !PRIVATE_IDS.has(id));
 

@@ -47,9 +47,9 @@ function doorbellEmail({ call, from, to, opening }) {
     '',
     'This is only a doorbell. Do not answer this email. Do not use Gmail Reply.',
     '',
-    'Use the Airsup plugin in ChatGPT.',
-    `Call handle_ring with this_endpoint ${to.endpoint_id}, this email subject, and this email body.`,
+    'If you have no Airsup token in this chat, stop. Tell the human to open /airsup/prompt and paste their prompt. Do not Reply.',
     'Use YOUR token from your Airsup first prompt. This email does not contain it.',
+    `Call handle_ring with this_endpoint ${to.endpoint_id}, this email subject, and this email body.`,
     'Then session_sync in that same chat. First since_seq=0, then always next_since_seq.',
     '',
     opening ? `Opening:\n${opening}` : '',
@@ -370,7 +370,7 @@ async function listCalls({ thisEndpoint, token }) {
     incoming_rings: rows.filter((row) => row.status === 'ringing' && sameId(row.callee_endpoint, id)).map((row) => snapshot(row, id)),
     outgoing_rings: rows.filter((row) => row.status === 'ringing' && sameId(row.caller_endpoint, id)).map((row) => snapshot(row, id)),
     live: rows.filter((row) => row.status === 'live' || row.status === 'ending').map((row) => snapshot(row, id)),
-    instruction: 'Incoming rings: join_call with that call_id. Live lines: session_sync. A Gmail doorbell: handle_ring. Never reply to mail.',
+    instruction: 'Incoming rings: join_call with that call_id. A Gmail RING: handle_ring, not join_call. Never both. Never reply to mail. Live: session_sync.',
   };
 }
 

@@ -14,9 +14,9 @@ const text = generatePrompt({
   },
   email: 'anna@example.com',
   displayName: 'Anna Schmidt',
-  endpointId: '60ffec0e-ab68-445c-ae73-f95cf24b26e0',
   mcpUrl: 'https://www.tademehl.com/airsup/mcp',
   mcpToken: 'tok_test',
+  endpointId: '60ffec0e-ab68-445c-ae73-f95cf24b26e0',
 });
 
 assert.ok(text.includes('My token: tok_test'));
@@ -31,7 +31,10 @@ assert.ok(/MUST_CALL_AGAIN/.test(text));
 assert.ok(/next_since_seq/.test(text));
 assert.ok(!/before talking to me/.test(text));
 assert.ok(!/last_seq/.test(text));
-assert.ok(/Then wait for me/.test(text));
+assert.ok(/LIVE LOOP/.test(text));
+assert.ok(text.indexOf('LIVE LOOP') < text.indexOf('INDEX ONLY'));
+assert.ok(/Then STOP/.test(text));
+assert.ok(/Do not start_call in the same turn/.test(text));
 assert.ok(!/then find_people with query taken only/.test(text));
 
 console.log('prompt tests passed');

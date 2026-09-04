@@ -153,6 +153,15 @@
   align-self: end;
 }
 
+.airsup-q-vis {
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: 400;
+  opacity: 0.45;
+  color: var(--text-color);
+  margin-left: 0.25rem;
+}
+
 .airsup-field textarea,
 .airsup-prompt-text {
   font-family: Georgia, 'Times New Roman', serif;

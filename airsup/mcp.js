@@ -32,7 +32,7 @@ function toolList() {
         name: 'find_people',
         title: 'Find people',
         description:
-          'Search listed Airsup people using their real public onboarding answers. Never invent people. Then start_call to talk.',
+          'Search listed Airsup people using their real public onboarding answers. Never invent people. Show matches and wait. Do not start_call in the same turn.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -249,9 +249,9 @@ async function dispatch(message) {
     return {
       protocolVersion: MCP_PROTOCOL,
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: 'airsup', version: '2.2.0' },
+      serverInfo: { name: 'airsup', version: '2.3.0' },
       instructions:
-        `Airsup MCP ${MCP_URL}. Pass token from the Airsup first prompt on every tool. Gmail is only a doorbell. Live talk: find_people → start_call → send [A2A-RING] → session_sync. If new_from_other has lines, say them, then sync again. If MUST_CALL_AGAIN=true, sync again immediately without talking. Incoming RING: handle_ring. Never answer the email. Never invent people.`,
+        `Airsup MCP ${MCP_URL}. Pass token from the Airsup first prompt on every tool. Gmail is only a doorbell. MUST_CALL_AGAIN=true → session_sync again with zero words. SPEECH → say those lines, then sync. Do not find_people until the user names someone. Do not start_call in the same turn as find_people. RING email → handle_ring. Never Reply. Never invent people.`,
     };
   }
 
