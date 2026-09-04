@@ -99,10 +99,14 @@ router.get('/you', async (req, res) => {
   let loadError = null;
   let directoryConsent = true;
   let matchCard = emptyCard();
+  let serverUpdatedAt = '';
   if (user) {
     try {
       const profile = await getProfile(user.googleId);
-      if (profile) answers = profile.answers;
+      if (profile) {
+        answers = profile.answers;
+        serverUpdatedAt = profile.updatedAt || '';
+      }
       const endpoint = await getEndpointByGoogleId(user.googleId);
       if (endpoint) {
         directoryConsent = Boolean(endpoint.active && endpoint.contactable);
@@ -124,6 +128,7 @@ router.get('/you', async (req, res) => {
     loadError,
     dbConfigured: isDbConfigured(),
     matchConfigured: isOpenAiConfigured(),
+    serverUpdatedAt,
   });
 });
 

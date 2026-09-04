@@ -46,11 +46,12 @@ function collectPayload(form) {
   };
 }
 
-async function saveAnswers(payload) {
+async function saveAnswers(payload, { keepalive } = {}) {
   const res = await fetch('/airsup/api/profile', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',
+    keepalive: Boolean(keepalive),
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -60,11 +61,65 @@ async function saveAnswers(payload) {
   return data;
 }
 
+function draftStorageKey(form) {
+  const id = form.getAttribute('data-draft-key') || '';
+  return id ? `airsup-you-draft:${id}` : '';
+}
+
+function writeLocalDraft(form) {
+  const key = draftStorageKey(form);
+  if (!key) return;
+  try {
+    localStorage.setItem(key, JSON.stringify({
+      at: Date.now(),
+      payload: collectPayload(form),
+    }));
+  } catch {
+    /* private mode / quota */
+  }
+}
+
+function readLocalDraft(form) {
+  const key = draftStorageKey(form);
+  if (!key) return null;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const draft = JSON.parse(raw);
+    if (!draft || !draft.payload || !draft.payload.answers) return null;
+    return draft;
+  } catch {
+    return null;
+  }
+}
+
+function applyPayload(form, payload) {
+  const answers = payload.answers || {};
+  form.querySelectorAll('.airsup-questions textarea[name]').forEach((field) => {
+    if (typeof answers[field.name] === 'string') field.value = answers[field.name];
+  });
+  if (payload.matchCard) fillMatchCard(form, payload.matchCard);
+  const consent = form.querySelector('[name="directory_consent"]');
+  if (consent && typeof payload.directoryConsent === 'boolean') {
+    consent.checked = payload.directoryConsent;
+  }
+}
+
+function restoreLocalDraft(form) {
+  const draft = readLocalDraft(form);
+  if (!draft) return false;
+  const serverUpdated = Date.parse(form.getAttribute('data-server-updated') || '');
+  if (Number.isFinite(serverUpdated) && draft.at < serverUpdated) return false;
+  applyPayload(form, draft.payload);
+  return true;
+}
+
 function initYouPage(form) {
   const status = document.getElementById('airsup-save-status');
   const generate = document.getElementById('airsup-card-generate');
   let timer = null;
   let dirty = false;
+  let saveSeq = 0;
 
   function setStatus(text) {
     if (!status) return;
@@ -72,19 +127,35 @@ function initYouPage(form) {
     status.textContent = text || '';
   }
 
+  async function saveToServer(keepalive) {
+    const seq = ++saveSeq;
+    const payload = collectPayload(form);
+    try {
+      await saveAnswers(payload, { keepalive });
+      if (seq !== saveSeq) return;
+      dirty = false;
+      writeLocalDraft(form);
+      setStatus('saved');
+    } catch (error) {
+      if (seq !== saveSeq) return;
+      setStatus(error.message);
+    }
+  }
+
   function scheduleSave() {
     dirty = true;
+    writeLocalDraft(form);
     setStatus('saving…');
     clearTimeout(timer);
-    timer = setTimeout(async () => {
-      try {
-        await saveAnswers(collectPayload(form));
-        dirty = false;
-        setStatus('saved');
-      } catch (error) {
-        setStatus(error.message);
-      }
-    }, 600);
+    timer = setTimeout(() => {
+      saveToServer(false);
+    }, 350);
+  }
+
+  if (restoreLocalDraft(form)) {
+    dirty = true;
+    setStatus('restored unsaved draft');
+    scheduleSave();
   }
 
   form.addEventListener('input', scheduleSave);
@@ -106,7 +177,7 @@ function initYouPage(form) {
           throw new Error(data.error || 'Could not build the public card');
         }
         fillMatchCard(form, data.card);
-        dirty = true;
+        scheduleSave();
         setStatus('card ready — correct it if needed');
       } catch (error) {
         setStatus(error.message);
@@ -142,8 +213,19 @@ function initYouPage(form) {
     }
   });
 
+  window.addEventListener('pagehide', () => {
+    writeLocalDraft(form);
+    if (dirty) saveToServer(true);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'hidden') return;
+    writeLocalDraft(form);
+    if (dirty) saveToServer(true);
+  });
   window.addEventListener('beforeunload', (event) => {
+    writeLocalDraft(form);
     if (!dirty) return;
+    saveToServer(true);
     event.preventDefault();
     event.returnValue = '';
   });

@@ -34,7 +34,7 @@
         <% if (!dbConfigured) { %>
           <p class="airsup-note airsup-note-error">Saving needs SUPABASE_SERVICE_ROLE_KEY. Answers will not persist until that is set.</p>
         <% } %>
-        <form id="airsup-you-form" class="airsup-form" data-airsup-page="you">
+        <form id="airsup-you-form" class="airsup-form" data-airsup-page="you" data-draft-key="<%= user.googleId %>" data-server-updated="<%= serverUpdatedAt || '' %>">
           <div class="airsup-questions">
             <% questions.forEach((q) => { %>
               <label class="airsup-field">
@@ -80,7 +80,7 @@
   </div>
   <script src="/js/main.js"></script>
   <% if (user) { %>
-    <script src="/airsup/airsup.js?v=airsup4"></script>
+    <script src="/airsup/airsup.js?v=airsup7"></script>
   <% } %>
 </body>
 </html>

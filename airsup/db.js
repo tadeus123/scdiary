@@ -25,7 +25,7 @@ async function getProfile(googleId) {
   }
   const { data, error } = await supabase
     .from('airsup_profiles')
-    .select('google_id, email, display_name, answers')
+    .select('google_id, email, display_name, answers, updated_at')
     .eq('google_id', googleId)
     .maybeSingle();
   if (error) throw error;
@@ -35,6 +35,7 @@ async function getProfile(googleId) {
     email: data.email,
     displayName: data.display_name || '',
     answers: normalizeAnswers(data.answers),
+    updatedAt: data.updated_at || '',
   };
 }
 
