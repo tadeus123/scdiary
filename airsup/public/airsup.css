@@ -9,54 +9,15 @@
 
 body.airsup-start .airsup-shell {
   min-height: 100dvh;
-  padding-bottom: 1rem;
-}
-
-body.airsup-start .airsup-shell nav {
-  margin-bottom: 1rem;
-}
-
-body.airsup-start .airsup-main {
-  padding: 0 0 1.25rem;
-}
-
-body.airsup-start .airsup-board {
-  max-width: 34rem;
-  border: 1px solid var(--text-color);
-  padding: 1.25rem 1.35rem 1.35rem;
-  box-sizing: border-box;
-}
-
-body.airsup-start .airsup-title {
-  font-size: clamp(1.45rem, 3vw, 1.85rem);
-  margin-bottom: 0.7rem;
-}
-
-body.airsup-start .airsup-lead {
-  max-width: 28rem;
-  margin-bottom: 0.85rem;
-}
-
-body.airsup-start .airsup-dir {
-  margin-bottom: 0.65rem;
-}
-
-body.airsup-start .airsup-can {
-  margin: 0 0 0 1.2rem;
-}
-
-body.airsup-start .airsup-can li {
-  margin-bottom: 0.28rem;
-}
-
-body.airsup-start .airsup-start-row {
-  margin: 0.95rem 0 1.1rem;
 }
 
 body.airsup-start .airsup-production {
-  position: static;
-  pointer-events: none;
   margin-top: auto;
+}
+
+.airsup-page .site-title {
+  letter-spacing: 0.01em;
+  cursor: pointer;
 }
 
 .airsup-page .airsup-shell nav {
@@ -82,11 +43,18 @@ body.airsup-start .airsup-production {
   padding: 1rem 0 3rem;
 }
 
+.airsup-bracket {
+  font-size: clamp(1.45rem, 3.2vw, 2rem);
+  font-weight: 400;
+  margin: 0 0 1.25rem;
+  letter-spacing: 0.01em;
+}
+
 .airsup-lead {
   font-size: clamp(1.15rem, 2.4vw, 1.45rem);
   line-height: 1.4;
-  margin: 0 0 1rem;
-  max-width: 24ch;
+  margin: 0 0 1.25rem;
+  max-width: 22ch;
 }
 
 .airsup-lead em {
