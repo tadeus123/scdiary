@@ -6,12 +6,20 @@ function collectAnswers(form) {
   return answers;
 }
 
-async function saveAnswers(answers) {
+function collectPayload(form) {
+  const consent = form.querySelector('[name="directory_consent"]');
+  return {
+    answers: collectAnswers(form),
+    directoryConsent: consent ? consent.checked : true,
+  };
+}
+
+async function saveAnswers(payload) {
   const res = await fetch('/airsup/api/profile', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',
-    body: JSON.stringify({ answers }),
+    body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.ok) {
@@ -31,20 +39,23 @@ function initYouPage(form) {
     status.textContent = text || '';
   }
 
-  form.addEventListener('input', () => {
+  function scheduleSave() {
     dirty = true;
     setStatus('saving…');
     clearTimeout(timer);
     timer = setTimeout(async () => {
       try {
-        await saveAnswers(collectAnswers(form));
+        await saveAnswers(collectPayload(form));
         dirty = false;
         setStatus('saved');
       } catch (error) {
         setStatus(error.message);
       }
     }, 600);
-  });
+  }
+
+  form.addEventListener('input', scheduleSave);
+  form.addEventListener('change', scheduleSave);
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -56,7 +67,7 @@ function initYouPage(form) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ answers: collectAnswers(form) }),
+        body: JSON.stringify(collectPayload(form)),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {

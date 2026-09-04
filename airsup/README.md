@@ -22,7 +22,19 @@ Do not fake a successful Gmail login. Until these are set, the Gmail button open
    - `AIRSUP_GOOGLE_CLIENT_SECRET`
 4. Optional: `AIRSUP_PUBLIC_ORIGIN` if the public URL cannot be inferred (example: `https://www.tademehl.com`)
 
-Saving profiles also needs `SUPABASE_SERVICE_ROLE_KEY` (already used by some local scripts). The anon key cannot read `airsup_profiles`.
+Saving profiles also needs `SUPABASE_SERVICE_ROLE_KEY` (already used by some local scripts). The anon key cannot read `airsup_profiles` or `airsup_endpoints`.
+
+## AI endpoint directory
+
+Consenting users are registered in `airsup_endpoints` with public fields only. Intimate onboarding answers stay private.
+
+- Search: `POST /airsup/api/search_ai_endpoints`
+- OpenAPI for ChatGPT actions: `/airsup/openapi.json`
+- Spec: `airsup/SPEC.md`
+
+Optional production key: `AIRSUP_DIRECTORY_KEY` (send as `Authorization: Bearer …` or `X-Airsup-Key`). If unset, search still returns only contactable public cards.
+
+The first prompt tells ChatGPT to search that directory, exclude the user’s own endpoint, and never pick a hardcoded person.
 
 ## Remove
 

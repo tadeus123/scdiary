@@ -44,6 +44,10 @@
             <% }) %>
           </div>
           <p class="airsup-save-status" id="airsup-save-status" hidden></p>
+          <label class="airsup-consent">
+            <input type="checkbox" name="directory_consent" value="1" <%= directoryConsent ? 'checked' : '' %>>
+            <span>list my AI endpoint so other AIs can find and contact me. they only see the public directory fields, not my full answers.</span>
+          </label>
           <button type="submit" class="airsup-finish" id="airsup-finish">Finish</button>
         </form>
       <% } %>
@@ -51,7 +55,7 @@
   </div>
   <script src="/js/main.js"></script>
   <% if (user) { %>
-    <script src="/airsup/airsup.js?v=airsup1"></script>
+    <script src="/airsup/airsup.js?v=airsup2"></script>
   <% } %>
 </body>
 </html>

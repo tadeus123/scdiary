@@ -7,7 +7,16 @@ const express = require('express');
 const ejs = require('ejs');
 const { QUESTIONS, normalizeAnswers } = require('./questions');
 const { generatePrompt, CHATGPT_SETUP_URL, CHATGPT_APP_URL } = require('./prompt');
-const { getProfile, upsertProfile, isConfigured: isDbConfigured } = require('./db');
+const {
+  getProfile,
+  upsertProfile,
+  syncDirectory,
+  getEndpointByGoogleId,
+  listActiveEndpoints,
+  isConfigured: isDbConfigured,
+} = require('./db');
+const { displayNameFrom, rankEndpoints } = require('./directory');
+const { buildOpenApi } = require('./openapi');
 const auth = require('./auth');
 
 const router = express.Router();
@@ -52,6 +61,32 @@ function renderAirsup(req, res, viewName, extra = {}) {
   );
 }
 
+function userDisplayName(user, profile) {
+  return displayNameFrom({
+    displayName: (profile && profile.displayName) || (user && user.displayName) || '',
+    email: (user && user.email) || '',
+  });
+}
+
+function searchUrl(req) {
+  return `${auth.getPublicOrigin(req)}/airsup/api/search_ai_endpoints`;
+}
+
+function directoryAuthorized(req) {
+  const expected = process.env.AIRSUP_DIRECTORY_KEY;
+  if (!expected) return true;
+  const header = req.get('authorization') || '';
+  const bearer = header.startsWith('Bearer ') ? header.slice(7) : '';
+  const alt = req.get('x-airsup-key') || '';
+  return bearer === expected || alt === expected;
+}
+
+function setSearchCors(res) {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Airsup-Key');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+}
+
 router.get(['/', ''], (req, res) => {
   renderAirsup(req, res, 'index.ejs');
 });
@@ -60,10 +95,13 @@ router.get('/you', async (req, res) => {
   const user = auth.readUser(req);
   let answers = normalizeAnswers({});
   let loadError = null;
+  let directoryConsent = true;
   if (user) {
     try {
       const profile = await getProfile(user.googleId);
       if (profile) answers = profile.answers;
+      const endpoint = await getEndpointByGoogleId(user.googleId);
+      if (endpoint) directoryConsent = Boolean(endpoint.active && endpoint.contactable);
     } catch (error) {
       console.error('Airsup profile load error:', error);
       loadError = 'Could not load saved answers.';
@@ -73,6 +111,7 @@ router.get('/you', async (req, res) => {
     user,
     questions: QUESTIONS,
     answers,
+    directoryConsent,
     googleConfigured: auth.isGoogleConfigured(),
     oauthError: req.query.error === 'oauth' ? 'Google sign-in failed. Try again.' : null,
     loadError,
@@ -84,15 +123,26 @@ router.get('/prompt', async (req, res) => {
   const user = auth.readUser(req);
   if (!user) return res.redirect('/airsup/you');
   let answers = normalizeAnswers({});
+  let profile = null;
+  let endpointId = '';
   try {
-    const profile = await getProfile(user.googleId);
+    profile = await getProfile(user.googleId);
     if (profile) answers = profile.answers;
+    const endpoint = await getEndpointByGoogleId(user.googleId);
+    if (endpoint) endpointId = endpoint.endpoint_id;
   } catch (error) {
     console.error('Airsup prompt load error:', error);
   }
   renderAirsup(req, res, 'prompt.ejs', {
     user,
-    promptText: generatePrompt(QUESTIONS, answers, user.email),
+    promptText: generatePrompt({
+      questions: QUESTIONS,
+      answers,
+      email: user.email,
+      displayName: userDisplayName(user, profile),
+      endpointId,
+      searchUrl: searchUrl(req),
+    }),
     chatgptUrl: CHATGPT_APP_URL,
   });
 });
@@ -126,6 +176,7 @@ router.get('/auth/google/callback', async (req, res) => {
       await upsertProfile({
         googleId: googleUser.googleId,
         email: googleUser.email,
+        displayName: googleUser.displayName,
         answers,
       });
     } catch (error) {
@@ -152,8 +203,24 @@ router.put('/api/profile', async (req, res) => {
     const profile = await upsertProfile({
       googleId: user.googleId,
       email: user.email,
+      displayName: user.displayName,
       answers: req.body && req.body.answers,
     });
+    const existing = await getEndpointByGoogleId(user.googleId);
+    const consentFromBody = req.body && typeof req.body.directoryConsent === 'boolean'
+      ? req.body.directoryConsent
+      : null;
+    if (existing || consentFromBody === true) {
+      await syncDirectory({
+        googleId: user.googleId,
+        email: user.email,
+        displayName: userDisplayName(user, profile),
+        answers: profile.answers,
+        consent: consentFromBody === null
+          ? Boolean(existing && existing.active && existing.contactable)
+          : consentFromBody,
+      });
+    }
     res.json({ ok: true, answers: profile.answers });
   } catch (error) {
     console.error('Airsup save error:', error);
@@ -166,21 +233,55 @@ router.post('/api/finish', async (req, res) => {
   if (!user) return res.status(401).json({ ok: false, error: 'Not signed in' });
   if (!auth.allowedOrigin(req)) return res.status(403).json({ ok: false, error: 'Bad origin' });
   try {
+    const consent = req.body && req.body.directoryConsent !== false;
     const profile = await upsertProfile({
       googleId: user.googleId,
       email: user.email,
+      displayName: user.displayName,
       answers: req.body && req.body.answers,
+    });
+    const endpoint = await syncDirectory({
+      googleId: user.googleId,
+      email: user.email,
+      displayName: userDisplayName(user, profile),
+      answers: profile.answers,
+      consent,
     });
     res.json({
       ok: true,
       setupUrl: CHATGPT_SETUP_URL,
       next: '/airsup/prompt',
       answers: profile.answers,
+      endpoint_id: endpoint && endpoint.endpoint_id,
     });
   } catch (error) {
     console.error('Airsup finish error:', error);
     res.status(500).json({ ok: false, error: 'Could not save' });
   }
+});
+
+router.options('/api/search_ai_endpoints', (req, res) => {
+  setSearchCors(res);
+  res.status(204).end();
+});
+
+router.post('/api/search_ai_endpoints', async (req, res) => {
+  setSearchCors(res);
+  if (!directoryAuthorized(req)) {
+    return res.status(401).json({ ok: false, error: 'Unauthorized' });
+  }
+  try {
+    const rows = await listActiveEndpoints();
+    const endpoints = rankEndpoints(rows, req.body || {});
+    res.json({ ok: true, endpoints });
+  } catch (error) {
+    console.error('Airsup directory search error:', error);
+    res.status(500).json({ ok: false, error: 'Search failed' });
+  }
+});
+
+router.get('/openapi.json', (req, res) => {
+  res.json(buildOpenApi(auth.getPublicOrigin(req)));
 });
 
 module.exports = router;

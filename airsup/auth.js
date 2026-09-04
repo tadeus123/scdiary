@@ -70,7 +70,11 @@ function readUser(req) {
   try {
     const user = JSON.parse(raw);
     if (!user || !user.googleId || !user.email) return null;
-    return user;
+    return {
+      googleId: user.googleId,
+      email: user.email,
+      displayName: user.displayName || '',
+    };
   } catch {
     return null;
   }
@@ -81,6 +85,7 @@ function setUser(req, res, user) {
   res.cookie(COOKIE_USER, sign(JSON.stringify({
     googleId: user.googleId,
     email: user.email,
+    displayName: user.displayName || '',
   })), { ...cookieBase(req), maxAge });
 }
 
@@ -142,6 +147,7 @@ async function exchangeCode(req, code) {
   return {
     googleId: String(userJson.id),
     email: String(userJson.email),
+    displayName: userJson.name ? String(userJson.name) : '',
   };
 }
 
