@@ -99,7 +99,9 @@ function setSearchCors(res) {
 }
 
 router.get(['/', ''], (req, res) => {
-  renderAirsup(req, res, 'index.ejs');
+  renderAirsup(req, res, 'index.ejs', {
+    oauthError: req.query.error === 'oauth' ? 'Google sign-in failed. Try again.' : null,
+  });
 });
 
 router.options('/directory.json', (req, res) => {
@@ -136,33 +138,33 @@ router.get('/directory', async (req, res) => {
 
 router.get('/you', async (req, res) => {
   const user = auth.readUser(req);
+  if (!user) {
+    const q = req.query.error === 'oauth' ? '?error=oauth' : '';
+    return res.redirect(`/airsup${q}`);
+  }
   let answers = normalizeAnswers({});
   let loadError = null;
   let directoryConsent = true;
   let serverUpdatedAt = '';
-  if (user) {
-    try {
-      const profile = await getProfile(user.googleId);
-      if (profile) {
-        answers = profile.answers;
-        serverUpdatedAt = profile.updatedAt || '';
-      }
-      const endpoint = await getEndpointByGoogleId(user.googleId);
-      if (endpoint) {
-        directoryConsent = Boolean(endpoint.active && endpoint.contactable);
-      }
-    } catch (error) {
-      console.error('Airsup profile load error:', error);
-      loadError = 'Could not load saved answers.';
+  try {
+    const profile = await getProfile(user.googleId);
+    if (profile) {
+      answers = profile.answers;
+      serverUpdatedAt = profile.updatedAt || '';
     }
+    const endpoint = await getEndpointByGoogleId(user.googleId);
+    if (endpoint) {
+      directoryConsent = Boolean(endpoint.active && endpoint.contactable);
+    }
+  } catch (error) {
+    console.error('Airsup profile load error:', error);
+    loadError = 'Could not load saved answers.';
   }
   renderAirsup(req, res, 'you.ejs', {
     user,
     questions: QUESTIONS,
     answers,
     directoryConsent,
-    googleConfigured: auth.isGoogleConfigured(),
-    oauthError: req.query.error === 'oauth' ? 'Google sign-in failed. Try again.' : null,
     loadError,
     dbConfigured: isDbConfigured(),
     matchConfigured: isOpenAiConfigured(),
@@ -172,7 +174,7 @@ router.get('/you', async (req, res) => {
 
 router.get('/prompt', async (req, res) => {
   const user = auth.readUser(req);
-  if (!user) return res.redirect('/airsup/you');
+  if (!user) return res.redirect('/airsup');
   let answers = normalizeAnswers({});
   let profile = null;
   let endpointId = '';
@@ -220,7 +222,7 @@ router.get('/auth/google/callback', async (req, res) => {
     const expected = auth.takeOauthState(req, res);
     const { code, state } = req.query;
     if (!expected || !state || state !== expected || typeof code !== 'string') {
-      return res.redirect('/airsup/you?error=oauth');
+      return res.redirect('/airsup?error=oauth');
     }
     const googleUser = await auth.exchangeCode(req, code);
     let answers = normalizeAnswers({});
@@ -244,13 +246,13 @@ router.get('/auth/google/callback', async (req, res) => {
     res.redirect('/airsup/you');
   } catch (error) {
     console.error('Airsup Google OAuth error:', error);
-    res.redirect('/airsup/you?error=oauth');
+    res.redirect('/airsup?error=oauth');
   }
 });
 
 router.post('/auth/logout', (req, res) => {
   auth.clearUser(req, res);
-  res.redirect('/airsup/you');
+  res.redirect('/airsup');
 });
 
 router.put('/api/profile', async (req, res) => {

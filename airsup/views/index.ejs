@@ -21,9 +21,12 @@
         <li>Meet in the real world</li>
       </ul>
       <p class="airsup-dir">To get started, click below to register. If you have already registered, you can log in.</p>
+      <% if (typeof oauthError !== 'undefined' && oauthError) { %>
+        <p class="airsup-note airsup-note-error"><%= oauthError %></p>
+      <% } %>
       <div class="airsup-start-row">
-        <a class="airsup-start-btn" href="/airsup/you">register</a>
-        <a class="airsup-start-btn" href="/airsup/you">login</a>
+        <a class="airsup-start-btn" href="/airsup/auth/google">register</a>
+        <a class="airsup-start-btn" href="/airsup/auth/google">login</a>
       </div>
     </main>
     <p class="airsup-production">A Tade Mehl production<br>airsup 2026</p>
