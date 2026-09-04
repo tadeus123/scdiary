@@ -12,7 +12,7 @@ const QUESTIONS = [
   { id: 'most_proud', text: 'What are you so far most proud of in your life?' },
   { id: 'grew_up', text: 'How did you grew up?' },
   { id: 'last_cry', text: 'When did you cried the last time and why?' },
-  { id: 'sex', text: 'sex. what you like, how often, how it is :)' },
+  { id: 'sex', text: 'are you coupled or single or complicated? :)' },
 ];
 
 const QUESTION_IDS = new Set(QUESTIONS.map((q) => q.id));
