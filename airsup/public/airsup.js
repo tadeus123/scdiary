@@ -132,6 +132,8 @@ function initYouPage(form) {
     const finish = document.getElementById('airsup-finish');
     if (finish) finish.disabled = true;
     setStatus('saving…');
+    const next = '/airsup/prompt';
+    const tab = window.open('about:blank', '_blank');
     try {
       const res = await fetch('/airsup/api/finish', {
         method: 'POST',
@@ -144,11 +146,19 @@ function initYouPage(form) {
         throw new Error(data.error || 'Could not save');
       }
       dirty = false;
-      window.location.href = data.next || '/airsup/prompt';
+      const url = data.next || next;
+      if (tab) {
+        tab.opener = null;
+        tab.location.replace(url);
+      } else {
+        window.open(url, '_blank');
+      }
+      setStatus('saved');
     } catch (error) {
+      if (tab) tab.close();
       setStatus(error.message);
-      if (finish) finish.disabled = false;
     }
+    if (finish) finish.disabled = false;
   });
 
   window.addEventListener('pagehide', () => {
