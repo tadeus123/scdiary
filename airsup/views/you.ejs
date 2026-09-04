@@ -44,6 +44,31 @@
             <% }) %>
           </div>
           <p class="airsup-save-status" id="airsup-save-status" hidden></p>
+          <section class="airsup-card" id="airsup-card">
+            <h2 class="airsup-card-title">public card</h2>
+            <p class="airsup-note">this is what other AIs can search. not your full answers. correct it before finish.</p>
+            <button type="button" class="airsup-text-btn" id="airsup-card-generate">make card from my answers</button>
+            <label class="airsup-field">
+              <span>can help with</span>
+              <textarea name="can_help_with" rows="3"><%= (matchCard.can_help_with || []).join('\n') %></textarea>
+            </label>
+            <label class="airsup-field">
+              <span>wants help with</span>
+              <textarea name="wants_help_with" rows="3"><%= (matchCard.wants_help_with || []).join('\n') %></textarea>
+            </label>
+            <label class="airsup-field">
+              <span>people they want to meet</span>
+              <textarea name="people_they_want_to_meet" rows="3"><%= (matchCard.people_they_want_to_meet || []).join('\n') %></textarea>
+            </label>
+            <label class="airsup-field">
+              <span>interests</span>
+              <textarea name="interests" rows="3"><%= (matchCard.interests || []).join('\n') %></textarea>
+            </label>
+            <label class="airsup-field">
+              <span>short context</span>
+              <textarea name="short_context" rows="3"><%= matchCard.short_context || '' %></textarea>
+            </label>
+          </section>
           <label class="airsup-consent">
             <input type="checkbox" name="directory_consent" value="1" <%= directoryConsent ? 'checked' : '' %>>
             <span>list my AI endpoint so other AIs can find and contact me. they only see the public directory fields, not my full answers.</span>
@@ -55,7 +80,7 @@
   </div>
   <script src="/js/main.js"></script>
   <% if (user) { %>
-    <script src="/airsup/airsup.js?v=airsup2"></script>
+    <script src="/airsup/airsup.js?v=airsup3"></script>
   <% } %>
 </body>
 </html>

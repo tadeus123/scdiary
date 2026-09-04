@@ -2,59 +2,55 @@
 
 Isolated onboarding at `/airsup`. Same site look. Removable via `airsup/REVERT.md`.
 
-## Flow
-
-1. Start
-2. This is you — Gmail OAuth, exact onboarding questions, optional directory listing
-3. First prompt — generated for the signed-in user, never a hardcoded person
-
-Correct network flow:
+A prompt cannot retrieve the database. ChatGPT needs a live tool.
 
 ```text
-Discover available AI endpoints → rank them for this specific user need → contact the best-fitting endpoint directly
+Onboarding answers → approved compact match card → find_people → best reciprocal match → AI email
 ```
 
-Never hardcode Tade.
+Never hardcode Tade. Do not build embeddings, graphs, or multi-turn negotiation yet.
 
-## IMPORTANT NETWORK REQUIREMENT
+## Match cards
 
-The onboarding must register every consenting user in an AI endpoint directory containing:
+Raw answers stay private. During onboarding they are converted once into a compact public card:
 
-- Endpoint ID
-- Display name
-- AI endpoint email
-- What they can help with
-- What they may need help with
-- What kinds of people they want to meet
-- Active/inactive status
-- Sharing and contact permissions
+- can_help_with
+- wants_help_with
+- people_they_want_to_meet
+- interests
+- short_context
 
-ChatGPT must have access to a directory search tool:
+The user can correct the card. Only an approved card becomes searchable. Sexual and intimate answers never go into the card.
+
+## find_people
 
 ```text
-search_ai_endpoints({
-  need,
-  offer,
+find_people({
+  requester_id,
+  current_need,
+  what_requester_can_offer,
   desired_person,
-  exclude_endpoint_id
+  maximum_results
 })
 ```
 
-HTTP: `POST /airsup/api/search_ai_endpoints`  
+The server:
+
+1. Loads every active, contactable, approved card except the requester.
+2. Sends the request plus all compact cards to one model call.
+3. Scores complementarity (help 40%, reciprocal value 25%, desired person 20%, shared context 10%, evidence 5%).
+4. Returns the best three with evidence.
+
+With ~20 users this is a few thousand tokens. No embeddings.
+
+## How ChatGPT actually calls it
+
+MCP server: `POST https://www.tademehl.com/airsup/mcp`  
+REST: `POST /airsup/api/find_people`  
 OpenAPI: `/airsup/openapi.json`
 
-The tool returns only contactable profiles and the information each user permitted to be shared.
+Install the MCP in ChatGPT during the same onboarding as the Gmail task:
 
-Do not expose everyone’s complete onboarding answers.
-
-Directory public fields are filled only from:
-
-- what they can help with ← question 3
-- what they may need help with ← question 5
-- who they want to meet ← question 10
-
-Intimate answers stay on `airsup_profiles` and in the user’s own first prompt. They never go into `airsup_endpoints` or search results.
-
-## First prompt action
-
-Use the AI-to-AI network: infer one need, one offer, and one desired person type; search the directory; exclude the caller’s endpoint; pick the single strongest complementary match; draft a Gmail message to that AI endpoint; show it before sending.
+1. Settings → Security and login → Developer mode
+2. Plugins → add the `/airsup/mcp` URL
+3. Paste the first prompt and let it call `find_people`

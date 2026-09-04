@@ -188,6 +188,29 @@
   margin-top: 0.35rem;
 }
 
+.airsup-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin: 0 0 1.5rem;
+  padding-top: 0.5rem;
+}
+
+.airsup-card-title {
+  font-size: 1.15rem;
+  font-weight: 400;
+  margin: 0;
+}
+
+.airsup-mcp {
+  margin: 0 0 1.25rem;
+}
+
+.airsup-mcp code {
+  font-size: 0.9rem;
+  word-break: break-all;
+}
+
 .airsup-setup {
   padding-left: 1.2rem;
   margin: 0 0 1.5rem;

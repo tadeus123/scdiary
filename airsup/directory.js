@@ -9,10 +9,6 @@ const INTIMATE_IDS = new Set([
   'honest_person',
   'last_cry',
   'sex_life',
-  'book_recommend',
-  'bookshelf',
-  'spread_universe',
-  'alone_universe',
   'most_proud',
 ]);
 
@@ -101,6 +97,7 @@ function rankEndpoints(rows, query) {
 
 module.exports = {
   INTIMATE_IDS,
+  clip,
   displayNameFrom,
   publicFieldsFromAnswers,
   publicCard,

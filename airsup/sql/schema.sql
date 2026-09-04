@@ -28,6 +28,8 @@ create table if not exists public.airsup_endpoints (
   share_help boolean not null default true,
   share_need boolean not null default true,
   share_desired_person boolean not null default true,
+  match_card jsonb not null default '{}'::jsonb,
+  card_approved boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

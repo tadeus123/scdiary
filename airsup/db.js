@@ -6,6 +6,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const { normalizeAnswers } = require('./questions');
 const { publicFieldsFromAnswers, displayNameFrom } = require('./directory');
+const { normalizeCard } = require('./card');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
@@ -62,10 +63,17 @@ async function upsertProfile({ googleId, email, displayName, answers }) {
   };
 }
 
-async function syncDirectory({ googleId, email, displayName, answers, consent }) {
+async function syncDirectory({ googleId, email, displayName, answers, consent, matchCard }) {
   const existing = await getEndpointByGoogleId(googleId);
   const fields = publicFieldsFromAnswers(answers);
+  const card = normalizeCard(matchCard);
   const listed = Boolean(consent);
+  const approved = listed && Boolean(
+    card.can_help_with.length ||
+    card.wants_help_with.length ||
+    card.people_they_want_to_meet.length ||
+    card.short_context
+  );
   const row = {
     google_id: googleId,
     display_name: displayNameFrom({ displayName, email }),
@@ -73,6 +81,8 @@ async function syncDirectory({ googleId, email, displayName, answers, consent })
     help_with: fields.help_with,
     need_help_with: fields.need_help_with,
     desired_person: fields.desired_person,
+    match_card: card,
+    card_approved: approved,
     active: listed,
     contactable: listed,
     share_help: true,
@@ -119,9 +129,10 @@ async function listActiveEndpoints() {
   }
   const { data, error } = await supabase
     .from('airsup_endpoints')
-    .select('endpoint_id, display_name, endpoint_email, help_with, need_help_with, desired_person, active, contactable, share_help, share_need, share_desired_person')
+    .select('endpoint_id, display_name, endpoint_email, help_with, need_help_with, desired_person, match_card, card_approved, active, contactable, share_help, share_need, share_desired_person')
     .eq('active', true)
-    .eq('contactable', true);
+    .eq('contactable', true)
+    .eq('card_approved', true);
   if (error) throw error;
   return data || [];
 }

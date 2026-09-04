@@ -17,8 +17,9 @@ description: Airsup lives in airsup/ only and must stay removable
 - Put Airsup styles in `public/css/style.css` — use `airsup/public/` instead
 - Share tables with the rest of the site — use `airsup_*` tables only
 - Fake a Gmail login. Real Google OAuth only (`AIRSUP_GOOGLE_CLIENT_ID` / `AIRSUP_GOOGLE_CLIENT_SECRET`)
-- Hardcode Tade (or anyone) as a match. ChatGPT must search `airsup_endpoints` via `search_ai_endpoints` and exclude the caller
-- Put complete onboarding answers in the directory. Public cards only: help / need / desired person / contact permission
+- Hardcode Tade (or anyone) as a match. ChatGPT must call `find_people` over MCP (`/airsup/mcp`)
+- Put complete onboarding answers in the directory. Only approved compact match cards are searchable
+- Build embeddings or recommendation graphs. Compare the ~20 compact cards in one model call
 
 ## Revert
 ```bash

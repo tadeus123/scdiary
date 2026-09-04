@@ -12,11 +12,13 @@ const {
   upsertProfile,
   syncDirectory,
   getEndpointByGoogleId,
-  listActiveEndpoints,
   isConfigured: isDbConfigured,
 } = require('./db');
-const { displayNameFrom, rankEndpoints } = require('./directory');
+const { displayNameFrom } = require('./directory');
+const { generateMatchCard, normalizeCard, emptyCard } = require('./card');
 const { buildOpenApi } = require('./openapi');
+const { handleMcp, callFindPeople } = require('./mcp');
+const { isOpenAiConfigured } = require('./openai');
 const auth = require('./auth');
 
 const router = express.Router();
@@ -68,8 +70,8 @@ function userDisplayName(user, profile) {
   });
 }
 
-function searchUrl(req) {
-  return `${auth.getPublicOrigin(req)}/airsup/api/search_ai_endpoints`;
+function mcpUrl(req) {
+  return `${auth.getPublicOrigin(req)}/airsup/mcp`;
 }
 
 function directoryAuthorized(req) {
@@ -96,12 +98,16 @@ router.get('/you', async (req, res) => {
   let answers = normalizeAnswers({});
   let loadError = null;
   let directoryConsent = true;
+  let matchCard = emptyCard();
   if (user) {
     try {
       const profile = await getProfile(user.googleId);
       if (profile) answers = profile.answers;
       const endpoint = await getEndpointByGoogleId(user.googleId);
-      if (endpoint) directoryConsent = Boolean(endpoint.active && endpoint.contactable);
+      if (endpoint) {
+        directoryConsent = Boolean(endpoint.active && endpoint.contactable);
+        matchCard = normalizeCard(endpoint.match_card);
+      }
     } catch (error) {
       console.error('Airsup profile load error:', error);
       loadError = 'Could not load saved answers.';
@@ -111,11 +117,13 @@ router.get('/you', async (req, res) => {
     user,
     questions: QUESTIONS,
     answers,
+    matchCard,
     directoryConsent,
     googleConfigured: auth.isGoogleConfigured(),
     oauthError: req.query.error === 'oauth' ? 'Google sign-in failed. Try again.' : null,
     loadError,
     dbConfigured: isDbConfigured(),
+    matchConfigured: isOpenAiConfigured(),
   });
 });
 
@@ -133,15 +141,17 @@ router.get('/prompt', async (req, res) => {
   } catch (error) {
     console.error('Airsup prompt load error:', error);
   }
+  const pluginUrl = mcpUrl(req);
   renderAirsup(req, res, 'prompt.ejs', {
     user,
+    mcpUrl: pluginUrl,
     promptText: generatePrompt({
       questions: QUESTIONS,
       answers,
       email: user.email,
       displayName: userDisplayName(user, profile),
       endpointId,
-      searchUrl: searchUrl(req),
+      mcpUrl: pluginUrl,
     }),
     chatgptUrl: CHATGPT_APP_URL,
   });
@@ -216,6 +226,7 @@ router.put('/api/profile', async (req, res) => {
         email: user.email,
         displayName: userDisplayName(user, profile),
         answers: profile.answers,
+        matchCard: req.body && req.body.matchCard,
         consent: consentFromBody === null
           ? Boolean(existing && existing.active && existing.contactable)
           : consentFromBody,
@@ -225,6 +236,19 @@ router.put('/api/profile', async (req, res) => {
   } catch (error) {
     console.error('Airsup save error:', error);
     res.status(500).json({ ok: false, error: 'Could not save' });
+  }
+});
+
+router.post('/api/card/generate', async (req, res) => {
+  const user = auth.readUser(req);
+  if (!user) return res.status(401).json({ ok: false, error: 'Not signed in' });
+  if (!auth.allowedOrigin(req)) return res.status(403).json({ ok: false, error: 'Bad origin' });
+  try {
+    const card = await generateMatchCard(req.body && req.body.answers);
+    res.json({ ok: true, card });
+  } catch (error) {
+    console.error('Airsup card generate error:', error);
+    res.status(500).json({ ok: false, error: 'Could not build the public card' });
   }
 });
 
@@ -240,11 +264,16 @@ router.post('/api/finish', async (req, res) => {
       displayName: user.displayName,
       answers: req.body && req.body.answers,
     });
+    let matchCard = normalizeCard(req.body && req.body.matchCard);
+    if (consent && !matchCard.can_help_with.length && !matchCard.short_context) {
+      matchCard = await generateMatchCard(profile.answers);
+    }
     const endpoint = await syncDirectory({
       googleId: user.googleId,
       email: user.email,
       displayName: userDisplayName(user, profile),
       answers: profile.answers,
+      matchCard,
       consent,
     });
     res.json({
@@ -260,6 +289,32 @@ router.post('/api/finish', async (req, res) => {
   }
 });
 
+router.options('/api/find_people', (req, res) => {
+  setSearchCors(res);
+  res.status(204).end();
+});
+
+router.post('/api/find_people', async (req, res) => {
+  setSearchCors(res);
+  if (!directoryAuthorized(req)) {
+    return res.status(401).json({ ok: false, error: 'Unauthorized' });
+  }
+  try {
+    const body = req.body || {};
+    const data = await callFindPeople({
+      requester_id: body.requester_id || body.exclude_endpoint_id,
+      current_need: body.current_need || body.need,
+      what_requester_can_offer: body.what_requester_can_offer || body.offer,
+      desired_person: body.desired_person,
+      maximum_results: body.maximum_results,
+    });
+    res.json({ ok: true, ...data });
+  } catch (error) {
+    console.error('Airsup find_people error:', error);
+    res.status(500).json({ ok: false, error: error.message || 'Search failed' });
+  }
+});
+
 router.options('/api/search_ai_endpoints', (req, res) => {
   setSearchCors(res);
   res.status(204).end();
@@ -271,14 +326,22 @@ router.post('/api/search_ai_endpoints', async (req, res) => {
     return res.status(401).json({ ok: false, error: 'Unauthorized' });
   }
   try {
-    const rows = await listActiveEndpoints();
-    const endpoints = rankEndpoints(rows, req.body || {});
-    res.json({ ok: true, endpoints });
+    const body = req.body || {};
+    const data = await callFindPeople({
+      requester_id: body.exclude_endpoint_id || body.requester_id,
+      current_need: body.need || body.current_need,
+      what_requester_can_offer: body.offer || body.what_requester_can_offer,
+      desired_person: body.desired_person,
+      maximum_results: body.maximum_results || 3,
+    });
+    res.json({ ok: true, ...data });
   } catch (error) {
     console.error('Airsup directory search error:', error);
-    res.status(500).json({ ok: false, error: 'Search failed' });
+    res.status(500).json({ ok: false, error: error.message || 'Search failed' });
   }
 });
+
+router.all('/mcp', handleMcp);
 
 router.get('/openapi.json', (req, res) => {
   res.json(buildOpenApi(auth.getPublicOrigin(req)));

@@ -34,7 +34,23 @@ Consenting users are registered in `airsup_endpoints` with public fields only. I
 
 Optional production key: `AIRSUP_DIRECTORY_KEY` (send as `Authorization: Bearer …` or `X-Airsup-Key`). If unset, search still returns only contactable public cards.
 
-The first prompt tells ChatGPT to search that directory, exclude the user’s own endpoint, and never pick a hardcoded person.
+## How matching actually works
+
+A prompt cannot read Supabase. ChatGPT must call a tool.
+
+1. Onboarding answers stay private.
+2. A compact **public card** is generated (no intimate answers). The user can edit it, then Finish approves it into `airsup_endpoints`.
+3. `find_people` loads every approved card except the requester and scores them in **one model call**. No embeddings. Fine for ~20 users.
+4. ChatGPT gets that tool through MCP:
+
+`https://www.tademehl.com/airsup/mcp`
+
+Install during the same onboarding as the Gmail task: ChatGPT Settings → Security and login → Developer mode → Plugins → add that URL.
+
+REST: `POST /airsup/api/find_people`  
+OpenAPI: `/airsup/openapi.json`
+
+Needs `OPENAI_API_KEY` for card generation and matching.
 
 ## Remove
 

@@ -1,15 +1,47 @@
 function collectAnswers(form) {
   const answers = {};
-  form.querySelectorAll('textarea[name]').forEach((field) => {
+  form.querySelectorAll('.airsup-questions textarea[name]').forEach((field) => {
     answers[field.name] = field.value;
   });
   return answers;
+}
+
+function listFromBox(form, name) {
+  const field = form.querySelector(`[name="${name}"]`);
+  if (!field) return [];
+  return field.value.split(/\n/).map((item) => item.trim()).filter(Boolean);
+}
+
+function collectMatchCard(form) {
+  const context = form.querySelector('[name="short_context"]');
+  return {
+    can_help_with: listFromBox(form, 'can_help_with'),
+    wants_help_with: listFromBox(form, 'wants_help_with'),
+    people_they_want_to_meet: listFromBox(form, 'people_they_want_to_meet'),
+    interests: listFromBox(form, 'interests'),
+    short_context: context ? context.value.trim() : '',
+  };
+}
+
+function fillMatchCard(form, card) {
+  const map = {
+    can_help_with: (card.can_help_with || []).join('\n'),
+    wants_help_with: (card.wants_help_with || []).join('\n'),
+    people_they_want_to_meet: (card.people_they_want_to_meet || []).join('\n'),
+    interests: (card.interests || []).join('\n'),
+    short_context: card.short_context || '',
+  };
+  Object.keys(map).forEach((name) => {
+    const field = form.querySelector(`[name="${name}"]`);
+    if (field) field.value = map[name];
+  });
 }
 
 function collectPayload(form) {
   const consent = form.querySelector('[name="directory_consent"]');
   return {
     answers: collectAnswers(form),
+    matchCard: collectMatchCard(form),
     directoryConsent: consent ? consent.checked : true,
   };
 }
@@ -30,6 +62,7 @@ async function saveAnswers(payload) {
 
 function initYouPage(form) {
   const status = document.getElementById('airsup-save-status');
+  const generate = document.getElementById('airsup-card-generate');
   let timer = null;
   let dirty = false;
 
@@ -56,6 +89,31 @@ function initYouPage(form) {
 
   form.addEventListener('input', scheduleSave);
   form.addEventListener('change', scheduleSave);
+
+  if (generate) {
+    generate.addEventListener('click', async () => {
+      generate.disabled = true;
+      setStatus('making card…');
+      try {
+        const res = await fetch('/airsup/api/card/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ answers: collectAnswers(form) }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || 'Could not build the public card');
+        }
+        fillMatchCard(form, data.card);
+        dirty = true;
+        setStatus('card ready — correct it if needed');
+      } catch (error) {
+        setStatus(error.message);
+      }
+      generate.disabled = false;
+    });
+  }
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
