@@ -235,6 +235,7 @@ function initPromptPage() {
   const button = document.getElementById('airsup-copy');
   const field = document.getElementById('airsup-prompt-text');
   if (!button || !field) return;
+  const label = button.textContent;
   button.addEventListener('click', async () => {
     const text = field.value;
     try {
@@ -244,8 +245,10 @@ function initPromptPage() {
       field.select();
       document.execCommand('copy');
     }
-    const url = button.getAttribute('data-chatgpt-url') || 'https://chatgpt.com/s/task_c13c5cf1fcd88191b51c04c413cf7e6a';
-    window.open(url, '_blank', 'noopener,noreferrer');
+    button.textContent = 'Copied';
+    setTimeout(() => {
+      button.textContent = label;
+    }, 1600);
   });
 }
 

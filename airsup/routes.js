@@ -158,7 +158,6 @@ router.get('/prompt', async (req, res) => {
       endpointId,
       mcpUrl: pluginUrl,
     }),
-    chatgptUrl: CHATGPT_SETUP_URL,
   });
 });
 
