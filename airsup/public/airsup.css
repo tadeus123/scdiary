@@ -139,7 +139,12 @@
 
 .airsup-field span {
   font-size: 0.95rem;
+  line-height: 1.3;
   color: var(--accent-color);
+}
+
+.airsup-questions .airsup-field span {
+  min-height: calc(1.3em * 3);
 }
 
 .airsup-field textarea,
@@ -241,5 +246,12 @@
 @media (min-width: 720px) {
   .airsup-questions {
     grid-template-columns: 1fr 1fr;
+    align-items: start;
+    column-gap: 2rem;
+    row-gap: 1.6rem;
+  }
+
+  .airsup-questions .airsup-field:nth-child(even) {
+    margin-top: 1.45rem;
   }
 }
