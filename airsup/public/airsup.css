@@ -7,6 +7,35 @@
   padding-bottom: 2.5rem;
 }
 
+body.airsup-start {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body.airsup-start .airsup-shell {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: 0.9rem;
+  box-sizing: border-box;
+}
+
+body.airsup-start .airsup-shell nav {
+  margin-bottom: 0.5rem;
+  flex-shrink: 0;
+}
+
+body.airsup-start .airsup-welcome {
+  flex: 1;
+  min-height: 0;
+  padding: 0.15rem 0 0.4rem;
+}
+
+body.airsup-start .airsup-production {
+  flex-shrink: 0;
+}
+
 .airsup-page .airsup-shell nav {
   margin-bottom: 1.5rem;
 }
@@ -30,18 +59,11 @@
   padding: 1rem 0 3rem;
 }
 
-.airsup-bracket {
-  font-size: clamp(1.45rem, 3.2vw, 2rem);
-  font-weight: 400;
-  margin: 0 0 1.25rem;
-  letter-spacing: 0.01em;
-}
-
 .airsup-lead {
   font-size: clamp(1.15rem, 2.4vw, 1.45rem);
   line-height: 1.4;
-  margin: 0 0 1.25rem;
-  max-width: 22ch;
+  margin: 0 0 1rem;
+  max-width: 24ch;
 }
 
 .airsup-lead em {
