@@ -1,27 +1,70 @@
 /* Airsup-only styles. Do not put these in public/css/style.css. */
 
+.airsup-banner {
+  margin: 0;
+  background: #6E1623;
+  color: #EFE8DC;
+}
+
+.airsup-banner-inner {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0.55rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.airsup-banner-name {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.55rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  color: #4C0E16;
+  text-shadow:
+    0 0 18px rgba(148, 30, 47, 0.85),
+    0 0 6px rgba(180, 70, 80, 0.4),
+    0 1px 0 rgba(255, 214, 206, 0.2),
+    0 -1px 1px rgba(18, 0, 6, 0.55);
+}
+
+.airsup-banner-name:hover {
+  color: #4C0E16;
+}
+
+.airsup-banner .theme-toggle {
+  color: rgba(239, 232, 220, 0.38);
+}
+
+.airsup-banner .theme-toggle:hover {
+  color: rgba(239, 232, 220, 0.78);
+}
+
+@media (max-width: 768px) {
+  .airsup-banner-inner {
+    padding: 0.5rem 1rem;
+  }
+
+  .airsup-banner-name {
+    font-size: 1.35rem;
+  }
+}
+
 .airsup-page .airsup-shell {
   min-height: 100svh;
   display: flex;
   flex-direction: column;
+  padding-top: 1.6rem;
   padding-bottom: 2.5rem;
 }
 
 body.airsup-start .airsup-shell {
-  min-height: 100dvh;
+  min-height: calc(100dvh - 3.1rem);
 }
 
 body.airsup-start .airsup-production {
   margin-top: auto;
-}
-
-.airsup-page .site-title {
-  letter-spacing: 0.01em;
-  cursor: pointer;
-}
-
-.airsup-page .airsup-shell nav {
-  margin-bottom: 1.5rem;
 }
 
 .airsup-main {
