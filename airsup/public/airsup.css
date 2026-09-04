@@ -7,30 +7,54 @@
   padding-bottom: 2.5rem;
 }
 
+body.airsup-start {
+  overflow: hidden;
+}
+
 body.airsup-start .airsup-shell {
+  position: relative;
   min-height: 100dvh;
-  padding-bottom: 0.75rem;
+  height: 100dvh;
+  overflow: hidden;
+  padding-bottom: 2.6rem;
+  box-sizing: border-box;
 }
 
 body.airsup-start .airsup-shell nav {
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.55rem;
 }
 
 body.airsup-start .airsup-welcome {
-  padding: 0.2rem 0 1.25rem;
+  padding: 0.1rem 0 0;
 }
 
 body.airsup-start .airsup-title {
-  font-size: clamp(1.4rem, 3.2vw, 1.9rem);
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  margin-bottom: 0.5rem;
+}
+
+body.airsup-start .airsup-lead {
+  max-width: 28rem;
   margin-bottom: 0.65rem;
 }
 
 body.airsup-start .airsup-dir {
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.5rem;
 }
 
 body.airsup-start .airsup-can {
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.7rem;
+}
+
+body.airsup-start .airsup-can li {
+  margin-bottom: 0.15rem;
+}
+
+body.airsup-start .airsup-production {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.45rem;
 }
 
 .airsup-page .airsup-shell nav {
