@@ -7,68 +7,56 @@
   padding-bottom: 2.5rem;
 }
 
-body.airsup-start {
-  overflow: hidden;
-}
-
 body.airsup-start .airsup-shell {
-  position: relative;
   min-height: 100dvh;
-  height: 100dvh;
-  overflow: hidden;
-  padding-bottom: 3.4rem;
-  box-sizing: border-box;
+  padding-bottom: 1rem;
 }
 
 body.airsup-start .airsup-shell nav {
-  margin-bottom: 0.7rem;
+  margin-bottom: 1rem;
 }
 
 body.airsup-start .airsup-main {
-  padding: 0;
+  padding: 0 0 1.25rem;
 }
 
 body.airsup-start .airsup-board {
   max-width: 34rem;
   border: 1px solid var(--text-color);
-  padding: 1rem 1.15rem 1.15rem;
+  padding: 1.25rem 1.35rem 1.35rem;
   box-sizing: border-box;
 }
 
 body.airsup-start .airsup-title {
-  font-size: clamp(1.3rem, 2.8vw, 1.65rem);
-  margin-bottom: 0.55rem;
+  font-size: clamp(1.45rem, 3vw, 1.85rem);
+  margin-bottom: 0.7rem;
 }
 
 body.airsup-start .airsup-lead {
   max-width: 28rem;
-  margin-bottom: 0.7rem;
+  margin-bottom: 0.85rem;
 }
 
 body.airsup-start .airsup-dir {
-  margin-bottom: 0.55rem;
+  margin-bottom: 0.65rem;
 }
 
 body.airsup-start .airsup-can {
-  margin: 0 0 0.75rem 1.15rem;
+  margin: 0 0 0 1.2rem;
 }
 
 body.airsup-start .airsup-can li {
-  margin-bottom: 0.2rem;
-}
-
-body.airsup-start .airsup-production {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0.45rem;
-  z-index: 0;
-  pointer-events: none;
+  margin-bottom: 0.28rem;
 }
 
 body.airsup-start .airsup-start-row {
-  position: relative;
-  z-index: 2;
+  margin: 0.95rem 0 1.1rem;
+}
+
+body.airsup-start .airsup-production {
+  position: static;
+  pointer-events: none;
+  margin-top: auto;
 }
 
 .airsup-page .airsup-shell nav {
