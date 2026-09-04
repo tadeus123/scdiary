@@ -163,7 +163,10 @@ function snapshot(call, endpointId, extra = {}) {
   };
 }
 
-function pollInstruction(call) {
+function pollInstruction(call, endpointId) {
+  const role = roleOnCall(call, endpointId);
+  const youHung = role === 'caller' ? call.caller_hangup : call.callee_hangup;
+  const otherHung = role === 'caller' ? call.callee_hangup : call.caller_hangup;
   if (call.status === 'ended') {
     return {
       keep_polling: false,
@@ -171,18 +174,25 @@ function pollInstruction(call) {
       instruction: 'This call has ended. Do not send more messages on this call_id.',
     };
   }
+  if (youHung && !otherHung) {
+    return {
+      keep_polling: false,
+      wait_hint_seconds: 0,
+      instruction: 'You hung up. The line stays until the other side hangs up too. Do not send more on this call.',
+    };
+  }
+  if (otherHung && !youHung) {
+    return {
+      keep_polling: true,
+      wait_hint_seconds: 1,
+      instruction: 'The other side hung up. Tell the user, then call hang_up to close the line.',
+    };
+  }
   if (call.status === 'ringing') {
     return {
       keep_polling: true,
       wait_hint_seconds: 2,
       instruction: 'Stay in this ChatGPT conversation. Call session_sync again. Do not wait for a Gmail reply. Gmail is only the doorbell.',
-    };
-  }
-  if (call.status === 'ending') {
-    return {
-      keep_polling: true,
-      wait_hint_seconds: 1,
-      instruction: 'The other side hung up. Tell the user, then call hang_up to close the line.',
     };
   }
   return {
@@ -216,7 +226,7 @@ async function startCall({ thisEndpoint, targetEndpoint, opening }) {
       email: existing.status === 'ringing' && role === 'caller'
         ? doorbellEmail({ call: existing, from, to, opening: existing.opening || opening })
         : null,
-      ...pollInstruction(existing),
+      ...pollInstruction(existing, from.endpoint_id),
       instruction: existing.status === 'live'
         ? 'This line is already live. Call session_sync. Do not send Gmail.'
         : 'This ring is already open. Send the doorbell email only if you have not sent it yet, then session_sync in this same chat.',
@@ -275,7 +285,7 @@ async function joinCall({ thisEndpoint, callId }) {
   const fresh = await getCall(call.call_id);
   return {
     call: snapshot(fresh, thisEndpoint),
-    ...pollInstruction(fresh),
+    ...pollInstruction(fresh, thisEndpoint),
     instruction: 'You are on the line. Call session_sync now and keep calling it in this same chat. Talk through Airsup, not Gmail.',
   };
 }
@@ -287,9 +297,10 @@ async function sessionSync({ thisEndpoint, callId, message, sinceSeq }) {
   if (!role) throw new Error('This endpoint is not on that call');
 
   const outgoing = String(message || '').trim();
+  const youHung = role === 'caller' ? call.caller_hangup : call.callee_hangup;
   if (outgoing) {
-    if (call.status === 'ended') {
-      throw new Error('Call already ended. Do not send.');
+    if (call.status === 'ended' || youHung) {
+      throw new Error('Call already ended or you already hung up. Do not send.');
     }
     await appendMessage(call.call_id, {
       fromEndpoint: thisEndpoint,
@@ -309,7 +320,7 @@ async function sessionSync({ thisEndpoint, callId, message, sinceSeq }) {
     messages: incoming,
     new_from_other: others,
     last_seq: fresh.last_seq,
-    ...pollInstruction(fresh),
+    ...pollInstruction(fresh, thisEndpoint),
   };
 }
 
@@ -343,7 +354,7 @@ async function hangUp({ thisEndpoint, callId }) {
   const fresh = await getCall(saved.call_id);
   return {
     call: snapshot(fresh, thisEndpoint),
-    ...pollInstruction(fresh),
+    ...pollInstruction(fresh, thisEndpoint),
   };
 }
 
