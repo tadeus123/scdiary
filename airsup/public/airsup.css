@@ -25,6 +25,53 @@
   padding: 2rem 0 4rem;
 }
 
+.airsup-welcome {
+  max-width: 36rem;
+  padding: 1rem 0 3rem;
+}
+
+.airsup-bracket {
+  font-size: clamp(1.45rem, 3.2vw, 2rem);
+  font-weight: 400;
+  margin: 0 0 1.25rem;
+  letter-spacing: 0.01em;
+}
+
+.airsup-lead {
+  font-size: clamp(1.15rem, 2.4vw, 1.45rem);
+  line-height: 1.4;
+  margin: 0 0 1.25rem;
+  max-width: 22ch;
+}
+
+.airsup-lead em {
+  font-style: italic;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.airsup-dir {
+  margin: 0 0 0.85rem;
+  line-height: 1.5;
+}
+
+.airsup-can {
+  margin: 0 0 1.25rem;
+  padding-left: 1.2rem;
+  line-height: 1.55;
+}
+
+.airsup-can li {
+  margin-bottom: 0.35rem;
+}
+
+.airsup-start-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 0.5rem;
+}
+
 .airsup-headline {
   font-size: clamp(1.6rem, 4.5vw, 2.6rem);
   line-height: 1.25;
