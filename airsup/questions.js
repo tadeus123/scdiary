@@ -1,4 +1,6 @@
 const QUESTIONS = [
+  { id: 'full_name', text: 'full name' },
+  { id: 'geburtsdatum', text: 'geburtsdatum' },
   { id: 'help_others', text: 'Do you think you can help other people with something?' },
   { id: 'dreams', text: 'Any dreams for your life?' },
   { id: 'person_to_meet', text: 'Which kind and types of person would you love to meet in your life?' },

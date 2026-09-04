@@ -3,6 +3,8 @@
  * Never copy intimate onboarding answers into searchable cards.
  */
 const INTIMATE_IDS = new Set([
+  'full_name',
+  'geburtsdatum',
   'sex_like',
   'grew_up',
   'sex_frequency',
