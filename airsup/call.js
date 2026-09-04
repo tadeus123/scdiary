@@ -1,6 +1,18 @@
 const crypto = require('crypto');
-const { supabase, getEndpointById } = require('./db');
+const { supabase, getEndpointById, requireEndpoint } = require('./db');
 const { MCP_URL } = require('./config');
+const {
+  sameId,
+  isUuid,
+  roleOnCall,
+  snapshot,
+  filterNewFromOther,
+  pollInstruction,
+  parseCallId,
+  isRingMessage,
+} = require('./call-state');
+
+const DEFAULT_WAIT_MS = Number(process.env.AIRSUP_SYNC_WAIT_MS || 20000);
 
 function requireDb() {
   if (!supabase) {
@@ -8,31 +20,18 @@ function requireDb() {
   }
 }
 
+function invalid(message) {
+  const error = new Error(message);
+  error.code = -32602;
+  return error;
+}
+
 function newId(prefix) {
   return `${prefix}_${crypto.randomBytes(5).toString('hex')}`;
 }
 
-function sameId(a, b) {
-  return String(a || '').trim() === String(b || '').trim();
-}
-
-function parseCallId({ subject, body }) {
-  const fromSubject = String(subject || '').match(/\[A2A-RING\]\s*(\S+)/i);
-  if (fromSubject) return fromSubject[1].trim();
-  const fromBody = String(body || '').match(/^CALL-ID:\s*(.+)$/im);
-  return fromBody ? fromBody[1].trim() : '';
-}
-
-function isRingMessage({ subject, body }) {
-  return /\[A2A-RING\]/i.test(String(subject || ''))
-    || /^MESSAGE-TYPE:\s*RING$/im.test(String(body || ''));
-}
-
-function roleOnCall(call, endpointId) {
-  if (!call) return null;
-  if (sameId(call.caller_endpoint, endpointId)) return 'caller';
-  if (sameId(call.callee_endpoint, endpointId)) return 'callee';
-  return null;
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function doorbellEmail({ call, from, to, opening }) {
@@ -47,14 +46,12 @@ function doorbellEmail({ call, from, to, opening }) {
     'This is only a doorbell. It is not a question. Do not answer this email.',
     'Do not use Gmail Reply.',
     '',
-    'Join the live Airsup call with the Airsup plugin:',
-    MCP_URL,
+    'Use the Airsup plugin, then:',
+    `join_call with this_endpoint ${to.endpoint_id} and call_id ${call.call_id}`,
+    'Then session_sync in this same chat. Pass your token from the Airsup prompt.',
     '',
-    `join_call({ this_endpoint: "${to.endpoint_id}", call_id: "${call.call_id}" })`,
-    'Then keep calling session_sync in this same chat until hang_up.',
-    '',
-    opening ? `Opening from the other AI:\n${opening}` : '',
-  ].filter((line, index, all) => line !== '' || all[index - 1] !== '').join('\n').trim();
+    opening ? `Opening:\n${opening}` : '',
+  ].filter(Boolean).join('\n').trim();
 
   return {
     send_as: 'new_message',
@@ -78,12 +75,18 @@ async function getCall(callId) {
   return data || null;
 }
 
+async function expireStale() {
+  requireDb();
+  await supabase.rpc('airsup_expire_stale_calls');
+}
+
 async function findOpenCall(a, b) {
   requireDb();
+  if (!isUuid(a) || !isUuid(b)) throw invalid('endpoint ids must be UUIDs');
   const { data, error } = await supabase
     .from('airsup_calls')
     .select('*')
-    .in('status', ['ringing', 'live', 'ending'])
+    .in('status', ['ringing', 'live'])
     .or(
       `and(caller_endpoint.eq.${a},callee_endpoint.eq.${b}),and(caller_endpoint.eq.${b},callee_endpoint.eq.${a})`
     )
@@ -93,15 +96,14 @@ async function findOpenCall(a, b) {
   return data && data[0] ? data[0] : null;
 }
 
-async function saveCall(row) {
+async function insertCall(row) {
   requireDb();
-  const payload = {
-    ...row,
-    updated_at: new Date().toISOString(),
-  };
   const { data, error } = await supabase
     .from('airsup_calls')
-    .upsert(payload, { onConflict: 'call_id' })
+    .insert({
+      ...row,
+      updated_at: new Date().toISOString(),
+    })
     .select('*')
     .single();
   if (error) throw error;
@@ -112,27 +114,14 @@ async function appendMessage(callId, { fromEndpoint, kind, body }) {
   requireDb();
   const text = String(body || '').trim();
   if (!text && kind === 'chat') return null;
-  for (let attempt = 0; attempt < 6; attempt += 1) {
-    const call = await getCall(callId);
-    if (!call) throw new Error('Unknown call_id');
-    const seq = (call.last_seq || 0) + 1;
-    const { error } = await supabase.from('airsup_call_messages').insert({
-      call_id: callId,
-      seq,
-      from_endpoint: fromEndpoint || null,
-      kind: kind || 'chat',
-      body: text,
-    });
-    if (!error) {
-      await supabase
-        .from('airsup_calls')
-        .update({ last_seq: seq, updated_at: new Date().toISOString() })
-        .eq('call_id', callId);
-      return seq;
-    }
-    if (error.code !== '23505') throw error;
-  }
-  throw new Error('Could not append call message');
+  const { data, error } = await supabase.rpc('airsup_append_call_message', {
+    p_call_id: callId,
+    p_from: fromEndpoint || null,
+    p_kind: kind || 'chat',
+    p_body: text,
+  });
+  if (error) throw error;
+  return data;
 }
 
 async function messagesSince(callId, sinceSeq) {
@@ -148,92 +137,50 @@ async function messagesSince(callId, sinceSeq) {
   return data || [];
 }
 
-function snapshot(call, endpointId, extra = {}) {
-  const role = roleOnCall(call, endpointId);
+function withPoll(call, endpointId, extra = {}) {
+  const poll = pollInstruction(call, endpointId);
   return {
-    call_id: call.call_id,
-    status: call.status,
-    role,
-    caller_endpoint: call.caller_endpoint,
-    callee_endpoint: call.callee_endpoint,
-    you_hung_up: role === 'caller' ? call.caller_hangup : call.callee_hangup,
-    other_hung_up: role === 'caller' ? call.callee_hangup : call.caller_hangup,
-    last_seq: call.last_seq,
+    call: snapshot(call, endpointId),
+    ...poll,
+    next_since_seq: call.last_seq,
     ...extra,
   };
 }
 
-function pollInstruction(call, endpointId) {
-  const role = roleOnCall(call, endpointId);
-  const youHung = role === 'caller' ? call.caller_hangup : call.callee_hangup;
-  const otherHung = role === 'caller' ? call.callee_hangup : call.caller_hangup;
-  if (call.status === 'ended') {
-    return {
-      keep_polling: false,
-      wait_hint_seconds: 0,
-      instruction: 'This call has ended. Do not send more messages on this call_id.',
-    };
-  }
-  if (youHung && !otherHung) {
-    return {
-      keep_polling: false,
-      wait_hint_seconds: 0,
-      instruction: 'You hung up. The line stays until the other side hangs up too. Do not send more on this call.',
-    };
-  }
-  if (otherHung && !youHung) {
-    return {
-      keep_polling: true,
-      wait_hint_seconds: 1,
-      instruction: 'The other side hung up. Tell the user, then call hang_up to close the line.',
-    };
-  }
-  if (call.status === 'ringing') {
-    return {
-      keep_polling: true,
-      wait_hint_seconds: 2,
-      instruction: 'Stay in this ChatGPT conversation. Call session_sync again. Do not wait for a Gmail reply. Gmail is only the doorbell.',
-    };
-  }
-  return {
-    keep_polling: true,
-    wait_hint_seconds: 1,
-    instruction: 'The line is live. Use session_sync to talk. Do not use Gmail for the conversation. Call hang_up only when this side is done.',
-  };
-}
-
-async function startCall({ thisEndpoint, targetEndpoint, opening }) {
-  const from = await getEndpointById(thisEndpoint);
+async function startCall({ thisEndpoint, token, targetEndpoint, opening }) {
+  const from = await requireEndpoint(thisEndpoint, token);
+  if (!isUuid(targetEndpoint)) throw invalid('target_endpoint must be a UUID');
   const to = await getEndpointById(targetEndpoint);
-  if (!from || !to) throw new Error('Unknown endpoint');
-  if (sameId(from.endpoint_id, to.endpoint_id)) throw new Error('Cannot call yourself');
-  if (!to.active || !to.contactable) throw new Error('That endpoint is not contactable');
+  if (!to) throw invalid('Unknown target endpoint');
+  if (sameId(from.endpoint_id, to.endpoint_id)) throw invalid('Cannot call yourself');
+  if (!to.active || !to.contactable) throw invalid('That endpoint is not contactable');
 
+  await expireStale();
   const existing = await findOpenCall(from.endpoint_id, to.endpoint_id);
   if (existing) {
     const role = roleOnCall(existing, from.endpoint_id);
     if (existing.status === 'ringing' && role === 'callee') {
-      return {
+      return withPoll(existing, from.endpoint_id, {
         reused: true,
         action: 'join_call',
-        call: snapshot(existing, from.endpoint_id),
         instruction: 'They are already ringing you. Call join_call, then session_sync. Do not send another doorbell.',
-      };
+      });
     }
-    return {
+    if (existing.status === 'live') {
+      return withPoll(existing, from.endpoint_id, {
+        reused: true,
+        email: null,
+      });
+    }
+    return withPoll(existing, from.endpoint_id, {
       reused: true,
-      call: snapshot(existing, from.endpoint_id),
-      email: existing.status === 'ringing' && role === 'caller'
+      email: role === 'caller'
         ? doorbellEmail({ call: existing, from, to, opening: existing.opening || opening })
         : null,
-      ...pollInstruction(existing, from.endpoint_id),
-      instruction: existing.status === 'live'
-        ? 'This line is already live. Call session_sync. Do not send Gmail.'
-        : 'This ring is already open. Send the doorbell email only if you have not sent it yet, then session_sync in this same chat.',
-    };
+    });
   }
 
-  const call = await saveCall({
+  const call = await insertCall({
     call_id: newId('call'),
     caller_endpoint: from.endpoint_id,
     callee_endpoint: to.endpoint_id,
@@ -251,155 +198,166 @@ async function startCall({ thisEndpoint, targetEndpoint, opening }) {
     });
   }
   const fresh = await getCall(call.call_id);
-  return {
+  return withPoll(fresh, from.endpoint_id, {
     reused: false,
-    call: snapshot(fresh, from.endpoint_id),
     email: doorbellEmail({ call: fresh, from, to, opening: fresh.opening }),
-    keep_polling: true,
-    wait_hint_seconds: 2,
-    instruction: 'Send the doorbell as a brand-new Gmail message. Never Reply. Then immediately call session_sync in THIS same chat and keep calling it. Do not end the turn to wait for email. The conversation lives on Airsup, not in Gmail.',
-  };
+    instruction: 'Send that doorbell as a brand-new Gmail message. Never Reply. Then call session_sync immediately in THIS chat. It waits for them. Pass since_seq=0 the first time, then always next_since_seq.',
+  });
 }
 
-async function joinCall({ thisEndpoint, callId }) {
-  const call = await getCall(callId);
-  if (!call) throw new Error('Unknown call_id');
-  const role = roleOnCall(call, thisEndpoint);
-  if (role !== 'callee') {
-    throw new Error('Only the callee can join this ring');
+async function joinCall({ thisEndpoint, token, callId }) {
+  const me = await requireEndpoint(thisEndpoint, token);
+  const before = await getCall(callId);
+  if (!before) throw invalid('Unknown call_id');
+  if (roleOnCall(before, me.endpoint_id) !== 'callee') {
+    throw invalid('Only the callee can join this ring');
   }
-  if (call.status === 'ended') {
-    return { call: snapshot(call, thisEndpoint), keep_polling: false, instruction: 'This call already ended.' };
+  if (before.status === 'ended') {
+    return withPoll(before, me.endpoint_id);
   }
-  if (call.status === 'ringing') {
-    await saveCall({
-      ...call,
-      status: 'live',
-    });
-    await appendMessage(call.call_id, {
-      fromEndpoint: thisEndpoint,
+  const { data: picked, error } = await supabase.rpc('airsup_pickup_call', {
+    p_call_id: callId,
+    p_endpoint: me.endpoint_id,
+  });
+  if (error) throw error;
+  const row = Array.isArray(picked) ? picked[0] : picked;
+  if (!row) throw invalid('Could not join this call');
+  if (before.status === 'ringing' && row.status === 'live') {
+    await appendMessage(callId, {
+      fromEndpoint: me.endpoint_id,
       kind: 'system',
       body: 'Callee picked up. The line is live.',
     });
   }
-  const fresh = await getCall(call.call_id);
-  return {
-    call: snapshot(fresh, thisEndpoint),
-    ...pollInstruction(fresh, thisEndpoint),
-    instruction: 'You are on the line. Call session_sync now and keep calling it in this same chat. Talk through Airsup, not Gmail.',
-  };
+  const fresh = await getCall(callId);
+  return withPoll(fresh, me.endpoint_id, {
+    instruction: 'You are on the line. Call session_sync now. If must_call_again is true, call it again immediately.',
+  });
 }
 
-async function sessionSync({ thisEndpoint, callId, message, sinceSeq }) {
-  const call = await getCall(callId);
-  if (!call) throw new Error('Unknown call_id');
-  const role = roleOnCall(call, thisEndpoint);
-  if (!role) throw new Error('This endpoint is not on that call');
+async function sessionSync({ thisEndpoint, token, callId, message, sinceSeq, waitMs }) {
+  const me = await requireEndpoint(thisEndpoint, token);
+  let call = await getCall(callId);
+  if (!call) throw invalid('Unknown call_id');
+  const role = roleOnCall(call, me.endpoint_id);
+  if (!role) throw invalid('This endpoint is not on that call');
 
   const outgoing = String(message || '').trim();
   const youHung = role === 'caller' ? call.caller_hangup : call.callee_hangup;
   if (outgoing) {
     if (call.status === 'ended' || youHung) {
-      throw new Error('Call already ended or you already hung up. Do not send.');
+      throw invalid('Call already ended or you already hung up. Do not send.');
     }
     await appendMessage(call.call_id, {
-      fromEndpoint: thisEndpoint,
+      fromEndpoint: me.endpoint_id,
       kind: 'chat',
       body: outgoing,
     });
-    if (call.status === 'ringing' && role === 'callee') {
-      await saveCall({ ...call, status: 'live' });
+  }
+  if (call.status === 'ringing' && role === 'callee') {
+    const { data: picked, error: pickError } = await supabase.rpc('airsup_pickup_call', {
+      p_call_id: callId,
+      p_endpoint: me.endpoint_id,
+    });
+    if (pickError) throw pickError;
+    const row = Array.isArray(picked) ? picked[0] : picked;
+    if (row && row.status === 'live') {
+      await appendMessage(callId, {
+        fromEndpoint: me.endpoint_id,
+        kind: 'system',
+        body: 'Callee picked up. The line is live.',
+      });
     }
   }
 
-  const fresh = await getCall(call.call_id);
-  const incoming = await messagesSince(call.call_id, sinceSeq);
-  const others = incoming.filter((row) => !sameId(row.from_endpoint, thisEndpoint) || row.kind === 'system');
+  const wait = waitMs === 0 ? 0 : Math.min(Math.max(Number(waitMs || DEFAULT_WAIT_MS), 0), 25000);
+  const started = Date.now();
+  let incoming = await messagesSince(callId, sinceSeq);
+  let others = filterNewFromOther(incoming, me.endpoint_id);
+  let fresh = await getCall(callId);
+  while (
+    wait > 0
+    && others.length === 0
+    && fresh
+    && fresh.status !== 'ended'
+    && Date.now() - started < wait
+  ) {
+    const snap = snapshot(fresh, me.endpoint_id);
+    if (snap.you_hung_up || snap.other_hung_up) break;
+    await sleep(400);
+    fresh = await getCall(callId);
+    incoming = await messagesSince(callId, sinceSeq);
+    others = filterNewFromOther(incoming, me.endpoint_id);
+  }
+
   return {
-    call: snapshot(fresh, thisEndpoint),
+    ...withPoll(fresh, me.endpoint_id),
     messages: incoming,
     new_from_other: others,
     last_seq: fresh.last_seq,
-    ...pollInstruction(fresh, thisEndpoint),
+    waited_ms: Date.now() - started,
   };
 }
 
-async function hangUp({ thisEndpoint, callId }) {
-  const call = await getCall(callId);
-  if (!call) throw new Error('Unknown call_id');
-  const role = roleOnCall(call, thisEndpoint);
-  if (!role) throw new Error('This endpoint is not on that call');
-
-  const next = {
-    ...call,
-    caller_hangup: role === 'caller' ? true : call.caller_hangup,
-    callee_hangup: role === 'callee' ? true : call.callee_hangup,
-  };
-
-  const both = next.caller_hangup && next.callee_hangup;
-  const cancelRing = call.status === 'ringing' && role === 'caller';
-  if (both || cancelRing) {
-    next.status = 'ended';
-    next.ended_at = new Date().toISOString();
-  } else if (call.status !== 'ended') {
-    next.status = 'ending';
-  }
-
-  const saved = await saveCall(next);
-  await appendMessage(saved.call_id, {
-    fromEndpoint: thisEndpoint,
-    kind: 'system',
-    body: cancelRing ? 'Caller cancelled the ring.' : `${role} hung up.`,
+async function hangUp({ thisEndpoint, token, callId }) {
+  const me = await requireEndpoint(thisEndpoint, token);
+  const { data, error } = await supabase.rpc('airsup_hang_up', {
+    p_call_id: callId,
+    p_endpoint: me.endpoint_id,
   });
-  const fresh = await getCall(saved.call_id);
-  return {
-    call: snapshot(fresh, thisEndpoint),
-    ...pollInstruction(fresh, thisEndpoint),
-  };
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw invalid('Unknown call_id or not a party');
+  const role = roleOnCall(row, me.endpoint_id);
+  await appendMessage(row.call_id, {
+    fromEndpoint: me.endpoint_id,
+    kind: 'system',
+    body: `${role} hung up.`,
+  });
+  const fresh = await getCall(row.call_id);
+  return withPoll(fresh, me.endpoint_id);
 }
 
-async function listCalls({ thisEndpoint }) {
-  requireDb();
-  const id = String(thisEndpoint || '').trim();
-  const { data, error } = await supabase
-    .from('airsup_calls')
-    .select('*')
-    .or(`caller_endpoint.eq.${id},callee_endpoint.eq.${id}`)
-    .in('status', ['ringing', 'live', 'ending'])
-    .order('updated_at', { ascending: false });
-  if (error) throw error;
-  const rows = data || [];
+async function listCalls({ thisEndpoint, token }) {
+  const me = await requireEndpoint(thisEndpoint, token);
+  await expireStale();
+  const id = me.endpoint_id;
+  const [asCaller, asCallee] = await Promise.all([
+    supabase.from('airsup_calls').select('*').eq('caller_endpoint', id).in('status', ['ringing', 'live', 'ending']),
+    supabase.from('airsup_calls').select('*').eq('callee_endpoint', id).in('status', ['ringing', 'live', 'ending']),
+  ]);
+  if (asCaller.error) throw asCaller.error;
+  if (asCallee.error) throw asCallee.error;
+  const rows = [...(asCaller.data || []), ...(asCallee.data || [])]
+    .filter((row, index, all) => all.findIndex((item) => item.call_id === row.call_id) === index)
+    .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
   return {
     incoming_rings: rows.filter((row) => row.status === 'ringing' && sameId(row.callee_endpoint, id)).map((row) => snapshot(row, id)),
     outgoing_rings: rows.filter((row) => row.status === 'ringing' && sameId(row.caller_endpoint, id)).map((row) => snapshot(row, id)),
     live: rows.filter((row) => row.status === 'live' || row.status === 'ending').map((row) => snapshot(row, id)),
-    instruction: 'Incoming rings: join_call. Live lines: session_sync. Gmail is only a doorbell. If a ring is listed here, join it even if email never arrived.',
+    instruction: 'Incoming rings: join_call. Live lines: session_sync. Gmail is only a doorbell.',
   };
 }
 
-async function handleRing({ thisEndpoint, subject, body }) {
+async function handleRing({ thisEndpoint, token, subject, body }) {
+  const me = await requireEndpoint(thisEndpoint, token);
   if (!isRingMessage({ subject, body })) {
     return {
       ok: false,
       action: 'ignore',
-      reason: 'Not an Airsup doorbell. Live talk uses the plugin, not REQUEST/RESPONSE email.',
+      reason: 'Not an Airsup doorbell. Do not answer REQUEST/RESPONSE email.',
     };
   }
   const callId = parseCallId({ subject, body });
   const call = await getCall(callId);
-  if (!call) {
-    return { ok: false, action: 'ignore', reason: 'Unknown CALL-ID' };
-  }
-  const role = roleOnCall(call, thisEndpoint);
-  if (role !== 'callee') {
+  if (!call) return { ok: false, action: 'ignore', reason: 'Unknown CALL-ID' };
+  if (roleOnCall(call, me.endpoint_id) !== 'callee') {
     return { ok: false, action: 'ignore', reason: 'This doorbell is not for this endpoint' };
   }
-  return {
-    ok: true,
-    action: 'join_call',
-    call_id: call.call_id,
-    instruction: 'This email is only a ring. Do not answer it. Call join_call, then session_sync. Never treat a RING as a question.',
-  };
+  if (call.status === 'ended') {
+    return { ok: false, action: 'ignore', reason: 'This ring already ended' };
+  }
+  return joinCall({ thisEndpoint: me.endpoint_id, token, callId });
 }
 
 module.exports = {

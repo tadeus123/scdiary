@@ -176,15 +176,18 @@ router.get('/prompt', async (req, res) => {
   let answers = normalizeAnswers({});
   let profile = null;
   let endpointId = '';
+  let mcpToken = '';
   try {
     profile = await getProfile(user.googleId);
     if (profile) answers = profile.answers;
     const endpoint = await getEndpointByGoogleId(user.googleId);
-    if (endpoint) endpointId = endpoint.endpoint_id;
+    if (endpoint) {
+      endpointId = endpoint.endpoint_id;
+      mcpToken = endpoint.mcp_token || '';
+    }
   } catch (error) {
     console.error('Airsup prompt load error:', error);
   }
-  const liveDirectory = directoryUrl(req);
   renderAirsup(req, res, 'prompt.ejs', {
     user,
     mcpUrl: MCP_URL,
@@ -194,8 +197,8 @@ router.get('/prompt', async (req, res) => {
       email: user.email,
       displayName: userDisplayName(user, profile),
       endpointId,
-      directoryUrl: liveDirectory,
       mcpUrl: MCP_URL,
+      mcpToken,
     }),
   });
 });
@@ -310,6 +313,7 @@ router.post('/api/finish', async (req, res) => {
       next: '/airsup/prompt',
       answers: profile.answers,
       endpoint_id: endpoint && endpoint.endpoint_id,
+      token: endpoint && endpoint.mcp_token,
     });
   } catch (error) {
     console.error('Airsup finish error:', error);
@@ -331,6 +335,8 @@ router.post('/api/find_people', async (req, res) => {
     const body = req.body || {};
     const data = await callFindPeople({
       requester_id: body.requester_id || body.exclude_endpoint_id,
+      token: body.token,
+      query: body.query || body.current_need || body.need,
       current_need: body.current_need || body.need,
       what_requester_can_offer: body.what_requester_can_offer || body.offer,
       desired_person: body.desired_person,
@@ -357,6 +363,8 @@ router.post('/api/search_ai_endpoints', async (req, res) => {
     const body = req.body || {};
     const data = await callFindPeople({
       requester_id: body.exclude_endpoint_id || body.requester_id,
+      token: body.token,
+      query: body.query || body.need || body.current_need,
       current_need: body.need || body.current_need,
       what_requester_can_offer: body.offer || body.what_requester_can_offer,
       desired_person: body.desired_person,

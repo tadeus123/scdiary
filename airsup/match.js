@@ -1,4 +1,4 @@
-const { supabase, listActiveEndpoints, upsertKnowledge, listKnowledge } = require('./db');
+const { supabase, listActiveEndpoints, listKnowledge } = require('./db');
 const { embed, isOpenAiConfigured } = require('./openai');
 const { knowledgeDocument, nameMatchScore, keywordScore, publicPerson } = require('./knowledge');
 
@@ -40,13 +40,18 @@ async function findPeople({
   if (!people.length) {
     return { matches: [], note: 'No other listed endpoints yet.' };
   }
+  if (!String(text).trim()) {
+    return { matches: [], note: 'Pass query (a name or a need).' };
+  }
 
-  await Promise.all(people.map((row) => upsertKnowledge(row).catch(() => null)));
+  const nameHits = people.filter((row) => nameMatchScore(row, text) > 0);
+  const shortQuery = String(text).trim().split(/\s+/).length <= 4;
+  const pool = shortQuery && nameHits.length ? nameHits : people;
 
-  const scores = new Map(people.map((row) => [row.endpoint_id, 0]));
-  for (const row of people) {
-    const nameHits = nameMatchScore(row, text);
-    if (nameHits) scores.set(row.endpoint_id, scores.get(row.endpoint_id) + nameHits * 5);
+  const scores = new Map(pool.map((row) => [row.endpoint_id, 0]));
+  for (const row of pool) {
+    const named = nameMatchScore(row, text);
+    if (named) scores.set(row.endpoint_id, scores.get(row.endpoint_id) + named * 5);
     scores.set(
       row.endpoint_id,
       scores.get(row.endpoint_id) + keywordScore(knowledgeDocument(row), text)
@@ -72,8 +77,10 @@ async function findPeople({
           const stored = await listKnowledge();
           for (const row of stored) {
             const id = String(row.endpoint_id || '');
-            if (!scores.has(id) || !Array.isArray(row.embedding)) continue;
-            scores.set(id, scores.get(id) + cosine(vector, row.embedding) * 4);
+            if (!scores.has(id)) continue;
+            const vec = asVector(row.embedding);
+            if (!vec.length) continue;
+            scores.set(id, scores.get(id) + cosine(vec, vector) * 4);
           }
         }
       }
@@ -82,8 +89,9 @@ async function findPeople({
     }
   }
 
-  const ranked = people
+  const ranked = pool
     .map((row) => ({ row, score: scores.get(row.endpoint_id) || 0 }))
+    .filter((item) => item.score >= 1)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map(({ row, score }) => {
@@ -100,6 +108,19 @@ async function findPeople({
     matches: ranked,
     note: 'Matches use each person’s real public answers, not generated cards. Intimate answers are not searchable. To talk, start_call then keep session_sync in this chat. Gmail is only the doorbell.',
   };
+}
+
+function asVector(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
 }
 
 function cosine(a, b) {

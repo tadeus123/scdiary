@@ -28,9 +28,9 @@ function displayNameFrom(user) {
 
 /** Public directory heading. Prefer onboarding full name over the Google account name. */
 function publicDisplayName({ answers, displayName, email } = {}) {
-  const fromAnswers = clip(answers && answers.full_name, 120);
+  const fromAnswers = clip(answers && answers.full_name, 120).replace(/\s+/g, ' ').trim();
   if (fromAnswers) return fromAnswers;
-  return displayNameFrom({ displayName, email });
+  return displayNameFrom({ displayName, email }).replace(/\s+/g, ' ').trim();
 }
 
 function publicFieldsFromAnswers(answers) {

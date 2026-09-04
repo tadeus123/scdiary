@@ -32,7 +32,6 @@ function knowledgeDocument(row) {
     email: row && row.endpoint_email,
   });
   const lines = [`Name: ${name}`];
-  if (row && row.endpoint_email) lines.push(`Email: ${row.endpoint_email}`);
   for (const q of QUESTIONS) {
     if (!answers[q.id]) continue;
     lines.push(`${q.text}: ${answers[q.id]}`);
@@ -82,7 +81,7 @@ function nameMatchScore(row, query) {
   if (!needles.length) return 0;
   let hits = 0;
   for (const word of needles) {
-    if (word.length < 3) continue;
+    if (word.length < 2) continue;
     if (hay.includes(word)) hits += 1;
   }
   return hits;

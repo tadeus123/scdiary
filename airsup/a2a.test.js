@@ -70,7 +70,7 @@ assert.strictEqual(
 console.log('a2a classify tests passed');
 
 const names = toolList().tools.map((tool) => tool.name);
-for (const name of [
+assert.deepStrictEqual(names, [
   'find_people',
   'start_call',
   'join_call',
@@ -78,12 +78,6 @@ for (const name of [
   'hang_up',
   'list_calls',
   'handle_ring',
-  'create_network_request',
-  'validate_incoming_message',
-  'create_network_response',
-  'record_network_response',
-  'get_network_results',
-]) {
-  assert.ok(names.includes(name), `missing tool ${name}`);
-}
+]);
+assert.ok(toolList().tools.every((tool) => tool.inputSchema.properties.token));
 console.log('mcp tool list tests passed');

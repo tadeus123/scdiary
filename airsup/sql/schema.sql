@@ -20,6 +20,7 @@ create table if not exists public.airsup_endpoints (
   google_id text not null unique,
   display_name text not null default '',
   endpoint_email text not null,
+  mcp_token text,
   help_with text not null default '',
   need_help_with text not null default '',
   desired_person text not null default '',
