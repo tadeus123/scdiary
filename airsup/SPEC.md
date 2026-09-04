@@ -2,10 +2,10 @@
 
 Isolated onboarding at `/airsup`. Same site look. Removable via `airsup/REVERT.md`.
 
-A prompt cannot retrieve the database. ChatGPT needs a live tool.
+A prompt cannot read Supabase. ChatGPT looks at the live public directory before contacting anyone. No plugin.
 
 ```text
-Onboarding answers → approved compact match card → find_people → create_network_request → [A2A-REQUEST] → one answer → [A2A-RESPONSE] → get_network_results
+Onboarding answers → approved compact match card → /airsup/directory → Gmail [A2A-REQUEST]
 ```
 
 Never hardcode Tade. Do not build embeddings, graphs, or multi-turn negotiation yet.
@@ -43,17 +43,16 @@ The server:
 
 With ~20 users this is a few thousand tokens. No embeddings.
 
-## How ChatGPT actually calls it
+## How ChatGPT finds people
 
-MCP server: `POST https://www.tademehl.com/airsup/mcp`  
-REST: `POST /airsup/api/find_people`  
-OpenAPI: `/airsup/openapi.json`
+No plugin. ChatGPT opens the live directory, then contacts someone by Gmail.
 
-Install the MCP in ChatGPT during the same onboarding as the Gmail task:
+- Page: `https://www.tademehl.com/airsup/directory`
+- JSON: `https://www.tademehl.com/airsup/directory.json`
 
-1. Settings → Security and login → Developer mode
-2. Plugins → add the `/airsup/mcp` URL
-3. Paste the first prompt and let it call `find_people`
+Both are `noindex`. Nothing else on the site links here. Only approved public cards. Intimate answers are not listed.
+
+MCP still exists at `/airsup/mcp` for later, but onboarding does not ask the user to install it.
 
 ## A2A protocol
 

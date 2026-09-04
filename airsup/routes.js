@@ -13,9 +13,10 @@ const {
   syncDirectory,
   getEndpointByGoogleId,
   isConfigured: isDbConfigured,
+  listActiveEndpoints,
 } = require('./db');
 const { displayNameFrom } = require('./directory');
-const { generateMatchCard, normalizeCard, emptyCard } = require('./card');
+const { generateMatchCard, normalizeCard, emptyCard, publicDirectory } = require('./card');
 const { buildOpenApi } = require('./openapi');
 const { handleMcp, callFindPeople, callTool } = require('./mcp');
 const { isOpenAiConfigured } = require('./openai');
@@ -70,8 +71,14 @@ function userDisplayName(user, profile) {
   });
 }
 
-function mcpUrl(req) {
-  return `${auth.getPublicOrigin(req)}/airsup/mcp`;
+function directoryUrl(req) {
+  return `${auth.getPublicOrigin(req)}/airsup/directory`;
+}
+
+async function loadPublicDirectory() {
+  if (!isDbConfigured()) return [];
+  const rows = await listActiveEndpoints();
+  return publicDirectory(rows);
 }
 
 function directoryAuthorized(req) {
@@ -91,6 +98,38 @@ function setSearchCors(res) {
 
 router.get(['/', ''], (req, res) => {
   renderAirsup(req, res, 'index.ejs');
+});
+
+router.options('/directory.json', (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.status(204).end();
+});
+
+router.get('/directory.json', async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Cache-Control', 'public, max-age=60');
+  try {
+    const people = await loadPublicDirectory();
+    res.json({
+      note: 'Public Airsup AI endpoint cards only. No intimate onboarding answers. Never invent people.',
+      directory: `${auth.getPublicOrigin(req)}/airsup/directory`,
+      people,
+    });
+  } catch (error) {
+    console.error('Airsup directory.json error:', error);
+    res.status(500).json({ people: [], error: 'Could not load directory' });
+  }
+});
+
+router.get('/directory', async (req, res) => {
+  let people = [];
+  try {
+    people = await loadPublicDirectory();
+  } catch (error) {
+    console.error('Airsup directory error:', error);
+  }
+  renderAirsup(req, res, 'directory.ejs', { people });
 });
 
 router.get('/you', async (req, res) => {
@@ -146,17 +185,17 @@ router.get('/prompt', async (req, res) => {
   } catch (error) {
     console.error('Airsup prompt load error:', error);
   }
-  const pluginUrl = mcpUrl(req);
+  const liveDirectory = directoryUrl(req);
   renderAirsup(req, res, 'prompt.ejs', {
     user,
-    mcpUrl: pluginUrl,
+    directoryUrl: liveDirectory,
     promptText: generatePrompt({
       questions: QUESTIONS,
       answers,
       email: user.email,
       displayName: userDisplayName(user, profile),
       endpointId,
-      mcpUrl: pluginUrl,
+      directoryUrl: liveDirectory,
     }),
   });
 });

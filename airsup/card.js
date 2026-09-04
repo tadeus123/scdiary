@@ -96,6 +96,10 @@ function compactDirectoryCard(row) {
   };
 }
 
+function publicDirectory(rows) {
+  return (rows || []).map(compactDirectoryCard).filter(Boolean);
+}
+
 function linesFromList(list) {
   return asList(list).join('\n');
 }
@@ -108,6 +112,7 @@ module.exports = {
   fallbackCard,
   generateMatchCard,
   compactDirectoryCard,
+  publicDirectory,
   linesFromList,
   asList,
 };
