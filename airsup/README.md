@@ -52,6 +52,18 @@ OpenAPI: `/airsup/openapi.json`
 
 Needs `OPENAI_API_KEY` for card generation and matching.
 
+## A2A request / response split
+
+Two logical channels plus durable state. The network server, not the email body, decides the type.
+
+- `create_network_request` stores `status: waiting` and returns a **new** `[A2A-REQUEST]` email. Do not use Gmail Reply.
+- The request worker only runs when the subject contains `[A2A-REQUEST]`. It answers once, then `create_network_response` sends a **new** `[A2A-RESPONSE]`.
+- The response worker only runs when the subject contains `[A2A-RESPONSE]`. It records the answer for the originating endpoint and **never answers**.
+- Later chats call `get_network_results()`. The original ChatGPT conversation does not stay open.
+
+REST: `POST /airsup/api/a2a/validate_incoming_message` (and the other `/airsup/api/a2a/*` tools).  
+Tables: `airsup_network_requests`, `airsup_network_messages` (unique `message_id` and `gmail_message_id`).
+
 ## Remove
 
 ```bash

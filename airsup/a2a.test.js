@@ -1,0 +1,72 @@
+const assert = require('assert');
+const { classifyMessage, parseEnvelope } = require('./a2a');
+const { toolList } = require('./mcp');
+
+function envelope(type) {
+  return parseEnvelope([
+    'A2A-PROTOCOL: 1',
+    `MESSAGE-TYPE: ${type}`,
+    'MESSAGE-ID: msg_1',
+    'REQUEST-ID: req_1',
+    'CONVERSATION-ID: conv_1',
+    'FROM-ENDPOINT: endpoint_a',
+    'TO-ENDPOINT: endpoint_b',
+    'IN-REPLY-TO: none',
+    `RESPONSE-EXPECTED: ${type === 'RESPONSE' ? 'NO' : 'YES'}`,
+    '',
+    type === 'RESPONSE' ? 'Here is the answer.' : 'Who can help?',
+  ].join('\n'));
+}
+
+assert.strictEqual(
+  classifyMessage({ subject: '[A2A-REQUEST] req_1', envelope: envelope('REQUEST') }),
+  'REQUEST'
+);
+
+assert.strictEqual(
+  classifyMessage({ subject: '[A2A-RESPONSE] req_1', envelope: envelope('RESPONSE') }),
+  'RESPONSE'
+);
+
+assert.strictEqual(
+  classifyMessage({
+    subject: '[A2A-RESPONSE] req_1',
+    envelope: envelope('REQUEST'),
+  }),
+  'RESPONSE',
+  'subject RESPONSE must win over a lying REQUEST envelope'
+);
+
+assert.strictEqual(
+  classifyMessage({
+    subject: '[A2A-REQUEST] req_1',
+    envelope: envelope('RESPONSE'),
+  }),
+  'RESPONSE',
+  'Gmail Reply that kept the request subject must still be a RESPONSE'
+);
+
+assert.strictEqual(
+  classifyMessage({ subject: 'hello', envelope: envelope('RESPONSE') }),
+  'RESPONSE'
+);
+
+assert.strictEqual(
+  classifyMessage({ subject: 'lunch?', envelope: { messageType: '' } }),
+  null
+);
+
+console.log('a2a classify tests passed');
+
+const names = toolList().tools.map((tool) => tool.name);
+for (const name of [
+  'find_people',
+  'create_network_request',
+  'validate_incoming_message',
+  'create_network_response',
+  'record_network_response',
+  'get_network_results',
+]) {
+  assert.ok(names.includes(name), `missing tool ${name}`);
+}
+console.log('mcp tool list tests passed');

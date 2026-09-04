@@ -17,7 +17,7 @@ const {
 const { displayNameFrom } = require('./directory');
 const { generateMatchCard, normalizeCard, emptyCard } = require('./card');
 const { buildOpenApi } = require('./openapi');
-const { handleMcp, callFindPeople } = require('./mcp');
+const { handleMcp, callFindPeople, callTool } = require('./mcp');
 const { isOpenAiConfigured } = require('./openai');
 const auth = require('./auth');
 
@@ -340,6 +340,31 @@ router.post('/api/search_ai_endpoints', async (req, res) => {
     res.status(500).json({ ok: false, error: error.message || 'Search failed' });
   }
 });
+
+async function handleA2aTool(req, res, name) {
+  setSearchCors(res);
+  if (!directoryAuthorized(req)) {
+    return res.status(401).json({ ok: false, error: 'Unauthorized' });
+  }
+  try {
+    const data = await callTool(name, req.body || {});
+    res.json({ ok: true, ...data });
+  } catch (error) {
+    console.error(`Airsup ${name} error:`, error);
+    res.status(400).json({ ok: false, error: error.message || 'Failed' });
+  }
+}
+
+router.options('/api/a2a/:tool', (req, res) => {
+  setSearchCors(res);
+  res.status(204).end();
+});
+
+router.post('/api/a2a/create_network_request', (req, res) => handleA2aTool(req, res, 'create_network_request'));
+router.post('/api/a2a/validate_incoming_message', (req, res) => handleA2aTool(req, res, 'validate_incoming_message'));
+router.post('/api/a2a/create_network_response', (req, res) => handleA2aTool(req, res, 'create_network_response'));
+router.post('/api/a2a/record_network_response', (req, res) => handleA2aTool(req, res, 'record_network_response'));
+router.post('/api/a2a/get_network_results', (req, res) => handleA2aTool(req, res, 'get_network_results'));
 
 router.all('/mcp', handleMcp);
 

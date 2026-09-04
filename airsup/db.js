@@ -93,6 +93,21 @@ async function syncDirectory({ googleId, email, displayName, answers, consent, m
   return upsertEndpoint(row);
 }
 
+async function getEndpointById(endpointId) {
+  if (!supabase) {
+    throw new Error('Airsup storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+  }
+  const id = String(endpointId || '').trim();
+  if (!id) return null;
+  const { data, error } = await supabase
+    .from('airsup_endpoints')
+    .select('*')
+    .eq('endpoint_id', id)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
 async function getEndpointByGoogleId(googleId) {
   if (!supabase) {
     throw new Error('Airsup storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
@@ -143,6 +158,7 @@ module.exports = {
   getProfile,
   upsertProfile,
   syncDirectory,
+  getEndpointById,
   getEndpointByGoogleId,
   upsertEndpoint,
   listActiveEndpoints,
