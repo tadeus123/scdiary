@@ -34,7 +34,10 @@ assert.ok(!/last_seq/.test(text));
 assert.ok(/LIVE LOOP/.test(text));
 assert.ok(text.indexOf('LIVE LOOP') < text.indexOf('listing — not call procedure'));
 assert.ok(/Then STOP/.test(text));
-assert.ok(/Do not start_call in the same turn/.test(text));
+assert.ok(/Do not prepare_call in the same turn/.test(text));
+assert.ok(/confirm_call/.test(text));
+assert.ok(/MUST_CONFIRM/.test(text));
+assert.ok(!/start_call/.test(text));
 assert.ok(!/then find_people with query taken only/.test(text));
 
 console.log('prompt tests passed');

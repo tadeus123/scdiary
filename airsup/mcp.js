@@ -2,6 +2,8 @@ const { findPeople } = require('./match');
 const { listActiveEndpoints, requireEndpoint } = require('./db');
 const { MCP_PROTOCOL, MCP_URL } = require('./config');
 const {
+  prepareCall,
+  confirmCall,
   startCall,
   joinCall,
   sessionSync,
@@ -17,12 +19,12 @@ function mcpCors(res) {
   res.set('Access-Control-Expose-Headers', 'Mcp-Session-Id, MCP-Protocol-Version');
 }
 
-function endpointArg(description) {
-  return { type: 'string', description };
+function tokenArg() {
+  return { type: 'string', description: 'Your Airsup token from the first prompt.' };
 }
 
-function tokenArg() {
-  return { type: 'string', description: 'Secret token from your Airsup first prompt. Always pass it with this_endpoint / requester_id.' };
+function optionalMe() {
+  return { type: 'string', description: 'Optional. Your own endpoint_id if the token is not enough.' };
 }
 
 function toolList() {
@@ -32,36 +34,51 @@ function toolList() {
         name: 'find_people',
         title: 'Find people',
         description:
-          'Search listed Airsup people using their real public onboarding answers. Never invent people. Show matches and wait. Do not start_call in the same turn.',
+          'Search listed Airsup people from their public listing answers. Returns match_id values only. Show matches and wait. Do not prepare_call in the same turn.',
         inputSchema: {
           type: 'object',
           properties: {
-            requester_id: endpointArg('Your own endpoint_id'),
             token: tokenArg(),
             query: { type: 'string', description: 'A name like Anna, or what you need' },
+            requester_id: optionalMe(),
             current_need: { type: 'string' },
             what_requester_can_offer: { type: 'string' },
             desired_person: { type: 'string' },
             maximum_results: { type: 'number' },
           },
-          required: ['requester_id', 'token', 'query'],
+          required: ['token', 'query'],
         },
         annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
       },
       {
-        name: 'start_call',
-        title: 'Start call',
+        name: 'prepare_call',
+        title: 'Prepare call',
         description:
-          'Open a live Airsup line. Returns one Gmail doorbell. Then session_sync in THIS chat. session_sync waits for the other side.',
+          'Draft a call from a find_people match_id. Does not ring anyone. Returns confirmation_id.',
         inputSchema: {
           type: 'object',
           properties: {
-            this_endpoint: endpointArg('Your endpoint_id'),
             token: tokenArg(),
-            target_endpoint: endpointArg('The other person’s endpoint_id'),
+            match_id: { type: 'string', description: 'match_id from find_people' },
             opening: { type: 'string', description: 'First message on the line' },
+            this_endpoint: optionalMe(),
           },
-          required: ['this_endpoint', 'token', 'target_endpoint'],
+          required: ['token', 'match_id'],
+        },
+        annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+      },
+      {
+        name: 'confirm_call',
+        title: 'Confirm call',
+        description: 'Complete a prepared Airsup call. Pass only confirmation_id from prepare_call.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            token: tokenArg(),
+            confirmation_id: { type: 'string', description: 'confirmation_id from prepare_call' },
+            this_endpoint: optionalMe(),
+          },
+          required: ['token', 'confirmation_id'],
         },
         annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
       },
@@ -72,11 +89,11 @@ function toolList() {
         inputSchema: {
           type: 'object',
           properties: {
-            this_endpoint: endpointArg('Your endpoint_id'),
             token: tokenArg(),
             call_id: { type: 'string' },
+            this_endpoint: optionalMe(),
           },
-          required: ['this_endpoint', 'token', 'call_id'],
+          required: ['token', 'call_id'],
         },
         annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
       },
@@ -88,13 +105,13 @@ function toolList() {
         inputSchema: {
           type: 'object',
           properties: {
-            this_endpoint: endpointArg('Your endpoint_id'),
             token: tokenArg(),
             call_id: { type: 'string' },
             message: { type: 'string', description: 'Optional outbound chat' },
             since_seq: { type: 'number', description: 'Required. 0 the first time, then always next_since_seq.' },
+            this_endpoint: optionalMe(),
           },
-          required: ['this_endpoint', 'token', 'call_id', 'since_seq'],
+          required: ['token', 'call_id', 'since_seq'],
         },
         annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
       },
@@ -105,11 +122,11 @@ function toolList() {
         inputSchema: {
           type: 'object',
           properties: {
-            this_endpoint: endpointArg('Your endpoint_id'),
             token: tokenArg(),
             call_id: { type: 'string' },
+            this_endpoint: optionalMe(),
           },
-          required: ['this_endpoint', 'token', 'call_id'],
+          required: ['token', 'call_id'],
         },
         annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
       },
@@ -120,10 +137,10 @@ function toolList() {
         inputSchema: {
           type: 'object',
           properties: {
-            this_endpoint: endpointArg('Your endpoint_id'),
             token: tokenArg(),
+            this_endpoint: optionalMe(),
           },
-          required: ['this_endpoint', 'token'],
+          required: ['token'],
         },
         annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
       },
@@ -134,12 +151,12 @@ function toolList() {
         inputSchema: {
           type: 'object',
           properties: {
-            this_endpoint: endpointArg('Your endpoint_id'),
             token: tokenArg(),
             subject: { type: 'string' },
             body: { type: 'string' },
+            this_endpoint: optionalMe(),
           },
-          required: ['this_endpoint', 'token', 'subject'],
+          required: ['token', 'subject'],
         },
         annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
       },
@@ -147,11 +164,24 @@ function toolList() {
   };
 }
 
+function extractHeaderToken(req) {
+  if (!req) return '';
+  const header = String((req.get && req.get('authorization')) || (req.headers && req.headers.authorization) || '');
+  if (header.toLowerCase().startsWith('bearer ')) return header.slice(7).trim();
+  return String((req.get && req.get('x-airsup-key')) || (req.headers && req.headers['x-airsup-key']) || '').trim();
+}
+
+function withAuth(args, headerToken) {
+  const a = { ...(args || {}) };
+  if (!String(a.token || '').trim() && headerToken) a.token = headerToken;
+  return a;
+}
+
 async function callFindPeople(args) {
-  await requireEndpoint(args.requester_id || args.this_endpoint, args.token);
+  const me = await requireEndpoint(args.requester_id || args.this_endpoint, args.token);
   const rows = await listActiveEndpoints();
   return findPeople({
-    requesterId: args.requester_id || args.this_endpoint,
+    requesterId: me.endpoint_id,
     query: args.query,
     currentNeed: args.current_need,
     whatRequesterCanOffer: args.what_requester_can_offer,
@@ -161,6 +191,14 @@ async function callFindPeople(args) {
   });
 }
 
+function rejectTargetEndpoint(args) {
+  if (String((args && args.target_endpoint) || '').trim()) {
+    const error = new Error('Pass match_id from find_people. Do not pass a target endpoint.');
+    error.code = -32602;
+    throw error;
+  }
+}
+
 function rpcErrorCode(error) {
   const code = Number(error && error.code);
   return Number.isInteger(code) ? code : -32603;
@@ -168,6 +206,10 @@ function rpcErrorCode(error) {
 
 function formatToolResult(data) {
   const parts = [];
+  if (data && typeof data === 'object' && data.must_confirm && data.confirmation_id) {
+    parts.push(`MUST_CONFIRM=true confirmation_id=${data.confirmation_id}`);
+    if (data.instruction) parts.push(data.instruction);
+  }
   if (data && typeof data === 'object' && typeof data.must_call_again === 'boolean') {
     const count = Array.isArray(data.new_from_other) ? data.new_from_other.length : 0;
     parts.push(`MUST_CALL_AGAIN=${data.must_call_again} next_since_seq=${data.next_since_seq} new_from_other=${count}`);
@@ -189,21 +231,52 @@ function formatToolResult(data) {
 async function callTool(name, args) {
   const a = args || {};
   const token = a.token;
+  const me = a.this_endpoint || a.requester_id || a.from_endpoint;
   if (name === 'find_people') return callFindPeople(a);
-  if (name === 'start_call') {
-    return startCall({
-      thisEndpoint: a.this_endpoint || a.from_endpoint,
+  if (name === 'prepare_call') {
+    rejectTargetEndpoint(a);
+    return prepareCall({
+      thisEndpoint: me,
       token,
-      targetEndpoint: a.target_endpoint,
+      matchId: a.match_id,
       opening: a.opening || a.request,
     });
   }
+  if (name === 'confirm_call') {
+    rejectTargetEndpoint(a);
+    return confirmCall({
+      thisEndpoint: me,
+      token,
+      confirmationId: a.confirmation_id,
+    });
+  }
+  if (name === 'start_call') {
+    rejectTargetEndpoint(a);
+    if (a.confirmation_id) {
+      return confirmCall({
+        thisEndpoint: me,
+        token,
+        confirmationId: a.confirmation_id,
+      });
+    }
+    const prepared = await prepareCall({
+      thisEndpoint: me,
+      token,
+      matchId: a.match_id,
+      opening: a.opening || a.request,
+    });
+    return confirmCall({
+      thisEndpoint: me,
+      token,
+      confirmationId: prepared.confirmation_id,
+    });
+  }
   if (name === 'join_call') {
-    return joinCall({ thisEndpoint: a.this_endpoint, token, callId: a.call_id });
+    return joinCall({ thisEndpoint: me, token, callId: a.call_id });
   }
   if (name === 'session_sync') {
     return sessionSync({
-      thisEndpoint: a.this_endpoint,
+      thisEndpoint: me,
       token,
       callId: a.call_id,
       message: a.message,
@@ -212,14 +285,14 @@ async function callTool(name, args) {
     });
   }
   if (name === 'hang_up') {
-    return hangUp({ thisEndpoint: a.this_endpoint, token, callId: a.call_id });
+    return hangUp({ thisEndpoint: me, token, callId: a.call_id });
   }
   if (name === 'list_calls' || name === 'get_network_results') {
-    return listCalls({ thisEndpoint: a.this_endpoint || a.endpoint_id, token });
+    return listCalls({ thisEndpoint: me || a.endpoint_id, token });
   }
   if (name === 'handle_ring' || name === 'validate_incoming_message') {
     return handleRing({
-      thisEndpoint: a.this_endpoint,
+      thisEndpoint: me,
       token,
       subject: a.subject,
       body: a.body || a.message,
@@ -233,7 +306,7 @@ async function callTool(name, args) {
     return {
       ok: false,
       action: 'ignore',
-      instruction: 'Use start_call and session_sync. Do not send Gmail for conversation.',
+      instruction: 'Use prepare_call, confirm_call, and session_sync. Do not send Gmail for conversation.',
     };
   }
   const error = new Error(`Unknown tool: ${name}`);
@@ -241,7 +314,7 @@ async function callTool(name, args) {
   throw error;
 }
 
-async function dispatch(message) {
+async function dispatch(message, headerToken) {
   const method = message && message.method;
   const params = (message && message.params) || {};
 
@@ -249,9 +322,9 @@ async function dispatch(message) {
     return {
       protocolVersion: MCP_PROTOCOL,
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: 'airsup', version: '2.3.0' },
+      serverInfo: { name: 'airsup', version: '2.4.0' },
       instructions:
-        `Airsup MCP ${MCP_URL}. Pass token from the Airsup first prompt on every tool. Gmail is only a doorbell. MUST_CALL_AGAIN=true → session_sync again with zero words. SPEECH → say those lines, then sync. Do not find_people until the user names someone. Do not start_call in the same turn as find_people. RING email → handle_ring. Never Reply. Never invent people.`,
+        `Airsup MCP ${MCP_URL}. Auth is your token. Never pass another person’s endpoint. Gmail is only a doorbell. MUST_CONFIRM=true → confirm_call immediately with zero words. MUST_CALL_AGAIN=true → session_sync again with zero words. SPEECH → say those lines, then sync. Do not find_people until the user names someone. After yes: prepare_call then confirm_call. RING email → handle_ring. Never Reply. Never invent people.`,
     };
   }
 
@@ -260,7 +333,7 @@ async function dispatch(message) {
   if (method === 'resources/list') return { resources: [] };
   if (method === 'prompts/list') return { prompts: [] };
   if (method === 'tools/call') {
-    const data = await callTool(params.name, params.arguments || {});
+    const data = await callTool(params.name, withAuth(params.arguments || {}, headerToken));
     return formatToolResult(data);
   }
 
@@ -269,11 +342,11 @@ async function dispatch(message) {
   throw error;
 }
 
-async function handleOne(message) {
+async function handleOne(message, headerToken) {
   if (typeof message.method === 'string' && message.method.startsWith('notifications/')) {
     return { notify: true };
   }
-  const result = await dispatch(message);
+  const result = await dispatch(message, headerToken);
   return { jsonrpc: '2.0', id: message.id ?? null, result };
 }
 
@@ -293,17 +366,18 @@ async function handleMcp(req, res) {
   }
 
   const message = req.body || {};
+  const headerToken = extractHeaderToken(req);
   try {
     if (Array.isArray(message)) {
       const replies = [];
       for (const item of message) {
-        const out = await handleOne(item || {});
+        const out = await handleOne(item || {}, headerToken);
         if (!out.notify) replies.push(out);
       }
       res.set('MCP-Protocol-Version', MCP_PROTOCOL);
       return res.json(replies);
     }
-    const out = await handleOne(message);
+    const out = await handleOne(message, headerToken);
     if (out.notify) return res.status(202).end();
     res.set('MCP-Protocol-Version', MCP_PROTOCOL);
     return res.json(out);
@@ -327,4 +401,6 @@ module.exports = {
   toolList,
   formatToolResult,
   mcpCors,
+  extractHeaderToken,
+  withAuth,
 };

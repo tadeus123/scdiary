@@ -17,7 +17,7 @@ const {
 const { publicDisplayName } = require('./directory');
 const { MCP_URL } = require('./config');
 const { buildOpenApi } = require('./openapi');
-const { handleMcp, callFindPeople, callTool } = require('./mcp');
+const { handleMcp, callFindPeople, callTool, extractHeaderToken, withAuth } = require('./mcp');
 const { isOpenAiConfigured } = require('./openai');
 const auth = require('./auth');
 
@@ -289,7 +289,7 @@ router.post('/api/find_people', async (req, res) => {
   }
   try {
     const body = req.body || {};
-    const data = await callFindPeople({
+    const data = await callFindPeople(withAuth({
       requester_id: body.requester_id || body.exclude_endpoint_id,
       token: body.token,
       query: body.query || body.current_need || body.need,
@@ -297,7 +297,7 @@ router.post('/api/find_people', async (req, res) => {
       what_requester_can_offer: body.what_requester_can_offer || body.offer,
       desired_person: body.desired_person,
       maximum_results: body.maximum_results,
-    });
+    }, extractHeaderToken(req)));
     res.json({ ok: true, ...data });
   } catch (error) {
     console.error('Airsup find_people error:', error);
@@ -317,7 +317,7 @@ router.post('/api/search_ai_endpoints', async (req, res) => {
   }
   try {
     const body = req.body || {};
-    const data = await callFindPeople({
+    const data = await callFindPeople(withAuth({
       requester_id: body.exclude_endpoint_id || body.requester_id,
       token: body.token,
       query: body.query || body.need || body.current_need,
@@ -325,7 +325,7 @@ router.post('/api/search_ai_endpoints', async (req, res) => {
       what_requester_can_offer: body.offer || body.what_requester_can_offer,
       desired_person: body.desired_person,
       maximum_results: body.maximum_results || 3,
-    });
+    }, extractHeaderToken(req)));
     res.json({ ok: true, ...data });
   } catch (error) {
     console.error('Airsup directory search error:', error);
@@ -339,7 +339,7 @@ async function handleA2aTool(req, res, name) {
     return res.status(401).json({ ok: false, error: 'Unauthorized' });
   }
   try {
-    const data = await callTool(name, req.body || {});
+    const data = await callTool(name, withAuth(req.body || {}, extractHeaderToken(req)));
     res.json({ ok: true, ...data });
   } catch (error) {
     console.error(`Airsup ${name} error:`, error);
@@ -363,6 +363,8 @@ router.post('/api/a2a/create_network_response', (req, res) => handleA2aTool(req,
 router.post('/api/a2a/record_network_response', (req, res) => handleA2aTool(req, res, 'record_network_response'));
 router.post('/api/a2a/get_network_results', (req, res) => handleA2aTool(req, res, 'get_network_results'));
 
+router.post('/api/calls/prepare_call', (req, res) => handleA2aTool(req, res, 'prepare_call'));
+router.post('/api/calls/confirm_call', (req, res) => handleA2aTool(req, res, 'confirm_call'));
 router.post('/api/calls/start_call', (req, res) => handleA2aTool(req, res, 'start_call'));
 router.post('/api/calls/join_call', (req, res) => handleA2aTool(req, res, 'join_call'));
 router.post('/api/calls/session_sync', (req, res) => handleA2aTool(req, res, 'session_sync'));

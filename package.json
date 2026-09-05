@@ -14,7 +14,7 @@
     "generate:favicon": "powershell -ExecutionPolicy Bypass -File server/scripts/generate-favicon.ps1",
     "verify:favicon": "node server/scripts/verify-favicon.js",
     "restore:favicon": "node server/scripts/restore-favicon.js",
-    "test:airsup": "node airsup/a2a.test.js && node airsup/call.test.js && node airsup/call-state.test.js && node airsup/knowledge.test.js && node airsup/prompt.test.js && node airsup/mcp.test.js && node airsup/questions.test.js"
+    "test:airsup": "node airsup/a2a.test.js && node airsup/call.test.js && node airsup/call-state.test.js && node airsup/knowledge.test.js && node airsup/prompt.test.js && node airsup/mcp.test.js && node airsup/questions.test.js && node airsup/match-ticket.test.js"
   },
   "keywords": [
     "diary",

@@ -11,13 +11,13 @@ function queryText(args) {
   ].filter((part) => String(part || '').trim()).join('\n');
 }
 
-function evidenceFrom(row) {
+function evidenceFrom(row, requesterId) {
   const person = publicPerson(row);
   if (!person) return null;
+  const { issueMatchId } = require('./match-ticket');
   return {
-    endpoint_id: person.endpoint_id,
+    match_id: issueMatchId({ requesterId, targetId: person.endpoint_id }),
     name: person.name,
-    ai_endpoint_email: person.ai_endpoint_email,
     knowledge: person.knowledge,
   };
 }
@@ -42,7 +42,7 @@ async function findPeople({
       matches: [],
       do_not_invent: true,
       action: 'ask_user',
-      note: 'No other listed endpoints yet. Ask the user. Never invent a name or endpoint_id.',
+      note: 'No other listed people yet. Ask the user. Never invent a person or match_id.',
     };
   }
   if (!String(text).trim()) {
@@ -50,7 +50,7 @@ async function findPeople({
       matches: [],
       do_not_invent: true,
       action: 'ask_user',
-      note: 'Pass query (a name or a need). Ask the user. Never invent a name or endpoint_id.',
+      note: 'Pass query (a name or a need). Ask the user. Never invent a person or match_id.',
     };
   }
 
@@ -105,7 +105,7 @@ async function findPeople({
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map(({ row, score }) => {
-      const person = evidenceFrom(row);
+      const person = evidenceFrom(row, exclude);
       if (!person) return null;
       return {
         ...person,
@@ -117,10 +117,10 @@ async function findPeople({
   return {
     matches: ranked,
     do_not_invent: true,
-    action: ranked.length ? 'show_user_then_start_call' : 'ask_user',
+    action: ranked.length ? 'show_user_then_prepare_call' : 'ask_user',
     note: ranked.length
-      ? 'Matches use each person’s listing, not generated cards. To talk, start_call then keep session_sync in this chat. Gmail is only the doorbell.'
-      : 'No matches. Ask the user. Never invent a name or endpoint_id.',
+      ? 'Show these people. Wait for an explicit yes. Then prepare_call with that match_id, then confirm_call. Never invent a match_id.'
+      : 'No matches. Ask the user. Never invent a person.',
   };
 }
 

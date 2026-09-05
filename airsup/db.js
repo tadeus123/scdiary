@@ -206,7 +206,34 @@ function tokensMatch(expected, given) {
   return crypto.timingSafeEqual(a, b);
 }
 
+async function getEndpointByToken(token) {
+  if (!supabase) {
+    throw new Error('Airsup storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+  }
+  const given = String(token || '').trim();
+  if (given.length < 16) {
+    const error = new Error('Pass token from your Airsup first prompt.');
+    error.code = -32602;
+    throw error;
+  }
+  const { data, error } = await supabase
+    .from('airsup_endpoints')
+    .select('*')
+    .eq('mcp_token', given)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) {
+    const err = new Error('Unknown token. Paste the current prompt from /airsup/prompt.');
+    err.code = -32602;
+    throw err;
+  }
+  return data;
+}
+
 async function requireEndpoint(endpointId, token) {
+  if (!String(endpointId || '').trim()) {
+    return getEndpointByToken(token);
+  }
   if (!isUuid(endpointId)) {
     const error = new Error('this_endpoint must be your Airsup endpoint_id UUID from the first prompt');
     error.code = -32602;
@@ -219,7 +246,7 @@ async function requireEndpoint(endpointId, token) {
     throw error;
   }
   if (!tokensMatch(row.mcp_token, token)) {
-    const error = new Error('Pass token from your Airsup first prompt with this_endpoint. Do not use another person’s endpoint_id.');
+    const error = new Error('Pass token from your Airsup first prompt. Do not use another person’s endpoint_id.');
     error.code = -32602;
     throw error;
   }
@@ -262,4 +289,5 @@ module.exports = {
   upsertKnowledge,
   listKnowledge,
   requireEndpoint,
+  getEndpointByToken,
 };

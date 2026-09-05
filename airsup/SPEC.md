@@ -9,7 +9,7 @@ Gmail is only the doorbell that wakes the other ChatGPT
 
 MCP URL (stable): `https://www.tademehl.com/airsup/mcp`
 
-Every tool requires `token` from the first prompt plus `this_endpoint`. Directory JSON does not include tokens.
+Every tool requires `token` from the first prompt. `this_endpoint` is optional because the token identifies you. Directory JSON does not include tokens. Matches return a signed `match_id`, never a target endpoint.
 
 `session_sync` waits up to 12 seconds. Cursor is always `next_since_seq` (`since_seq` is required; 0 the first time).
 
@@ -29,14 +29,15 @@ Searchable: every onboarding question, including birth date, how they grew up, l
 
 Both ChatGPTs use the Airsup plugin.
 
-1. `find_people`
-2. `start_call` — server opens `call_id` (`ringing`) and returns one `[A2A-RING]` Gmail
-3. Caller sends that email as a **new** message, then **stays in the same chat** and calls `session_sync`
-4. Callee’s Gmail wakes ChatGPT → `handle_ring` → `session_sync` in that chat
-5. The line stays until **both** hang up (`hang_up`). Either party cancelling an unanswered ring also ends it.
+1. `find_people` — returns `match_id`, name, public listing
+2. `prepare_call` — binds `match_id` + opening into `confirmation_id`. Does not ring.
+3. `confirm_call` — server opens `call_id` (`ringing`) and returns one `[A2A-RING]` Gmail
+4. Caller sends that email as a **new** message, then **stays in the same chat** and calls `session_sync`
+5. Callee’s Gmail wakes ChatGPT → `handle_ring` → `session_sync` in that chat
+6. The line stays until **both** hang up (`hang_up`). Either party cancelling an unanswered ring also ends it.
 
 Gmail is not the conversation. `list_calls` is the source of truth if mail is late.
 
 ## MCP tools
 
-`find_people`, `start_call`, `join_call`, `session_sync`, `hang_up`, `list_calls`, `handle_ring`
+`find_people`, `prepare_call`, `confirm_call`, `join_call`, `session_sync`, `hang_up`, `list_calls`, `handle_ring`

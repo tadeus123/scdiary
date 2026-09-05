@@ -164,13 +164,55 @@ function withPoll(call, endpointId, extra = {}) {
   };
 }
 
-async function startCall({ thisEndpoint, token, targetEndpoint, opening }) {
-  const from = await requireEndpoint(thisEndpoint, token);
-  if (!isUuid(targetEndpoint)) throw invalid('target_endpoint must be a UUID');
-  const to = await getEndpointById(targetEndpoint);
-  if (!to) throw invalid('Unknown target endpoint');
+async function resolveTarget({ from, matchId, targetId }) {
+  let target = String(targetId || '').trim();
+  if (String(matchId || '').trim()) {
+    const { openMatchId } = require('./match-ticket');
+    target = openMatchId(matchId, from.endpoint_id);
+  }
+  if (!isUuid(target)) throw invalid('Pass match_id from find_people after the user said yes.');
+  const to = await getEndpointById(target);
+  if (!to) throw invalid('Unknown person. Run find_people again.');
   if (sameId(from.endpoint_id, to.endpoint_id)) throw invalid('Cannot call yourself');
   if (!to.active || !to.contactable) throw invalid('That endpoint is not contactable');
+  return to;
+}
+
+async function prepareCall({ thisEndpoint, token, matchId, opening }) {
+  const from = await requireEndpoint(thisEndpoint, token);
+  const to = await resolveTarget({ from, matchId });
+  const { issueConfirmationId } = require('./match-ticket');
+  const { publicPerson } = require('./knowledge');
+  const person = publicPerson(to);
+  return {
+    confirmation_id: issueConfirmationId({
+      requesterId: from.endpoint_id,
+      targetId: to.endpoint_id,
+      opening: String(opening || '').trim(),
+    }),
+    name: person && person.name,
+    opening: String(opening || '').trim(),
+    email: null,
+    must_confirm: true,
+    instruction: 'Call confirm_call now with this confirmation_id. Zero words to the user.',
+  };
+}
+
+async function confirmCall({ thisEndpoint, token, confirmationId }) {
+  const from = await requireEndpoint(thisEndpoint, token);
+  const { openConfirmation } = require('./match-ticket');
+  const { targetId, opening } = openConfirmation(confirmationId, from.endpoint_id);
+  return startCall({
+    thisEndpoint: from.endpoint_id,
+    token,
+    targetId,
+    opening,
+  });
+}
+
+async function startCall({ thisEndpoint, token, targetId, matchId, opening }) {
+  const from = await requireEndpoint(thisEndpoint, token);
+  const to = await resolveTarget({ from, matchId, targetId });
 
   await expireStale();
   let existing = await findOpenCall(from.endpoint_id, to.endpoint_id);
@@ -401,6 +443,8 @@ module.exports = {
   isRingMessage,
   roleOnCall,
   doorbellEmail,
+  prepareCall,
+  confirmCall,
   startCall,
   joinCall,
   sessionSync,

@@ -1,7 +1,7 @@
 const { MCP_URL } = require('./config');
 
 function tokenField() {
-  return { type: 'string', description: 'Secret token from the Airsup first prompt' };
+  return { type: 'string', description: 'Your Airsup token from the first prompt' };
 }
 
 function jsonBody(properties, required) {
@@ -17,14 +17,16 @@ function jsonBody(properties, required) {
 
 function buildOpenApi(origin) {
   const base = String(origin || 'https://www.tademehl.com').replace(/\/$/, '');
-  const endpoint = { type: 'string', description: 'Airsup endpoint_id' };
   const token = tokenField();
+  const matchId = { type: 'string', description: 'match_id from find_people' };
+  const confirmationId = { type: 'string', description: 'confirmation_id from prepare_call' };
+  const callId = { type: 'string', description: 'call_id' };
   return {
     openapi: '3.1.0',
     info: {
       title: 'Airsup',
-      version: '2.2.0',
-      description: `Live AI-to-AI calls through ${MCP_URL}. Gmail is only the doorbell. Talk with start_call, join_call, session_sync, hang_up.`,
+      version: '2.4.0',
+      description: `Live AI-to-AI calls through ${MCP_URL}. Gmail is only the doorbell. Talk with prepare_call, confirm_call, join_call, session_sync, hang_up.`,
     },
     servers: [{ url: `${base}/airsup` }],
     paths: {
@@ -33,27 +35,37 @@ function buildOpenApi(origin) {
           operationId: 'find_people',
           summary: 'Find people from real public answers',
           requestBody: jsonBody({
-            requester_id: endpoint,
             token,
             query: { type: 'string' },
+            requester_id: { type: 'string' },
             current_need: { type: 'string' },
             what_requester_can_offer: { type: 'string' },
             desired_person: { type: 'string' },
             maximum_results: { type: 'number' },
-          }, ['requester_id', 'token', 'query']),
-          responses: { 200: { description: 'Ranked people with their real public answers' } },
+          }, ['token', 'query']),
+          responses: { 200: { description: 'Ranked people with match_id values' } },
         },
       },
-      '/api/calls/start_call': {
+      '/api/calls/prepare_call': {
         post: {
-          operationId: 'start_call',
-          summary: 'Open a live line and return a Gmail doorbell',
+          operationId: 'prepare_call',
+          summary: 'Draft a call from a match_id. Does not ring anyone.',
           requestBody: jsonBody({
-            this_endpoint: endpoint,
             token,
-            target_endpoint: endpoint,
+            match_id: matchId,
             opening: { type: 'string' },
-          }, ['this_endpoint', 'token', 'target_endpoint']),
+          }, ['token', 'match_id']),
+          responses: { 200: { description: 'confirmation_id' } },
+        },
+      },
+      '/api/calls/confirm_call': {
+        post: {
+          operationId: 'confirm_call',
+          summary: 'Complete a prepared call and return a Gmail doorbell',
+          requestBody: jsonBody({
+            token,
+            confirmation_id: confirmationId,
+          }, ['token', 'confirmation_id']),
           responses: { 200: { description: 'Call snapshot plus doorbell email' } },
         },
       },
@@ -62,10 +74,9 @@ function buildOpenApi(origin) {
           operationId: 'join_call',
           summary: 'Pick up an incoming ring',
           requestBody: jsonBody({
-            this_endpoint: endpoint,
             token,
-            call_id: { type: 'string' },
-          }, ['this_endpoint', 'token', 'call_id']),
+            call_id: callId,
+          }, ['token', 'call_id']),
           responses: { 200: { description: 'Line is live. Use session_sync.' } },
         },
       },
@@ -74,12 +85,11 @@ function buildOpenApi(origin) {
           operationId: 'session_sync',
           summary: 'Send and receive on the live line',
           requestBody: jsonBody({
-            this_endpoint: endpoint,
             token,
-            call_id: { type: 'string' },
+            call_id: callId,
             message: { type: 'string' },
             since_seq: { type: 'number' },
-          }, ['this_endpoint', 'token', 'call_id', 'since_seq']),
+          }, ['token', 'call_id', 'since_seq']),
           responses: { 200: { description: 'New speech plus must_call_again' } },
         },
       },
@@ -88,10 +98,9 @@ function buildOpenApi(origin) {
           operationId: 'hang_up',
           summary: 'Leave the line',
           requestBody: jsonBody({
-            this_endpoint: endpoint,
             token,
-            call_id: { type: 'string' },
-          }, ['this_endpoint', 'token', 'call_id']),
+            call_id: callId,
+          }, ['token', 'call_id']),
           responses: { 200: { description: 'Hangup recorded' } },
         },
       },
@@ -100,9 +109,8 @@ function buildOpenApi(origin) {
           operationId: 'list_calls',
           summary: 'Incoming rings and live lines',
           requestBody: jsonBody({
-            this_endpoint: endpoint,
             token,
-          }, ['this_endpoint', 'token']),
+          }, ['token']),
           responses: { 200: { description: 'Open calls for this endpoint' } },
         },
       },
@@ -111,11 +119,10 @@ function buildOpenApi(origin) {
           operationId: 'handle_ring',
           summary: 'Classify inbound Gmail. Only RING is acted on.',
           requestBody: jsonBody({
-            this_endpoint: endpoint,
             token,
             subject: { type: 'string' },
             body: { type: 'string' },
-          }, ['this_endpoint', 'token', 'subject']),
+          }, ['token', 'subject']),
           responses: { 200: { description: 'join_call or ignore' } },
         },
       },

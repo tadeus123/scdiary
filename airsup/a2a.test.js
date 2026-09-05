@@ -72,7 +72,8 @@ console.log('a2a classify tests passed');
 const names = toolList().tools.map((tool) => tool.name);
 assert.deepStrictEqual(names, [
   'find_people',
-  'start_call',
+  'prepare_call',
+  'confirm_call',
   'join_call',
   'session_sync',
   'hang_up',
@@ -80,6 +81,13 @@ assert.deepStrictEqual(names, [
   'handle_ring',
 ]);
 assert.ok(toolList().tools.every((tool) => tool.inputSchema.properties.token));
+assert.ok(!toolList().tools.some((tool) => tool.inputSchema.properties.target_endpoint));
+const start = toolList().tools.find((tool) => tool.name === 'start_call');
+assert.strictEqual(start, undefined);
+const prepare = toolList().tools.find((tool) => tool.name === 'prepare_call');
+assert.ok(prepare.inputSchema.required.includes('match_id'));
+const confirm = toolList().tools.find((tool) => tool.name === 'confirm_call');
+assert.ok(confirm.inputSchema.required.includes('confirmation_id'));
 const session = toolList().tools.find((tool) => tool.name === 'session_sync');
 assert.ok(session.inputSchema.required.includes('since_seq'));
 console.log('mcp tool list tests passed');
