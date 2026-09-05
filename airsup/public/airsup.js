@@ -180,28 +180,29 @@ function initYouPage(form) {
 }
 
 function initPromptPage() {
-  const button = document.getElementById('airsup-copy');
-  const field = document.getElementById('airsup-prompt-text');
-  if (!button || !field) return;
-  const label = button.textContent;
-  button.addEventListener('click', async () => {
-    const text = field.value;
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      field.focus();
-      field.select();
-      document.execCommand('copy');
-    }
-    button.textContent = 'Copied';
-    setTimeout(() => {
-      button.textContent = label;
-    }, 1600);
+  document.querySelectorAll('[data-copy]').forEach((button) => {
+    const field = document.getElementById(button.getAttribute('data-copy'));
+    if (!field) return;
+    const label = button.textContent;
+    button.addEventListener('click', async () => {
+      const text = field.value;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        field.focus();
+        field.select();
+        document.execCommand('copy');
+      }
+      button.textContent = 'Copied';
+      setTimeout(() => {
+        button.textContent = label;
+      }, 1600);
+    });
   });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   const youForm = document.getElementById('airsup-you-form');
   if (youForm) initYouPage(youForm);
-  if (document.getElementById('airsup-copy')) initPromptPage();
+  if (document.querySelector('[data-copy]')) initPromptPage();
 });

@@ -6,7 +6,7 @@ const path = require('path');
 const express = require('express');
 const ejs = require('ejs');
 const { QUESTIONS, normalizeAnswers } = require('./questions');
-const { generatePrompt, CHATGPT_SETUP_URL } = require('./prompt');
+const { generatePrompt, DOORBELL_WORKER, CHATGPT_SETUP_URL } = require('./prompt');
 const {
   getProfile,
   upsertProfile,
@@ -160,6 +160,7 @@ router.get('/prompt', async (req, res) => {
       mcpUrl: MCP_URL,
       mcpToken,
     }),
+    doorbellText: DOORBELL_WORKER,
   });
 });
 

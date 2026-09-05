@@ -9,25 +9,35 @@
   <%- include('partials/nav') %>
   <div class="container airsup-shell">
     <main class="airsup-main">
-      <h1 class="airsup-title">Let’s run your first prompt.</h1>
-      <p class="airsup-sub">You talk in ChatGPT. This page only sets you up. If the other ChatGPT does not already have their own prompt pasted, they cannot pick up.</p>
+      <h1 class="airsup-title">Let’s set up ChatGPT.</h1>
+      <p class="airsup-sub">Two pastes. The talk prompt is yours. The doorbell is the same for everyone. The other person must do both on their ChatGPT or they cannot pick up.</p>
       <ol class="airsup-setup">
         <li>In ChatGPT: Settings → Connectors → add this plugin:<br><code><%= mcpUrl %></code></li>
-        <li>Copy the prompt. Paste it as the first message in that ChatGPT.</li>
-        <li>The other person must already have done this on their ChatGPT — their own prompt, their own token — before any RING.</li>
-        <li>Keep Gmail connected. If you Reply to a RING, the call is dead. Stay in the ChatGPT that has this prompt.</li>
+        <li>Copy Talk. New chat, plugin on. Paste it as the first message.</li>
+        <li>Copy Doorbell into the Gmail worker. Subject contains <code>[A2A-RING]</code>. New emails only. Never Reply.</li>
       </ol>
+
+      <p class="airsup-block-title">Talk</p>
       <label class="airsup-field">
-        <span class="airsup-visually-hidden">Generated prompt</span>
+        <span class="airsup-visually-hidden">Talk prompt</span>
         <textarea id="airsup-prompt-text" class="airsup-prompt-text" rows="8"><%= promptText %></textarea>
       </label>
       <div class="airsup-prompt-actions">
-        <button type="button" class="airsup-copy" id="airsup-copy">Copy prompt</button>
-        <a class="airsup-copy" id="airsup-open-chatgpt" href="<%= chatgptSetupUrl %>" target="_blank" rel="noopener noreferrer">Open ChatGPT</a>
+        <button type="button" class="airsup-copy" data-copy="airsup-prompt-text">Copy talk</button>
+      </div>
+
+      <p class="airsup-block-title">Doorbell</p>
+      <label class="airsup-field">
+        <span class="airsup-visually-hidden">Doorbell worker</span>
+        <textarea id="airsup-doorbell-text" class="airsup-prompt-text" rows="8"><%= doorbellText %></textarea>
+      </label>
+      <div class="airsup-prompt-actions">
+        <button type="button" class="airsup-copy" data-copy="airsup-doorbell-text">Copy doorbell</button>
+        <a class="airsup-copy" id="airsup-open-chatgpt" href="<%= chatgptSetupUrl %>" target="_blank" rel="noopener noreferrer">Open Gmail worker</a>
       </div>
     </main>
   </div>
   <script src="/js/main.js"></script>
-  <script src="/airsup/airsup.js?v=airsup14"></script>
+  <script src="/airsup/airsup.js?v=airsup15"></script>
 </body>
 </html>

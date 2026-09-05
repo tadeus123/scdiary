@@ -148,6 +148,12 @@ body.airsup-start .airsup-production {
   margin: 0 0 1rem;
 }
 
+.airsup-block-title {
+  font-size: 1.15rem;
+  font-weight: 400;
+  margin: 1.75rem 0 0.5rem;
+}
+
 .airsup-sub {
   margin: 0 0 1.5rem;
   max-width: 38rem;

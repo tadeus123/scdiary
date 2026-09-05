@@ -38,6 +38,15 @@ assert.ok(/Do not prepare_call in the same turn/.test(text));
 assert.ok(/confirm_call/.test(text));
 assert.ok(/MUST_CONFIRM/.test(text));
 assert.ok(!/start_call/.test(text));
+assert.ok(/Do not put it in the Gmail worker/.test(text));
 assert.ok(!/then find_people with query taken only/.test(text));
+
+const { DOORBELL_WORKER } = require('./prompt');
+assert.ok(/handle_ring/.test(DOORBELL_WORKER));
+assert.ok(/line_token/.test(DOORBELL_WORKER));
+assert.ok(/\[A2A-RING\]/.test(DOORBELL_WORKER));
+assert.ok(!/My token:/.test(DOORBELL_WORKER));
+assert.ok(!/endpoint_id/.test(DOORBELL_WORKER));
+assert.ok(/Do not pass a token/.test(DOORBELL_WORKER));
 
 console.log('prompt tests passed');
