@@ -251,6 +251,14 @@ async function startCall({ thisEndpoint, token, targetId, matchId, opening }) {
   }
   if (existing) {
     const role = roleOnCall(existing, from.endpoint_id);
+    if (existing.status === 'ringing' && role === 'caller') {
+      const to = await getEndpointById(existing.callee_endpoint);
+      return withPoll(existing, from.endpoint_id, {
+        reused: true,
+        email: to ? doorbellEmail({ call: existing, from, to, opening: existing.opening }) : null,
+        instruction: 'Already ringing this person. Send that doorbell as a brand-new Gmail if it was not sent. Never Reply. Then session_sync with this call_id and since_seq=0.',
+      });
+    }
     if (existing.status === 'ringing' && role === 'callee') {
       return withPoll(existing, from.endpoint_id, {
         reused: true,
@@ -309,22 +317,35 @@ async function resolveParty({ thisEndpoint, token, lineToken, callId }) {
 }
 
 async function resolveRingParty({ thisEndpoint, token, subject, body }) {
+  const callId = parseCallId({ subject, body });
   if (String(token || '').trim()) {
-    return requireEndpoint(thisEndpoint, token);
+    try {
+      return await requireEndpoint(thisEndpoint, token);
+    } catch {
+      // Doorbell workers may pass a leftover token. Fall through to the RING itself.
+    }
   }
   const { parsePickup, openPickup } = require('./match-ticket');
   const pickup = parsePickup(body);
-  if (!pickup) {
-    throw invalid('Pass this email subject and body to handle_ring. Token is not required.');
+  if (pickup) {
+    try {
+      const opened = openPickup(pickup);
+      if (!callId || opened.callId === callId) {
+        const row = await getEndpointById(opened.endpointId);
+        if (row) return row;
+      }
+    } catch {
+      // Use CALL-ID from the subject if the body was truncated.
+    }
   }
-  const opened = openPickup(pickup);
-  const callId = parseCallId({ subject, body });
-  if (callId && opened.callId !== callId) {
-    throw invalid('That RING pickup does not match this CALL-ID.');
+  if (callId) {
+    const call = await getCall(callId);
+    if (call && call.callee_endpoint) {
+      const row = await getEndpointById(call.callee_endpoint);
+      if (row) return row;
+    }
   }
-  const row = await getEndpointById(opened.endpointId);
-  if (!row) throw invalid('Unknown endpoint');
-  return row;
+  throw invalid('Pass this email subject and body to handle_ring. Token is not required.');
 }
 
 async function joinCall({ thisEndpoint, token, lineToken, callId }) {

@@ -332,7 +332,7 @@ async function dispatch(message, headerToken) {
     return {
       protocolVersion: MCP_PROTOCOL,
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: 'airsup', version: '2.5.0' },
+      serverInfo: { name: 'airsup', version: '2.5.1' },
       instructions:
         `Airsup MCP ${MCP_URL}. Auth is your token, or a line_token from handle_ring. Never pass another person’s endpoint. Gmail is only a doorbell. MUST_CONFIRM=true → confirm_call immediately with zero words. MUST_CALL_AGAIN=true → session_sync again with zero words. SPEECH → say those lines, then sync. RING email → handle_ring with subject and body, then session_sync with LINE_TOKEN. Never Reply. Never invent people.`,
     };
