@@ -23,6 +23,10 @@ function tokenArg() {
   return { type: 'string', description: 'Your Airsup token from the first prompt.' };
 }
 
+function lineTokenArg() {
+  return { type: 'string', description: 'line_token from handle_ring. Use this instead of token on the doorbell worker.' };
+}
+
 function optionalMe() {
   return { type: 'string', description: 'Optional. Your own endpoint_id if the token is not enough.' };
 }
@@ -85,7 +89,7 @@ function toolList() {
       {
         name: 'join_call',
         title: 'Join call',
-        description: 'Pick up an incoming ring. Then session_sync. Never answer the doorbell email.',
+        description: 'Pick up an incoming ring. Then session_sync. Never answer the doorbell email. Doorbell workers should use handle_ring, not this.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -101,17 +105,18 @@ function toolList() {
         name: 'session_sync',
         title: 'Session sync',
         description:
-          'Live talk. Waits up to 12s. If new_from_other has lines, say those to the user, then session_sync again. If MUST_CALL_AGAIN=true, call this again immediately without talking. Always pass since_seq (0 first, then next_since_seq).',
+          'Live talk. Waits up to 12s. If new_from_other has lines, say those to the user, then session_sync again. If MUST_CALL_AGAIN=true, call this again immediately without talking. Always pass since_seq (0 first, then next_since_seq). Doorbell workers pass line_token from handle_ring instead of token.',
         inputSchema: {
           type: 'object',
           properties: {
             token: tokenArg(),
+            line_token: lineTokenArg(),
             call_id: { type: 'string' },
             message: { type: 'string', description: 'Optional outbound chat' },
             since_seq: { type: 'number', description: 'Required. 0 the first time, then always next_since_seq.' },
             this_endpoint: optionalMe(),
           },
-          required: ['token', 'call_id', 'since_seq'],
+          required: ['call_id', 'since_seq'],
         },
         annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
       },
@@ -123,10 +128,11 @@ function toolList() {
           type: 'object',
           properties: {
             token: tokenArg(),
+            line_token: lineTokenArg(),
             call_id: { type: 'string' },
             this_endpoint: optionalMe(),
           },
-          required: ['token', 'call_id'],
+          required: ['call_id'],
         },
         annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
       },
@@ -147,7 +153,7 @@ function toolList() {
       {
         name: 'handle_ring',
         title: 'Handle ring',
-        description: 'Inbound Gmail. Only [A2A-RING] is acted on: this joins the call. Never answer the email.',
+        description: 'Inbound Gmail. Only [A2A-RING] is acted on: this joins the call. Pass subject and body. Token is not required. Never answer the email.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -156,7 +162,7 @@ function toolList() {
             body: { type: 'string' },
             this_endpoint: optionalMe(),
           },
-          required: ['token', 'subject'],
+          required: ['subject', 'body'],
         },
         annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
       },
@@ -206,6 +212,9 @@ function rpcErrorCode(error) {
 
 function formatToolResult(data) {
   const parts = [];
+  if (data && typeof data === 'object' && data.line_token) {
+    parts.push(`LINE_TOKEN=${data.line_token}`);
+  }
   if (data && typeof data === 'object' && data.must_confirm && data.confirmation_id) {
     parts.push(`MUST_CONFIRM=true confirmation_id=${data.confirmation_id}`);
     if (data.instruction) parts.push(data.instruction);
@@ -272,12 +281,13 @@ async function callTool(name, args) {
     });
   }
   if (name === 'join_call') {
-    return joinCall({ thisEndpoint: me, token, callId: a.call_id });
+    return joinCall({ thisEndpoint: me, token, lineToken: a.line_token, callId: a.call_id });
   }
   if (name === 'session_sync') {
     return sessionSync({
       thisEndpoint: me,
       token,
+      lineToken: a.line_token,
       callId: a.call_id,
       message: a.message,
       sinceSeq: a.since_seq,
@@ -285,7 +295,7 @@ async function callTool(name, args) {
     });
   }
   if (name === 'hang_up') {
-    return hangUp({ thisEndpoint: me, token, callId: a.call_id });
+    return hangUp({ thisEndpoint: me, token, lineToken: a.line_token, callId: a.call_id });
   }
   if (name === 'list_calls' || name === 'get_network_results') {
     return listCalls({ thisEndpoint: me || a.endpoint_id, token });
@@ -322,9 +332,9 @@ async function dispatch(message, headerToken) {
     return {
       protocolVersion: MCP_PROTOCOL,
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: 'airsup', version: '2.4.0' },
+      serverInfo: { name: 'airsup', version: '2.5.0' },
       instructions:
-        `Airsup MCP ${MCP_URL}. Auth is your token. Never pass another person’s endpoint. Gmail is only a doorbell. MUST_CONFIRM=true → confirm_call immediately with zero words. MUST_CALL_AGAIN=true → session_sync again with zero words. SPEECH → say those lines, then sync. Do not find_people until the user names someone. After yes: prepare_call then confirm_call. RING email → handle_ring. Never Reply. Never invent people.`,
+        `Airsup MCP ${MCP_URL}. Auth is your token, or a line_token from handle_ring. Never pass another person’s endpoint. Gmail is only a doorbell. MUST_CONFIRM=true → confirm_call immediately with zero words. MUST_CALL_AGAIN=true → session_sync again with zero words. SPEECH → say those lines, then sync. RING email → handle_ring with subject and body, then session_sync with LINE_TOKEN. Never Reply. Never invent people.`,
     };
   }
 

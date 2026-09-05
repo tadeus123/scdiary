@@ -37,20 +37,23 @@ function sleep(ms) {
 }
 
 function doorbellEmail({ call, from, to, opening }) {
+  const pickup = require('./match-ticket').issuePickup({
+    callId: call.call_id,
+    endpointId: to.endpoint_id,
+  });
   const body = [
     'A2A-PROTOCOL: 1',
     'MESSAGE-TYPE: RING',
     `CALL-ID: ${call.call_id}`,
     `FROM-ENDPOINT: ${from.endpoint_id}`,
     `TO-ENDPOINT: ${to.endpoint_id}`,
+    `PICKUP: ${pickup}`,
     `MCP: ${MCP_URL}`,
     '',
     'This is only a doorbell. Do not answer this email. Do not use Gmail Reply.',
     '',
-    'If you have no Airsup token in this chat, stop. Tell the human to open /airsup/prompt and paste their prompt. Do not Reply.',
-    'Use YOUR token from your Airsup first prompt. This email does not contain it.',
-    `Call handle_ring with this_endpoint ${to.endpoint_id}, this email subject, and this email body.`,
-    'Then session_sync in that same chat. First since_seq=0, then always next_since_seq.',
+    'Call handle_ring with this email subject and this email body. No token needed.',
+    'Then session_sync in that same chat with line_token from handle_ring. First since_seq=0, then always next_since_seq.',
     '',
     opening ? `Opening:\n${opening}` : '',
   ].filter(Boolean).join('\n').trim();
@@ -281,8 +284,51 @@ async function startCall({ thisEndpoint, token, targetId, matchId, opening }) {
   throw invalid('Could not open a call. Try session_sync or list_calls.');
 }
 
-async function joinCall({ thisEndpoint, token, callId }) {
-  const me = await requireEndpoint(thisEndpoint, token);
+function withLineToken(result, endpointId, callId) {
+  const id = callId || (result && result.call && result.call.call_id);
+  if (!id || !endpointId) return result;
+  const { issueLineToken } = require('./match-ticket');
+  return {
+    ...result,
+    line_token: issueLineToken({ callId: id, endpointId }),
+  };
+}
+
+async function resolveParty({ thisEndpoint, token, lineToken, callId }) {
+  if (String(lineToken || '').trim()) {
+    const { openLineToken } = require('./match-ticket');
+    const line = openLineToken(lineToken);
+    if (callId && String(callId).trim() && line.callId !== String(callId).trim()) {
+      throw invalid('That line_token is not for this call_id.');
+    }
+    const row = await getEndpointById(line.endpointId);
+    if (!row) throw invalid('Unknown endpoint');
+    return row;
+  }
+  return requireEndpoint(thisEndpoint, token);
+}
+
+async function resolveRingParty({ thisEndpoint, token, subject, body }) {
+  if (String(token || '').trim()) {
+    return requireEndpoint(thisEndpoint, token);
+  }
+  const { parsePickup, openPickup } = require('./match-ticket');
+  const pickup = parsePickup(body);
+  if (!pickup) {
+    throw invalid('Pass this email subject and body to handle_ring. Token is not required.');
+  }
+  const opened = openPickup(pickup);
+  const callId = parseCallId({ subject, body });
+  if (callId && opened.callId !== callId) {
+    throw invalid('That RING pickup does not match this CALL-ID.');
+  }
+  const row = await getEndpointById(opened.endpointId);
+  if (!row) throw invalid('Unknown endpoint');
+  return row;
+}
+
+async function joinCall({ thisEndpoint, token, lineToken, callId }) {
+  const me = await resolveParty({ thisEndpoint, token, lineToken, callId });
   const before = await getCall(callId);
   if (!before) throw invalid('Unknown call_id');
   if (roleOnCall(before, me.endpoint_id) !== 'callee') {
@@ -306,13 +352,13 @@ async function joinCall({ thisEndpoint, token, callId }) {
     });
   }
   const fresh = await getCall(callId);
-  return withPoll(fresh, me.endpoint_id, {
-    instruction: 'You are on the line. Call session_sync now with since_seq=0, then always next_since_seq.',
-  });
+  return withLineToken(withPoll(fresh, me.endpoint_id, {
+    instruction: 'You are on the line. Call session_sync now with this line_token, call_id, and since_seq=0, then always next_since_seq.',
+  }), me.endpoint_id, callId);
 }
 
-async function sessionSync({ thisEndpoint, token, callId, message, sinceSeq, waitMs }) {
-  const me = await requireEndpoint(thisEndpoint, token);
+async function sessionSync({ thisEndpoint, token, lineToken, callId, message, sinceSeq, waitMs }) {
+  const me = await resolveParty({ thisEndpoint, token, lineToken, callId });
   const parsed = parseSinceSeq(sinceSeq);
   if (!parsed.ok) throw invalid(parsed.error);
   let call = await getCall(callId);
@@ -370,14 +416,14 @@ async function sessionSync({ thisEndpoint, token, callId, message, sinceSeq, wai
   }
 
   if (!fresh) throw invalid('Call disappeared');
-  return {
+  return withLineToken({
     ...shapeSessionSync({ call: fresh, endpointId: me.endpoint_id, incoming }),
     waited_ms: Date.now() - started,
-  };
+  }, me.endpoint_id, callId);
 }
 
-async function hangUp({ thisEndpoint, token, callId }) {
-  const me = await requireEndpoint(thisEndpoint, token);
+async function hangUp({ thisEndpoint, token, lineToken, callId }) {
+  const me = await resolveParty({ thisEndpoint, token, lineToken, callId });
   const { data, error } = await supabase.rpc('airsup_hang_up', {
     p_call_id: callId,
     p_endpoint: me.endpoint_id,
@@ -417,7 +463,6 @@ async function listCalls({ thisEndpoint, token }) {
 }
 
 async function handleRing({ thisEndpoint, token, subject, body }) {
-  const me = await requireEndpoint(thisEndpoint, token);
   if (!isRingMessage({ subject, body })) {
     return {
       ok: false,
@@ -428,13 +473,23 @@ async function handleRing({ thisEndpoint, token, subject, body }) {
   const callId = parseCallId({ subject, body });
   const call = await getCall(callId);
   if (!call) return { ok: false, action: 'ignore', reason: 'Unknown CALL-ID' };
+  let me;
+  try {
+    me = await resolveRingParty({ thisEndpoint, token, subject, body });
+  } catch (error) {
+    return { ok: false, action: 'ignore', reason: error.message || 'Could not identify this RING.' };
+  }
   if (roleOnCall(call, me.endpoint_id) !== 'callee') {
     return { ok: false, action: 'ignore', reason: 'This doorbell is not for this endpoint' };
   }
   if (call.status === 'ended') {
     return { ok: false, action: 'ignore', reason: 'This ring already ended' };
   }
-  return joinCall({ thisEndpoint: me.endpoint_id, token, callId });
+  const { issueLineToken } = require('./match-ticket');
+  return joinCall({
+    lineToken: issueLineToken({ callId, endpointId: me.endpoint_id }),
+    callId,
+  });
 }
 
 module.exports = {

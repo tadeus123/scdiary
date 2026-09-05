@@ -4,6 +4,11 @@ const {
   openMatchId,
   issueConfirmationId,
   openConfirmation,
+  issuePickup,
+  openPickup,
+  parsePickup,
+  issueLineToken,
+  openLineToken,
 } = require('./match-ticket');
 
 const requester = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -31,5 +36,16 @@ assert.deepStrictEqual(openConfirmation(confirmationId, requester), {
 assert.throws(() => openConfirmation(confirmationId, other));
 assert.throws(() => openConfirmation(matchId, requester));
 assert.throws(() => openMatchId(confirmationId, requester));
+
+const pickup = issuePickup({ callId: 'call_abc', endpointId: target });
+assert.ok(pickup.startsWith('p.'));
+assert.deepStrictEqual(openPickup(pickup), { callId: 'call_abc', endpointId: target });
+assert.strictEqual(parsePickup(`hello\nPICKUP: ${pickup}\n`), pickup);
+assert.throws(() => openPickup(matchId));
+
+const line = issueLineToken({ callId: 'call_abc', endpointId: target });
+assert.ok(line.startsWith('l.'));
+assert.deepStrictEqual(openLineToken(line), { callId: 'call_abc', endpointId: target });
+assert.throws(() => openLineToken(pickup));
 
 console.log('match-ticket tests passed');

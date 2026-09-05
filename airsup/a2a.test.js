@@ -90,4 +90,8 @@ const confirm = toolList().tools.find((tool) => tool.name === 'confirm_call');
 assert.ok(confirm.inputSchema.required.includes('confirmation_id'));
 const session = toolList().tools.find((tool) => tool.name === 'session_sync');
 assert.ok(session.inputSchema.required.includes('since_seq'));
+assert.ok(!session.inputSchema.required.includes('token'));
+assert.ok(session.inputSchema.properties.line_token);
+const ring = toolList().tools.find((tool) => tool.name === 'handle_ring');
+assert.deepStrictEqual(ring.inputSchema.required, ['subject', 'body']);
 console.log('mcp tool list tests passed');

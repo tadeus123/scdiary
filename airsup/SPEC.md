@@ -36,7 +36,7 @@ Both ChatGPTs use the Airsup plugin.
 5. Callee’s Gmail wakes ChatGPT → `handle_ring` → `session_sync` in that chat
 6. The line stays until **both** hang up (`hang_up`). Either party cancelling an unanswered ring also ends it.
 
-Gmail is not the conversation. `list_calls` is the source of truth if mail is late.
+Gmail is not the conversation. `list_calls` is the source of truth if mail is late. The Gmail doorbell worker is the same for everyone: `handle_ring(subject, body)` then `session_sync` with `line_token`. No personal token in that worker.
 
 ## MCP tools
 

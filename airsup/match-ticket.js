@@ -2,6 +2,8 @@ const crypto = require('crypto');
 
 const MATCH_TTL_MS = 2 * 60 * 60 * 1000;
 const CONFIRM_TTL_MS = 30 * 60 * 1000;
+const PICKUP_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const LINE_TTL_MS = 24 * 60 * 60 * 1000;
 const OPENING_MAX = 2000;
 
 function secret() {
@@ -60,6 +62,34 @@ function openTicket(kind, ticket, requesterId) {
   return payload;
 }
 
+function openSigned(kind, ticket) {
+  const raw = String(ticket || '').trim();
+  const parts = raw.split('.');
+  const bad = () => {
+    const error = new Error('Pass the value from the RING email or from handle_ring. Do not invent it.');
+    error.code = -32602;
+    throw error;
+  };
+  if (parts.length !== 3 || parts[0] !== kind) bad();
+  const [, body, sig] = parts;
+  const expected = crypto.createHmac('sha256', secret()).update(`${kind}.${body}`).digest('base64url');
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) bad();
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+  } catch {
+    bad();
+  }
+  if (!payload || !payload.c || !payload.t || Number(payload.e) < Date.now()) {
+    const error = new Error('That RING pickup expired. Use the current RING email.');
+    error.code = -32602;
+    throw error;
+  }
+  return payload;
+}
+
 function issueMatchId({ requesterId, targetId }) {
   const r = String(requesterId || '').trim();
   const t = String(targetId || '').trim();
@@ -91,9 +121,49 @@ function openConfirmation(confirmationId, requesterId) {
   };
 }
 
+function issuePickup({ callId, endpointId }) {
+  const c = String(callId || '').trim();
+  const t = String(endpointId || '').trim();
+  if (!c || !t) return '';
+  return sign('p', { c, t, e: Date.now() + PICKUP_TTL_MS });
+}
+
+function openPickup(pickup) {
+  const payload = openSigned('p', pickup);
+  return {
+    callId: String(payload.c),
+    endpointId: String(payload.t),
+  };
+}
+
+function parsePickup(body) {
+  const hit = String(body || '').match(/^PICKUP:\s*(\S+)/im);
+  return hit ? hit[1].trim() : '';
+}
+
+function issueLineToken({ callId, endpointId }) {
+  const c = String(callId || '').trim();
+  const t = String(endpointId || '').trim();
+  if (!c || !t) return '';
+  return sign('l', { c, t, e: Date.now() + LINE_TTL_MS });
+}
+
+function openLineToken(lineToken) {
+  const payload = openSigned('l', lineToken);
+  return {
+    callId: String(payload.c),
+    endpointId: String(payload.t),
+  };
+}
+
 module.exports = {
   issueMatchId,
   openMatchId,
   issueConfirmationId,
   openConfirmation,
+  issuePickup,
+  openPickup,
+  parsePickup,
+  issueLineToken,
+  openLineToken,
 };

@@ -60,6 +60,14 @@ assert.ok(session.inputSchema.required.includes('since_seq'));
   });
   assert.ok(confirmBanner.content[0].text.startsWith('MUST_CONFIRM=true confirmation_id=c.test.sig'));
 
+  const lineBanner = formatToolResult({
+    line_token: 'l.test.sig',
+    must_call_again: false,
+    next_since_seq: 1,
+    new_from_other: [],
+  });
+  assert.ok(lineBanner.content[0].text.startsWith('LINE_TOKEN=l.test.sig'));
+
   console.log('mcp tests passed');
 })().catch((error) => {
   console.error(error);

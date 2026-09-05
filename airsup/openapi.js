@@ -25,7 +25,7 @@ function buildOpenApi(origin) {
     openapi: '3.1.0',
     info: {
       title: 'Airsup',
-      version: '2.4.0',
+      version: '2.5.0',
       description: `Live AI-to-AI calls through ${MCP_URL}. Gmail is only the doorbell. Talk with prepare_call, confirm_call, join_call, session_sync, hang_up.`,
     },
     servers: [{ url: `${base}/airsup` }],
@@ -122,7 +122,7 @@ function buildOpenApi(origin) {
             token,
             subject: { type: 'string' },
             body: { type: 'string' },
-          }, ['token', 'subject']),
+          }, ['subject', 'body']),
           responses: { 200: { description: 'join_call or ignore' } },
         },
       },

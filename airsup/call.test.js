@@ -35,10 +35,13 @@ const doorbell = doorbellEmail({
   opening: 'hi',
 });
 assert.strictEqual(doorbell.send_as, 'new_message');
+assert.ok(doorbell.body.includes('PICKUP:'));
 assert.ok(doorbell.body.includes('handle_ring'));
 assert.ok(!doorbell.body.includes('join_call'));
-assert.ok(doorbell.body.includes('YOUR token'));
-assert.ok(doorbell.body.includes('If you have no Airsup token'));
+assert.ok(doorbell.body.includes('No token needed'));
+assert.ok(doorbell.body.includes('line_token'));
+assert.ok(!doorbell.body.includes('YOUR token'));
+assert.ok(!doorbell.body.includes('If you have no Airsup token'));
 assert.ok(!doorbell.body.toLowerCase().includes('tok_'));
 
 console.log('call doorbell tests passed');

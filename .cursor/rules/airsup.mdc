@@ -23,7 +23,7 @@ description: Airsup lives in airsup/ only and must stay removable
 - Use Gmail Reply. Doorbell mail is a new `[A2A-RING]` message. Conversation is not in Gmail
 
 ## Live calls
-MCP URL is always `https://www.tademehl.com/airsup/mcp`. Both ChatGPTs use the plugin. `find_people` → `prepare_call` → `confirm_call` / `join_call` / `session_sync` / `hang_up`. The caller’s chat stays open. The line ends when both hang up. Do not expose target endpoints or let the model invent one.
+MCP URL is always `https://www.tademehl.com/airsup/mcp`. Both ChatGPTs use the plugin. `find_people` → `prepare_call` → `confirm_call` / `join_call` / `session_sync` / `hang_up`. The Gmail doorbell worker is shared: `handle_ring(subject, body)` then `session_sync` with `line_token`. The caller’s chat stays open. The line ends when both hang up. Do not expose target endpoints or let the model invent one.
 
 ## Revert
 ```bash
