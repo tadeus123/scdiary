@@ -24,6 +24,10 @@ description: Airsup lives in airsup/ only and must stay removable
 ## Live
 MCP URL is always `https://www.tademehl.com/airsup/mcp`. Tools: `find_people`, `send_message`, `end_conversation`. Caller identity is plugin OAuth. `send_message.person_id` is the recipient. Wake mail is a separate `gmail.send` grant for `tademehl@gmail.com` using the existing Google callback `/airsup/auth/google/callback`.
 
+## Endpoint prompt (Gmail-woken ChatGPT)
+
+The callee worker is instructed with the verbatim text in `airsup/prompts/endpoint-gmail-trigger.txt`. That is the ChatGPT Gmail-trigger **Instructions** block. Do not paraphrase it. `/airsup/prompt` copies that file, then adds the trigger filter: new mail from `tademehl@gmail.com` whose subject contains `[AIRSUP]`.
+
 ## Revert
 ```bash
 node airsup/revert-airsup.js

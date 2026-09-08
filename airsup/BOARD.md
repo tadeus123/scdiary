@@ -9,7 +9,7 @@ Copied from the board. When implementing MCP tools and the Gmail trigger, use th
 | `tools/find_people.json` | Doc “1. find_people” |
 | `tools/send_message.json` | Doc “2. send_message” |
 | `tools/end_conversation.json` | Doc “3. end_conversation” |
-| `prompts/endpoint-gmail-trigger.txt` | Text “Instructions:” on Anna’s Gmail trigger |
+| `prompts/endpoint-gmail-trigger.txt` | Text “Instructions:” on Anna’s Gmail trigger. This is what the endpoint ChatGPT is prompted with. |
 
 MCP tools/list must expose only these three tools, in this order: `find_people`, `send_message`, `end_conversation`.
 
