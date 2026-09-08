@@ -8,157 +8,128 @@
       color-scheme: light dark;
       --text: var(--color-text-primary, CanvasText);
       --muted: var(--color-text-secondary, color-mix(in srgb, CanvasText 58%, Canvas));
-      --faint: var(--color-text-tertiary, color-mix(in srgb, CanvasText 42%, Canvas));
+      --faint: var(--color-text-tertiary, color-mix(in srgb, CanvasText 40%, Canvas));
       --line: var(--color-border-primary, color-mix(in srgb, CanvasText 12%, Canvas));
-      --fill: var(--color-background-secondary, color-mix(in srgb, CanvasText 6%, Canvas));
+      --fill: var(--color-background-secondary, color-mix(in srgb, CanvasText 8%, Canvas));
       --composer: var(--color-background-tertiary, color-mix(in srgb, CanvasText 8%, Canvas));
-      --you: color-mix(in srgb, #8a3a4a 72%, CanvasText 8%);
-      --you-text: #f7efe8;
-      --them: var(--fill);
+      --you: #6e1623;
+      --you-text: #f4ebe3;
       --accent: #c45c68;
-      --glow: color-mix(in srgb, #8a3a4a 22%, transparent);
+      --glow: color-mix(in srgb, #8a3a4a 28%, transparent);
     }
-    @media (prefers-color-scheme: light) {
-      :root {
-        --you: #6e1623;
-        --you-text: #f7efe8;
-        --accent: #6e1623;
-        --glow: color-mix(in srgb, #6e1623 10%, transparent);
-      }
+    @media (prefers-color-scheme: dark) {
+      :root { --you: color-mix(in srgb, #8a3a4a 82%, black); }
     }
     * { box-sizing: border-box; }
     html, body {
       margin: 0;
+      height: auto !important;
+      min-height: 0 !important;
       background: transparent;
+      overflow: visible;
     }
-    body {
+    #root {
       position: relative;
-      padding: 18px 16px 14px;
-      font: 15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      padding: 16px 16px 14px;
+      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
       color: var(--text);
       -webkit-font-smoothing: antialiased;
     }
-    body::before {
+    #root::before {
       content: "";
       pointer-events: none;
       position: absolute;
       inset: 0 auto auto 0;
-      width: 180px;
-      height: 120px;
-      background: radial-gradient(ellipse at 0 0, var(--glow), transparent 70%);
+      width: 160px;
+      height: 90px;
+      background: radial-gradient(ellipse at 0 0, var(--glow), transparent 72%);
     }
-    .shell { position: relative; }
     .top {
+      position: relative;
       display: flex;
-      align-items: flex-start;
+      align-items: baseline;
       justify-content: space-between;
       gap: 12px;
-      min-height: 36px;
-    }
-    .who {
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
     }
     .name {
       display: flex;
-      align-items: center;
+      align-items: baseline;
       gap: 8px;
       min-width: 0;
     }
     .mark {
-      width: 7px;
-      height: 7px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       background: var(--accent);
-      box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 70%, transparent);
+      box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 65%, transparent);
       flex: 0 0 auto;
+      transform: translateY(-1px);
     }
     .mark.pulse { animation: pulse 1.6s ease-in-out infinite; }
     h1 {
       margin: 0;
-      font-size: 17px;
+      font-size: 16px;
       font-weight: 590;
-      letter-spacing: -0.022em;
+      letter-spacing: -0.02em;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .sub {
-      margin: 0;
-      padding-left: 15px;
-      font-size: 12px;
-      letter-spacing: 0.01em;
-      color: var(--muted);
-    }
-    .pill {
+    .state {
       flex: 0 0 auto;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+      font-size: 12px;
       color: var(--muted);
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 4px 9px;
     }
-    .pill.waiting { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
-    .pill.ended { opacity: 0.72; }
-    select.threads {
-      appearance: none;
-      margin: 10px 0 0;
-      max-width: 100%;
-      border: 0;
+    .threads {
+      position: relative;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .thread {
+      border: 1px solid var(--line);
       background: transparent;
       color: var(--muted);
-      font: 12px/1.3 inherit;
-      padding: 0 14px 0 15px;
-      background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
-      background-position: calc(100% - 8px) 7px, calc(100% - 3px) 7px;
-      background-size: 5px 5px, 5px 5px;
-      background-repeat: no-repeat;
+      font: 12px inherit;
+      border-radius: 999px;
+      padding: 4px 10px;
       cursor: pointer;
     }
+    .thread.on {
+      color: var(--text);
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+    }
     .transcript {
-      margin-top: 16px;
+      position: relative;
+      margin-top: 14px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      max-height: 320px;
-      overflow: auto;
-      padding: 2px 2px 4px;
-    }
-    .empty {
-      margin: 8px 0 4px;
-      padding: 18px 8px 10px;
-      text-align: center;
-      color: var(--muted);
-      font-size: 14px;
-      letter-spacing: 0.01em;
+      gap: 12px;
     }
     .msg {
       display: flex;
       flex-direction: column;
-      max-width: 86%;
+      width: fit-content;
+      max-width: 92%;
     }
     .msg.you { align-self: flex-end; align-items: flex-end; }
     .msg.them { align-self: flex-start; align-items: flex-start; }
     .lbl {
       font-size: 11px;
       color: var(--faint);
-      margin: 0 10px 4px;
-      letter-spacing: 0.02em;
+      margin: 0 12px 4px;
     }
     .bubble {
       margin: 0;
-      padding: 9px 13px 10px;
+      padding: 10px 14px;
       border-radius: 18px;
       overflow-wrap: anywhere;
       white-space: pre-wrap;
     }
     .msg.them .bubble {
-      background: var(--them);
+      background: var(--fill);
       border: 1px solid var(--line);
       border-bottom-left-radius: 6px;
     }
@@ -168,11 +139,12 @@
       border-bottom-right-radius: 6px;
     }
     .composer {
+      position: relative;
       margin-top: 14px;
       display: flex;
       align-items: flex-end;
       gap: 8px;
-      padding: 6px 6px 6px 14px;
+      padding: 5px 6px 5px 14px;
       border: 1px solid var(--line);
       border-radius: 22px;
       background: var(--composer);
@@ -187,7 +159,7 @@
       font: inherit;
       min-height: 24px;
       max-height: 88px;
-      padding: 6px 0;
+      padding: 7px 0;
     }
     .send {
       border: 0;
@@ -195,21 +167,18 @@
       color: #f7efe8;
       font: 600 13px/1 inherit;
       border-radius: 16px;
-      padding: 8px 13px;
+      padding: 8px 12px;
       cursor: pointer;
     }
     .send:disabled,
-    textarea:disabled {
-      opacity: 0.45;
-      cursor: default;
-    }
+    textarea:disabled { opacity: 0.45; cursor: default; }
     .foot {
-      margin-top: 10px;
+      position: relative;
+      margin-top: 8px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      min-height: 20px;
     }
     .err { margin: 0; font-size: 12px; color: var(--accent); }
     .end, .cancel {
@@ -229,26 +198,21 @@
   </style>
 </head>
 <body>
-  <div class="shell">
+  <div id="root">
     <div class="top">
-      <div class="who">
-        <div class="name">
-          <span id="mark" class="mark pulse"></span>
-          <h1 id="title">Airsup</h1>
-        </div>
-        <p id="sub" class="sub">Waiting for the other Airsup AI…</p>
+      <div class="name">
+        <span id="mark" class="mark pulse"></span>
+        <h1 id="title">Airsup</h1>
       </div>
-      <span id="pill" class="pill waiting">Waiting</span>
+      <span id="state" class="state">Waiting</span>
     </div>
-    <select id="threads" class="threads hidden" aria-label="Conversations"></select>
-    <div id="transcript" class="transcript">
-      <div class="empty">Waiting for a conversation…</div>
-    </div>
+    <div id="threads" class="threads hidden"></div>
+    <div id="transcript" class="transcript hidden"></div>
     <form id="composer" class="composer hidden">
       <textarea id="draft" rows="1" placeholder="Your message" maxlength="8000"></textarea>
       <button class="send" type="submit">Send</button>
     </form>
-    <div class="foot">
+    <div id="foot" class="foot hidden">
       <p id="err" class="err"></p>
       <div>
         <button id="cancel" class="cancel hidden" type="button">Cancel</button>
@@ -263,6 +227,7 @@
     let structured = {};
     let busy = false;
     let ending = false;
+    let lastHeight = 0;
     const cache = new Map();
 
     function pick(data) {
@@ -312,7 +277,10 @@
       }, '*');
     }
     function reportHeight() {
-      const height = Math.ceil(document.body.scrollHeight);
+      const root = document.getElementById('root');
+      const height = Math.ceil(root.getBoundingClientRect().height);
+      if (!height || height === lastHeight) return;
+      lastHeight = height;
       if (window.openai && typeof window.openai.notifyIntrinsicHeight === 'function') {
         window.openai.notifyIntrinsicHeight(height);
       }
@@ -321,64 +289,63 @@
       busy = next;
       document.getElementById('draft').disabled = next;
       document.querySelector('.send').disabled = next;
-      document.getElementById('threads').disabled = next;
     }
-    function statusLabel(status) {
-      if (status === 'replied' || status === 'open') return 'Open';
+    function statusCopy(status, waiting) {
+      if (waiting) return 'Waiting for a reply';
       if (status === 'ended') return 'Ended';
       if (status === 'failed') return 'Failed';
-      return 'Waiting';
+      if (status === 'replied' || status === 'open') return 'Open';
+      return 'Waiting for the other Airsup AI…';
     }
-    function renderMessages(messages, waiting) {
+    function renderMessages(messages, waiting, otherName) {
       const root = document.getElementById('transcript');
       root.replaceChildren();
-      if (!messages.length && !waiting) {
-        const empty = document.createElement('div');
-        empty.className = 'empty';
-        empty.textContent = 'Waiting for a conversation…';
-        root.appendChild(empty);
+      const rows = messages || [];
+      if (!rows.length && !waiting) {
+        root.classList.add('hidden');
         return;
       }
-      messages.forEach(function (item) {
+      rows.forEach(function (item) {
         const wrap = document.createElement('div');
         wrap.className = 'msg ' + (item.from === 'you' ? 'you' : 'them');
-        const lbl = document.createElement('div');
-        lbl.className = 'lbl';
-        lbl.textContent = item.from === 'you' ? 'You' : (item.name || 'Them');
+        if (item.from === 'you') {
+          const lbl = document.createElement('div');
+          lbl.className = 'lbl';
+          lbl.textContent = 'You';
+          wrap.appendChild(lbl);
+        } else if (item.name && item.name !== otherName) {
+          const lbl = document.createElement('div');
+          lbl.className = 'lbl';
+          lbl.textContent = item.name;
+          wrap.appendChild(lbl);
+        }
         const bubble = document.createElement('p');
         bubble.className = 'bubble';
         bubble.textContent = item.body || '';
-        wrap.appendChild(lbl);
         wrap.appendChild(bubble);
         root.appendChild(wrap);
       });
-      if (waiting) {
-        const wrap = document.createElement('div');
-        wrap.className = 'msg them';
-        const bubble = document.createElement('p');
-        bubble.className = 'bubble';
-        bubble.textContent = 'Waiting for a reply…';
-        wrap.appendChild(bubble);
-        root.appendChild(wrap);
-      }
-      root.scrollTop = root.scrollHeight;
+      root.classList.remove('hidden');
     }
     function renderThreads(threads, conversationId) {
-      const select = document.getElementById('threads');
-      select.replaceChildren();
-      if (!threads || threads.length < 2) {
-        select.classList.add('hidden');
+      const root = document.getElementById('threads');
+      root.replaceChildren();
+      const rows = threads || [];
+      if (rows.length < 2) {
+        root.classList.add('hidden');
         return;
       }
-      threads.forEach(function (thread) {
-        const option = document.createElement('option');
-        option.value = thread.conversation_id;
-        option.textContent = (thread.other && thread.other.name ? thread.other.name : 'Conversation')
-          + (thread.status === 'ended' ? ' · ended' : '');
-        if (thread.conversation_id === conversationId) option.selected = true;
-        select.appendChild(option);
+      rows.forEach(function (thread) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'thread' + (thread.conversation_id === conversationId ? ' on' : '');
+        button.textContent = thread.other && thread.other.name ? thread.other.name : 'Conversation';
+        button.addEventListener('click', function () {
+          switchThread(thread.conversation_id);
+        });
+        root.appendChild(button);
       });
-      select.classList.remove('hidden');
+      root.classList.remove('hidden');
     }
     function render(nextStructured, nextPanel, waiting) {
       structured = pick(nextStructured);
@@ -389,24 +356,24 @@
       const otherName = panel && panel.other && panel.other.name;
       const waitingNow = Boolean(waiting) && status !== 'ended' && status !== 'failed';
       document.getElementById('title').textContent = otherName || 'Airsup';
-      document.getElementById('sub').textContent = otherName
-        ? (status === 'ended' ? 'Conversation ended' : 'Airsup conversation')
-        : 'Waiting for the other Airsup AI…';
+      document.getElementById('state').textContent = statusCopy(status, waitingNow);
       document.getElementById('mark').className = waitingNow ? 'mark pulse' : 'mark';
-      document.getElementById('pill').className = 'pill ' + (status || 'waiting');
-      document.getElementById('pill').textContent = statusLabel(status);
-      renderMessages((panel && panel.messages) || [], waitingNow && status !== 'ended' && status !== 'failed');
+      renderMessages((panel && panel.messages) || [], waitingNow, otherName);
       renderThreads(panel && panel.threads, conversationId);
       const open = Boolean(conversationId) && status !== 'ended' && status !== 'failed';
       document.getElementById('composer').classList.toggle('hidden', !open);
-      document.getElementById('end').classList.toggle('hidden', !conversationId || status === 'ended');
+      const showEnd = Boolean(conversationId) && status !== 'ended';
+      document.getElementById('end').classList.toggle('hidden', !showEnd);
       document.getElementById('end').textContent = ending ? 'End now' : 'End conversation';
       document.getElementById('end').classList.toggle('ask', ending);
       document.getElementById('cancel').classList.toggle('hidden', !ending);
+      const showFoot = showEnd || Boolean(document.getElementById('err').textContent);
+      document.getElementById('foot').classList.toggle('hidden', !showFoot);
       if (window.openai && typeof window.openai.setWidgetState === 'function' && conversationId) {
         window.openai.setWidgetState({ conversation_id: conversationId });
       }
       if (panel && panel.conversation_id) cache.set(panel.conversation_id, panel);
+      lastHeight = 0;
       reportHeight();
     }
     async function hydrate(raw) {
@@ -458,8 +425,7 @@
       }
       setBusy(false);
     }
-    async function switchThread(event) {
-      const conversationId = event.target.value;
+    async function switchThread(conversationId) {
       if (!conversationId || busy) return;
       setBusy(true);
       document.getElementById('err').textContent = '';
@@ -494,10 +460,10 @@
       ending = false;
       render(structured, panel, false);
     });
-    document.getElementById('threads').addEventListener('change', switchThread);
     document.getElementById('draft').addEventListener('input', function (event) {
       event.target.style.height = 'auto';
       event.target.style.height = Math.min(event.target.scrollHeight, 88) + 'px';
+      lastHeight = 0;
       reportHeight();
     });
     document.getElementById('draft').addEventListener('keydown', function (event) {
@@ -527,7 +493,10 @@
       hydrate(globals && globals.toolOutput);
     }, { passive: true });
     if (typeof ResizeObserver === 'function') {
-      new ResizeObserver(reportHeight).observe(document.body);
+      new ResizeObserver(function () {
+        lastHeight = 0;
+        reportHeight();
+      }).observe(document.getElementById('root'));
     }
     hydrate(window.openai && window.openai.toolOutput);
   </script>

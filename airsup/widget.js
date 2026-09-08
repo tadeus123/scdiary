@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const WIDGET_URI = 'ui://widget/airsup-conversation.html';
+const WIDGET_URI = 'ui://widget/airsup-conversation-v2.html';
 const WIDGET_MIME = 'text/html;profile=mcp-app';
 const WIDGET_DOMAIN = 'https://www-tademehl-com.oaiusercontent.com';
 
@@ -42,7 +42,7 @@ function widgetResource() {
 
 function widgetContents(uri) {
   const requested = String(uri || WIDGET_URI);
-  if (!requested.startsWith(WIDGET_URI)) return { contents: [] };
+  if (!requested.startsWith('ui://widget/airsup-conversation')) return { contents: [] };
   return {
     contents: [
       {
