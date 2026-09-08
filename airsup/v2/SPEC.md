@@ -48,9 +48,24 @@ end_conversation(conversation_id)
 - The caller is never a tool argument.
 - Board wording that every plugin action “carries `person_id`” means Airsup tags the authenticated session internally.
 
-Website Google login stays listing signup: `openid email profile` only. It is **not** the Gmail-send grant.
+These are **two different authorization systems**. They do not share tokens, scopes, or grants:
 
-ChatGPT connector OAuth (plugin) is how Airsup knows who is calling. Register stores `person_id` next to Gmail. Connecting website or plugin auto-creates the register row if needed. They join on the same Google account email when both exist.
+```text
+1. ChatGPT → Airsup plugin OAuth
+   Identifies the calling ChatGPT user to Airsup.
+   Produces caller_person_id.
+   Does not send Gmail.
+
+2. tademehl@gmail.com gmail.send OAuth
+   Backend-only grant to send wake email.
+   Scope exactly https://www.googleapis.com/auth/gmail.send
+   Stores: Google OAuth refresh token for tademehl@gmail.com
+   Does not identify ChatGPT users.
+```
+
+Website Google login is a third, smaller grant (`openid email profile` only) for listing signup. It is not plugin identity and not `gmail.send`.
+
+ChatGPT connector OAuth is how Airsup knows who is calling. Register stores `person_id` next to Gmail. Connecting website or plugin auto-creates the register row if needed. They join on the same Google account email when both exist.
 
 ---
 
@@ -83,9 +98,41 @@ Conversation DB = persistent conversation/message storage
 Gmail = wake mechanism only
 ```
 
-`send_message` **blocks** until the other Airsup AI replies, the conversation is ended, or the send fails. There is no pending/poll tool.
+`send_message` **blocks** until the other Airsup AI replies, the conversation is ended, or the send cannot be completed. There is no pending/poll tool. Timeout-and-retry is **not** part of the MCP protocol. The three tools stay exactly `find_people`, `send_message`, `end_conversation`.
 
 `send_message` status values (schema): `replied`, `ended`, `failed`. `reply` is the other AI’s text, or null when none was returned.
+
+`failed` means this send cannot complete (unknown ids, conversation already closed, wake mail could not be sent). It is not the designed way to wait for a slow reply.
+
+### Synchronous wait (protocol)
+
+The wait is the protocol. Hosting must hold `send_message` until `replied` or `ended` (or a true `failed`). Do not use Vercel request time limits as the conversation loop. Run v2 waiters on a long-lived process so a normal Anna delay does not return `failed`.
+
+### Late reply after an infrastructure-dead wait
+
+If the waiter’s HTTP/process still dies after the outbound message was accepted, the conversation stays open. That death is an accident, not a fourth tool.
+
+State:
+
+```text
+accepted outbound from A to B remains unmatched
+waiter process for A is gone
+conversation stays open
+```
+
+If B then `send_message`s:
+
+- That body is the reply to A’s unmatched outbound.
+- It is stored (parked) for A.
+- B’s invocation then blocks for A’s next turn, same as a normal turn.
+
+A collects by calling `send_message(conversation_id, message)` again (schema still requires `message`):
+
+- If a parked reply for A exists: return `status: "replied"` and that `reply` immediately. Do **not** append this invocation’s `message` as a new outbound. Drain first.
+- If no parked reply yet and A still has an unmatched outbound: **resume the wait**. Do not insert a duplicate outbound and do not send another wake email.
+- Only after the unmatched outbound has been answered may A’s `message` start a new turn.
+
+Do not instruct ChatGPT to treat timeout+retry as the live loop. Prefer that A never sees `failed` from wait lifetime at all.
 
 ### Confirmed: ending when nobody is waiting
 
@@ -185,7 +232,7 @@ Offline access enabled. Backend exchanges the refresh token for a short-lived ac
 
 Deployment note (not a product rule): while the Google OAuth app is in **Testing**, refresh-token lifetime is limited. Do not treat Testing as permanent production. Production should use a verified OAuth project for this sensitive scope. Separate testing and production OAuth projects.
 
-This mailbox grant is one backend credential. It is separate from website `openid email profile` and from ChatGPT plugin OAuth.
+This mailbox grant is authorization system 2. It does not identify ChatGPT users. ChatGPT→Airsup plugin OAuth is authorization system 1. Do not combine them into one Google login.
 
 ---
 
@@ -224,7 +271,7 @@ Labelled so they are not treated as board facts:
 - Live MCP 2.5.1 (`https://www.tademehl.com/airsup/mcp`, `prepare_call`, `session_sync`, `handle_ring`, token-in-prompt): current code. Leave it until cutover.
 - Implementation order (OAuth + register first, then conversation manager, etc.).
 - New MCP URL path (recommended: `https://www.tademehl.com/airsup/v2/mcp`) and `airsup_v2_*` tables.
-- Vercel `maxDuration` 300s: if `send_message` hits that ceiling before a reply, return `status: "failed"`, leave the conversation open, retry with `conversation_id`.
+- v2 waiters on a long-lived host so blocking `send_message` is not capped by Vercel `maxDuration`.
 - v2 prompt on a separate URL until `/airsup/prompt` is switched.
 
 ---
@@ -259,6 +306,9 @@ Confirmed off-board (product decisions):
 - [ ] Stored credential = Google OAuth refresh token for `tademehl@gmail.com`.
 - [ ] Subject marker `[AIRSUP]`.
 - [ ] Idle `end_conversation` → later `send_message` is `failed`.
+- [ ] ChatGPT→Airsup OAuth and `tademehl@gmail.com` `gmail.send` are two authorization systems.
+- [ ] Blocking wait is long-lived; timeout+retry is not the protocol.
+- [ ] If a waiter process dies: park B’s reply; A’s next `send_message(conversation_id, …)` drains or resumes, and does not duplicate the outbound.
 
 Implementation (not Miro):
 
