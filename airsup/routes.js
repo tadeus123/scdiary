@@ -14,12 +14,15 @@ const { createMcp } = require('./v2/mcp');
 const pluginOauth = require('./v2/oauth-plugin');
 const gmailOauth = require('./v2/oauth-gmail-send');
 const { talkPrompt, doorbellText } = require('./v2/prompt');
+const { createMailer } = require('./v2/mail');
 const auth = require('./auth');
 
 const router = express.Router();
 const AIRSUP_VIEWS = path.join(__dirname, 'views');
 const SITE_VIEWS = path.join(__dirname, '../views');
 const mcp = createMcp({ store: db });
+const mailer = createMailer({ store: db, decryptSecret: db.decryptSecret });
+const MAIL_TEST_ONCE = 'airsup-mail-test-8f2c9e1a4b70';
 
 async function syncPersonFromWebsiteUser(user, profile) {
   if (!user || !db.isConfigured()) return;
@@ -271,6 +274,23 @@ router.post('/api/finish', async (req, res) => {
 });
 
 router.get('/mail/connect', (req, res) => gmailOauth.startConnect(req, res));
+
+router.post('/mail/test-once', async (req, res) => {
+  if (String(req.get('x-airsup-once') || '') !== MAIL_TEST_ONCE) {
+    return res.status(404).end();
+  }
+  try {
+    const sent = await mailer.sendPlainEmail({
+      to: 'info@tadeus-mehl.de',
+      subject: 'Airsup gmail.send test',
+      body: 'This is a test from tademehl@gmail.com via Airsup gmail.send. It is not an [AIRSUP] wake.',
+    });
+    res.json({ ok: true, to: sent.to, subject: sent.subject });
+  } catch (error) {
+    console.error('Airsup mail test error:', error);
+    res.status(500).json({ ok: false, error: error.message || 'send failed' });
+  }
+});
 
 router.get('/oauth/.well-known/oauth-authorization-server', (req, res) => {
   res.json(pluginOauth.authorizationServerMetadata(req));
