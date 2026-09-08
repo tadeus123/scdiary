@@ -63,6 +63,7 @@ const { wakeBody, wakeSubject } = require('./mail');
   assert.strictEqual(widgetContents(WIDGET_URI).contents[0]._meta['openai/widgetDomain'], 'https://www-tademehl-com.oaiusercontent.com');
   assert.ok(Array.isArray(widgetContents(WIDGET_URI).contents[0]._meta.ui.csp.connectDomains));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('Airsup'));
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('Waiting for the other Airsup AI'));
   assert.deepStrictEqual(widgetContents('ui://other').contents, []);
 
   console.log('mcp tests passed');
