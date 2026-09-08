@@ -1,5 +1,11 @@
 -- Drop all Airsup tables. Does not touch diary tables.
 
+drop function if exists public.airsup_append_call_message cascade;
+drop function if exists public.airsup_expire_stale_calls cascade;
+drop function if exists public.airsup_hang_up cascade;
+drop function if exists public.airsup_match_people cascade;
+drop function if exists public.airsup_pickup_call cascade;
+
 drop table if exists public.airsup_messages;
 drop table if exists public.airsup_conversations;
 drop table if exists public.airsup_gmail_send;
