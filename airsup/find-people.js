@@ -1,5 +1,4 @@
 const { listingText, scorePerson, matchDescription } = require('./listing');
-const { latestOpenWith } = require('./conversations');
 
 function personView(row) {
   if (!row) return null;
@@ -31,23 +30,15 @@ async function findPeople(store, { callerPersonId, query, maximumResults }) {
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
   return {
-    matches: await Promise.all(scored.map(async ({ person }) => {
+    matches: scored.map(({ person }) => {
       const match = {
         person_id: person.person_id,
         name: person.display_name || person.email,
       };
-      const open = await latestOpenWith(store, callerPersonId, person.person_id);
-      const bits = [];
-      if (open) {
-        bits.push(
-          `Open conversation_id ${open.conversation_id}. Continue with send_message(conversation_id), not person_id, unless the user wants a new thread.`
-        );
-      }
       const description = matchDescription(person, q);
-      if (description) bits.push(description);
-      if (bits.length) match.description = bits.join(' ');
+      if (description) match.description = description;
       return match;
-    })),
+    }),
   };
 }
 
