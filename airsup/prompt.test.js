@@ -17,4 +17,4 @@ assert.ok(talk.includes('send_message.person_id is the recipient'));
 assert.ok(!/prepare_call/.test(talk));
 assert.ok(!/session_sync/.test(talk));
 
-console.log('v2 prompt tests passed');
+  console.log('prompt tests passed');

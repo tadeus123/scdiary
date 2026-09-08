@@ -87,7 +87,7 @@ app.set('views', path.join(__dirname, '../views'));
 
 // AIRSUP-BEGIN
 const airsupRoutes = require('../airsup/routes');
-const airsupOauth = require('../airsup/v2/oauth-plugin');
+const airsupOauth = require('../airsup/oauth-plugin');
 app.use('/airsup', express.static(path.join(__dirname, '../airsup/public'), { index: false, redirect: false }));
 app.use('/airsup', airsupRoutes);
 app.get('/.well-known/oauth-protected-resource', (req, res) => {

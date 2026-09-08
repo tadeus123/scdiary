@@ -54,7 +54,7 @@ const { wakeBody, wakeSubject } = require('./mail');
   });
   assert.strictEqual(both.status, 'failed');
 
-  console.log('v2 mcp tests passed');
+  console.log('mcp tests passed');
 })().catch((error) => {
   console.error(error);
   process.exit(1);

@@ -126,7 +126,7 @@ function make({ sleep } = {}) {
   await live.endConversation(p1.person_id, parkedId);
   assert.strictEqual((await p2Wait).status, 'ended');
 
-  console.log('v2 conversation tests passed');
+  console.log('conversation tests passed');
 })().catch((error) => {
   console.error(error);
   process.exit(1);

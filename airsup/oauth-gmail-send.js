@@ -1,5 +1,5 @@
 const { GMAIL_SENDER, GMAIL_SEND_SCOPE } = require('./config');
-const websiteAuth = require('../auth');
+const websiteAuth = require('./auth');
 
 function startConnect(req, res) {
   const user = websiteAuth.readUser(req);

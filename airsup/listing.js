@@ -1,5 +1,5 @@
-const { QUESTIONS } = require('../questions');
-const { publicDisplayName } = require('../directory');
+const { QUESTIONS } = require('./questions');
+const { publicDisplayName } = require('./directory');
 
 function listingText({ answers, displayName, email } = {}) {
   const name = publicDisplayName({ answers, displayName, email });

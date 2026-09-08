@@ -17,4 +17,4 @@ The lowercase “information explaining who this person is…” on `matches[].d
 
 How to interpret identity, conversation ids, Gmail fallback, and source of truth: `CANONICAL.md`.
 
-Full v2 contract (spec only, not implementation): `SPEC.md`.
+Full contract: `SPEC.md`.

@@ -44,7 +44,7 @@ const { toolList } = require('./mcp');
   assert.deepStrictEqual(none.matches, []);
   assert.ok(!noMail.matches.some((row) => row.name === 'No Mail'));
 
-  console.log('v2 find_people tests passed');
+  console.log('find_people tests passed');
 })().catch((error) => {
   console.error(error);
   process.exit(1);

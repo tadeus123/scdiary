@@ -7,13 +7,12 @@ const express = require('express');
 const ejs = require('ejs');
 const { QUESTIONS, normalizeAnswers } = require('./questions');
 const { publicDisplayName } = require('./directory');
-const { MCP_URL } = require('./config');
-const { GMAIL_SENDER } = require('./v2/config');
-const db = require('./v2/db');
-const { createMcp } = require('./v2/mcp');
-const pluginOauth = require('./v2/oauth-plugin');
-const gmailOauth = require('./v2/oauth-gmail-send');
-const { talkPrompt, doorbellText } = require('./v2/prompt');
+const { MCP_URL, GMAIL_SENDER } = require('./config');
+const db = require('./db');
+const { createMcp } = require('./mcp');
+const pluginOauth = require('./oauth-plugin');
+const gmailOauth = require('./oauth-gmail-send');
+const { talkPrompt, doorbellText } = require('./prompt');
 const auth = require('./auth');
 
 const router = express.Router();
@@ -290,10 +289,5 @@ router.options('/oauth/token', (req, res) => {
 });
 
 router.all('/mcp', (req, res) => mcp.handleMcp(req, res));
-router.all('/v2/mcp', (req, res) => res.redirect(308, '/airsup/mcp'));
-router.get('/v2/prompt', (req, res) => res.redirect(302, '/airsup/prompt'));
-router.all(/^\/v2\/oauth(\/.*)?$/, (req, res) => {
-  res.redirect(308, req.originalUrl.replace('/airsup/v2/oauth', '/airsup/oauth'));
-});
 
 module.exports = router;

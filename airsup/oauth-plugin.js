@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { MCP_URL, PLUGIN_SCOPE } = require('./config');
 const { sha256, randomToken } = require('./store-memory');
-const websiteAuth = require('../auth');
+const websiteAuth = require('./auth');
 
 const ACCESS_DAYS = 30;
 const CODE_MINUTES = 10;

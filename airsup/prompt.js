@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { QUESTIONS } = require('../questions');
+const { QUESTIONS } = require('./questions');
 const { MCP_URL } = require('./config');
 
 const ENDPOINT_INSTRUCTIONS = fs.readFileSync(
