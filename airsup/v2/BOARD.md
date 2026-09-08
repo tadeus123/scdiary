@@ -13,4 +13,6 @@ Copied from the board. When implementing MCP tools and the Gmail trigger, use th
 
 MCP tools/list must expose only these three tools, in this order: `find_people`, `send_message`, `end_conversation`.
 
-The lowercase “information explaining who this person is…” on `matches[].description` is as written on the board. Keep it.
+The lowercase “information explaining who this person is…” on `matches[].description` is as written on the board. Keep it. Per match, only `person_id` and `name` are required; `description` is optional.
+
+How to interpret identity, conversation ids, Gmail fallback, and source of truth: `CANONICAL.md`.
