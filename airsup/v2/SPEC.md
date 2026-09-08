@@ -1,6 +1,6 @@
-# Airsup v2 specification
+# Airsup specification
 
-Status: **v2 backend shipped beside 2.5.1.** Compare remaining OpenAI/run-lifetime limits in §11 to production behavior. Do not cut over `/airsup/prompt` until v2 is proven.
+Status: **this is the live stack.** Public MCP is `https://www.tademehl.com/airsup/mcp`. Same Google callback as the website: `/airsup/auth/google/callback`.
 
 Source layers (do not mix):
 
@@ -9,9 +9,9 @@ Source layers (do not mix):
 | Miro board [uXjVHq5vFU8=](https://miro.com/app/board/uXjVHq5vFU8=/) | Product source of truth |
 | [BOARD.md](BOARD.md) + locked JSON/prompt files | Exact tool and endpoint copy |
 | This file + [CANONICAL.md](CANONICAL.md) | How to interpret the board, plus confirmed decisions |
-| Live repo 2.5.1 | Current code. Not Miro. Leave it running. |
+| Live repo | Code on `/airsup/mcp` and `/airsup/prompt` |
 
-Tool schemas and the Gmail-trigger instructions are **verbatim** from the board. Do not paraphrase them in MCP `tools/list` or on the v2 prompt page.
+Tool schemas and the Gmail-trigger instructions are **verbatim** from the board. Do not paraphrase them in MCP `tools/list` or on `/airsup/prompt`.
 
 ---
 
@@ -253,7 +253,7 @@ Summary of that board text (do not replace the file with this summary):
 - `send_message` returns the other ChatGPT’s next response; continue until the objective is done.
 - When complete, `end_conversation`. If the other side ends first, stop.
 
-Add to the v2 prompt page (not a rewrite of the board block): trigger filter `from:tademehl@gmail.com` and subject contains `[AIRSUP]`.
+Add on `/airsup/prompt` (not a rewrite of the board block): trigger filter `from:tademehl@gmail.com` and subject contains `[AIRSUP]`.
 
 ---
 
@@ -270,20 +270,18 @@ Visual plugin UI (board): live back-and-forth, who you are talking to, switch if
 Labelled so they are not treated as board facts:
 
 - OpenAI lightweight catalog then detailed schemas: conceptual runtime behavior. Airsup must work either way.
-- Live MCP 2.5.1 (`https://www.tademehl.com/airsup/mcp`, `prepare_call`, `session_sync`, `handle_ring`, token-in-prompt): current code. Leave it until cutover.
 - Implementation order (OAuth + register first, then conversation manager, etc.).
-- New MCP URL path (recommended: `https://www.tademehl.com/airsup/v2/mcp`) and `airsup_v2_*` tables.
-- v2 waiters on a long-lived host so blocking `send_message` is not capped by Vercel `maxDuration`.
-- v2 prompt on a separate URL until `/airsup/prompt` is switched.
+- Hosting wait ceiling (Vercel `maxDuration` vs a long-lived waiter process).
+- Folder name `airsup/v2/` for modules. Public URLs are `/airsup/mcp`, `/airsup/prompt`, `/airsup/oauth/*`.
 
 ---
 
-## 9. Isolation and cutover
+## 9. Isolation
 
-- Do not change 2.5.1 tool descriptions or `/airsup/prompt` until cutover.
 - Do not commit `views/partials/edu-theme-toggle.ejs`.
 - Do not change favicons.
 - Do not edit the Miro board from this spec.
+- Do not add a second MCP URL or a second Google redirect URI.
 
 ---
 

@@ -93,27 +93,38 @@ function clearUser(req, res) {
   res.clearCookie(COOKIE_USER, cookieBase(req));
 }
 
-function setOauthState(req, res) {
-  const state = crypto.randomBytes(16).toString('hex');
-  res.cookie(COOKIE_STATE, sign(state), { ...cookieBase(req), maxAge: 10 * 60 * 1000 });
-  return state;
+function setOauthState(req, res, extra = {}) {
+  const nonce = crypto.randomBytes(16).toString('hex');
+  res.cookie(COOKIE_STATE, sign(JSON.stringify({
+    nonce,
+    purpose: extra.purpose || 'login',
+    next: extra.next || '',
+  })), { ...cookieBase(req), maxAge: 10 * 60 * 1000 });
+  return nonce;
 }
 
 function takeOauthState(req, res) {
   const expected = unsign(req.cookies && req.cookies[COOKIE_STATE]);
   res.clearCookie(COOKIE_STATE, cookieBase(req));
-  return expected;
+  if (!expected) return null;
+  try {
+    const parsed = JSON.parse(expected);
+    if (parsed && parsed.nonce) return parsed;
+  } catch {
+    /* old cookie was a bare nonce */
+  }
+  return { nonce: expected, purpose: 'login', next: '' };
 }
 
-function googleAuthUrl(req, state) {
+function googleAuthUrl(req, state, options = {}) {
   const params = new URLSearchParams({
     client_id: process.env.AIRSUP_GOOGLE_CLIENT_ID,
     redirect_uri: callbackUrl(req),
     response_type: 'code',
-    scope: 'openid email profile',
+    scope: options.scope || 'openid email profile',
     state,
-    prompt: 'select_account',
-    access_type: 'online',
+    prompt: options.prompt || 'select_account',
+    access_type: options.accessType || 'online',
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
@@ -148,7 +159,30 @@ async function exchangeCode(req, code) {
     googleId: String(userJson.id),
     email: String(userJson.email),
     displayName: userJson.name ? String(userJson.name) : '',
+    refreshToken: tokenJson.refresh_token || '',
   };
+}
+
+async function exchangeGoogleTokens(req, code) {
+  const body = new URLSearchParams({
+    code,
+    client_id: process.env.AIRSUP_GOOGLE_CLIENT_ID,
+    client_secret: process.env.AIRSUP_GOOGLE_CLIENT_SECRET,
+    redirect_uri: callbackUrl(req),
+    grant_type: 'authorization_code',
+  });
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+  const tokenJson = await tokenRes.json();
+  if (!tokenRes.ok || !tokenJson.access_token) {
+    const err = new Error(tokenJson.error_description || tokenJson.error || 'Google token exchange failed');
+    err.detail = tokenJson;
+    throw err;
+  }
+  return tokenJson;
 }
 
 function allowedOrigin(req) {
@@ -159,6 +193,13 @@ function allowedOrigin(req) {
   } catch {
     return false;
   }
+}
+
+function safeAirsupPath(next) {
+  const path = String(next || '');
+  if (!path.startsWith('/airsup')) return '/airsup/you';
+  if (path.startsWith('//')) return '/airsup/you';
+  return path;
 }
 
 module.exports = {
@@ -174,5 +215,7 @@ module.exports = {
   takeOauthState,
   googleAuthUrl,
   exchangeCode,
+  exchangeGoogleTokens,
   allowedOrigin,
+  safeAirsupPath,
 };

@@ -12,7 +12,7 @@ function isConfigured() {
 
 function requireDb() {
   if (!supabase) {
-    throw new Error('Airsup v2 storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+    throw new Error('Airsup storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
   }
   return supabase;
 }
@@ -47,12 +47,12 @@ async function upsertPerson({ googleId, email, displayName, listing }) {
   const mail = String(email || '').trim();
   let existing = null;
   if (google) {
-    const { data, error } = await db.from('airsup_v2_people').select('*').eq('google_id', google).maybeSingle();
+    const { data, error } = await db.from('airsup_people').select('*').eq('google_id', google).maybeSingle();
     if (error) throw error;
     existing = data;
   }
   if (!existing && mail) {
-    const { data, error } = await db.from('airsup_v2_people').select('*').ilike('email', mail).maybeSingle();
+    const { data, error } = await db.from('airsup_people').select('*').ilike('email', mail).maybeSingle();
     if (error) throw error;
     existing = data;
   }
@@ -65,7 +65,7 @@ async function upsertPerson({ googleId, email, displayName, listing }) {
   };
   if (existing) {
     const { data, error } = await db
-      .from('airsup_v2_people')
+      .from('airsup_people')
       .update(row)
       .eq('person_id', existing.person_id)
       .select('*')
@@ -73,57 +73,66 @@ async function upsertPerson({ googleId, email, displayName, listing }) {
     if (error) throw error;
     return data;
   }
-  const { data, error } = await db.from('airsup_v2_people').insert(row).select('*').single();
+  const { data, error } = await db.from('airsup_people').insert(row).select('*').single();
   if (error) throw error;
   return data;
 }
 
 async function getPerson(personId) {
   const db = requireDb();
-  const { data, error } = await db.from('airsup_v2_people').select('*').eq('person_id', personId).maybeSingle();
+  const { data, error } = await db.from('airsup_people').select('*').eq('person_id', personId).maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+async function getPersonByGoogleId(googleId) {
+  const db = requireDb();
+  const id = String(googleId || '').trim();
+  if (!id) return null;
+  const { data, error } = await db.from('airsup_people').select('*').eq('google_id', id).maybeSingle();
   if (error) throw error;
   return data || null;
 }
 
 async function listPeople() {
   const db = requireDb();
-  const { data, error } = await db.from('airsup_v2_people').select('*');
+  const { data, error } = await db.from('airsup_people').select('*');
   if (error) throw error;
   return data || [];
 }
 
 async function insertClient(client) {
   const db = requireDb();
-  const { data, error } = await db.from('airsup_v2_oauth_clients').insert(client).select('*').single();
+  const { data, error } = await db.from('airsup_oauth_clients').insert(client).select('*').single();
   if (error) throw error;
   return data;
 }
 
 async function getClient(clientId) {
   const db = requireDb();
-  const { data, error } = await db.from('airsup_v2_oauth_clients').select('*').eq('client_id', clientId).maybeSingle();
+  const { data, error } = await db.from('airsup_oauth_clients').select('*').eq('client_id', clientId).maybeSingle();
   if (error) throw error;
   return data || null;
 }
 
 async function insertCode(row) {
   const db = requireDb();
-  const { error } = await db.from('airsup_v2_oauth_codes').insert(row);
+  const { error } = await db.from('airsup_oauth_codes').insert(row);
   if (error) throw error;
 }
 
 async function takeCode(codeHash) {
   const db = requireDb();
-  const { data, error } = await db.from('airsup_v2_oauth_codes').select('*').eq('code_hash', codeHash).maybeSingle();
+  const { data, error } = await db.from('airsup_oauth_codes').select('*').eq('code_hash', codeHash).maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  await db.from('airsup_v2_oauth_codes').delete().eq('code_hash', codeHash);
+  await db.from('airsup_oauth_codes').delete().eq('code_hash', codeHash);
   return data;
 }
 
 async function insertPluginToken({ tokenHash, refreshHash, personId, expiresAt }) {
   const db = requireDb();
-  const { error } = await db.from('airsup_v2_plugin_tokens').insert({
+  const { error } = await db.from('airsup_plugin_tokens').insert({
     token_hash: tokenHash,
     refresh_hash: refreshHash,
     person_id: personId,
@@ -134,16 +143,29 @@ async function insertPluginToken({ tokenHash, refreshHash, personId, expiresAt }
 
 async function getPluginToken(tokenHash) {
   const db = requireDb();
-  const { data, error } = await db.from('airsup_v2_plugin_tokens').select('*').eq('token_hash', tokenHash).maybeSingle();
+  const { data, error } = await db.from('airsup_plugin_tokens').select('*').eq('token_hash', tokenHash).maybeSingle();
   if (error) throw error;
   if (!data) return null;
   if (new Date(data.expires_at).getTime() < Date.now()) return null;
   return data;
 }
 
+async function takeRefreshToken(refreshHash) {
+  const db = requireDb();
+  const { data, error } = await db
+    .from('airsup_plugin_tokens')
+    .select('*')
+    .eq('refresh_hash', refreshHash)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  await db.from('airsup_plugin_tokens').delete().eq('refresh_hash', refreshHash);
+  return data;
+}
+
 async function getGmailSend() {
   const db = requireDb();
-  const { data, error } = await db.from('airsup_v2_gmail_send').select('*').eq('id', 'tademehl').maybeSingle();
+  const { data, error } = await db.from('airsup_gmail_send').select('*').eq('id', 'tademehl').maybeSingle();
   if (error) throw error;
   return data || null;
 }
@@ -157,14 +179,14 @@ async function setGmailSend({ googleId, email, refreshToken }) {
     refresh_token_enc: encryptSecret(refreshToken),
     updated_at: new Date().toISOString(),
   };
-  const { data, error } = await db.from('airsup_v2_gmail_send').upsert(row, { onConflict: 'id' }).select('*').single();
+  const { data, error } = await db.from('airsup_gmail_send').upsert(row, { onConflict: 'id' }).select('*').single();
   if (error) throw error;
   return data;
 }
 
 async function insertConversation(row) {
   const db = requireDb();
-  const { data, error } = await db.from('airsup_v2_conversations').insert(row).select('*').single();
+  const { data, error } = await db.from('airsup_conversations').insert(row).select('*').single();
   if (error) throw error;
   return data;
 }
@@ -172,7 +194,7 @@ async function insertConversation(row) {
 async function getConversation(conversationId) {
   const db = requireDb();
   const { data, error } = await db
-    .from('airsup_v2_conversations')
+    .from('airsup_conversations')
     .select('*')
     .eq('conversation_id', conversationId)
     .maybeSingle();
@@ -182,7 +204,7 @@ async function getConversation(conversationId) {
 
 async function updateConversation(conversationId, patch, where = {}) {
   const db = requireDb();
-  let query = db.from('airsup_v2_conversations').update({ ...patch, updated_at: new Date().toISOString() }).eq('conversation_id', conversationId);
+  let query = db.from('airsup_conversations').update({ ...patch, updated_at: new Date().toISOString() }).eq('conversation_id', conversationId);
   for (const [key, value] of Object.entries(where)) {
     if (value === null) query = query.is(key, null);
     else query = query.eq(key, value);
@@ -195,7 +217,7 @@ async function updateConversation(conversationId, patch, where = {}) {
 async function insertMessage({ conversationId, fromPersonId, body }) {
   const db = requireDb();
   const { data, error } = await db
-    .from('airsup_v2_messages')
+    .from('airsup_messages')
     .insert({
       conversation_id: conversationId,
       from_person_id: fromPersonId,
@@ -214,6 +236,7 @@ module.exports = {
   decryptSecret,
   upsertPerson,
   getPerson,
+  getPersonByGoogleId,
   listPeople,
   insertClient,
   getClient,
@@ -221,6 +244,7 @@ module.exports = {
   takeCode,
   insertPluginToken,
   getPluginToken,
+  takeRefreshToken,
   getGmailSend,
   setGmailSend,
   insertConversation,

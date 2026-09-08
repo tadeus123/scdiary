@@ -6,40 +6,51 @@ const path = require('path');
 const express = require('express');
 const ejs = require('ejs');
 const { QUESTIONS, normalizeAnswers } = require('./questions');
-const { generatePrompt, DOORBELL_WORKER, CHATGPT_SETUP_URL } = require('./prompt');
-const {
-  getProfile,
-  upsertProfile,
-  syncDirectory,
-  getEndpointByGoogleId,
-  isConfigured: isDbConfigured,
-} = require('./db');
 const { publicDisplayName } = require('./directory');
 const { MCP_URL } = require('./config');
-const { buildOpenApi } = require('./openapi');
-const { handleMcp, callFindPeople, callTool, extractHeaderToken, withAuth } = require('./mcp');
-const { isOpenAiConfigured } = require('./openai');
+const { GMAIL_SENDER } = require('./v2/config');
+const db = require('./v2/db');
+const { createMcp } = require('./v2/mcp');
+const pluginOauth = require('./v2/oauth-plugin');
+const gmailOauth = require('./v2/oauth-gmail-send');
+const { talkPrompt, doorbellText } = require('./v2/prompt');
 const auth = require('./auth');
-const v2 = require('./v2/routes');
 
 const router = express.Router();
 const AIRSUP_VIEWS = path.join(__dirname, 'views');
 const SITE_VIEWS = path.join(__dirname, '../views');
+const mcp = createMcp({ store: db });
 
-router.use((req, res, next) => {
-  const suffix = req.path === '/' ? '' : req.path;
-  res.locals.seo = {
-    title: 'Tade Mehl — airsup',
-    description: 'Airsup — Tade Mehl.',
-    path: `/airsup${suffix}`,
-    noindex: true,
-    includePersonSchema: false,
+async function syncPersonFromWebsiteUser(user, profile) {
+  if (!user || !db.isConfigured()) return;
+  const answers = (profile && profile.answers) || normalizeAnswers({});
+  const contactable = profile && typeof profile.contactable === 'boolean' ? profile.contactable : true;
+  await db.upsertPerson({
+    googleId: user.googleId,
+    email: user.email,
+    displayName: publicDisplayName({
+      answers,
+      displayName: (profile && profile.displayName) || user.displayName || '',
+      email: user.email,
+    }),
+    listing: { answers, contactable },
+  });
+}
+
+async function getProfile(googleId) {
+  const person = await db.getPersonByGoogleId(googleId);
+  if (!person) return null;
+  const listing = person.listing && typeof person.listing === 'object' ? person.listing : {};
+  return {
+    googleId: person.google_id,
+    email: person.email,
+    displayName: person.display_name || '',
+    answers: normalizeAnswers(listing.answers),
+    updatedAt: person.updated_at || '',
+    contactable: listing.contactable !== false,
+    personId: person.person_id,
   };
-  res.locals.airsupUser = auth.readUser(req);
-  next();
-});
-
-router.use(v2.router);
+}
 
 function renderAirsup(req, res, viewName, extra = {}) {
   const viewFile = path.join(AIRSUP_VIEWS, viewName);
@@ -74,26 +85,24 @@ function userDisplayName(user, profile) {
   });
 }
 
+router.use((req, res, next) => {
+  const suffix = req.path === '/' ? '' : req.path;
+  res.locals.seo = {
+    title: 'Tade Mehl — airsup',
+    description: 'Airsup — Tade Mehl.',
+    path: `/airsup${suffix}`,
+    noindex: true,
+    includePersonSchema: false,
+  };
+  res.locals.airsupUser = auth.readUser(req);
+  next();
+});
+
 router.get(['/', ''], (req, res) => {
   renderAirsup(req, res, 'index.ejs', {
     oauthError: req.query.error === 'oauth' ? 'Google sign-in failed. Try again.' : null,
   });
 });
-
-function directoryAuthorized(req) {
-  const expected = process.env.AIRSUP_DIRECTORY_KEY;
-  if (!expected) return true;
-  const header = req.get('authorization') || '';
-  const bearer = header.startsWith('Bearer ') ? header.slice(7) : '';
-  const alt = req.get('x-airsup-key') || '';
-  return bearer === expected || alt === expected;
-}
-
-function setSearchCors(res) {
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Airsup-Key');
-  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-}
 
 router.get('/you', async (req, res) => {
   const user = auth.readUser(req);
@@ -110,10 +119,7 @@ router.get('/you', async (req, res) => {
     if (profile) {
       answers = profile.answers;
       serverUpdatedAt = profile.updatedAt || '';
-    }
-    const endpoint = await getEndpointByGoogleId(user.googleId);
-    if (endpoint) {
-      directoryConsent = Boolean(endpoint.active && endpoint.contactable);
+      directoryConsent = profile.contactable;
     }
   } catch (error) {
     console.error('Airsup profile load error:', error);
@@ -125,8 +131,8 @@ router.get('/you', async (req, res) => {
     answers,
     directoryConsent,
     loadError,
-    dbConfigured: isDbConfigured(),
-    matchConfigured: isOpenAiConfigured(),
+    dbConfigured: db.isConfigured(),
+    matchConfigured: true,
     serverUpdatedAt,
   });
 });
@@ -136,34 +142,27 @@ router.get('/prompt', async (req, res) => {
   if (!user) return res.redirect('/airsup');
   let answers = normalizeAnswers({});
   let profile = null;
-  let endpointId = '';
-  let mcpToken = '';
   try {
     profile = await getProfile(user.googleId);
     if (profile) answers = profile.answers;
-    const endpoint = await getEndpointByGoogleId(user.googleId);
-    if (endpoint) {
-      endpointId = endpoint.endpoint_id;
-      mcpToken = endpoint.mcp_token || '';
-    }
+    await syncPersonFromWebsiteUser(user, profile || { answers, displayName: user.displayName });
   } catch (error) {
     console.error('Airsup prompt load error:', error);
   }
-  if (!endpointId || !mcpToken) return res.redirect('/airsup/you');
+  const mailConnected = db.isConfigured() ? Boolean(await db.getGmailSend().catch(() => null)) : false;
   renderAirsup(req, res, 'prompt.ejs', {
     user,
     mcpUrl: MCP_URL,
-    chatgptSetupUrl: CHATGPT_SETUP_URL,
-    promptText: generatePrompt({
-      questions: QUESTIONS,
+    promptText: talkPrompt({
       answers,
       email: user.email,
       displayName: userDisplayName(user, profile),
-      endpointId,
-      mcpUrl: MCP_URL,
-      mcpToken,
     }),
-    doorbellText: DOORBELL_WORKER,
+    doorbellText: doorbellText(),
+    mailConnected,
+    isSender: String(user.email || '').toLowerCase() === GMAIL_SENDER,
+    mailError: req.query.error === 'mail',
+    mailOk: req.query.mail === 'connected',
   });
 });
 
@@ -173,16 +172,33 @@ router.get('/auth/google', (req, res) => {
       redirectUris: auth.redirectUris(req),
     });
   }
-  const state = auth.setOauthState(req, res);
+  const next = typeof req.query.next === 'string' ? req.query.next : '';
+  const state = auth.setOauthState(req, res, { purpose: 'login', next });
   res.redirect(auth.googleAuthUrl(req, state));
 });
 
 router.get('/auth/google/callback', async (req, res) => {
   try {
-    const expected = auth.takeOauthState(req, res);
+    const pending = auth.takeOauthState(req, res);
     const { code, state } = req.query;
-    if (!expected || !state || state !== expected || typeof code !== 'string') {
+    if (!pending || !pending.nonce || !state || state !== pending.nonce || typeof code !== 'string') {
       return res.redirect('/airsup?error=oauth');
+    }
+    if (pending.purpose === 'gmail_send') {
+      const user = auth.readUser(req);
+      if (!user || String(user.email || '').toLowerCase() !== GMAIL_SENDER) {
+        return res.redirect('/airsup?error=oauth');
+      }
+      const tokenJson = await auth.exchangeGoogleTokens(req, code);
+      if (!tokenJson.refresh_token) {
+        return res.redirect('/airsup/prompt?error=mail');
+      }
+      await db.setGmailSend({
+        googleId: user.googleId,
+        email: GMAIL_SENDER,
+        refreshToken: tokenJson.refresh_token,
+      });
+      return res.redirect('/airsup/prompt?mail=connected');
     }
     const googleUser = await auth.exchangeCode(req, code);
     let answers = normalizeAnswers({});
@@ -193,22 +209,12 @@ router.get('/auth/google/callback', async (req, res) => {
       console.error('Airsup profile ensure error:', error);
     }
     try {
-      await upsertProfile({
-        googleId: googleUser.googleId,
-        email: googleUser.email,
-        displayName: googleUser.displayName,
-        answers,
-      });
+      await syncPersonFromWebsiteUser(googleUser, { answers, displayName: googleUser.displayName });
     } catch (error) {
-      console.error('Airsup profile create error:', error);
+      console.error('Airsup person sync error:', error);
     }
     auth.setUser(req, res, googleUser);
-    try {
-      await v2.syncPersonFromWebsiteUser(googleUser, { answers, displayName: googleUser.displayName });
-    } catch (error) {
-      console.error('Airsup v2 person sync error:', error);
-    }
-    res.redirect('/airsup/you');
+    return res.redirect(auth.safeAirsupPath(pending.next));
   } catch (error) {
     console.error('Airsup Google OAuth error:', error);
     res.redirect('/airsup?error=oauth');
@@ -225,33 +231,16 @@ router.put('/api/profile', async (req, res) => {
   if (!user) return res.status(401).json({ ok: false, error: 'Not signed in' });
   if (!auth.allowedOrigin(req)) return res.status(403).json({ ok: false, error: 'Bad origin' });
   try {
-    const profile = await upsertProfile({
-      googleId: user.googleId,
-      email: user.email,
-      displayName: user.displayName,
-      answers: req.body && req.body.answers,
-    });
-    const existing = await getEndpointByGoogleId(user.googleId);
-    const consentFromBody = req.body && typeof req.body.directoryConsent === 'boolean'
+    const answers = normalizeAnswers(req.body && req.body.answers);
+    const contactable = req.body && typeof req.body.directoryConsent === 'boolean'
       ? req.body.directoryConsent
-      : null;
-    if (existing || consentFromBody === true) {
-      await syncDirectory({
-        googleId: user.googleId,
-        email: user.email,
-        displayName: userDisplayName(user, profile),
-        answers: profile.answers,
-        consent: consentFromBody === null
-          ? Boolean(existing && existing.active && existing.contactable)
-          : consentFromBody,
-      });
-    }
-    try {
-      await v2.syncPersonFromWebsiteUser(user, profile);
-    } catch (error) {
-      console.error('Airsup v2 person sync error:', error);
-    }
-    res.json({ ok: true, answers: profile.answers });
+      : true;
+    await syncPersonFromWebsiteUser(user, {
+      answers,
+      displayName: user.displayName,
+      contactable,
+    });
+    res.json({ ok: true, answers });
   } catch (error) {
     console.error('Airsup save error:', error);
     res.status(500).json({ ok: false, error: 'Could not save' });
@@ -263,32 +252,17 @@ router.post('/api/finish', async (req, res) => {
   if (!user) return res.status(401).json({ ok: false, error: 'Not signed in' });
   if (!auth.allowedOrigin(req)) return res.status(403).json({ ok: false, error: 'Bad origin' });
   try {
-    const consent = req.body && req.body.directoryConsent !== false;
-    const profile = await upsertProfile({
-      googleId: user.googleId,
-      email: user.email,
+    const answers = normalizeAnswers(req.body && req.body.answers);
+    const contactable = req.body && req.body.directoryConsent !== false;
+    await syncPersonFromWebsiteUser(user, {
+      answers,
       displayName: user.displayName,
-      answers: req.body && req.body.answers,
+      contactable,
     });
-    const endpoint = await syncDirectory({
-      googleId: user.googleId,
-      email: user.email,
-      displayName: userDisplayName(user, profile),
-      answers: profile.answers,
-      consent,
-    });
-    try {
-      await v2.syncPersonFromWebsiteUser(user, profile);
-    } catch (error) {
-      console.error('Airsup v2 person sync error:', error);
-    }
     res.json({
       ok: true,
-      setupUrl: CHATGPT_SETUP_URL,
       next: '/airsup/prompt',
-      answers: profile.answers,
-      endpoint_id: endpoint && endpoint.endpoint_id,
-      token: endpoint && endpoint.mcp_token,
+      answers,
     });
   } catch (error) {
     console.error('Airsup finish error:', error);
@@ -296,105 +270,30 @@ router.post('/api/finish', async (req, res) => {
   }
 });
 
-router.options('/api/find_people', (req, res) => {
-  setSearchCors(res);
+router.get('/mail/connect', (req, res) => gmailOauth.startConnect(req, res));
+
+router.get('/oauth/.well-known/oauth-authorization-server', (req, res) => {
+  res.json(pluginOauth.authorizationServerMetadata(req));
+});
+router.post('/oauth/register', (req, res) => pluginOauth.handleRegister(req, res, db));
+router.options('/oauth/register', (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.status(204).end();
+});
+router.get('/oauth/authorize', (req, res) => pluginOauth.handleAuthorize(req, res, db));
+router.post('/oauth/token', (req, res) => pluginOauth.handleToken(req, res, db));
+router.options('/oauth/token', (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.status(204).end();
 });
 
-router.post('/api/find_people', async (req, res) => {
-  setSearchCors(res);
-  if (!directoryAuthorized(req)) {
-    return res.status(401).json({ ok: false, error: 'Unauthorized' });
-  }
-  try {
-    const body = req.body || {};
-    const data = await callFindPeople(withAuth({
-      requester_id: body.requester_id || body.exclude_endpoint_id,
-      token: body.token,
-      query: body.query || body.current_need || body.need,
-      current_need: body.current_need || body.need,
-      what_requester_can_offer: body.what_requester_can_offer || body.offer,
-      desired_person: body.desired_person,
-      maximum_results: body.maximum_results,
-    }, extractHeaderToken(req)));
-    res.json({ ok: true, ...data });
-  } catch (error) {
-    console.error('Airsup find_people error:', error);
-    res.status(500).json({ ok: false, error: error.message || 'Search failed' });
-  }
-});
-
-router.options('/api/search_ai_endpoints', (req, res) => {
-  setSearchCors(res);
-  res.status(204).end();
-});
-
-router.post('/api/search_ai_endpoints', async (req, res) => {
-  setSearchCors(res);
-  if (!directoryAuthorized(req)) {
-    return res.status(401).json({ ok: false, error: 'Unauthorized' });
-  }
-  try {
-    const body = req.body || {};
-    const data = await callFindPeople(withAuth({
-      requester_id: body.exclude_endpoint_id || body.requester_id,
-      token: body.token,
-      query: body.query || body.need || body.current_need,
-      current_need: body.need || body.current_need,
-      what_requester_can_offer: body.offer || body.what_requester_can_offer,
-      desired_person: body.desired_person,
-      maximum_results: body.maximum_results || 3,
-    }, extractHeaderToken(req)));
-    res.json({ ok: true, ...data });
-  } catch (error) {
-    console.error('Airsup directory search error:', error);
-    res.status(500).json({ ok: false, error: error.message || 'Search failed' });
-  }
-});
-
-async function handleA2aTool(req, res, name) {
-  setSearchCors(res);
-  if (!directoryAuthorized(req)) {
-    return res.status(401).json({ ok: false, error: 'Unauthorized' });
-  }
-  try {
-    const data = await callTool(name, withAuth(req.body || {}, extractHeaderToken(req)));
-    res.json({ ok: true, ...data });
-  } catch (error) {
-    console.error(`Airsup ${name} error:`, error);
-    res.status(400).json({ ok: false, error: error.message || 'Failed' });
-  }
-}
-
-router.options('/api/a2a/:tool', (req, res) => {
-  setSearchCors(res);
-  res.status(204).end();
-});
-
-router.options('/api/calls/:tool', (req, res) => {
-  setSearchCors(res);
-  res.status(204).end();
-});
-
-router.post('/api/a2a/create_network_request', (req, res) => handleA2aTool(req, res, 'create_network_request'));
-router.post('/api/a2a/validate_incoming_message', (req, res) => handleA2aTool(req, res, 'validate_incoming_message'));
-router.post('/api/a2a/create_network_response', (req, res) => handleA2aTool(req, res, 'create_network_response'));
-router.post('/api/a2a/record_network_response', (req, res) => handleA2aTool(req, res, 'record_network_response'));
-router.post('/api/a2a/get_network_results', (req, res) => handleA2aTool(req, res, 'get_network_results'));
-
-router.post('/api/calls/prepare_call', (req, res) => handleA2aTool(req, res, 'prepare_call'));
-router.post('/api/calls/confirm_call', (req, res) => handleA2aTool(req, res, 'confirm_call'));
-router.post('/api/calls/start_call', (req, res) => handleA2aTool(req, res, 'start_call'));
-router.post('/api/calls/join_call', (req, res) => handleA2aTool(req, res, 'join_call'));
-router.post('/api/calls/session_sync', (req, res) => handleA2aTool(req, res, 'session_sync'));
-router.post('/api/calls/hang_up', (req, res) => handleA2aTool(req, res, 'hang_up'));
-router.post('/api/calls/list_calls', (req, res) => handleA2aTool(req, res, 'list_calls'));
-router.post('/api/calls/handle_ring', (req, res) => handleA2aTool(req, res, 'handle_ring'));
-
-router.all('/mcp', handleMcp);
-
-router.get('/openapi.json', (req, res) => {
-  res.json(buildOpenApi(auth.getPublicOrigin(req)));
+router.all('/mcp', (req, res) => mcp.handleMcp(req, res));
+router.all('/v2/mcp', (req, res) => res.redirect(308, '/airsup/mcp'));
+router.get('/v2/prompt', (req, res) => res.redirect(302, '/airsup/prompt'));
+router.all(/^\/v2\/oauth(\/.*)?$/, (req, res) => {
+  res.redirect(308, req.originalUrl.replace('/airsup/v2/oauth', '/airsup/oauth'));
 });
 
 module.exports = router;

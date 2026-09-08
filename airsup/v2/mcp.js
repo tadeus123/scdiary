@@ -39,7 +39,7 @@ function formatToolResult(data) {
 
 function resourceMetadataUrl(req) {
   const origin = publicOrigin(req);
-  return `${origin}/.well-known/oauth-protected-resource/airsup/v2/mcp`;
+  return `${origin}/.well-known/oauth-protected-resource/airsup/mcp`;
 }
 
 function publicOrigin(req) {
@@ -97,7 +97,7 @@ function createMcp({ store, mailer, sleep } = {}) {
       return {
         protocolVersion: MCP_PROTOCOL,
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: 'airsup-v2', version: '3.0.0' },
+        serverInfo: { name: 'airsup', version: '3.0.0' },
         instructions:
           `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. send_message.person_id is the recipient. send_message waits for the other Airsup AI.`,
       };
@@ -158,7 +158,7 @@ function createMcp({ store, mailer, sleep } = {}) {
       res.set('MCP-Protocol-Version', MCP_PROTOCOL);
       return res.json(out);
     } catch (error) {
-      console.error('Airsup v2 MCP error:', error);
+      console.error('Airsup MCP error:', error);
       res.status(200).json({
         jsonrpc: '2.0',
         id: message && message.id != null ? message.id : null,

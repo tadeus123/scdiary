@@ -1,8 +1,8 @@
 # Canonical model (board + accepted corrections)
 
-Board copy stays verbatim in `tools/` and `prompts/`. This file records how to interpret that copy. Do not treat implementation order or the live 2.5.1 stack as board facts.
+Board copy stays verbatim in `tools/` and `prompts/`. This file records how to interpret that copy. Do not treat implementation order as board facts.
 
-The full v2 contract is [SPEC.md](SPEC.md). Spec only until that file is accepted against Miro.
+The live contract is [SPEC.md](SPEC.md).
 
 ## Identity
 
@@ -95,6 +95,5 @@ Confirmed when nobody is waiting: persist closed, no wake email, later `send_mes
 ## Not board facts
 
 - OpenAI lightweight catalog then detailed schemas: conceptual runtime behavior. Airsup must work regardless of how OpenAI loads schemas.
-- Repo 2.5.1 observations are code, not Miro.
 - “Implement OAuth + register first…” is an implementation recommendation, not Miro.
-- Parallel `/airsup/v2/mcp` URL and Vercel wait ceiling.
+- Vercel wait ceiling vs a long-lived waiter process.

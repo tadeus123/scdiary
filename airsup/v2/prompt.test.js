@@ -12,7 +12,7 @@ const talk = talkPrompt({
   email: 'anna@example.com',
   displayName: 'Anna Schmidt',
 });
-assert.ok(talk.includes('https://www.tademehl.com/airsup/v2/mcp'));
+assert.ok(talk.includes('https://www.tademehl.com/airsup/mcp'));
 assert.ok(talk.includes('send_message.person_id is the recipient'));
 assert.ok(!/prepare_call/.test(talk));
 assert.ok(!/session_sync/.test(talk));

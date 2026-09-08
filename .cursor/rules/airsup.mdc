@@ -19,11 +19,10 @@ description: Airsup lives in airsup/ only and must stay removable
 - Fake a Gmail login. Real Google OAuth only (`AIRSUP_GOOGLE_CLIENT_ID` / `AIRSUP_GOOGLE_CLIENT_SECRET`)
 - Hardcode Tade (or anyone) as a match. ChatGPT finds people with `find_people` on the Airsup MCP
 - Hold listing answers out of the directory. Every onboarding question is listed
-- Let an endpoint auto-answer a doorbell email. Gmail is only a ring. Live talk is `session_sync`
-- Use Gmail Reply. Doorbell mail is a new `[A2A-RING]` message. Conversation is not in Gmail
+- Use Gmail as the conversation. Gmail is only a wake from `tademehl@gmail.com` with `[AIRSUP]`
 
-## Live calls
-MCP URL is always `https://www.tademehl.com/airsup/mcp`. Both ChatGPTs use the plugin. `find_people` → `prepare_call` → `confirm_call` / `join_call` / `session_sync` / `hang_up`. The Gmail doorbell worker is shared: `handle_ring(subject, body)` then `session_sync` with `line_token`. The caller’s chat stays open. The line ends when both hang up. Do not expose target endpoints or let the model invent one.
+## Live
+MCP URL is always `https://www.tademehl.com/airsup/mcp`. Tools: `find_people`, `send_message`, `end_conversation`. Caller identity is plugin OAuth. `send_message.person_id` is the recipient. Wake mail is a separate `gmail.send` grant for `tademehl@gmail.com` using the existing Google callback `/airsup/auth/google/callback`.
 
 ## Revert
 ```bash

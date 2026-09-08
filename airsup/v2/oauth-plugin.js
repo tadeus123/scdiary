@@ -15,23 +15,19 @@ function publicOrigin(req) {
 }
 
 function pluginAuthorizeUrl(req) {
-  return `${publicOrigin(req)}/airsup/v2/oauth/authorize`;
+  return `${publicOrigin(req)}/airsup/oauth/authorize`;
 }
 
 function pluginTokenUrl(req) {
-  return `${publicOrigin(req)}/airsup/v2/oauth/token`;
+  return `${publicOrigin(req)}/airsup/oauth/token`;
 }
 
 function pluginRegisterUrl(req) {
-  return `${publicOrigin(req)}/airsup/v2/oauth/register`;
-}
-
-function pluginGoogleCallback(req) {
-  return `${publicOrigin(req)}/airsup/v2/oauth/google/callback`;
+  return `${publicOrigin(req)}/airsup/oauth/register`;
 }
 
 function authorizationServerMetadata(req) {
-  const issuer = `${publicOrigin(req)}/airsup/v2/oauth`;
+  const issuer = `${publicOrigin(req)}/airsup/oauth`;
   return {
     issuer,
     authorization_endpoint: pluginAuthorizeUrl(req),
@@ -48,7 +44,7 @@ function authorizationServerMetadata(req) {
 function protectedResourceMetadata(req) {
   return {
     resource: MCP_URL,
-    authorization_servers: [`${publicOrigin(req)}/airsup/v2/oauth`],
+    authorization_servers: [`${publicOrigin(req)}/airsup/oauth`],
     bearer_methods_supported: ['header'],
     scopes_supported: [PLUGIN_SCOPE],
   };
@@ -70,19 +66,6 @@ function unpackState(raw) {
   } catch {
     return null;
   }
-}
-
-function googlePluginAuthUrl(req, state) {
-  const params = new URLSearchParams({
-    client_id: process.env.AIRSUP_GOOGLE_CLIENT_ID,
-    redirect_uri: pluginGoogleCallback(req),
-    response_type: 'code',
-    scope: 'openid email profile',
-    state,
-    prompt: 'select_account',
-    access_type: 'online',
-  });
-  return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
 
 function redirectAllowed(client, redirectUri) {
@@ -164,8 +147,8 @@ async function handleAuthorize(req, res, store) {
   if (websiteUser && websiteUser.googleId) {
     return finishAuthorize(req, res, store, pending, websiteUser);
   }
-  const packed = packState(pending);
-  return res.redirect(googlePluginAuthUrl(req, packed));
+  const next = `/airsup/oauth/authorize?${new URLSearchParams(req.query).toString()}`;
+  return res.redirect(`/airsup/auth/google?next=${encodeURIComponent(next)}`);
 }
 
 async function finishAuthorize(req, res, store, pending, googleUser) {
@@ -189,51 +172,6 @@ async function finishAuthorize(req, res, store, pending, googleUser) {
   return res.redirect(next.toString());
 }
 
-async function handleGoogleCallback(req, res, store) {
-  const packed = String(req.query.state || '');
-  const pending = unpackState(packed);
-  const code = req.query.code;
-  if (!pending || typeof code !== 'string') return res.redirect('/airsup?error=oauth');
-  try {
-    const googleUser = await exchangeGoogle(req, code, pluginGoogleCallback(req));
-    return finishAuthorize(req, res, store, pending, googleUser);
-  } catch (error) {
-    console.error('Airsup v2 plugin Google OAuth error:', error);
-    return res.redirect('/airsup?error=oauth');
-  }
-}
-
-async function exchangeGoogle(req, code, redirectUri) {
-  const body = new URLSearchParams({
-    code,
-    client_id: process.env.AIRSUP_GOOGLE_CLIENT_ID,
-    client_secret: process.env.AIRSUP_GOOGLE_CLIENT_SECRET,
-    redirect_uri: redirectUri,
-    grant_type: 'authorization_code',
-  });
-  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
-  });
-  const tokenJson = await tokenRes.json();
-  if (!tokenRes.ok || !tokenJson.access_token) {
-    throw new Error(tokenJson.error_description || 'Google token exchange failed');
-  }
-  const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-    headers: { Authorization: `Bearer ${tokenJson.access_token}` },
-  });
-  const userJson = await userRes.json();
-  if (!userRes.ok || !userJson.id || !userJson.email) {
-    throw new Error('Google did not return an email address');
-  }
-  return {
-    googleId: String(userJson.id),
-    email: String(userJson.email),
-    displayName: userJson.name ? String(userJson.name) : '',
-  };
-}
-
 async function handleToken(req, res, store) {
   res.set('Access-Control-Allow-Origin', '*');
   const body = req.body || {};
@@ -247,6 +185,14 @@ async function handleToken(req, res, store) {
     if (new Date(row.expires_at).getTime() < Date.now()) return res.status(400).json({ error: 'invalid_grant' });
     if (row.redirect_uri !== redirectUri) return res.status(400).json({ error: 'invalid_grant' });
     if (pkceS256(verifier) !== row.code_challenge) return res.status(400).json({ error: 'invalid_grant' });
+    const tokens = await issueTokens(store, row.person_id);
+    return res.json(tokens);
+  }
+  if (grant === 'refresh_token') {
+    const refresh = String(body.refresh_token || '');
+    if (!refresh) return res.status(400).json({ error: 'invalid_grant' });
+    const row = await store.takeRefreshToken(sha256(refresh));
+    if (!row) return res.status(400).json({ error: 'invalid_grant' });
     const tokens = await issueTokens(store, row.person_id);
     return res.json(tokens);
   }
@@ -267,10 +213,8 @@ module.exports = {
   authorizationServerMetadata,
   protectedResourceMetadata,
   handleAuthorize,
-  handleGoogleCallback,
   handleToken,
   handleRegister,
-  pluginGoogleCallback,
   pluginAuthorizeUrl,
   pluginTokenUrl,
   pluginRegisterUrl,

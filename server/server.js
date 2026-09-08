@@ -87,14 +87,17 @@ app.set('views', path.join(__dirname, '../views'));
 
 // AIRSUP-BEGIN
 const airsupRoutes = require('../airsup/routes');
-const airsupV2Oauth = require('../airsup/v2/oauth-plugin');
+const airsupOauth = require('../airsup/v2/oauth-plugin');
 app.use('/airsup', express.static(path.join(__dirname, '../airsup/public'), { index: false, redirect: false }));
 app.use('/airsup', airsupRoutes);
 app.get('/.well-known/oauth-protected-resource', (req, res) => {
-  res.json(airsupV2Oauth.protectedResourceMetadata(req));
+  res.json(airsupOauth.protectedResourceMetadata(req));
 });
-app.get('/.well-known/oauth-protected-resource/airsup/v2/mcp', (req, res) => {
-  res.json(airsupV2Oauth.protectedResourceMetadata(req));
+app.get('/.well-known/oauth-protected-resource/airsup/mcp', (req, res) => {
+  res.json(airsupOauth.protectedResourceMetadata(req));
+});
+app.get('/.well-known/oauth-authorization-server/airsup/oauth', (req, res) => {
+  res.json(airsupOauth.authorizationServerMetadata(req));
 });
 // AIRSUP-END
 

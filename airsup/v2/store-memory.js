@@ -95,6 +95,15 @@ function createMemoryStore() {
       return { ...row };
     },
 
+    async takeRefreshToken(refreshHash) {
+      const tokenHash = refreshTokens.get(refreshHash);
+      if (!tokenHash) return null;
+      const row = tokens.get(tokenHash);
+      tokens.delete(tokenHash);
+      refreshTokens.delete(refreshHash);
+      return row ? { ...row } : null;
+    },
+
     async getGmailSend() {
       return gmailSend ? { ...gmailSend } : null;
     },

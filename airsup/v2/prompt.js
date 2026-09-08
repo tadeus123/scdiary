@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const { QUESTIONS } = require('../questions');
-const { SEARCHABLE_IDS } = require('../knowledge');
 const { MCP_URL } = require('./config');
 
 const ENDPOINT_INSTRUCTIONS = fs.readFileSync(
@@ -21,7 +20,6 @@ function doorbellText() {
 
 function talkPrompt({ answers, email, displayName }) {
   const profile = (QUESTIONS || [])
-    .filter((q) => SEARCHABLE_IDS.includes(q.id))
     .map((q) => {
       const value = String((answers && answers[q.id]) || '').trim() || '(no answer yet)';
       return `${q.text}\n${value}`;

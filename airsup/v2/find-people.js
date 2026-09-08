@@ -2,11 +2,13 @@ const { listingText, scorePerson, matchDescription } = require('./listing');
 
 function personView(row) {
   if (!row) return null;
-  const answers = (row.listing && row.listing.answers) || {};
+  const listing = row.listing && typeof row.listing === 'object' ? row.listing : {};
+  const answers = listing.answers || {};
   return {
     person_id: row.person_id,
     email: row.email || '',
     display_name: row.display_name || '',
+    contactable: listing.contactable !== false,
     listing_text: listingText({
       answers,
       displayName: row.display_name,
@@ -21,7 +23,7 @@ async function findPeople(store, { callerPersonId, query, maximumResults }) {
   if (!q) return { matches: [] };
   const rows = (await store.listPeople())
     .map(personView)
-    .filter((person) => person.person_id !== callerPersonId && String(person.email || '').trim());
+    .filter((person) => person.person_id !== callerPersonId && String(person.email || '').trim() && person.contactable);
   const scored = rows
     .map((person) => ({ person, score: scorePerson(person, q) }))
     .filter((row) => row.score > 0)
