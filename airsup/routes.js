@@ -20,6 +20,7 @@ const { buildOpenApi } = require('./openapi');
 const { handleMcp, callFindPeople, callTool, extractHeaderToken, withAuth } = require('./mcp');
 const { isOpenAiConfigured } = require('./openai');
 const auth = require('./auth');
+const v2 = require('./v2/routes');
 
 const router = express.Router();
 const AIRSUP_VIEWS = path.join(__dirname, 'views');
@@ -37,6 +38,8 @@ router.use((req, res, next) => {
   res.locals.airsupUser = auth.readUser(req);
   next();
 });
+
+router.use(v2.router);
 
 function renderAirsup(req, res, viewName, extra = {}) {
   const viewFile = path.join(AIRSUP_VIEWS, viewName);
@@ -200,6 +203,11 @@ router.get('/auth/google/callback', async (req, res) => {
       console.error('Airsup profile create error:', error);
     }
     auth.setUser(req, res, googleUser);
+    try {
+      await v2.syncPersonFromWebsiteUser(googleUser, { answers, displayName: googleUser.displayName });
+    } catch (error) {
+      console.error('Airsup v2 person sync error:', error);
+    }
     res.redirect('/airsup/you');
   } catch (error) {
     console.error('Airsup Google OAuth error:', error);
@@ -238,6 +246,11 @@ router.put('/api/profile', async (req, res) => {
           : consentFromBody,
       });
     }
+    try {
+      await v2.syncPersonFromWebsiteUser(user, profile);
+    } catch (error) {
+      console.error('Airsup v2 person sync error:', error);
+    }
     res.json({ ok: true, answers: profile.answers });
   } catch (error) {
     console.error('Airsup save error:', error);
@@ -264,6 +277,11 @@ router.post('/api/finish', async (req, res) => {
       answers: profile.answers,
       consent,
     });
+    try {
+      await v2.syncPersonFromWebsiteUser(user, profile);
+    } catch (error) {
+      console.error('Airsup v2 person sync error:', error);
+    }
     res.json({
       ok: true,
       setupUrl: CHATGPT_SETUP_URL,

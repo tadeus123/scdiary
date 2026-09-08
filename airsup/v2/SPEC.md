@@ -1,6 +1,6 @@
 # Airsup v2 specification
 
-Status: **spec only**. Do not implement until this document is compared to the Miro board and accepted.
+Status: **v2 backend shipped beside 2.5.1.** Compare remaining OpenAI/run-lifetime limits in §11 to production behavior. Do not cut over `/airsup/prompt` until v2 is proven.
 
 Source layers (do not mix):
 
