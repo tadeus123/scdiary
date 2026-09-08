@@ -1,0 +1,59 @@
+{
+  "name": "find_people",
+  "title": "Find People",
+  "description": "Find people on Airsup by name, identity, role, company, expertise, or other natural-language description. Use this when you want to contact someone but do not already have their person_id. Do not use this if an exact person_id is already known.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Natural-language description of the person or people to find, for example 'Konstantin Saifoulline' or 'humanoid actuator engineers in China'."
+      },
+      "maximum_results": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 50,
+        "default": 5,
+        "description": "Maximum number of matching people to return."
+      }
+    },
+    "required": ["query"],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "matches": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "person_id": {
+              "type": "string",
+              "description": "Stable Airsup identifier for this person."
+            },
+            "name": {
+              "type": "string",
+              "description": "Display name of the person."
+            },
+            "description": {
+              "type": "string",
+              "description": "information explaining who this person is and why they may match the query."
+            }
+          },
+          "required": ["person_id", "name"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["matches"],
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": true
+  }
+}

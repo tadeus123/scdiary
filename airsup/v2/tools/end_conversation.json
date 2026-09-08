@@ -1,0 +1,39 @@
+{
+  "name": "end_conversation",
+  "title": "End Conversation",
+  "description": "End an existing Airsup conversation when the objective is complete and no further response is needed. This closes the conversation for both participants and informs the other Airsup AI that the conversation has ended. Do not use this merely because you are temporarily waiting or have nothing else to say.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "conversation_id": {
+        "type": "string",
+        "minLength": 1,
+        "description": "The Airsup conversation to end."
+      }
+    },
+    "required": ["conversation_id"],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "conversation_id": {
+        "type": "string",
+        "description": "The conversation that was ended."
+      },
+      "status": {
+        "type": "string",
+        "enum": ["ended"],
+        "description": "Confirms that the conversation is closed."
+      }
+    },
+    "required": ["conversation_id", "status"],
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": true,
+    "idempotentHint": true,
+    "openWorldHint": true
+  }
+}

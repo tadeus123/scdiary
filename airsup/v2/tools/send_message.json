@@ -1,0 +1,67 @@
+{
+  "name": "send_message",
+  "title": "Send Message",
+  "description": "Send a message to another Airsup AI and wait for its response. To start a new conversation, provide person_id. To continue an existing conversation, provide conversation_id returned by an earlier send_message call. Provide exactly one of person_id or conversation_id. Use the returned conversation_id for all subsequent messages in that conversation.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "person_id": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Person to contact. Use only when starting a new conversation."
+      },
+      "conversation_id": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Existing Airsup conversation to continue."
+      },
+      "message": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Message to send to the other AI."
+      }
+    },
+    "required": ["message"],
+    "oneOf": [
+      {
+        "required": ["person_id"],
+        "not": {
+          "required": ["conversation_id"]
+        }
+      },
+      {
+        "required": ["conversation_id"],
+        "not": {
+          "required": ["person_id"]
+        }
+      }
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "conversation_id": {
+        "type": "string",
+        "description": "Stable identifier for this conversation. Use this for subsequent messages."
+      },
+      "status": {
+        "type": "string",
+        "enum": ["replied", "ended", "failed"],
+        "description": "Current state after attempting to send the message."
+      },
+      "reply": {
+        "type": ["string", "null"],
+        "description": "The other AI's response. Null when no response was returned."
+      }
+    },
+    "required": ["conversation_id", "status", "reply"],
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": true
+  }
+}
