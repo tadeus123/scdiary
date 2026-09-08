@@ -160,6 +160,19 @@ function createMemoryStore() {
       messages.push(row);
       return { ...row };
     },
+
+    async listMessages(conversationId) {
+      return messages
+        .filter((row) => row.conversation_id === conversationId)
+        .map((row) => ({ ...row }));
+    },
+
+    async listConversationsForPerson(personId) {
+      return [...conversations.values()]
+        .filter((row) => row.participant_a === personId || row.participant_b === personId)
+        .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))
+        .map((row) => ({ ...row }));
+    },
   };
 }
 

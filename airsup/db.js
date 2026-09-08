@@ -229,6 +229,29 @@ async function insertMessage({ conversationId, fromPersonId, body }) {
   return data;
 }
 
+async function listMessages(conversationId) {
+  const db = requireDb();
+  const { data, error } = await db
+    .from('airsup_messages')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+async function listConversationsForPerson(personId) {
+  const db = requireDb();
+  const { data, error } = await db
+    .from('airsup_conversations')
+    .select('*')
+    .or(`participant_a.eq.${personId},participant_b.eq.${personId}`)
+    .order('updated_at', { ascending: false })
+    .limit(30);
+  if (error) throw error;
+  return data || [];
+}
+
 module.exports = {
   isConfigured,
   sha256,
@@ -251,4 +274,6 @@ module.exports = {
   getConversation,
   updateConversation,
   insertMessage,
+  listMessages,
+  listConversationsForPerson,
 };

@@ -7,10 +7,24 @@
     :root {
       color-scheme: light dark;
       --text: var(--color-text-primary, CanvasText);
-      --muted: var(--color-text-secondary, color-mix(in srgb, CanvasText 64%, Canvas));
-      --line: var(--color-border-primary, color-mix(in srgb, CanvasText 16%, Canvas));
-      --fill: var(--color-background-secondary, color-mix(in srgb, CanvasText 7%, Canvas));
-      --accent: #d07a82;
+      --muted: var(--color-text-secondary, color-mix(in srgb, CanvasText 58%, Canvas));
+      --faint: var(--color-text-tertiary, color-mix(in srgb, CanvasText 42%, Canvas));
+      --line: var(--color-border-primary, color-mix(in srgb, CanvasText 12%, Canvas));
+      --fill: var(--color-background-secondary, color-mix(in srgb, CanvasText 6%, Canvas));
+      --composer: var(--color-background-tertiary, color-mix(in srgb, CanvasText 8%, Canvas));
+      --you: color-mix(in srgb, #8a3a4a 72%, CanvasText 8%);
+      --you-text: #f7efe8;
+      --them: var(--fill);
+      --accent: #c45c68;
+      --glow: color-mix(in srgb, #8a3a4a 22%, transparent);
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --you: #6e1623;
+        --you-text: #f7efe8;
+        --accent: #6e1623;
+        --glow: color-mix(in srgb, #6e1623 10%, transparent);
+      }
     }
     * { box-sizing: border-box; }
     html, body {
@@ -18,37 +32,68 @@
       background: transparent;
     }
     body {
-      padding: 16px 16px 14px;
-      font: 15px/1.45 var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
+      position: relative;
+      padding: 18px 16px 14px;
+      font: 15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
       color: var(--text);
+      -webkit-font-smoothing: antialiased;
     }
-    .row {
+    body::before {
+      content: "";
+      pointer-events: none;
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 180px;
+      height: 120px;
+      background: radial-gradient(ellipse at 0 0, var(--glow), transparent 70%);
+    }
+    .shell { position: relative; }
+    .top {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
       gap: 12px;
+      min-height: 36px;
     }
-    .brand {
+    .who {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .name {
       display: flex;
       align-items: center;
       gap: 8px;
       min-width: 0;
     }
-    .dot {
-      width: 8px;
-      height: 8px;
+    .mark {
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       background: var(--accent);
+      box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 70%, transparent);
       flex: 0 0 auto;
     }
-    .dot.pulse {
-      animation: pulse 1.4s ease-in-out infinite;
+    .mark.pulse { animation: pulse 1.6s ease-in-out infinite; }
+    h1 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 590;
+      letter-spacing: -0.022em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .name {
-      font-size: 13px;
-      font-weight: 600;
+    .sub {
+      margin: 0;
+      padding-left: 15px;
+      font-size: 12px;
+      letter-spacing: 0.01em;
+      color: var(--muted);
     }
     .pill {
+      flex: 0 0 auto;
       font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.04em;
@@ -56,51 +101,170 @@
       color: var(--muted);
       border: 1px solid var(--line);
       border-radius: 999px;
-      padding: 3px 8px;
-      white-space: nowrap;
+      padding: 4px 9px;
     }
-    .pill.waiting { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
-    .copy {
-      margin: 8px 0 0;
+    .pill.waiting { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+    .pill.ended { opacity: 0.72; }
+    select.threads {
+      appearance: none;
+      margin: 10px 0 0;
+      max-width: 100%;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font: 12px/1.3 inherit;
+      padding: 0 14px 0 15px;
+      background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+      background-position: calc(100% - 8px) 7px, calc(100% - 3px) 7px;
+      background-size: 5px 5px, 5px 5px;
+      background-repeat: no-repeat;
+      cursor: pointer;
+    }
+    .transcript {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 320px;
+      overflow: auto;
+      padding: 2px 2px 4px;
+    }
+    .empty {
+      margin: 8px 0 4px;
+      padding: 18px 8px 10px;
+      text-align: center;
       color: var(--muted);
       font-size: 14px;
+      letter-spacing: 0.01em;
     }
-    .copy.primary { color: var(--text); }
-    .reply {
-      margin-top: 12px;
-      padding: 12px 13px;
-      background: var(--fill);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
+    .msg {
+      display: flex;
+      flex-direction: column;
+      max-width: 86%;
     }
-    .reply:empty,
-    .id:empty { display: none; }
-    .id {
-      margin-top: 10px;
+    .msg.you { align-self: flex-end; align-items: flex-end; }
+    .msg.them { align-self: flex-start; align-items: flex-start; }
+    .lbl {
       font-size: 11px;
-      color: var(--muted);
-      font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+      color: var(--faint);
+      margin: 0 10px 4px;
+      letter-spacing: 0.02em;
     }
+    .bubble {
+      margin: 0;
+      padding: 9px 13px 10px;
+      border-radius: 18px;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+    .msg.them .bubble {
+      background: var(--them);
+      border: 1px solid var(--line);
+      border-bottom-left-radius: 6px;
+    }
+    .msg.you .bubble {
+      background: var(--you);
+      color: var(--you-text);
+      border-bottom-right-radius: 6px;
+    }
+    .composer {
+      margin-top: 14px;
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      padding: 6px 6px 6px 14px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--composer);
+    }
+    textarea {
+      flex: 1;
+      resize: none;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      min-height: 24px;
+      max-height: 88px;
+      padding: 6px 0;
+    }
+    .send {
+      border: 0;
+      background: var(--accent);
+      color: #f7efe8;
+      font: 600 13px/1 inherit;
+      border-radius: 16px;
+      padding: 8px 13px;
+      cursor: pointer;
+    }
+    .send:disabled,
+    textarea:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+    .foot {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 20px;
+    }
+    .err { margin: 0; font-size: 12px; color: var(--accent); }
+    .end, .cancel {
+      border: 0;
+      background: transparent;
+      color: var(--faint);
+      font: 12px inherit;
+      cursor: pointer;
+      padding: 0;
+    }
+    .end.ask { color: var(--accent); }
+    .hidden { display: none !important; }
     @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.35; }
+      50% { opacity: 0.28; }
     }
   </style>
 </head>
 <body>
-  <div class="row">
-    <div class="brand">
-      <span id="dot" class="dot pulse"></span>
-      <span class="name">Airsup</span>
+  <div class="shell">
+    <div class="top">
+      <div class="who">
+        <div class="name">
+          <span id="mark" class="mark pulse"></span>
+          <h1 id="title">Airsup</h1>
+        </div>
+        <p id="sub" class="sub">Waiting for the other Airsup AI…</p>
+      </div>
+      <span id="pill" class="pill waiting">Waiting</span>
     </div>
-    <span id="pill" class="pill waiting">Waiting</span>
+    <select id="threads" class="threads hidden" aria-label="Conversations"></select>
+    <div id="transcript" class="transcript">
+      <div class="empty">Waiting for a conversation…</div>
+    </div>
+    <form id="composer" class="composer hidden">
+      <textarea id="draft" rows="1" placeholder="Your message" maxlength="8000"></textarea>
+      <button class="send" type="submit">Send</button>
+    </form>
+    <div class="foot">
+      <p id="err" class="err"></p>
+      <div>
+        <button id="cancel" class="cancel hidden" type="button">Cancel</button>
+        <button id="end" class="end hidden" type="button">End conversation</button>
+      </div>
+    </div>
   </div>
-  <p id="copy" class="copy">Waiting for the other Airsup AI…</p>
-  <div id="reply" class="reply"></div>
-  <div id="id" class="id"></div>
   <script>
+    const pending = new Map();
+    let nextId = 1;
+    let panel = null;
+    let structured = {};
+    let busy = false;
+    let ending = false;
+    const cache = new Map();
+
     function pick(data) {
       if (!data || typeof data !== 'object') return {};
       if (data.structuredContent && typeof data.structuredContent === 'object') {
@@ -108,56 +272,264 @@
       }
       return data;
     }
-    function labelFor(status) {
-      if (status === 'replied') return 'Replied';
+    function panelFrom(raw) {
+      if (!raw || typeof raw !== 'object') return null;
+      if (raw._meta && raw._meta.ui && raw._meta.ui.panel) return raw._meta.ui.panel;
+      if (raw.ui && raw.ui.panel) return raw.ui.panel;
+      if (Array.isArray(raw.messages)) return raw;
+      return null;
+    }
+    function rpc(method, params) {
+      const id = nextId++;
+      window.parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
+      return new Promise(function (resolve, reject) {
+        const timer = setTimeout(function () {
+          pending.delete(id);
+          reject(new Error('That took too long.'));
+        }, 280000);
+        pending.set(id, {
+          resolve: function (value) { clearTimeout(timer); resolve(value); },
+          reject: function (error) { clearTimeout(timer); reject(error); },
+        });
+      });
+    }
+    async function callTool(name, args) {
+      if (window.openai && typeof window.openai.callTool === 'function') {
+        return window.openai.callTool(name, args);
+      }
+      return rpc('tools/call', { name: name, arguments: args });
+    }
+    async function readResource(uri) {
+      const result = await rpc('resources/read', { uri: uri });
+      const text = result && result.contents && result.contents[0] && result.contents[0].text;
+      return text ? JSON.parse(text) : null;
+    }
+    function tellModel(text) {
+      window.parent.postMessage({
+        jsonrpc: '2.0',
+        method: 'ui/update-model-context',
+        params: { content: [{ type: 'text', text: text }] },
+      }, '*');
+    }
+    function reportHeight() {
+      const height = Math.ceil(document.body.scrollHeight);
+      if (window.openai && typeof window.openai.notifyIntrinsicHeight === 'function') {
+        window.openai.notifyIntrinsicHeight(height);
+      }
+    }
+    function setBusy(next) {
+      busy = next;
+      document.getElementById('draft').disabled = next;
+      document.querySelector('.send').disabled = next;
+      document.getElementById('threads').disabled = next;
+    }
+    function statusLabel(status) {
+      if (status === 'replied' || status === 'open') return 'Open';
       if (status === 'ended') return 'Ended';
       if (status === 'failed') return 'Failed';
       return 'Waiting';
     }
-    function copyFor(status) {
-      if (status === 'replied') return 'Reply from the other Airsup AI';
-      if (status === 'ended') return 'This conversation has ended.';
-      if (status === 'failed') return 'This message could not be completed.';
-      return 'Waiting for the other Airsup AI…';
-    }
-    function reportHeight() {
-      const height = Math.ceil(document.body.scrollHeight);
-      const api = window.openai;
-      if (api && typeof api.notifyIntrinsicHeight === 'function') {
-        api.notifyIntrinsicHeight(height);
+    function renderMessages(messages, waiting) {
+      const root = document.getElementById('transcript');
+      root.replaceChildren();
+      if (!messages.length && !waiting) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = 'Waiting for a conversation…';
+        root.appendChild(empty);
+        return;
       }
+      messages.forEach(function (item) {
+        const wrap = document.createElement('div');
+        wrap.className = 'msg ' + (item.from === 'you' ? 'you' : 'them');
+        const lbl = document.createElement('div');
+        lbl.className = 'lbl';
+        lbl.textContent = item.from === 'you' ? 'You' : (item.name || 'Them');
+        const bubble = document.createElement('p');
+        bubble.className = 'bubble';
+        bubble.textContent = item.body || '';
+        wrap.appendChild(lbl);
+        wrap.appendChild(bubble);
+        root.appendChild(wrap);
+      });
+      if (waiting) {
+        const wrap = document.createElement('div');
+        wrap.className = 'msg them';
+        const bubble = document.createElement('p');
+        bubble.className = 'bubble';
+        bubble.textContent = 'Waiting for a reply…';
+        wrap.appendChild(bubble);
+        root.appendChild(wrap);
+      }
+      root.scrollTop = root.scrollHeight;
     }
-    function render(raw) {
-      const data = pick(raw);
-      const status = data.status ? String(data.status) : '';
-      const conversationId = data.conversation_id ? String(data.conversation_id) : '';
-      const reply = data.reply == null ? '' : String(data.reply);
-      const waiting = !status || status === 'waiting';
-      document.getElementById('dot').className = waiting ? 'dot pulse' : 'dot';
+    function renderThreads(threads, conversationId) {
+      const select = document.getElementById('threads');
+      select.replaceChildren();
+      if (!threads || threads.length < 2) {
+        select.classList.add('hidden');
+        return;
+      }
+      threads.forEach(function (thread) {
+        const option = document.createElement('option');
+        option.value = thread.conversation_id;
+        option.textContent = (thread.other && thread.other.name ? thread.other.name : 'Conversation')
+          + (thread.status === 'ended' ? ' · ended' : '');
+        if (thread.conversation_id === conversationId) option.selected = true;
+        select.appendChild(option);
+      });
+      select.classList.remove('hidden');
+    }
+    function render(nextStructured, nextPanel, waiting) {
+      structured = pick(nextStructured);
+      if (nextPanel) panel = nextPanel;
+      else panel = panelFrom(nextStructured) || panel;
+      const conversationId = (panel && panel.conversation_id) || structured.conversation_id || '';
+      const status = (panel && panel.status) || structured.status || '';
+      const otherName = panel && panel.other && panel.other.name;
+      const waitingNow = Boolean(waiting) && status !== 'ended' && status !== 'failed';
+      document.getElementById('title').textContent = otherName || 'Airsup';
+      document.getElementById('sub').textContent = otherName
+        ? (status === 'ended' ? 'Conversation ended' : 'Airsup conversation')
+        : 'Waiting for the other Airsup AI…';
+      document.getElementById('mark').className = waitingNow ? 'mark pulse' : 'mark';
       document.getElementById('pill').className = 'pill ' + (status || 'waiting');
-      document.getElementById('pill').textContent = labelFor(status);
-      const copy = document.getElementById('copy');
-      copy.className = status && status !== 'waiting' ? 'copy primary' : 'copy';
-      copy.textContent = copyFor(status);
-      document.getElementById('reply').textContent = reply;
-      document.getElementById('id').textContent = conversationId ? ('conversation ' + conversationId) : '';
+      document.getElementById('pill').textContent = statusLabel(status);
+      renderMessages((panel && panel.messages) || [], waitingNow && status !== 'ended' && status !== 'failed');
+      renderThreads(panel && panel.threads, conversationId);
+      const open = Boolean(conversationId) && status !== 'ended' && status !== 'failed';
+      document.getElementById('composer').classList.toggle('hidden', !open);
+      document.getElementById('end').classList.toggle('hidden', !conversationId || status === 'ended');
+      document.getElementById('end').textContent = ending ? 'End now' : 'End conversation';
+      document.getElementById('end').classList.toggle('ask', ending);
+      document.getElementById('cancel').classList.toggle('hidden', !ending);
+      if (window.openai && typeof window.openai.setWidgetState === 'function' && conversationId) {
+        window.openai.setWidgetState({ conversation_id: conversationId });
+      }
+      if (panel && panel.conversation_id) cache.set(panel.conversation_id, panel);
       reportHeight();
     }
-    render(window.openai && window.openai.toolOutput);
-    if (typeof ResizeObserver === 'function') {
-      new ResizeObserver(reportHeight).observe(document.body);
+    async function hydrate(raw) {
+      const data = pick(raw);
+      let next = panelFrom(raw);
+      if (!next && data.conversation_id) {
+        try { next = await readResource('airsup://conversations/' + data.conversation_id); }
+        catch (error) { next = null; }
+      }
+      render(data, next, !data.status);
     }
-    window.addEventListener('openai:set_globals', function (event) {
-      const globals = event.detail && event.detail.globals;
-      render(globals && globals.toolOutput);
-    }, { passive: true });
+    async function sendMessage(event) {
+      event.preventDefault();
+      const conversationId = (panel && panel.conversation_id) || structured.conversation_id;
+      const message = document.getElementById('draft').value.trim();
+      if (!conversationId || !message || busy) return;
+      setBusy(true);
+      document.getElementById('err').textContent = '';
+      render(structured, panel, true);
+      try {
+        const result = await callTool('send_message', { conversation_id: conversationId, message: message });
+        document.getElementById('draft').value = '';
+        document.getElementById('draft').style.height = 'auto';
+        tellModel('User sent a message in the Airsup panel. conversation_id is ' + conversationId + '.');
+        await hydrate(result);
+      } catch (error) {
+        document.getElementById('err').textContent = error.message || 'Could not send.';
+        render(structured, panel, false);
+      }
+      setBusy(false);
+    }
+    async function endConversation() {
+      const conversationId = (panel && panel.conversation_id) || structured.conversation_id;
+      if (!conversationId || busy) return;
+      if (!ending) {
+        ending = true;
+        render(structured, panel, false);
+        return;
+      }
+      setBusy(true);
+      document.getElementById('err').textContent = '';
+      try {
+        const result = await callTool('end_conversation', { conversation_id: conversationId });
+        tellModel('User ended Airsup conversation ' + conversationId + '.');
+        ending = false;
+        await hydrate(result);
+      } catch (error) {
+        document.getElementById('err').textContent = error.message || 'Could not end.';
+      }
+      setBusy(false);
+    }
+    async function switchThread(event) {
+      const conversationId = event.target.value;
+      if (!conversationId || busy) return;
+      setBusy(true);
+      document.getElementById('err').textContent = '';
+      try {
+        let next = null;
+        try { next = await readResource('airsup://conversations/' + conversationId); }
+        catch (error) { next = cache.get(conversationId) || null; }
+        if (!next) {
+          const thread = ((panel && panel.threads) || []).find(function (row) {
+            return row.conversation_id === conversationId;
+          });
+          next = {
+            conversation_id: conversationId,
+            status: thread ? thread.status : '',
+            you: panel && panel.you,
+            other: thread && thread.other,
+            messages: [],
+            threads: panel && panel.threads,
+          };
+        }
+        tellModel('User is viewing Airsup conversation ' + conversationId + '. Use that conversation_id for later send_message calls.');
+        render({ conversation_id: conversationId, status: next.status, reply: null }, next, false);
+      } catch (error) {
+        document.getElementById('err').textContent = error.message || 'Could not open that conversation.';
+      }
+      setBusy(false);
+    }
+
+    document.getElementById('composer').addEventListener('submit', sendMessage);
+    document.getElementById('end').addEventListener('click', endConversation);
+    document.getElementById('cancel').addEventListener('click', function () {
+      ending = false;
+      render(structured, panel, false);
+    });
+    document.getElementById('threads').addEventListener('change', switchThread);
+    document.getElementById('draft').addEventListener('input', function (event) {
+      event.target.style.height = 'auto';
+      event.target.style.height = Math.min(event.target.scrollHeight, 88) + 'px';
+      reportHeight();
+    });
+    document.getElementById('draft').addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        document.getElementById('composer').requestSubmit();
+      }
+    });
+
     window.addEventListener('message', function (event) {
       if (event.source !== window.parent) return;
       const message = event.data;
       if (!message || message.jsonrpc !== '2.0') return;
-      if (message.method !== 'ui/notifications/tool-result') return;
-      render(message.params);
+      if (message.id !== undefined && pending.has(message.id)) {
+        const item = pending.get(message.id);
+        pending.delete(message.id);
+        if (message.error) item.reject(new Error(message.error.message || 'Request failed'));
+        else item.resolve(message.result);
+        return;
+      }
+      if (message.method === 'ui/notifications/tool-result') {
+        hydrate(message.params);
+      }
     }, { passive: true });
+    window.addEventListener('openai:set_globals', function (event) {
+      const globals = event.detail && event.detail.globals;
+      hydrate(globals && globals.toolOutput);
+    }, { passive: true });
+    if (typeof ResizeObserver === 'function') {
+      new ResizeObserver(reportHeight).observe(document.body);
+    }
+    hydrate(window.openai && window.openai.toolOutput);
   </script>
 </body>
 </html>

@@ -7,6 +7,12 @@ const { createMailer } = require('./mail');
 const db = require('./db');
 const { sha256 } = require('./store-memory');
 const { widgetResource, widgetContents, withConversationWidget } = require('./widget');
+const {
+  conversationPanel,
+  threadsResource,
+  conversationResourceContents,
+  isPublicResource,
+} = require('./panel');
 
 const findPeopleTool = JSON.parse(fs.readFileSync(path.join(__dirname, 'tools/find_people.json'), 'utf8'));
 const sendMessageTool = JSON.parse(fs.readFileSync(path.join(__dirname, 'tools/send_message.json'), 'utf8'));
@@ -40,6 +46,15 @@ function formatToolResult(data) {
     structuredContent: data,
     content: [{ type: 'text', text: JSON.stringify(data) }],
   };
+}
+
+async function formatWidgetResult(store, caller, data) {
+  const result = formatToolResult(data);
+  if (!caller || !data || !data.conversation_id) return result;
+  result._meta = {
+    ui: { panel: await conversationPanel(store, caller.person_id, data.conversation_id) },
+  };
+  return result;
 }
 
 function resourceMetadataUrl(req) {
@@ -112,11 +127,26 @@ function createMcp({ store, mailer, sleep } = {}) {
     }
     if (method === 'ping') return {};
     if (method === 'tools/list') return toolList();
-    if (method === 'resources/list') return { resources: [widgetResource()] };
-    if (method === 'resources/read') return widgetContents(params.uri);
+    if (method === 'resources/list') {
+      const resources = [widgetResource()];
+      if (caller) resources.push(threadsResource());
+      return { resources };
+    }
+    if (method === 'resources/read') {
+      if (isPublicResource(params.uri)) return widgetContents(params.uri);
+      if (!caller) {
+        const error = new Error('Airsup plugin OAuth required');
+        error.code = -32000;
+        throw error;
+      }
+      return conversationResourceContents(backing, caller.person_id, params.uri);
+    }
     if (method === 'prompts/list') return { prompts: [] };
     if (method === 'tools/call') {
       const data = await callTool(params.name, caller, params.arguments || {});
+      if (params.name === 'send_message' || params.name === 'end_conversation') {
+        return formatWidgetResult(backing, caller, data);
+      }
       return formatToolResult(data);
     }
     const error = new Error(`Unknown method: ${method}`);
@@ -149,9 +179,9 @@ function createMcp({ store, mailer, sleep } = {}) {
       || method === 'ping'
       || method === 'tools/list'
       || method === 'resources/list'
-      || method === 'resources/read'
       || method === 'prompts/list'
-      || (typeof method === 'string' && method.startsWith('notifications/'));
+      || (typeof method === 'string' && method.startsWith('notifications/'))
+      || (method === 'resources/read' && isPublicResource(message.params && message.params.uri));
     if (!caller && !publicMethod) return unauthorized(req, res);
     try {
       if (Array.isArray(message)) {

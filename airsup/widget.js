@@ -15,7 +15,7 @@ function widgetMeta() {
         resourceDomains: [],
       },
     },
-    'openai/widgetDescription': 'Airsup conversation panel.',
+    'openai/widgetDescription': 'Live Airsup conversation: transcript, send, end, and thread switch.',
     'openai/widgetPrefersBorder': true,
     'openai/widgetDomain': WIDGET_DOMAIN,
     'openai/widgetCSP': {
@@ -34,7 +34,7 @@ function widgetResource() {
     uri: WIDGET_URI,
     name: 'Airsup conversation',
     title: 'Airsup conversation',
-    description: 'Airsup conversation panel.',
+    description: 'Live Airsup conversation: transcript, send, end, and thread switch.',
     mimeType: WIDGET_MIME,
     _meta: widgetMeta(),
   };
