@@ -16,3 +16,5 @@ MCP tools/list must expose only these three tools, in this order: `find_people`,
 The lowercase “information explaining who this person is…” on `matches[].description` is as written on the board. Keep it. Per match, only `person_id` and `name` are required; `description` is optional.
 
 How to interpret identity, conversation ids, Gmail fallback, and source of truth: `CANONICAL.md`.
+
+Full v2 contract (spec only, not implementation): `SPEC.md`.
