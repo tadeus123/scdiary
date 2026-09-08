@@ -6,6 +6,7 @@ const { createConversations } = require('./conversations');
 const { createMailer } = require('./mail');
 const db = require('./db');
 const { sha256 } = require('./store-memory');
+const { widgetResource, widgetContents, withConversationWidget } = require('./widget');
 
 const findPeopleTool = JSON.parse(fs.readFileSync(path.join(__dirname, 'tools/find_people.json'), 'utf8'));
 const sendMessageTool = JSON.parse(fs.readFileSync(path.join(__dirname, 'tools/send_message.json'), 'utf8'));
@@ -13,7 +14,11 @@ const endConversationTool = JSON.parse(fs.readFileSync(path.join(__dirname, 'too
 
 function toolList() {
   return {
-    tools: [findPeopleTool, sendMessageTool, endConversationTool],
+    tools: [
+      findPeopleTool,
+      withConversationWidget(sendMessageTool),
+      withConversationWidget(endConversationTool),
+    ],
   };
 }
 
@@ -96,7 +101,10 @@ function createMcp({ store, mailer, sleep } = {}) {
     if (method === 'initialize') {
       return {
         protocolVersion: MCP_PROTOCOL,
-        capabilities: { tools: { listChanged: false } },
+        capabilities: {
+          tools: { listChanged: false },
+          resources: { listChanged: false },
+        },
         serverInfo: { name: 'airsup', version: '3.0.0' },
         instructions:
           `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. send_message.person_id is the recipient. send_message waits for the other Airsup AI.`,
@@ -104,7 +112,8 @@ function createMcp({ store, mailer, sleep } = {}) {
     }
     if (method === 'ping') return {};
     if (method === 'tools/list') return toolList();
-    if (method === 'resources/list') return { resources: [] };
+    if (method === 'resources/list') return { resources: [widgetResource()] };
+    if (method === 'resources/read') return widgetContents(params.uri);
     if (method === 'prompts/list') return { prompts: [] };
     if (method === 'tools/call') {
       const data = await callTool(params.name, caller, params.arguments || {});
@@ -140,6 +149,7 @@ function createMcp({ store, mailer, sleep } = {}) {
       || method === 'ping'
       || method === 'tools/list'
       || method === 'resources/list'
+      || method === 'resources/read'
       || method === 'prompts/list'
       || (typeof method === 'string' && method.startsWith('notifications/'));
     if (!caller && !publicMethod) return unauthorized(req, res);

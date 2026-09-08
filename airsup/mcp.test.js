@@ -1,6 +1,7 @@
 const assert = require('assert');
 const { createMemoryStore, sha256, randomToken } = require('./store-memory');
 const { createMcp, toolList } = require('./mcp');
+const { WIDGET_URI, widgetResource, widgetContents } = require('./widget');
 const { wakeBody, wakeSubject } = require('./mail');
 
 (async () => {
@@ -8,6 +9,9 @@ const { wakeBody, wakeSubject } = require('./mail');
   assert.deepStrictEqual(names, ['find_people', 'send_message', 'end_conversation']);
   assert.ok(toolList().tools[1].description.includes('Provide exactly one of person_id or conversation_id'));
   assert.ok(toolList().tools[2].description.includes('Do not use this merely because you are temporarily waiting'));
+  assert.strictEqual(toolList().tools[0]._meta, undefined);
+  assert.strictEqual(toolList().tools[1]._meta['openai/outputTemplate'], WIDGET_URI);
+  assert.strictEqual(toolList().tools[2]._meta['openai/outputTemplate'], WIDGET_URI);
 
   const store = createMemoryStore();
   const tade = await store.upsertPerson({
@@ -53,6 +57,10 @@ const { wakeBody, wakeSubject } = require('./mail');
     message: 'x',
   });
   assert.strictEqual(both.status, 'failed');
+  assert.deepStrictEqual(Object.keys(both).sort(), ['conversation_id', 'reply', 'status']);
+  assert.strictEqual(widgetResource().uri, WIDGET_URI);
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('Airsup'));
+  assert.deepStrictEqual(widgetContents('ui://other').contents, []);
 
   console.log('mcp tests passed');
 })().catch((error) => {

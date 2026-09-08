@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      margin: 0;
+      padding: 12px 14px;
+      font: 14px/1.45 system-ui, sans-serif;
+      color: #1a1a1a;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #6b4a2a;
+    }
+    .status { font-weight: 600; }
+    .status.empty { color: #888; font-weight: 400; }
+    .id { margin-top: 4px; font-size: 12px; color: #666; word-break: break-all; }
+    .reply { margin-top: 10px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Airsup</h1>
+  <div id="status" class="status empty">Waiting for a conversation…</div>
+  <div id="id" class="id"></div>
+  <div id="reply" class="reply"></div>
+  <script>
+    function pick(data) {
+      if (!data || typeof data !== 'object') return {};
+      if (data.structuredContent && typeof data.structuredContent === 'object') {
+        return data.structuredContent;
+      }
+      return data;
+    }
+    function render(raw) {
+      const data = pick(raw);
+      const statusEl = document.getElementById('status');
+      const idEl = document.getElementById('id');
+      const replyEl = document.getElementById('reply');
+      const status = data.status ? String(data.status) : '';
+      const conversationId = data.conversation_id ? String(data.conversation_id) : '';
+      const reply = data.reply == null ? '' : String(data.reply);
+      statusEl.className = status ? 'status' : 'status empty';
+      statusEl.textContent = status || 'Waiting for a conversation…';
+      idEl.textContent = conversationId ? ('conversation ' + conversationId) : '';
+      replyEl.textContent = reply;
+    }
+    render(window.openai && window.openai.toolOutput);
+    window.addEventListener('openai:set_globals', function (event) {
+      const globals = event.detail && event.detail.globals;
+      render(globals && globals.toolOutput);
+    }, { passive: true });
+    window.addEventListener('message', function (event) {
+      if (event.source !== window.parent) return;
+      const message = event.data;
+      if (!message || message.jsonrpc !== '2.0') return;
+      if (message.method !== 'ui/notifications/tool-result') return;
+      render(message.params);
+    }, { passive: true });
+  </script>
+</body>
+</html>
