@@ -3,6 +3,27 @@ const path = require('path');
 
 const WIDGET_URI = 'ui://widget/airsup-conversation.html';
 const WIDGET_MIME = 'text/html;profile=mcp-app';
+const WIDGET_DOMAIN = 'https://www-tademehl-com.oaiusercontent.com';
+
+function widgetMeta() {
+  return {
+    ui: {
+      prefersBorder: true,
+      domain: WIDGET_DOMAIN,
+      csp: {
+        connectDomains: [],
+        resourceDomains: [],
+      },
+    },
+    'openai/widgetDescription': 'Airsup conversation panel.',
+    'openai/widgetPrefersBorder': true,
+    'openai/widgetDomain': WIDGET_DOMAIN,
+    'openai/widgetCSP': {
+      connect_domains: [],
+      resource_domains: [],
+    },
+  };
+}
 
 function widgetHtml() {
   return fs.readFileSync(path.join(__dirname, 'widgets/conversation.html'), 'utf8');
@@ -15,6 +36,7 @@ function widgetResource() {
     title: 'Airsup conversation',
     description: 'Airsup conversation panel.',
     mimeType: WIDGET_MIME,
+    _meta: widgetMeta(),
   };
 }
 
@@ -27,7 +49,7 @@ function widgetContents(uri) {
         uri: WIDGET_URI,
         mimeType: WIDGET_MIME,
         text: widgetHtml(),
-        _meta: { ui: { prefersBorder: true } },
+        _meta: widgetMeta(),
       },
     ],
   };

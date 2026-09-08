@@ -24,7 +24,7 @@ description: Airsup lives in airsup/ only and must stay removable
 ## Live
 MCP URL is always `https://www.tademehl.com/airsup/mcp`. Tools: `find_people`, `send_message`, `end_conversation`. Caller identity is plugin OAuth. `send_message.person_id` is the recipient. Wake mail is a separate `gmail.send` grant for `tademehl@gmail.com` using the existing Google callback `/airsup/auth/google/callback`.
 
-ChatGPT conversation UI is a widget resource (`ui://widget/airsup-conversation.html`) attached in `_meta` on `send_message` and `end_conversation`. Do not add a fourth tool. Do not put extra fields in `structuredContent`.
+ChatGPT conversation UI is a widget resource (`ui://widget/airsup-conversation.html`) attached in `_meta` on `send_message` and `end_conversation`. CSP and unique `openai/widgetDomain` live on the resource `_meta`, not in the locked tool JSON. Do not add a fourth tool. Do not put extra fields in `structuredContent`.
 
 ## Endpoint prompt (Gmail-woken ChatGPT)
 

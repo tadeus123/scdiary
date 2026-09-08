@@ -59,6 +59,9 @@ const { wakeBody, wakeSubject } = require('./mail');
   assert.strictEqual(both.status, 'failed');
   assert.deepStrictEqual(Object.keys(both).sort(), ['conversation_id', 'reply', 'status']);
   assert.strictEqual(widgetResource().uri, WIDGET_URI);
+  assert.strictEqual(widgetResource()._meta['openai/widgetDomain'], 'https://www-tademehl-com.oaiusercontent.com');
+  assert.strictEqual(widgetContents(WIDGET_URI).contents[0]._meta['openai/widgetDomain'], 'https://www-tademehl-com.oaiusercontent.com');
+  assert.ok(Array.isArray(widgetContents(WIDGET_URI).contents[0]._meta.ui.csp.connectDomains));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('Airsup'));
   assert.deepStrictEqual(widgetContents('ui://other').contents, []);
 
