@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const WIDGET_URI = 'ui://widget/airsup-conversation-v2.html';
+const WIDGET_URI = 'ui://widget/airsup-conversation-v3.html';
 const WIDGET_MIME = 'text/html;profile=mcp-app';
 const WIDGET_DOMAIN = 'https://www-tademehl-com.oaiusercontent.com';
 
@@ -63,8 +63,8 @@ function withConversationWidget(tool) {
       'openai/outputTemplate': WIDGET_URI,
       'openai/widgetAccessible': true,
       'openai/resultCanProduceWidget': true,
-      'openai/toolInvocation/invoking': 'Waiting for the other Airsup AI…',
-      'openai/toolInvocation/invoked': 'Airsup conversation updated.',
+      'openai/toolInvocation/invoking': 'Talking on Airsup',
+      'openai/toolInvocation/invoked': 'On Airsup',
     },
   };
 }
