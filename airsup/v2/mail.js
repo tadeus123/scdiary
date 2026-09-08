@@ -101,10 +101,6 @@ function createMailer({ store, decryptSecret, fetchImpl }) {
         body: wakeBody({ conversationId, message, caller }),
       });
     },
-    async sendPlainEmail({ to, subject, body }) {
-      const accessToken = await gmailAccessToken({ store, decryptSecret, fetchFn });
-      return gmailSendRaw({ fetchFn, accessToken, to, subject, body });
-    },
   };
 }
 
