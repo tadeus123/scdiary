@@ -122,7 +122,7 @@ function createMcp({ store, mailer, sleep } = {}) {
         },
         serverInfo: { name: 'airsup', version: '3.0.0' },
         instructions:
-          `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. send_message.person_id is the recipient. send_message waits for the other Airsup AI.`,
+          `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. send_message.person_id is the recipient. send_message(person_id) starts a new conversation and wakes the other AI. A new ChatGPT chat does not remember conversation_id; if find_people (or airsup://conversations) already shows an open conversation_id with that person, continue with that conversation_id. send_message waits for the other Airsup AI.`,
       };
     }
     if (method === 'ping') return {};

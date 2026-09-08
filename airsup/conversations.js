@@ -4,6 +4,11 @@ function otherOf(conv, personId) {
   return null;
 }
 
+async function latestOpenWith(store, callerPersonId, otherPersonId) {
+  const rows = await store.listConversationsForPerson(callerPersonId);
+  return rows.find((row) => row.status === 'open' && otherOf(row, callerPersonId) === otherPersonId) || null;
+}
+
 function failed(conversationId) {
   return { conversation_id: conversationId || '', status: 'failed', reply: null };
 }
@@ -153,4 +158,5 @@ function createConversations({ store, mailer, sleep }) {
 module.exports = {
   createConversations,
   otherOf,
+  latestOpenWith,
 };
