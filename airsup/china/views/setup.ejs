@@ -11,12 +11,21 @@
       <div>
         <h1><%= t('setup_title') %></h1>
         <p class="cn-lead"><%= t('setup_lead') %></p>
+        <p class="cn-note"><%= t('privacy_setup') %></p>
         <p class="cn-meta"><%= t('verified_as') %> · <%= company.contact_email %> · <%= company.domain %></p>
       </div>
       <form method="post" action="/airsup/china/logout">
         <button class="cn-text-btn" type="submit"><%= t('logout') %></button>
       </form>
     </div>
+    <% if (company.status === 'live') { %>
+      <form method="post" action="/airsup/china/pause" class="cn-pause">
+        <button class="cn-text-btn" type="submit"><%= t('pause') %></button>
+      </form>
+    <% } %>
+    <% if (typeof paused !== 'undefined' && paused) { %>
+      <p class="cn-ok"><%= t('paused') %></p>
+    <% } %>
     <% if (error) { %>
       <p class="cn-error"><%= error %></p>
     <% } %>
@@ -25,7 +34,7 @@
     <% } %>
     <form class="cn-form cn-setup" method="post" action="/airsup/china/setup">
       <fieldset>
-        <legend><%= t('form_title') %></legend>
+        <legend><%= t('setup_company') %></legend>
         <div class="cn-grid">
           <label>
             <span><%= t('company_zh') %></span>
@@ -34,6 +43,14 @@
           <label>
             <span><%= t('company_en') %></span>
             <input type="text" name="company_name_en" value="<%= company.company_name_en || '' %>">
+          </label>
+          <label>
+            <span><%= t('niche') %></span>
+            <select name="niche">
+              <% catalogs.NICHES.forEach((item) => { %>
+                <option value="<%= item.id %>" <%= company.niche === item.id ? 'selected' : '' %>><%= lang === 'en' ? item.en : item.zh %></option>
+              <% }) %>
+            </select>
           </label>
           <label>
             <span><%= t('city') %></span>

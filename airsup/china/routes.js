@@ -11,6 +11,7 @@ const session = require('./session');
 const { t, otherLang } = require('./i18n');
 const { domainMatches } = require('./domain');
 const {
+  NICHES,
   CITIES,
   PROCESSES,
   MATERIALS,
@@ -19,6 +20,7 @@ const {
   ACTIONS,
   normalizeProfile,
   normalizeActions,
+  normalizeNiche,
   canPublish,
 } = require('./fields');
 const { proofPayload } = require('./proof');
@@ -323,6 +325,7 @@ function readSetup(body) {
     company_name: String(body.company_name || '').trim(),
     company_name_en: String(body.company_name_en || '').trim(),
     city: String(body.city || '').trim(),
+    niche: normalizeNiche(body.niche),
     contact_name: String(body.contact_name || '').trim(),
     context: String(body.context || '').trim(),
     goal: String(body.goal || '').trim(),
@@ -345,9 +348,10 @@ router.get('/setup', async (req, res) => {
     company,
     profile: normalizeProfile(company.profile),
     actions: normalizeActions(company.actions),
-    catalogs: { CITIES, PROCESSES, MATERIALS, FINISHES, CERTS, ACTIONS },
+    catalogs: { NICHES, CITIES, PROCESSES, MATERIALS, FINISHES, CERTS, ACTIONS },
     error: req.query.error === 'publish' ? t(langFrom(req, res), 'err_publish') : null,
     saved: req.query.saved === '1',
+    paused: req.query.paused === '1',
   });
 });
 
@@ -367,7 +371,7 @@ router.post('/setup', async (req, res) => {
       company,
       profile: normalizeProfile(company.profile),
       actions: normalizeActions(company.actions),
-      catalogs: { CITIES, PROCESSES, MATERIALS, FINISHES, CERTS, ACTIONS },
+      catalogs: { NICHES, CITIES, PROCESSES, MATERIALS, FINISHES, CERTS, ACTIONS },
       error: t(lang, 'err_db'),
       saved: false,
     });
@@ -397,10 +401,25 @@ router.post('/publish', async (req, res) => {
       company,
       profile: normalizeProfile(company.profile),
       actions: normalizeActions(company.actions),
-      catalogs: { CITIES, PROCESSES, MATERIALS, FINISHES, CERTS, ACTIONS },
+      catalogs: { NICHES, CITIES, PROCESSES, MATERIALS, FINISHES, CERTS, ACTIONS },
       error: t(lang, 'err_db'),
       saved: false,
     });
+  }
+});
+
+router.post('/pause', async (req, res) => {
+  if (!peopleAuth.allowedOrigin(req)) return res.redirect('/airsup/china');
+  const company = await requireCompany(req, res);
+  if (!company) return;
+  try {
+    if (company.status === 'live') {
+      await db.updateCompany(company.company_id, { status: 'verified' });
+    }
+    return res.redirect('/airsup/china/setup?paused=1');
+  } catch (error) {
+    console.error('Airsup china pause error:', error);
+    return res.redirect('/airsup/china/setup');
   }
 });
 
@@ -420,7 +439,6 @@ router.get('/api/registry', async (req, res) => {
     const { publicRecord } = require('./fields');
     const rows = await db.listLive();
     res.json({
-      niche: 'cnc',
       region: 'Shenzhen / Dongguan',
       suppliers: rows.map(publicRecord),
       proof: proofPayload(await db.listCompanies()),

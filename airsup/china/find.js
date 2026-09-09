@@ -16,7 +16,7 @@ function scoreCompany(company, query) {
   for (const word of needles) {
     if (hay.includes(word)) hits += 1;
   }
-  const extra = ['cnc', 'shenzhen', 'dongguan', 'supplier', 'machining', 'machin', '深圳', '东莞', '厂家'];
+  const extra = ['cnc', 'shenzhen', 'dongguan', 'supplier', 'machining', 'machin', 'mold', 'injection', 'pcba', 'smt', '深圳', '东莞', '厂家', '注塑', '模具'];
   for (const word of extra) {
     if (String(query || '').toLowerCase().includes(word) && hay.includes(word)) hits += 1;
   }

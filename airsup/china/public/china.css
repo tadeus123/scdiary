@@ -147,10 +147,33 @@ h1 {
   letter-spacing: 0.02em;
 }
 
-.cn-lead {
+.cn-price {
+  margin: 0 0 0.85rem;
+  font-size: 0.95rem;
+  color: #1c1814;
+}
+
+.cn-gets {
   margin: 0 0 1.1rem;
-  font-size: 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.cn-gets li {
+  position: relative;
+  padding: 0.2rem 0 0.2rem 1rem;
+  font-size: 0.92rem;
   color: #3a3934;
+}
+
+.cn-gets li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.7rem;
+  width: 0.4rem;
+  height: 1px;
+  background: #9b2433;
 }
 
 .cn-proof {
@@ -357,6 +380,7 @@ h1 {
 
 .cn-text-link,
 .cn-text-btn {
+  appearance: none;
   color: #9b2433;
   background: none;
   border: 0;
@@ -369,6 +393,10 @@ h1 {
   display: inline-flex;
   align-items: center;
   touch-action: manipulation;
+}
+
+.cn-pause {
+  margin: 0 0 1rem;
 }
 
 .cn-setup-head {

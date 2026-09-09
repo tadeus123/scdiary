@@ -13,7 +13,7 @@ description: Airsup lives in airsup/ only and must stay removable
 
 ## China companies (`/airsup/china`)
 
-Manufacturer onboarding is a removable subslice. Code lives in `airsup/china/` only. Tables are `airsup_china_*` only — never `airsup_people`. Gmail for the confirm link reuses the existing `tademehl@gmail.com` send grant. Remove with `airsup/china/REVERT.md`. Do not put China company UI on other pages.
+Manufacturer onboarding is a removable subslice. Code lives in `airsup/china/` only. Tables are `airsup_china_*` only — never `airsup_people`. Pitch: Western buyers find the factory inside AI (ChatGPT, Claude). Free for suppliers. Buyers pay. Success is domain verified + published so an Airsup user can actually interact — not signup alone. Never use emojis in scheduler/outreach copy. Gmail for the confirm link reuses the existing `tademehl@gmail.com` send grant. Remove with `airsup/china/REVERT.md`. Do not put China company UI on other pages.
 
 ## Do not
 - Import `server/db/supabase.js`, diary routes, or admin routes from Airsup

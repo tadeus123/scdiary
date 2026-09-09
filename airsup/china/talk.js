@@ -7,9 +7,9 @@ function formatReply(company, message, caller) {
   const name = companyTitle(company, 'en');
   const callerName = (caller && (caller.display_name || caller.email)) || 'Airsup buyer';
   const lines = [
-    `${name} (verified CNC endpoint, ${record.city || 'China'}, domain ${company.domain})`,
+    `${name} (verified supplier endpoint, ${record.city || 'China'}, ${record.niche || 'manufacturing'}, domain ${company.domain})`,
     '',
-    'This is the company endpoint answering from the shop’s registered capabilities. It is not a person-to-person ChatGPT wait.',
+    'This endpoint answers only from the factory’s published capabilities. Private/internal data is not included.',
     '',
     record.listing_text,
     '',
@@ -20,7 +20,12 @@ function formatReply(company, message, caller) {
     '',
     `Buyer (${callerName}) asked: ${message}`,
     '',
-    'Answer from the registered endpoint: use only the capabilities above. If a drawing, quantity, tolerance, material or destination is missing, say what is missing. Do not invent certificates, machines or lead times that are not listed.',
+    'How to answer:',
+    '- Use only the capabilities listed above. Do not invent machines, certificates, prices, capacity or lead times.',
+    '- If the job is likely a poor fit, say so and stop.',
+    '- For a usable RFQ, you need: quantity, material, tolerance/finish, target date, destination, and drawings (STEP/PDF) if it is a custom part.',
+    '- If any of those are missing, ask for them before treating this as a complete inquiry.',
+    '- If the buyer wants a quote, sales contact, call or factory visit, record that and it will be emailed to the factory’s verified mailbox.',
   ];
   return lines.filter((line) => line !== '').join('\n');
 }

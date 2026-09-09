@@ -1,3 +1,10 @@
+const NICHES = [
+  { id: 'cnc', zh: 'CNC 机加工', en: 'CNC machining' },
+  { id: 'injection', zh: '注塑 / 模具', en: 'Injection molding / molds' },
+  { id: 'pcba', zh: 'PCBA / SMT', en: 'PCBA / SMT' },
+  { id: 'other', zh: '其他出口制造', en: 'Other export manufacturing' },
+];
+
 const CITIES = [
   { id: 'shenzhen', zh: '深圳', en: 'Shenzhen' },
   { id: 'dongguan', zh: '东莞', en: 'Dongguan' },
@@ -13,6 +20,9 @@ const PROCESSES = [
   { id: 'edm', zh: '放电加工', en: 'EDM' },
   { id: 'grinding', zh: '磨削', en: 'Grinding' },
   { id: 'sheet', zh: '钣金', en: 'Sheet metal' },
+  { id: 'injection', zh: '注塑', en: 'Injection molding' },
+  { id: 'mold', zh: '模具', en: 'Mold making' },
+  { id: 'pcba', zh: 'PCBA / SMT', en: 'PCBA / SMT' },
 ];
 
 const MATERIALS = [
@@ -42,13 +52,18 @@ const CERTS = [
 ];
 
 const ACTIONS = [
-  { id: 'answer_rfq', zh: '按图纸回答询价（材料、公差、交期、单价区间）', en: 'Answer RFQs (material, tolerance, lead time, price range)' },
-  { id: 'share_capacity', zh: '说明当前产能与可接订单窗口', en: 'Share current capacity and booking window' },
-  { id: 'share_dfm', zh: '给出可制造性（DFM）意见', en: 'Give DFM notes' },
-  { id: 'share_certs', zh: '提供证书与出口相关文件说明', en: 'Share certificates and export documents' },
-  { id: 'share_shipping', zh: '说明包装、货代与运到欧美的方式', en: 'Explain packing, freight and shipping to EU/US' },
-  { id: 'request_drawings', zh: '在缺图纸时请采购补发 STEP / PDF', en: 'Ask the buyer for STEP/PDF when drawings are missing' },
+  { id: 'answer_capabilities', zh: '按已填写的能力回答能不能做（不编造机床、证书或交期）', en: 'Answer capability questions from approved information only' },
+  { id: 'collect_rfq', zh: '收下项目需求：数量、材料、公差、表面、交期、目的地、图纸', en: 'Collect a structured RFQ (qty, material, tolerance, finish, date, destination, drawings)' },
+  { id: 'request_missing', zh: '缺项时向采购追问，不编造', en: 'Ask for missing project information instead of guessing' },
+  { id: 'forward_sales', zh: '把合格询盘发到已验证的企业邮箱', en: 'Forward a qualified RFQ to the verified company email' },
+  { id: 'contact_sales', zh: '记下「请销售联系」并发到邮箱', en: 'Record a request for sales to contact the buyer' },
+  { id: 'book_visit', zh: '记下看厂或电话预约，发到邮箱（不是自动排期）', en: 'Record a call or factory-visit request and email it (no calendar booking)' },
+  { id: 'share_certs', zh: '说明已勾选的证书（不提供未填写的文件）', en: 'Share listed certificates only' },
+  { id: 'share_shipping', zh: '说明已填写的出货方式', en: 'Share listed shipping terms' },
+  { id: 'request_drawings', zh: '缺图纸时请采购补发 STEP / PDF', en: 'Ask the buyer for STEP/PDF when drawings are missing' },
 ];
+
+const DEFAULT_ACTIONS = ['answer_capabilities', 'collect_rfq', 'request_missing', 'forward_sales'];
 
 function asList(raw) {
   if (Array.isArray(raw)) return raw.map((item) => String(item || '').trim()).filter(Boolean);
@@ -94,7 +109,13 @@ function normalizeProfile(raw) {
 }
 
 function normalizeActions(raw) {
-  return pickIds(raw, ACTIONS);
+  const picked = pickIds(raw, ACTIONS);
+  return picked.length ? picked : DEFAULT_ACTIONS.slice();
+}
+
+function normalizeNiche(raw) {
+  const id = String(raw || '').trim();
+  return NICHES.some((item) => item.id === id) ? id : 'cnc';
 }
 
 function labelsFor(ids, catalog, lang) {
@@ -124,7 +145,7 @@ function listingText(company) {
     company && company.company_name ? `Name ZH: ${company.company_name}` : '',
     company && company.domain ? `Domain: ${company.domain}` : '',
     city ? `City: ${city}` : '',
-    'Niche: CNC machining, Shenzhen/Dongguan export',
+    company && company.niche ? `Niche: ${labelsFor([company.niche], NICHES, 'en')[0] || company.niche}` : '',
     profile.processes.length ? `Processes: ${labelsFor(profile.processes, PROCESSES, 'en').join(', ')}` : '',
     profile.materials.length ? `Materials: ${labelsFor(profile.materials, MATERIALS, 'en').join(', ')}` : '',
     profile.finishing.length ? `Finishing: ${labelsFor(profile.finishing, FINISHES, 'en').join(', ')}` : '',
@@ -189,14 +210,17 @@ function endpointRecord(company) {
 }
 
 module.exports = {
+  NICHES,
   CITIES,
   PROCESSES,
   MATERIALS,
   FINISHES,
   CERTS,
   ACTIONS,
+  DEFAULT_ACTIONS,
   normalizeProfile,
   normalizeActions,
+  normalizeNiche,
   cityLabel,
   displayCity,
   companyTitle,

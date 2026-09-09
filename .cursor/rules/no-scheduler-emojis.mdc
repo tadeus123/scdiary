@@ -1,0 +1,10 @@
+---
+description: Never use emojis in schedulers, outreach workers, or their emails
+alwaysApply: true
+---
+
+# No emojis in schedulers
+
+Never use emojis in scheduled tasks, hourly workers, Gmail labels, outreach or follow-up emails, pipeline sheets, or playbook copy for Airsup supplier growth.
+
+Plain text only. No decorative symbols in subject lines or labels.
