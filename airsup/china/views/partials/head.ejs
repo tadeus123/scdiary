@@ -1,3 +1,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="renderer" content="webkit">
+<meta name="force-rendering" content="webkit">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="applicable-device" content="pc,mobile">
+<meta name="format-detection" content="telephone=no">
+<meta itemprop="name" content="<%= seo.title %>">
+<% if (seo.description) { %>
+<meta itemprop="description" content="<%= seo.description %>">
+<% } %>
+<meta itemprop="image" content="<%= SITE_URL %>/og-image.png">
 <%- include('/partials/seo-head') %>
-<link rel="stylesheet" href="/airsup/china/china.css?v=3">
+<% if (typeof chinaCss === 'string' && chinaCss) { %>
+<style><%- chinaCss %></style>
+<% } else { %>
+<link rel="stylesheet" href="/airsup/china/china.css?v=4">
+<% } %>

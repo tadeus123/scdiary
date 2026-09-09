@@ -2,6 +2,7 @@
  * Airsup China company onboarding. Mounted at /airsup/china.
  * Isolated from people Airsup. Delete this folder to remove the company flow.
  */
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const ejs = require('ejs');
@@ -27,6 +28,16 @@ const peopleAuth = require('../auth');
 const router = express.Router();
 const VIEWS = path.join(__dirname, 'views');
 const SITE_VIEWS = path.join(__dirname, '../../views');
+const CHINA_CSS_PATH = path.join(__dirname, 'public/china.css');
+
+function readChinaCss() {
+  try {
+    return fs.readFileSync(CHINA_CSS_PATH, 'utf8');
+  } catch (error) {
+    console.error('Airsup china css missing:', error.message);
+    return '';
+  }
+}
 
 router.use(express.static(path.join(__dirname, 'public'), { index: false, redirect: false }));
 
@@ -38,13 +49,25 @@ function langFrom(req, res) {
   return session.setLang(req, res, session.readLang(req));
 }
 
+let proofCache = { at: 0, data: proofPayload([]) };
+
 async function proof() {
-  if (!db.isConfigured()) return proofPayload([]);
+  const now = Date.now();
+  if (now - proofCache.at < 60 * 1000) return proofCache.data;
+  if (!db.isConfigured()) return proofCache.data;
   try {
-    return proofPayload(await db.listCompanies());
+    const data = await Promise.race([
+      db.listCompanies().then(proofPayload),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('proof timeout')), 1800)),
+    ]);
+    proofCache = { at: now, data };
+    return data;
   } catch (error) {
-    console.error('Airsup china proof error:', error);
-    return proofPayload([]);
+    if (error && error.message !== 'proof timeout') {
+      console.error('Airsup china proof error:', error);
+    }
+    proofCache = { at: now, data: proofCache.data };
+    return proofCache.data;
   }
 }
 
@@ -58,6 +81,7 @@ function render(req, res, viewName, extra = {}) {
     otherLang: otherLang(lang),
     t: (key) => t(lang, key),
     here: `/airsup/china${req.path === '/' ? '' : req.path}`,
+    chinaCss: readChinaCss(),
     proofLine: extra.proof && (lang === 'en' ? extra.proof.line_en : extra.proof.line_zh),
     ...extra,
   };
@@ -88,12 +112,17 @@ function setSeo(req, res, { title, description, noindex }) {
     noindex: noindex !== false,
     includePersonSchema: false,
     ogLocale: (res.locals.lang === 'en' ? 'en_US' : 'zh_CN'),
+    ogImage: '/og-image.png',
   };
 }
 
 router.use(async (req, res, next) => {
   const lang = langFrom(req, res);
   res.locals.lang = lang;
+  res.set('Content-Language', lang === 'en' ? 'en' : 'zh-CN');
+  if (req.method === 'GET' && !String(req.path || '').startsWith('/api/')) {
+    res.set('Cache-Control', 'private, max-age=60');
+  }
   setSeo(req, res, {
     title: t(lang, 'title_home'),
     description: t(lang, 'desc_home'),
@@ -381,6 +410,7 @@ router.post('/logout', async (req, res) => {
 });
 
 router.get('/api/proof', async (req, res) => {
+  res.set('Cache-Control', 'public, max-age=60');
   res.json(await proof());
 });
 

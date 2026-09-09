@@ -11,7 +11,7 @@
   margin: 0;
   background: #f3eadc;
   color: #1c1814;
-  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Heiti SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "WenQuanYi Micro Hei", sans-serif;
   line-height: 1.65;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -20,6 +20,8 @@
 
 .cn-page,
 .cn-body {
+  min-height: 100vh;
+  min-height: 100dvh;
   min-height: 100svh;
 }
 
@@ -56,7 +58,7 @@
   place-items: center;
   border: 1px solid #9b2433;
   color: #9b2433;
-  font-family: "Songti SC", "STSong", "Noto Serif SC", "SimSun", serif;
+  font-family: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", "Noto Serif SC", serif;
   font-size: 1.05rem;
   line-height: 1;
 }
@@ -138,7 +140,7 @@
 
 h1 {
   margin: 0 0 1rem;
-  font-family: "Songti SC", "STSong", "Noto Serif SC", "SimSun", serif;
+  font-family: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", "Noto Serif SC", serif;
   font-size: clamp(1.55rem, 5.4vw, 2.55rem);
   font-weight: 600;
   line-height: 1.28;
@@ -220,7 +222,7 @@ h1 {
 }
 
 .cn-steps span {
-  font-family: "Songti SC", "STSong", serif;
+  font-family: "Songti SC", "STSong", "SimSun", serif;
   color: #9b2433;
   font-size: 0.95rem;
 }
@@ -239,7 +241,7 @@ h1 {
 .cn-form h2,
 .cn-form legend {
   margin: 0 0 1rem;
-  font-family: "Songti SC", "STSong", "Noto Serif SC", serif;
+  font-family: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", serif;
   font-size: 1.15rem;
   font-weight: 600;
 }
