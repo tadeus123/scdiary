@@ -43,14 +43,30 @@ assert.ok(mail.text.includes('https://www.tademehl.com/airsup/china/verify?token
 assert.ok(mail.html.includes('张工'));
 
 const { COPY } = require('./i18n');
+const { genericDemo, personalizedDemo, guessNiche } = require('./demo');
+const { isBlockedHost, isPrivateIp, stripHtml } = require('./site-preview');
 const emoji = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
 for (const lang of Object.keys(COPY)) {
   for (const [key, value] of Object.entries(COPY[lang])) {
     assert.ok(!emoji.test(String(value)), `emoji in ${lang}.${key}`);
   }
 }
-assert.ok(COPY.zh.hero.includes('西方客户'));
-assert.ok(COPY.zh.price.includes('厂家免费'));
+assert.ok(COPY.zh.hero.includes('ChatGPT'));
+assert.ok(COPY.zh.price.includes('免费'));
 assert.ok(COPY.en.price.toLowerCase().includes('free for suppliers'));
+assert.ok(COPY.zh.sim_badge.includes('模拟'));
+assert.ok(COPY.en.sim_badge.toLowerCase().includes('simulation'));
+assert.ok(!emoji.test(JSON.stringify(genericDemo('zh'))));
+assert.ok(!emoji.test(JSON.stringify(genericDemo('en'))));
+
+const demo = genericDemo('en');
+assert.ok(demo.chatgptBuyer.toLowerCase().includes('dongguan'));
+assert.strictEqual(demo.agents.length, 4);
+const own = personalizedDemo('en', { domain: 'acme-mold.com', companyName: 'Acme Mold', city: 'Dongguan', niche: 'injection' });
+assert.ok(own.suppliers[0].name.includes('Acme Mold'));
+assert.strictEqual(guessNiche('PA66 injection molding 注塑'), 'injection');
+assert.strictEqual(isBlockedHost('localhost'), true);
+assert.strictEqual(isPrivateIp('127.0.0.1'), true);
+assert.ok(stripHtml('<title>Hi</title><p>Factory</p>').includes('Factory'));
 
 console.log('airsup china tests passed');

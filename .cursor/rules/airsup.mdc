@@ -22,7 +22,7 @@ This is not a chatbot on the factory website. It is an AI-native supplier networ
 3. People Airsup stays ChatGPT-to-ChatGPT (Gmail wake). Factory endpoints do **not** get a ChatGPT worker. Factory replies use the existing Vercel `OPENAI_API_KEY`. The model may only use published supplier fields. Private/internal data stays out unless the factory published it.
 4. The buyer-side plugin talks to that factory endpoint. Back-and-forth until a qualified RFQ exists, then email the factory mailbox.
 
-Do not sell “an endpoint” to factories. The story is: when Western buyers search in ChatGPT, Airsup lets those AIs find the factory and send qualified projects.
+Supplier-facing story: “Make your company reachable from ChatGPT.” Domain -> verified Airsup endpoint -> ChatGPT/Claude. Do not sell an AI employee or a website chatbot. The onboarding page shows a labeled simulation first, then a website preview, then domain verify. Never present a simulation as a real buyer or a real ChatGPT session.
 
 ## Do not
 - Import `server/db/supabase.js`, diary routes, or admin routes from Airsup

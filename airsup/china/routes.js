@@ -10,6 +10,8 @@ const db = require('./db');
 const session = require('./session');
 const { t, otherLang } = require('./i18n');
 const { domainMatches } = require('./domain');
+const { genericDemo } = require('./demo');
+const { buildPreview } = require('./site-preview');
 const {
   NICHES,
   CITIES,
@@ -158,6 +160,7 @@ router.get(['/', ''], async (req, res) => {
     error: null,
     cities: CITIES,
     source: String(req.query.ref || 'web').slice(0, 40),
+    genericDemo: genericDemo(langFrom(req, res)),
   });
 });
 
@@ -170,23 +173,68 @@ router.get('/lang/:code', (req, res) => {
   res.redirect(url.pathname + url.search);
 });
 
+async function renderPreview(req, res, { website, form, error, source }) {
+  const lang = langFrom(req, res);
+  const built = await buildPreview(website, lang);
+  if (!built.ok) {
+    return render(req, res, 'home.ejs', {
+      proof: await proof(),
+      form: { website: website || '', email: '', contact: '', city: 'shenzhen' },
+      error: t(lang, built.error || 'err_website'),
+      cities: CITIES,
+      source: source || 'web',
+      genericDemo: genericDemo(lang),
+    });
+  }
+  const nextForm = form || { website: built.website, email: '', contact: '', city: 'shenzhen' };
+  return render(req, res, 'preview.ejs', {
+    proof: await proof(),
+    form: { ...nextForm, website: nextForm.website || built.website },
+    error: error || null,
+    cities: CITIES,
+    source: source || 'web',
+    preview: built,
+    here: `/airsup/china/preview?w=${encodeURIComponent(built.domain)}`,
+  });
+}
+
+router.post('/preview', async (req, res) => {
+  const requestedLang = String((req.body && req.body.locale) || '');
+  if (requestedLang === 'en' || requestedLang === 'zh') session.setLang(req, res, requestedLang);
+  const website = String((req.body && req.body.website) || '');
+  const source = String((req.body && req.body.source) || 'web').slice(0, 40);
+  if (!peopleAuth.allowedOrigin(req)) {
+    return renderPreview(req, res, { website, error: t(langFrom(req, res), 'err_origin'), source });
+  }
+  const built = await buildPreview(website, langFrom(req, res));
+  if (!built.ok) {
+    return renderPreview(req, res, { website, error: t(langFrom(req, res), built.error || 'err_website'), source });
+  }
+  return res.redirect(`/airsup/china/preview?w=${encodeURIComponent(built.domain)}&ref=${encodeURIComponent(source)}`);
+});
+
+router.get('/preview', async (req, res) => {
+  const website = String(req.query.w || req.query.website || '');
+  if (!website) return res.redirect('/airsup/china');
+  const source = String(req.query.ref || 'web').slice(0, 40);
+  return renderPreview(req, res, { website, source });
+});
+
 router.post('/start', async (req, res) => {
   const requestedLang = String((req.body && req.body.locale) || '');
   const lang = requestedLang === 'en' || requestedLang === 'zh'
     ? session.setLang(req, res, requestedLang)
     : langFrom(req, res);
-  const proofNow = await proof();
   const website = String((req.body && req.body.website) || '');
   const email = String((req.body && req.body.email) || '');
   const contact = String((req.body && req.body.contact) || '').trim();
   const city = String((req.body && req.body.city) || 'shenzhen');
   const form = { website, email, contact, city };
   const source = String((req.body && req.body.source) || 'web').slice(0, 40);
-  const fail = (errorKey) => render(req, res, 'home.ejs', {
-    proof: proofNow,
+  const fail = (errorKey) => renderPreview(req, res, {
+    website,
     form,
     error: t(lang, errorKey),
-    cities: CITIES,
     source,
   });
   if (!peopleAuth.allowedOrigin(req)) return fail('err_origin');

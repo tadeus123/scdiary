@@ -1,0 +1,40 @@
+<% if (typeof demo !== 'undefined' && demo) { %>
+  <p class="cn-sim"><%= t('sim_badge') %></p>
+  <section class="cn-gpt" aria-label="<%= t('chat_frame') %>">
+    <header class="cn-gpt-bar">
+      <span><%= t('chat_frame') %></span>
+    </header>
+    <div class="cn-gpt-body">
+      <div class="cn-bubble cn-bubble-user">
+        <p><%= demo.chatgptBuyer %></p>
+      </div>
+      <ul class="cn-status">
+        <% (demo.statusLines || []).forEach((line) => { %>
+          <li><%= line %></li>
+        <% }) %>
+      </ul>
+      <div class="cn-a2a">
+        <p class="cn-a2a-title"><%= t('a2a_title') %></p>
+        <% (demo.agents || []).forEach((row) => { %>
+          <div class="cn-a2a-row cn-a2a-<%= row.from %>">
+            <span><%= row.from === 'factory' ? t('a2a_factory') : t('a2a_buyer') %></span>
+            <p><%= row.text %></p>
+          </div>
+        <% }) %>
+      </div>
+      <div class="cn-bubble cn-bubble-ai">
+        <p><%= demo.resultLead %></p>
+        <% (demo.suppliers || []).forEach((item) => { %>
+          <div class="cn-result">
+            <strong><%= item.name %></strong>
+            <ul>
+              <% (item.lines || []).forEach((line) => { %>
+                <li><%= line %></li>
+              <% }) %>
+            </ul>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  </section>
+<% } %>

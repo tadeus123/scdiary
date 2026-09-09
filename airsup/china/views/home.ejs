@@ -6,71 +6,50 @@
 </head>
 <body class="cn-body">
   <%- include('partials/header') %>
-  <main class="cn-main">
-    <div class="cn-flow">
-      <section class="cn-hero-copy">
-        <h1><%= t('hero') %></h1>
-        <p class="cn-lead"><%= t('lead') %></p>
-        <p class="cn-price"><%= t('price') %></p>
-        <ul class="cn-gets">
-          <li><%= t('get1') %></li>
-          <li><%= t('get2') %></li>
-          <li><%= t('get3') %></li>
-        </ul>
-        <p class="cn-proof"><%= proofLine %></p>
-        <p class="cn-tade"><%= t('in_china') %></p>
-      </section>
+  <main class="cn-main cn-home">
+    <section class="cn-hero-copy">
+      <h1><%= t('hero') %></h1>
+      <p class="cn-lead"><%= t('lead') %></p>
+      <p class="cn-price"><%= t('price') %></p>
+    </section>
 
-      <table class="cn-spec">
-        <caption><%= t('spec_title') %></caption>
-        <tbody>
-          <tr><th><%= t('spec_region') %></th><td><%= t('spec_region_v') %></td></tr>
-          <tr><th><%= t('spec_who') %></th><td><%= t('spec_who_v') %></td></tr>
-          <tr><th><%= t('spec_how') %></th><td><%= t('spec_how_v') %></td></tr>
-          <tr><th><%= t('spec_where') %></th><td><%= t('spec_where_v') %></td></tr>
-          <tr><th><%= t('spec_price') %></th><td><%= t('spec_price_v') %></td></tr>
-          <tr><th><%= t('spec_private') %></th><td><%= t('spec_private_v') %></td></tr>
-        </tbody>
-      </table>
+    <ol class="cn-chain">
+      <li><%= t('chain_site') %></li>
+      <li><%= t('chain_end') %></li>
+      <li><%= t('chain_ai') %></li>
+    </ol>
 
-      <ol class="cn-steps">
-        <li><span>01</span><p><%= t('step1') %></p></li>
-        <li><span>02</span><p><%= t('step2') %></p></li>
-        <li><span>03</span><p><%= t('step3') %></p></li>
-        <li><span>04</span><p><%= t('step4') %></p></li>
-      </ol>
+    <%- include('partials/demo', { demo: genericDemo }) %>
 
-      <form class="cn-form cn-signup" method="post" action="/airsup/china/start">
-        <h2><%= t('form_title') %></h2>
-        <% if (error) { %>
-          <p class="cn-error"><%= error %></p>
-        <% } %>
-        <label>
-          <span><%= t('website') %></span>
-          <input type="text" name="website" required value="<%= form.website || '' %>" placeholder="<%= t('website_ph') %>" autocomplete="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false">
-        </label>
-        <label>
-          <span><%= t('email') %></span>
-          <input type="email" name="email" required value="<%= form.email || '' %>" placeholder="<%= t('email_ph') %>" autocomplete="email" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false">
-        </label>
-        <label>
-          <span><%= t('contact') %></span>
-          <input type="text" name="contact" value="<%= form.contact || '' %>" placeholder="<%= t('contact_ph') %>" autocomplete="name">
-        </label>
-        <label>
-          <span><%= t('city') %></span>
-          <select name="city">
-            <% cities.forEach((city) => { %>
-              <option value="<%= city.id %>" <%= form.city === city.id ? 'selected' : '' %>><%= lang === 'en' ? city.en : city.zh %></option>
-            <% }) %>
-          </select>
-        </label>
-        <button type="submit"><%= t('submit') %></button>
-        <input type="hidden" name="source" value="<%= typeof source !== 'undefined' && source ? source : 'web' %>">
-        <input type="hidden" name="locale" value="<%= lang %>">
-        <p class="cn-note"><%= t('note') %></p>
-      </form>
-    </div>
+    <form class="cn-form cn-preview-form" method="post" action="/airsup/china/preview">
+      <h2><%= t('preview_title') %></h2>
+      <p class="cn-note"><%= t('preview_lead') %></p>
+      <% if (error) { %>
+        <p class="cn-error"><%= error %></p>
+      <% } %>
+      <label>
+        <span><%= t('website') %></span>
+        <input type="text" name="website" required value="<%= form.website || '' %>" placeholder="<%= t('website_only_ph') %>" autocomplete="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false">
+      </label>
+      <button type="submit"><%= t('preview_cta') %></button>
+      <input type="hidden" name="source" value="<%= typeof source !== 'undefined' && source ? source : 'web' %>">
+      <input type="hidden" name="locale" value="<%= lang %>">
+    </form>
+
+    <ul class="cn-gets">
+      <li><%= t('get1') %></li>
+      <li><%= t('get2') %></li>
+      <li><%= t('get3') %></li>
+    </ul>
+    <p class="cn-proof"><%= proofLine %></p>
+    <p class="cn-tade"><%= t('in_china') %></p>
+
+    <ol class="cn-steps">
+      <li><span>01</span><p><%= t('step1') %></p></li>
+      <li><span>02</span><p><%= t('step2') %></p></li>
+      <li><span>03</span><p><%= t('step3') %></p></li>
+      <li><span>04</span><p><%= t('step4') %></p></li>
+    </ol>
   </main>
   <%- include('partials/footer') %>
 </body>
