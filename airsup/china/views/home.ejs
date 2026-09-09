@@ -2,19 +2,19 @@
 <html lang="<%= lang === 'en' ? 'en' : 'zh-CN' %>">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <%- include('partials/head') %>
 </head>
 <body class="cn-body">
   <%- include('partials/header') %>
   <main class="cn-main">
-    <section class="cn-hero">
-      <div class="cn-hero-copy">
+    <div class="cn-flow">
+      <section class="cn-hero-copy">
         <h1><%= t('hero') %></h1>
         <p class="cn-lead"><%= t('lead') %></p>
         <p class="cn-proof"><%= proofLine %></p>
         <p class="cn-tade"><%= t('in_china') %></p>
-      </div>
+      </section>
+
       <table class="cn-spec">
         <caption><%= t('spec_title') %></caption>
         <tbody>
@@ -24,9 +24,7 @@
           <tr><th><%= t('spec_where') %></th><td><%= t('spec_where_v') %></td></tr>
         </tbody>
       </table>
-    </section>
 
-    <section class="cn-split">
       <ol class="cn-steps">
         <li><span>01</span><p><%= t('step1') %></p></li>
         <li><span>02</span><p><%= t('step2') %></p></li>
@@ -34,18 +32,18 @@
         <li><span>04</span><p><%= t('step4') %></p></li>
       </ol>
 
-      <form class="cn-form" method="post" action="/airsup/china/start">
+      <form class="cn-form cn-signup" method="post" action="/airsup/china/start">
         <h2><%= t('form_title') %></h2>
         <% if (error) { %>
           <p class="cn-error"><%= error %></p>
         <% } %>
         <label>
           <span><%= t('website') %></span>
-          <input type="text" name="website" required value="<%= form.website || '' %>" placeholder="<%= t('website_ph') %>" autocomplete="url">
+          <input type="text" name="website" required value="<%= form.website || '' %>" placeholder="<%= t('website_ph') %>" autocomplete="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false">
         </label>
         <label>
           <span><%= t('email') %></span>
-          <input type="email" name="email" required value="<%= form.email || '' %>" placeholder="<%= t('email_ph') %>" autocomplete="email">
+          <input type="email" name="email" required value="<%= form.email || '' %>" placeholder="<%= t('email_ph') %>" autocomplete="email" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false">
         </label>
         <label>
           <span><%= t('contact') %></span>
@@ -64,7 +62,7 @@
         <input type="hidden" name="locale" value="<%= lang %>">
         <p class="cn-note"><%= t('note') %></p>
       </form>
-    </section>
+    </div>
   </main>
   <%- include('partials/footer') %>
 </body>
