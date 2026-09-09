@@ -5,6 +5,8 @@ alwaysApply: true
 
 # No emojis in schedulers
 
-Never use emojis in scheduled tasks, hourly workers, Gmail labels, outreach or follow-up emails, pipeline sheets, or playbook copy for Airsup supplier growth.
+Never use emojis in scheduled tasks, hourly workers, Gmail labels, outreach or follow-up emails, pipeline sheets, Feedback tabs, or playbook copy for Airsup supplier growth.
+
+If an existing scheduled task title, email, label, or sheet header has an emoji, remove it. Do not add new ones.
 
 Plain text only. No decorative symbols in subject lines or labels.

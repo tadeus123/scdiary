@@ -15,6 +15,15 @@ description: Airsup lives in airsup/ only and must stay removable
 
 Manufacturer onboarding is a removable subslice. Code lives in `airsup/china/` only. Tables are `airsup_china_*` only — never `airsup_people`. Pitch: Western buyers find the factory inside AI (ChatGPT, Claude). Free for suppliers. Buyers pay. Success is domain verified + published so an Airsup user can actually interact — not signup alone. Never use emojis in scheduler/outreach copy. Gmail for the confirm link reuses the existing `tademehl@gmail.com` send grant. Remove with `airsup/china/REVERT.md`. Do not put China company UI on other pages.
 
+This is not a chatbot on the factory website. It is an AI-native supplier network:
+
+1. Factory verifies a mailbox on its real domain and publishes capabilities. That becomes a hidden registry entry keyed by domain. Nothing needs to appear on their site.
+2. A Western buyer uses the Airsup ChatGPT plugin (`find_people` / `send_message`). Discovery searches the verified registry (our database), not a live scrape of the factory website.
+3. People Airsup stays ChatGPT-to-ChatGPT (Gmail wake). Factory endpoints do **not** get a ChatGPT worker. Factory replies use the existing Vercel `OPENAI_API_KEY`. The model may only use published supplier fields. Private/internal data stays out unless the factory published it.
+4. The buyer-side plugin talks to that factory endpoint. Back-and-forth until a qualified RFQ exists, then email the factory mailbox.
+
+Do not sell “an endpoint” to factories. The story is: when Western buyers search in ChatGPT, Airsup lets those AIs find the factory and send qualified projects.
+
 ## Do not
 - Import `server/db/supabase.js`, diary routes, or admin routes from Airsup
 - Add Airsup links, buttons, or data to other pages
