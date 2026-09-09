@@ -1,0 +1,13 @@
+<header class="cn-top">
+  <div class="cn-top-inner">
+    <div class="cn-brand">
+      <span class="cn-brand-mark">端</span>
+      <div>
+        <p class="cn-brand-name"><%= t('brand') %></p>
+        <p class="cn-brand-kicker"><%= t('brand_kicker') %></p>
+      </div>
+    </div>
+    <p class="cn-place"><%= t('meta_place') %></p>
+    <a class="cn-lang" href="/airsup/china/lang/<%= otherLang %>?next=<%= encodeURIComponent(typeof here !== 'undefined' ? here : '/airsup/china') %>"><%= t('other_lang') %></a>
+  </div>
+</header>

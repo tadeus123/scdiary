@@ -290,4 +290,8 @@ router.options('/oauth/token', (req, res) => {
 
 router.all('/mcp', (req, res) => mcp.handleMcp(req, res));
 
+// AIRSUP-CHINA-BEGIN
+router.use('/china', require('./china/routes'));
+// AIRSUP-CHINA-END
+
 module.exports = router;

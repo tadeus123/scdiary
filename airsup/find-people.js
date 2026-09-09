@@ -29,17 +29,36 @@ async function findPeople(store, { callerPersonId, query, maximumResults }) {
     .filter((row) => row.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
-  return {
-    matches: scored.map(({ person }) => {
-      const match = {
-        person_id: person.person_id,
-        name: person.display_name || person.email,
-      };
-      const description = matchDescription(person, q);
-      if (description) match.description = description;
-      return match;
-    }),
-  };
+  const matches = scored.map(({ person }) => {
+    const match = {
+      person_id: person.person_id,
+      name: person.display_name || person.email,
+    };
+    const description = matchDescription(person, q);
+    if (description) match.description = description;
+    return match;
+  });
+  // AIRSUP-CHINA-BEGIN
+  try {
+    const chinaFind = require('./china/find');
+    const extra = await chinaFind.findForPlugin({
+      query: q,
+      limit,
+      excludeIds: [callerPersonId, ...matches.map((row) => row.person_id)],
+    });
+    for (const row of extra || []) {
+      if (matches.length >= limit) break;
+      matches.push({
+        person_id: row.person_id,
+        name: row.name,
+        ...(row.description ? { description: row.description } : {}),
+      });
+    }
+  } catch (error) {
+    console.error('Airsup china find skipped:', error.message);
+  }
+  // AIRSUP-CHINA-END
+  return { matches };
 }
 
 module.exports = {

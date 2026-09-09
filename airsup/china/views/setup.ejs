@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="<%= lang === 'en' ? 'en' : 'zh-CN' %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <%- include('partials/head') %>
+</head>
+<body class="cn-body">
+  <%- include('partials/header') %>
+  <main class="cn-main">
+    <div class="cn-setup-head">
+      <div>
+        <h1><%= t('setup_title') %></h1>
+        <p class="cn-lead"><%= t('setup_lead') %></p>
+        <p class="cn-meta"><%= t('verified_as') %> · <%= company.contact_email %> · <%= company.domain %></p>
+      </div>
+      <form method="post" action="/airsup/china/logout">
+        <button class="cn-text-btn" type="submit"><%= t('logout') %></button>
+      </form>
+    </div>
+    <% if (error) { %>
+      <p class="cn-error"><%= error %></p>
+    <% } %>
+    <% if (saved) { %>
+      <p class="cn-ok"><%= t('saved') %></p>
+    <% } %>
+    <form class="cn-form cn-setup" method="post" action="/airsup/china/setup">
+      <fieldset>
+        <legend><%= t('form_title') %></legend>
+        <div class="cn-grid">
+          <label>
+            <span><%= t('company_zh') %></span>
+            <input type="text" name="company_name" value="<%= company.company_name || '' %>">
+          </label>
+          <label>
+            <span><%= t('company_en') %></span>
+            <input type="text" name="company_name_en" value="<%= company.company_name_en || '' %>">
+          </label>
+          <label>
+            <span><%= t('city') %></span>
+            <select name="city">
+              <% catalogs.CITIES.forEach((city) => { %>
+                <option value="<%= city.id %>" <%= company.city === city.id ? 'selected' : '' %>><%= lang === 'en' ? city.en : city.zh %></option>
+              <% }) %>
+            </select>
+          </label>
+          <label>
+            <span><%= t('other_city') %></span>
+            <input type="text" name="other_city" value="<%= profile.other_city || '' %>">
+          </label>
+          <label>
+            <span><%= t('contact') %></span>
+            <input type="text" name="contact_name" value="<%= company.contact_name || '' %>">
+          </label>
+          <label>
+            <span><%= t('year') %></span>
+            <input type="text" name="year_founded" value="<%= profile.year_founded || '' %>">
+          </label>
+          <label>
+            <span><%= t('employees') %></span>
+            <input type="text" name="employees" value="<%= profile.employees || '' %>">
+          </label>
+          <label class="cn-span">
+            <span><%= t('address') %></span>
+            <input type="text" name="address" value="<%= profile.address || '' %>">
+          </label>
+          <label class="cn-span">
+            <span><%= t('export') %></span>
+            <input type="text" name="export_markets" value="<%= profile.export_markets || '' %>">
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend><%= t('cap_title') %></legend>
+        <p class="cn-label"><%= t('processes') %></p>
+        <div class="cn-checks">
+          <% catalogs.PROCESSES.forEach((item) => { %>
+            <label class="cn-check"><input type="checkbox" name="processes" value="<%= item.id %>" <%= profile.processes.includes(item.id) ? 'checked' : '' %>><span><%= lang === 'en' ? item.en : item.zh %></span></label>
+          <% }) %>
+        </div>
+        <p class="cn-label"><%= t('materials') %></p>
+        <div class="cn-checks">
+          <% catalogs.MATERIALS.forEach((item) => { %>
+            <label class="cn-check"><input type="checkbox" name="materials" value="<%= item.id %>" <%= profile.materials.includes(item.id) ? 'checked' : '' %>><span><%= lang === 'en' ? item.en : item.zh %></span></label>
+          <% }) %>
+        </div>
+        <p class="cn-label"><%= t('finishing') %></p>
+        <div class="cn-checks">
+          <% catalogs.FINISHES.forEach((item) => { %>
+            <label class="cn-check"><input type="checkbox" name="finishing" value="<%= item.id %>" <%= profile.finishing.includes(item.id) ? 'checked' : '' %>><span><%= lang === 'en' ? item.en : item.zh %></span></label>
+          <% }) %>
+        </div>
+        <p class="cn-label"><%= t('certs') %></p>
+        <div class="cn-checks">
+          <% catalogs.CERTS.forEach((item) => { %>
+            <label class="cn-check"><input type="checkbox" name="certifications" value="<%= item.id %>" <%= profile.certifications.includes(item.id) ? 'checked' : '' %>><span><%= lang === 'en' ? item.en : item.zh %></span></label>
+          <% }) %>
+        </div>
+        <div class="cn-grid">
+          <label class="cn-span">
+            <span><%= t('machines') %></span>
+            <textarea name="machines" rows="3"><%= profile.machines || '' %></textarea>
+          </label>
+          <label>
+            <span><%= t('tolerance') %></span>
+            <input type="text" name="tolerance" value="<%= profile.tolerance || '' %>" placeholder="±0.02 mm">
+          </label>
+          <label>
+            <span><%= t('max_workpiece') %></span>
+            <input type="text" name="max_workpiece" value="<%= profile.max_workpiece || '' %>">
+          </label>
+          <label>
+            <span><%= t('moq') %></span>
+            <input type="text" name="moq" value="<%= profile.moq || '' %>">
+          </label>
+          <label>
+            <span><%= t('lead_time') %></span>
+            <input type="text" name="lead_time" value="<%= profile.lead_time || '' %>">
+          </label>
+          <label class="cn-span">
+            <span><%= t('shipping') %></span>
+            <input type="text" name="shipping" value="<%= profile.shipping || '' %>">
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend><%= t('endpoint_title') %></legend>
+        <label>
+          <span><%= t('context') %></span>
+          <textarea name="context" rows="5" placeholder="<%= t('context_ph') %>"><%= company.context || '' %></textarea>
+        </label>
+        <label>
+          <span><%= t('goal') %></span>
+          <textarea name="goal" rows="3" placeholder="<%= t('goal_ph') %>"><%= company.goal || '' %></textarea>
+        </label>
+        <p class="cn-label"><%= t('actions') %></p>
+        <div class="cn-checks cn-checks-stack">
+          <% catalogs.ACTIONS.forEach((item) => { %>
+            <label class="cn-check"><input type="checkbox" name="actions" value="<%= item.id %>" <%= actions.includes(item.id) ? 'checked' : '' %>><span><%= lang === 'en' ? item.en : item.zh %></span></label>
+          <% }) %>
+        </div>
+      </fieldset>
+
+      <div class="cn-actions">
+        <button type="submit"><%= t('save') %></button>
+        <button type="submit" formaction="/airsup/china/publish" class="cn-primary"><%= t('publish') %></button>
+      </div>
+    </form>
+  </main>
+  <%- include('partials/footer') %>
+</body>
+</html>

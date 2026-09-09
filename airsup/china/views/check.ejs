@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="<%= lang === 'en' ? 'en' : 'zh-CN' %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <%- include('partials/head') %>
+</head>
+<body class="cn-body">
+  <%- include('partials/header') %>
+  <main class="cn-main cn-narrow">
+    <h1><%= t('check_title') %></h1>
+    <p class="cn-lead"><%= t('check_lead') %> <strong><%= email %></strong></p>
+    <p class="cn-tade"><%= t('check_from') %></p>
+    <p class="cn-proof"><%= proofLine %></p>
+    <p><a class="cn-text-link" href="/airsup/china"><%= t('check_again') %></a></p>
+  </main>
+  <%- include('partials/footer') %>
+</body>
+</html>

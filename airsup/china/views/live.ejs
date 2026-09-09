@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="<%= lang === 'en' ? 'en' : 'zh-CN' %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <%- include('partials/head') %>
+</head>
+<body class="cn-body">
+  <%- include('partials/header') %>
+  <main class="cn-main cn-narrow">
+    <p class="cn-stamp">已登记 · LIVE</p>
+    <h1><%= t('live_title') %></h1>
+    <p class="cn-lead"><%= t('live_lead') %></p>
+    <p class="cn-proof"><%= proofLine %></p>
+    <table class="cn-spec">
+      <tbody>
+        <tr><th><%= lang === 'en' ? 'Domain' : '域名' %></th><td><%= company.domain %></td></tr>
+        <tr><th><%= lang === 'en' ? 'Email' : '邮箱' %></th><td><%= company.contact_email %></td></tr>
+        <tr><th><%= lang === 'en' ? 'Status' : '状态' %></th><td>live</td></tr>
+      </tbody>
+    </table>
+    <p><a class="cn-text-link" href="/airsup/china/setup"><%= t('live_edit') %></a></p>
+  </main>
+  <%- include('partials/footer') %>
+</body>
+</html>

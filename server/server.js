@@ -90,6 +90,11 @@ const airsupRoutes = require('../airsup/routes');
 const airsupOauth = require('../airsup/oauth-plugin');
 app.use('/airsup', express.static(path.join(__dirname, '../airsup/public'), { index: false, redirect: false }));
 app.use('/airsup', airsupRoutes);
+// AIRSUP-CHINA-BEGIN
+app.get(['/tademehl/airsup/china', '/tademehl/airsup/china/'], (req, res) => {
+  res.redirect(301, '/airsup/china');
+});
+// AIRSUP-CHINA-END
 app.get('/.well-known/oauth-protected-resource', (req, res) => {
   res.json(airsupOauth.protectedResourceMetadata(req));
 });

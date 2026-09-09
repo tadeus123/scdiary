@@ -100,6 +100,15 @@ function createMcp({ store, mailer, sleep } = {}) {
       });
     }
     if (name === 'send_message') {
+      // AIRSUP-CHINA-BEGIN
+      try {
+        const chinaTalk = require('./china/talk');
+        const handled = await chinaTalk.maybeHandle(caller, args);
+        if (handled) return handled;
+      } catch (error) {
+        console.error('Airsup china talk skipped:', error.message);
+      }
+      // AIRSUP-CHINA-END
       return conversations.sendMessage(caller.person_id, args);
     }
     if (name === 'end_conversation') {

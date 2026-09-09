@@ -11,6 +11,10 @@ description: Airsup lives in airsup/ only and must stay removable
 - the marked `AIRSUP-BEGIN` / `AIRSUP-END` blocks in `server/server.js`
 - `"airsup/**"` in `vercel.json` includeFiles
 
+## China companies (`/airsup/china`)
+
+Manufacturer onboarding is a removable subslice. Code lives in `airsup/china/` only. Tables are `airsup_china_*` only — never `airsup_people`. Gmail for the confirm link reuses the existing `tademehl@gmail.com` send grant. Remove with `airsup/china/REVERT.md`. Do not put China company UI on other pages.
+
 ## Do not
 - Import `server/db/supabase.js`, diary routes, or admin routes from Airsup
 - Add Airsup links, buttons, or data to other pages

@@ -1,5 +1,10 @@
 -- Drop all Airsup tables. Does not touch diary tables.
 
+drop table if exists public.airsup_china_inquiries;
+drop table if exists public.airsup_china_sessions;
+drop table if exists public.airsup_china_tokens;
+drop table if exists public.airsup_china_companies;
+
 drop function if exists public.airsup_append_call_message cascade;
 drop function if exists public.airsup_expire_stale_calls cascade;
 drop function if exists public.airsup_hang_up cascade;
