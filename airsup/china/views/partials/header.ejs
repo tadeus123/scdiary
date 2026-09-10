@@ -1,13 +1,45 @@
 <header class="cn-top">
   <div class="cn-top-inner">
-    <div class="cn-brand">
-      <span class="cn-brand-mark">端</span>
-      <div>
-        <p class="cn-brand-name"><%= t('brand') %></p>
-        <p class="cn-brand-kicker"><%= t('brand_kicker') %></p>
-      </div>
+    <a class="cn-logo" href="/airsup/china">Airsup</a>
+    <% if (typeof landing !== 'undefined' && landing) { %>
+      <nav class="cn-nav" id="cn-nav">
+        <a href="#why"><%= t('nav_why') %></a>
+        <a href="#how"><%= t('nav_how') %></a>
+        <a href="#control"><%= t('nav_control') %></a>
+        <a href="#examples"><%= t('nav_examples') %></a>
+        <a href="#faq"><%= t('nav_faq') %></a>
+      </nav>
+    <% } %>
+    <div class="cn-top-actions">
+    <a class="cn-lang" href="/airsup/china/lang/<%= otherLang %>?next=<%= encodeURIComponent(typeof here !== 'undefined' ? here : '/airsup/china') %>">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M1.5 7h11M7 1.5c2 2.2 2 8.8 0 11M7 1.5c-2 2.2-2 8.8 0 11" stroke="currentColor" stroke-width="1.2"/></svg>
+      <%= t('other_lang') %>
+    </a>
+      <a class="cn-btn cn-btn-nav" href="/airsup/china#activate"><%= t('cta_activate') %></a>
+      <% if (typeof landing !== 'undefined' && landing) { %>
+        <button class="cn-burger" type="button" id="cn-burger" aria-expanded="false" aria-controls="cn-nav" aria-label="<%= t('menu') %>"><span></span><span></span><span></span></button>
+      <% } %>
     </div>
-    <p class="cn-place"><%= t('meta_place') %></p>
-    <a class="cn-lang" href="/airsup/china/lang/<%= otherLang %>?next=<%= encodeURIComponent(typeof here !== 'undefined' ? here : '/airsup/china') %>"><%= t('other_lang') %></a>
   </div>
 </header>
+<% if (typeof landing !== 'undefined' && landing) { %>
+<script>
+(function () {
+  var btn = document.getElementById('cn-burger');
+  var nav = document.getElementById('cn-nav');
+  if (!btn || !nav) return;
+  btn.addEventListener('click', function () {
+    var open = nav.classList.toggle('is-open');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    document.body.classList.toggle('cn-nav-open', open);
+  });
+  nav.querySelectorAll('a').forEach(function (link) {
+    link.addEventListener('click', function () {
+      nav.classList.remove('is-open');
+      btn.setAttribute('aria-expanded', 'false');
+      document.body.classList.remove('cn-nav-open');
+    });
+  });
+})();
+</script>
+<% } %>

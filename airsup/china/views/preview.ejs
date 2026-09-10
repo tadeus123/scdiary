@@ -6,20 +6,17 @@
 </head>
 <body class="cn-body">
   <%- include('partials/header') %>
-  <main class="cn-main cn-home">
-    <p><a class="cn-text-link" href="/airsup/china"><%= t('preview_back') %></a></p>
+  <main class="cn-wrap cn-inner">
+    <p><a class="cn-btn-ghost" href="/airsup/china"><%= t('preview_back') %></a></p>
     <h1><%= preview.companyName || preview.domain %></h1>
     <p class="cn-lead"><%= preview.fromSite ? t('preview_from_site') : t('preview_from_domain') %></p>
     <p class="cn-price"><%= preview.website %></p>
-
-    <ol class="cn-chain">
-      <li><%= preview.domain %></li>
-      <li><%= t('chain_end') %></li>
-      <li><%= t('chain_ai') %></li>
-    </ol>
-
-    <%- include('partials/demo', { demo: preview.demo }) %>
-
+    <%- include('partials/diagram', {
+      query: preview.demo && preview.demo.chatgptBuyer,
+      companyName: preview.companyName,
+      domain: preview.domain,
+      capabilities: (preview.capabilities && preview.capabilities.length) ? preview.capabilities : (preview.demo && preview.demo.suppliers && preview.demo.suppliers[0] && preview.demo.suppliers[0].lines) || []
+    }) %>
     <form class="cn-form cn-signup" method="post" action="/airsup/china/start">
       <h2><%= t('activate') %></h2>
       <% if (error) { %>
@@ -45,7 +42,7 @@
           <% }) %>
         </select>
       </label>
-      <button type="submit"><%= t('submit') %></button>
+      <button class="cn-btn" type="submit"><%= t('submit') %></button>
       <input type="hidden" name="source" value="<%= typeof source !== 'undefined' && source ? source : 'web' %>">
       <input type="hidden" name="locale" value="<%= lang %>">
       <p class="cn-note"><%= t('note') %></p>

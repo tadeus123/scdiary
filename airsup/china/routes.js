@@ -85,6 +85,7 @@ function render(req, res, viewName, extra = {}) {
     otherLang: otherLang(lang),
     t: (key) => t(lang, key),
     here: `/airsup/china${req.path === '/' ? '' : req.path}`,
+    landing: extra.landing !== undefined ? extra.landing : viewName === 'home.ejs',
     chinaCss: readChinaCss(),
     proofLine: extra.proof && (lang === 'en' ? extra.proof.line_en : extra.proof.line_zh),
     ...extra,
