@@ -383,6 +383,19 @@ function readSetup(body) {
   };
 }
 
+async function showSetup(req, res, { company, error, saved, paused }) {
+  return render(req, res, 'setup.ejs', {
+    proof: await proof(),
+    company,
+    profile: normalizeProfile(company.profile),
+    actions: normalizeActions(company.actions),
+    catalogs: { NICHES, CITIES, PROCESSES, MATERIALS, FINISHES, CERTS, ACTIONS },
+    error: error || null,
+    saved: Boolean(saved),
+    paused: Boolean(paused),
+  });
+}
+
 router.get('/setup', async (req, res) => {
   const company = await requireCompany(req, res);
   if (!company) return;
@@ -392,12 +405,8 @@ router.get('/setup', async (req, res) => {
       company,
     });
   }
-  render(req, res, 'setup.ejs', {
-    proof: await proof(),
+  return showSetup(req, res, {
     company,
-    profile: normalizeProfile(company.profile),
-    actions: normalizeActions(company.actions),
-    catalogs: { NICHES, CITIES, PROCESSES, MATERIALS, FINISHES, CERTS, ACTIONS },
     error: req.query.error === 'publish' ? t(langFrom(req, res), 'err_publish') : null,
     saved: req.query.saved === '1',
     paused: req.query.paused === '1',
@@ -409,21 +418,14 @@ router.post('/setup', async (req, res) => {
   if (!peopleAuth.allowedOrigin(req)) return res.redirect('/airsup/china');
   const company = await requireCompany(req, res);
   if (!company) return;
+  const patch = readSetup(req.body || {});
+  const next = { ...company, ...patch };
   try {
-    const patch = readSetup(req.body || {});
     await db.updateCompany(company.company_id, patch);
     return res.redirect('/airsup/china/setup?saved=1');
   } catch (error) {
     console.error('Airsup china setup error:', error);
-    render(req, res, 'setup.ejs', {
-      proof: await proof(),
-      company,
-      profile: normalizeProfile(company.profile),
-      actions: normalizeActions(company.actions),
-      catalogs: { NICHES, CITIES, PROCESSES, MATERIALS, FINISHES, CERTS, ACTIONS },
-      error: t(lang, 'err_db'),
-      saved: false,
-    });
+    return showSetup(req, res, { company: next, error: t(lang, 'err_db') });
   }
 });
 
@@ -432,10 +434,13 @@ router.post('/publish', async (req, res) => {
   if (!peopleAuth.allowedOrigin(req)) return res.redirect('/airsup/china');
   const company = await requireCompany(req, res);
   if (!company) return;
+  const patch = readSetup(req.body || {});
+  const next = { ...company, ...patch };
   try {
-    const patch = readSetup(req.body || {});
-    const next = { ...company, ...patch };
-    if (!canPublish(next)) return res.redirect('/airsup/china/setup?error=publish');
+    if (!canPublish(next)) {
+      await db.updateCompany(company.company_id, patch);
+      return res.redirect('/airsup/china/setup?error=publish');
+    }
     await db.updateCompany(company.company_id, {
       ...patch,
       status: 'live',
@@ -445,14 +450,9 @@ router.post('/publish', async (req, res) => {
     return res.redirect('/airsup/china/setup?ok=live');
   } catch (error) {
     console.error('Airsup china publish error:', error);
-    render(req, res, 'setup.ejs', {
-      proof: await proof(),
-      company,
-      profile: normalizeProfile(company.profile),
-      actions: normalizeActions(company.actions),
-      catalogs: { NICHES, CITIES, PROCESSES, MATERIALS, FINISHES, CERTS, ACTIONS },
-      error: t(lang, 'err_db'),
-      saved: false,
+    return showSetup(req, res, {
+      company: next,
+      error: canPublish(next) ? t(lang, 'err_db') : t(lang, 'err_publish'),
     });
   }
 });
