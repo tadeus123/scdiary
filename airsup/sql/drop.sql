@@ -1,5 +1,7 @@
 -- Drop all Airsup tables. Does not touch diary tables.
 
+drop table if exists public.airsup_china_messages;
+drop table if exists public.airsup_china_threads;
 drop table if exists public.airsup_china_inquiries;
 drop table if exists public.airsup_china_sessions;
 drop table if exists public.airsup_china_tokens;

@@ -51,8 +51,17 @@ function formatToolResult(data) {
 async function formatWidgetResult(store, caller, data) {
   const result = formatToolResult(data);
   if (!caller || !data || !data.conversation_id) return result;
+  let panel = await conversationPanel(store, caller.person_id, data.conversation_id);
+  // AIRSUP-CHINA-BEGIN
+  try {
+    const chinaTalk = require('./china/talk');
+    panel = await chinaTalk.mergePanel(caller, data.conversation_id, panel);
+  } catch (error) {
+    console.error('Airsup china panel skipped:', error.message);
+  }
+  // AIRSUP-CHINA-END
   result._meta = {
-    ui: { panel: await conversationPanel(store, caller.person_id, data.conversation_id) },
+    ui: { panel },
   };
   return result;
 }
@@ -112,6 +121,15 @@ function createMcp({ store, mailer, sleep } = {}) {
       return conversations.sendMessage(caller.person_id, args);
     }
     if (name === 'end_conversation') {
+      // AIRSUP-CHINA-BEGIN
+      try {
+        const chinaTalk = require('./china/talk');
+        const ended = await chinaTalk.maybeEnd(caller, args && args.conversation_id);
+        if (ended) return ended;
+      } catch (error) {
+        console.error('Airsup china end skipped:', error.message);
+      }
+      // AIRSUP-CHINA-END
       return conversations.endConversation(caller.person_id, args && args.conversation_id);
     }
     const error = new Error(`Unknown tool: ${name}`);
@@ -148,7 +166,16 @@ function createMcp({ store, mailer, sleep } = {}) {
         error.code = -32000;
         throw error;
       }
-      return conversationResourceContents(backing, caller.person_id, params.uri);
+      let contents = await conversationResourceContents(backing, caller.person_id, params.uri);
+      // AIRSUP-CHINA-BEGIN
+      try {
+        const chinaTalk = require('./china/talk');
+        contents = await chinaTalk.mergeResourceContents(caller, params.uri, contents);
+      } catch (error) {
+        console.error('Airsup china resource skipped:', error.message);
+      }
+      // AIRSUP-CHINA-END
+      return contents;
     }
     if (method === 'prompts/list') return { prompts: [] };
     if (method === 'tools/call') {

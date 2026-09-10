@@ -116,6 +116,81 @@ async function insertInquiry(row) {
   return data;
 }
 
+async function insertThread(row) {
+  const db = requireDb();
+  const { data, error } = await db.from('airsup_china_threads').insert(row).select('*').single();
+  if (error) throw error;
+  return data;
+}
+
+async function getThread(conversationId) {
+  const db = requireDb();
+  const { data, error } = await db
+    .from('airsup_china_threads')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+async function findOpenThread(companyId, callerPersonId) {
+  const db = requireDb();
+  if (!companyId || !callerPersonId) return null;
+  const { data, error } = await db
+    .from('airsup_china_threads')
+    .select('*')
+    .eq('company_id', companyId)
+    .eq('caller_person_id', callerPersonId)
+    .eq('status', 'open')
+    .order('updated_at', { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  return (data && data[0]) || null;
+}
+
+async function listThreadsForCaller(callerPersonId) {
+  const db = requireDb();
+  if (!callerPersonId) return [];
+  const { data, error } = await db
+    .from('airsup_china_threads')
+    .select('*')
+    .eq('caller_person_id', callerPersonId)
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+async function updateThread(conversationId, patch) {
+  const db = requireDb();
+  const { data, error } = await db
+    .from('airsup_china_threads')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('conversation_id', conversationId)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function insertMessage(row) {
+  const db = requireDb();
+  const { data, error } = await db.from('airsup_china_messages').insert(row).select('*').single();
+  if (error) throw error;
+  return data;
+}
+
+async function listMessages(conversationId) {
+  const db = requireDb();
+  const { data, error } = await db
+    .from('airsup_china_messages')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
 module.exports = {
   isConfigured,
   getByDomain,
@@ -130,4 +205,11 @@ module.exports = {
   getSession,
   deleteSession,
   insertInquiry,
+  insertThread,
+  getThread,
+  findOpenThread,
+  listThreadsForCaller,
+  updateThread,
+  insertMessage,
+  listMessages,
 };

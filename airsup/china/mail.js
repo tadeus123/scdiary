@@ -184,10 +184,78 @@ async function sendInquiryNotice({ company, message, callerName }) {
   await sendRaw(mail);
 }
 
+function reasonLabel(reason, lang) {
+  const zh = {
+    rfq: '合格询盘，请跟进报价',
+    sales_contact: '采购希望销售联系',
+    call: '采购希望电话沟通',
+    visit: '采购希望看厂',
+  };
+  const en = {
+    rfq: 'Qualified RFQ to follow up',
+    sales_contact: 'Buyer asked sales to make contact',
+    call: 'Buyer asked for a call',
+    visit: 'Buyer asked for a factory visit',
+  };
+  const map = lang === 'en' ? en : zh;
+  return map[reason] || map.rfq;
+}
+
+function formatRfq(rfq) {
+  const row = rfq && typeof rfq === 'object' ? rfq : {};
+  return [
+    `Qty: ${row.quantity || '-'}`,
+    `Material: ${row.material || '-'}`,
+    `Tolerance: ${row.tolerance || '-'}`,
+    `Finish: ${row.finish || '-'}`,
+    `Date: ${row.target_date || '-'}`,
+    `Destination: ${row.destination || '-'}`,
+    `Drawings: ${row.drawings || '-'}`,
+    row.notes ? `Notes: ${row.notes}` : '',
+  ].filter(Boolean).join('\n');
+}
+
+function factoryNoticeMail({ lang, company, callerName, message, reply, rfq, reason }) {
+  const name = String((company && company.contact_name) || '').trim();
+  const buyer = String(callerName || 'Airsup').trim() || 'Airsup';
+  const whyZh = reasonLabel(reason, 'zh');
+  const whyEn = reasonLabel(reason, 'en');
+  const spec = formatRfq(rfq);
+  const zhBody = `有采购通过 Airsup 联系贵司端点。\n\n原因：${whyZh}\n来自：${buyer}\n\n询盘字段：\n${spec}\n\n最新问题：\n${message}\n\n端点答复：\n${reply}\n\n如需改口，请打开设置页更新已发布内容。`;
+  const enBody = `A buyer reached your Airsup endpoint.\n\nReason: ${whyEn}\nFrom: ${buyer}\n\nRFQ fields:\n${spec}\n\nLatest question:\n${message}\n\nEndpoint reply:\n${reply}\n\nUpdate the setup page if the published answer should change.`;
+  const body = lang === 'en' ? `${enBody}\n\n${zhBody}` : `${zhBody}\n\n${enBody}`;
+  const subject = lang === 'en'
+    ? `${t('en', 'inquiry_subject')} / ${t('zh', 'inquiry_subject')}`
+    : `${t('zh', 'inquiry_subject')} / ${t('en', 'inquiry_subject')}`;
+  const inner = `<p style="font-size:15px;line-height:1.7;white-space:pre-wrap;">${escapeHtml(body)}</p>`;
+  return {
+    to: company.contact_email,
+    subject,
+    text: `${name ? `${lang === 'en' ? 'Hello' : '您好'} ${name}\n\n` : ''}${body}`,
+    html: mailShell(inner, lang),
+  };
+}
+
+async function sendFactoryNotice({ company, callerName, message, reply, rfq, reason }) {
+  if (!company || !company.contact_email) return;
+  const mail = factoryNoticeMail({
+    lang: company.locale === 'en' ? 'en' : 'zh',
+    company,
+    callerName,
+    message,
+    reply,
+    rfq,
+    reason,
+  });
+  await sendRaw(mail);
+}
+
 module.exports = {
   encodeSubject,
   rfc822,
   verifyMail,
   sendVerifyEmail,
   sendInquiryNotice,
+  sendFactoryNotice,
+  factoryNoticeMail,
 };

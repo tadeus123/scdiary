@@ -63,17 +63,58 @@ create table if not exists public.airsup_china_inquiries (
 create index if not exists airsup_china_inquiries_company_idx
   on public.airsup_china_inquiries (company_id, created_at desc);
 
+alter table public.airsup_china_inquiries
+  add column if not exists conversation_id uuid;
+
+create table if not exists public.airsup_china_threads (
+  conversation_id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.airsup_china_companies (company_id) on delete cascade,
+  caller_person_id uuid,
+  status text not null default 'open',
+  rfq jsonb not null default '{}'::jsonb,
+  notify_reasons jsonb not null default '[]'::jsonb,
+  emailed_at timestamptz,
+  ended_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint airsup_china_threads_status_chk check (status in ('open', 'ended'))
+);
+
+create index if not exists airsup_china_threads_caller_idx
+  on public.airsup_china_threads (caller_person_id, status);
+
+create index if not exists airsup_china_threads_company_idx
+  on public.airsup_china_threads (company_id, updated_at desc);
+
+create table if not exists public.airsup_china_messages (
+  message_id uuid primary key default gen_random_uuid(),
+  conversation_id uuid not null references public.airsup_china_threads (conversation_id) on delete cascade,
+  role text not null,
+  body text not null default '',
+  created_at timestamptz not null default now(),
+  constraint airsup_china_messages_role_chk check (role in ('buyer', 'factory'))
+);
+
+create index if not exists airsup_china_messages_thread_idx
+  on public.airsup_china_messages (conversation_id, created_at);
+
 alter table public.airsup_china_companies enable row level security;
 alter table public.airsup_china_tokens enable row level security;
 alter table public.airsup_china_sessions enable row level security;
 alter table public.airsup_china_inquiries enable row level security;
+alter table public.airsup_china_threads enable row level security;
+alter table public.airsup_china_messages enable row level security;
 
 revoke all on table public.airsup_china_companies from anon, authenticated, public;
 revoke all on table public.airsup_china_tokens from anon, authenticated, public;
 revoke all on table public.airsup_china_sessions from anon, authenticated, public;
 revoke all on table public.airsup_china_inquiries from anon, authenticated, public;
+revoke all on table public.airsup_china_threads from anon, authenticated, public;
+revoke all on table public.airsup_china_messages from anon, authenticated, public;
 
 grant all on table public.airsup_china_companies to service_role;
 grant all on table public.airsup_china_tokens to service_role;
 grant all on table public.airsup_china_sessions to service_role;
 grant all on table public.airsup_china_inquiries to service_role;
+grant all on table public.airsup_china_threads to service_role;
+grant all on table public.airsup_china_messages to service_role;
