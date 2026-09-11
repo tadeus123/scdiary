@@ -119,4 +119,37 @@ assert(now.open === 610, `open ${now.open}`);
 assert(now.current === -604.64, `current ${now.current}`);
 assert(now.points[0].balance === -499.85, `graph start ${now.points[0].balance}`);
 
+const { buildLiquidityFetchView } = require('../utils/liquidity-fetch');
+const fetchView = buildLiquidityFetchView({
+  series: {
+    current: -604.64,
+    bank: -14.34,
+    cash: 19.7,
+    open: 610,
+    points: [{
+      at: start,
+      balance: -499.85,
+      bank: -499.85,
+      cash: 0,
+      open: 0,
+      delta: 0,
+      kind: 'start',
+      note: 'starting bank',
+      currency: 'EUR',
+      amount: 499.85
+    }]
+  },
+  recurring: [
+    { name: 'rent', day_of_month: 1, direction: 'out', amount_usd: -800, amount: 800 },
+    { name: 'salary', day_of_month: 28, direction: 'in', amount_usd: 2000, amount: 2000 }
+  ],
+  runway: { label: 'cash runway: 2 months', expenses_usd: 800 }
+});
+assert(fetchView.monthly.length === 2, `monthly count ${fetchView.monthly.length}`);
+assert(fetchView.monthly[0].name === 'rent', `monthly first ${fetchView.monthly[0].name}`);
+assert(fetchView.monthly[0].amount === '−€800.00', `monthly rent ${fetchView.monthly[0].amount}`);
+assert(fetchView.monthlyTotal === '−€800.00', `monthly total ${fetchView.monthlyTotal}`);
+assert(fetchView.points[0].note === 'starting bank', `graph note ${fetchView.points[0].note}`);
+assert(fetchView.now === '−€604.64', `fetch now ${fetchView.now}`);
+
 console.log('liquidity series ok');

@@ -30,6 +30,7 @@ const {
   isConfigured
 } = require('../db/supabase');
 const { loadLiquidityGraph } = require('../utils/liquidity-graph');
+const { buildLiquidityFetchView, emptyPayload, jsonForPage } = require('../utils/liquidity-fetch');
 const { parseYouTubeUrl } = require('../utils/youtube');
 const { sortedEpisodes, getEpisode, episodeLinks, episodeSeo } = require('../utils/edu-episodes');
 const {
@@ -82,9 +83,26 @@ router.get('/bookshelf', (req, res) => {
   res.render('bookshelf');
 });
 
-// Liquidity page
-router.get('/liquidity', (req, res) => {
-  res.render('liquidity');
+router.get('/liquidity', async (req, res) => {
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  });
+  try {
+    const { series, recurring, runway } = await loadLiquidityGraph();
+    const payload = { success: true, series, recurring, runway };
+    res.render('liquidity', {
+      liquidityFetch: buildLiquidityFetchView(payload),
+      liquidityJson: jsonForPage(payload)
+    });
+  } catch (error) {
+    console.error('Error loading liquidity page:', error);
+    res.render('liquidity', {
+      liquidityFetch: buildLiquidityFetchView(emptyPayload()),
+      liquidityJson: jsonForPage(emptyPayload())
+    });
+  }
 });
 
 // Company Education page

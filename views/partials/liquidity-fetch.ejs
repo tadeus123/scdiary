@@ -1,0 +1,29 @@
+<h2>liquidity</h2>
+<% if (fetchView) { %>
+  <p>now: <%= fetchView.now %></p>
+  <p>bank: <%= fetchView.bank %></p>
+  <p>cash: <%= fetchView.cash %></p>
+  <p>open: <%= fetchView.open %></p>
+  <h3>monthly</h3>
+  <% if (!fetchView.monthly.length) { %>
+    <p>no monthly expenses yet</p>
+  <% } else { %>
+    <ul>
+      <% fetchView.monthly.forEach((item) => { %>
+        <li><%= item.name %> — day <%= item.day %> — <%= item.amount %></li>
+      <% }) %>
+    </ul>
+  <% } %>
+  <p>total monthly lost money: <%= fetchView.monthlyTotal %></p>
+  <p><%= fetchView.runway %></p>
+  <h3>graph</h3>
+  <% if (!fetchView.points.length) { %>
+    <p>no graph points yet</p>
+  <% } else { %>
+    <ul>
+      <% fetchView.points.forEach((point) => { %>
+        <li><%= point.day %><% if (point.note) { %> <%= point.note %><% } %> <%= point.delta %> — now <%= point.balance %> (bank <%= point.bank %>, cash <%= point.cash %>, open <%= point.open %>)</li>
+      <% }) %>
+    </ul>
+  <% } %>
+<% } %>

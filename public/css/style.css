@@ -3883,6 +3883,14 @@ body.selfie-crop-open {
   background-color: var(--bg-color);
 }
 
+.liquidity-fetch {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
 #liquidity-chart {
   width: 100vw;
   height: 100vh;

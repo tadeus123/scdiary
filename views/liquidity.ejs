@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <%- include('partials/seo-head') %>
+  <link rel="alternate" type="application/json" href="/api/liquidity">
   <link rel="stylesheet" href="/css/style.css?v=lq-bank-cash">
 </head>
 <body class="liquidity-page">
@@ -38,6 +39,15 @@
     </div>
   </div>
   <div id="liquidity-tooltip" class="liquidity-tooltip hidden"></div>
+
+  <% const fetchView = typeof liquidityFetch !== 'undefined' && liquidityFetch ? liquidityFetch : null; %>
+  <section class="liquidity-fetch" aria-hidden="true" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">
+    <%- include('partials/liquidity-fetch', { fetchView }) %>
+  </section>
+  <noscript>
+    <%- include('partials/liquidity-fetch', { fetchView }) %>
+  </noscript>
+  <script type="application/json" id="liquidity-data"><%- typeof liquidityJson !== 'undefined' ? liquidityJson : '{"success":true,"series":null,"recurring":[],"runway":null}' %></script>
 
   <script src="/js/main.js"></script>
   <script src="/js/liquidity.js?v=lq-bank-cash"></script>
