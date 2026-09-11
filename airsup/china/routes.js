@@ -29,7 +29,7 @@ const {
   canPublish,
   fillEmptyCompany,
 } = require('./fields');
-const { proofPayload } = require('./proof');
+const { proofPayload, industryPeers } = require('./proof');
 const { sendVerifyEmail } = require('./mail');
 const peopleAuth = require('../auth');
 
@@ -219,9 +219,10 @@ async function renderPreview(req, res, { website, form, error, source }) {
     });
   }
   const nextForm = form || { website: built.website, email: '', contact: '', city: built.cityId || 'shenzhen' };
-  const peers = (await proof()).recent.filter((row) => !built.niche || row.niche === built.niche || !row.niche);
+  const counts = await proof();
+  const peers = industryPeers(counts.recent, { niche: built.niche, domain: built.domain });
   return render(req, res, 'preview.ejs', {
-    proof: await proof(),
+    proof: counts,
     form: { ...nextForm, website: nextForm.website || built.website, city: nextForm.city || built.cityId || 'shenzhen' },
     error: error || null,
     cities: CITIES,
@@ -414,6 +415,7 @@ function readSetup(body, company) {
     lead_time: body.lead_time,
     shipping: body.shipping,
     sample_lead: body.sample_lead,
+    holidays: body.holidays,
     flexibility: body.flexibility,
     contacts,
     site_notes: prev.site_notes,

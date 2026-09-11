@@ -171,6 +171,8 @@ async function inferFromText(domain, page) {
   };
   const key = process.env.OPENAI_API_KEY;
   if (!key || !page.text) return fallback;
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), 4000) : null;
   try {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -178,6 +180,7 @@ async function inferFromText(domain, page) {
         Authorization: `Bearer ${key}`,
         'Content-Type': 'application/json',
       },
+      signal: controller ? controller.signal : undefined,
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         temperature: 0,
@@ -236,6 +239,8 @@ async function inferFromText(domain, page) {
     };
   } catch {
     return fallback;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 

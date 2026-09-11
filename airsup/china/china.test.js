@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { domainMatches, normalizeDomain } = require('./domain');
-const { proofLines, proofPayload } = require('./proof');
+const { proofLines, proofPayload, industryPeers } = require('./proof');
 const { canPublish, normalizeProfile, mapCityId, fillEmptyCompany, listedContacts } = require('./fields');
 const { verifyMail } = require('./mail');
 
@@ -29,6 +29,11 @@ const payload = proofPayload([{ status: 'pending' }, { status: 'live', live_at: 
 assert.strictEqual(payload.started, 2);
 assert.strictEqual(payload.live, 1);
 assert.strictEqual(payload.recent[0].domain, 'acme.com');
+assert.deepStrictEqual(industryPeers(payload.recent, { niche: 'cnc', domain: 'acme.com' }), []);
+assert.strictEqual(industryPeers([
+  { domain: 'peer.com', niche: 'injection' },
+  { domain: 'me.com', niche: 'injection' },
+], { niche: 'injection', domain: 'me.com' })[0].domain, 'peer.com');
 
 assert.strictEqual(canPublish({
   company_name: '深圳某某精密',
@@ -48,6 +53,18 @@ const filled = fillEmptyCompany(
 assert.strictEqual(filled.company_name, '深圳某某');
 assert.ok(filled.profile.processes.includes('5axis'));
 assert.ok(filled.profile.site_notes.includes('scraped'));
+const firstCity = fillEmptyCompany(
+  { city: 'shenzhen', niche: 'cnc', profile: {} },
+  { city: 'dongguan', niche: 'injection', profile: { site_notes: 'x', processes: ['injection'] } }
+);
+assert.strictEqual(firstCity.city, 'dongguan');
+assert.strictEqual(firstCity.niche, 'injection');
+const keptCity = fillEmptyCompany(
+  { city: 'dongguan', niche: 'cnc', profile: {} },
+  { city: 'shenzhen', niche: 'injection', profile: { site_notes: 'x', processes: ['injection'] } }
+);
+assert.strictEqual(keptCity.city, 'dongguan');
+assert.strictEqual(keptCity.niche, 'injection');
 const withChat = normalizeProfile({
   contacts: [{ name: 'Li', wechat: 'wxid_li' }],
   sample_lead: 'samples in 7 days',
@@ -100,7 +117,8 @@ assert.strictEqual(siteDraft.city, 'dongguan');
 assert.ok(siteDraft.profile.processes.includes('5axis'));
 assert.ok(COPY.zh.found_title.includes('网站'));
 assert.ok(COPY.en.wechat_title.toLowerCase().includes('wechat'));
-assert.ok(COPY.zh.pitch_line.includes('ChatGPT'));
+assert.ok(COPY.zh.holidays_label.includes('放假'));
+assert.ok(COPY.en.peers_industry.toLowerCase().includes('industry'));
 
 const crypto = require('crypto');
 const {
@@ -163,6 +181,11 @@ const factory = {
 };
 assert.ok(fallbackReply({ company: factory, message: 'Can you mill this?', rfq: {} }).includes('Acme CNC'));
 assert.ok(!fallbackReply({ company: factory, message: 'Can you mill this?', rfq: {} }).includes('How to answer'));
+assert.ok(fallbackReply({
+  company: { ...factory, profile: { ...factory.profile, holidays: 'CNY shutdown' } },
+  message: 'Can you mill this?',
+  rfq: {},
+}).includes('CNY shutdown'));
 assert.ok(systemPrompt(factory).includes('make this company money'));
 assert.ok(systemPrompt(factory).includes('5-axis aluminum brackets'));
 assert.ok(systemPrompt(factory).includes('Keep every RFQ field'));
@@ -172,8 +195,13 @@ assert.ok(systemPrompt({
 }).includes('wxid_li'));
 assert.ok(systemPrompt({
   ...factory,
-  profile: { ...factory.profile, sample_lead: 'samples in 7 days', flexibility: 'creative' },
+  profile: { ...factory.profile, sample_lead: 'samples in 7 days', flexibility: 'creative', holidays: 'CNY shutdown' },
 }).includes('samples in 7 days'));
+assert.ok(systemPrompt({
+  ...factory,
+  profile: { holidays: 'CNY shutdown' },
+}).includes('CNY shutdown'));
+assert.ok(systemPrompt(factory).includes('No generic capability dump'));
 assert.ok(fallbackReply({
   company: factory,
   message: 'Also anodize them.',

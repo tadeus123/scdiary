@@ -153,6 +153,7 @@ function normalizeProfile(raw) {
     lead_time: String(source.lead_time || '').trim(),
     shipping: String(source.shipping || '').trim(),
     sample_lead: String(source.sample_lead || '').trim(),
+    holidays: String(source.holidays || '').trim(),
     flexibility: normalizeFlexibility(source.flexibility),
     contacts: normalizeContacts(source.contacts),
     site_notes: String(source.site_notes || '').trim().slice(0, 8000),
@@ -207,6 +208,7 @@ function listingText(company) {
     profile.export_markets ? `Export markets: ${profile.export_markets}` : '',
     profile.machines ? `Machines: ${profile.machines}` : '',
     profile.sample_lead ? `Sample / fastest lead they will stand behind: ${profile.sample_lead}` : '',
+    profile.holidays ? `Shutdown / holiday calendar: ${profile.holidays}` : '',
     profile.flexibility ? `Reply style: ${profile.flexibility}` : '',
     listedContacts(profile.contacts).length
       ? `WeChat contacts: ${listedContacts(profile.contacts).map((row) => `${row.name || row.role} ${row.wechat}`).join('; ')}`
@@ -262,6 +264,7 @@ function endpointRecord(company) {
     machines: profile.machines,
     export_markets: profile.export_markets,
     sample_lead: profile.sample_lead,
+    holidays: profile.holidays,
     flexibility: profile.flexibility,
     contacts: listedContacts(profile.contacts),
     listing_text: listingText(company),
@@ -277,6 +280,13 @@ function fillEmptyCompany(company, draft) {
   }
   const prevProfile = normalizeProfile(current.profile);
   const draftProfile = normalizeProfile(incoming.profile);
+  const firstFill = !String(prevProfile.site_notes || '').trim() && !(prevProfile.processes || []).length;
+  if (firstFill) {
+    const placeholderCity = !String(current.city || '').trim() || current.city === 'shenzhen';
+    const placeholderNiche = !String(current.niche || '').trim() || current.niche === 'cnc';
+    if (placeholderCity && String(incoming.city || '').trim()) next.city = incoming.city;
+    if (placeholderNiche && String(incoming.niche || '').trim()) next.niche = incoming.niche;
+  }
   next.profile = {
     ...prevProfile,
     ...Object.fromEntries(Object.entries(draftProfile).filter(([key, value]) => {

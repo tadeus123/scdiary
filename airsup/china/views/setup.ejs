@@ -86,6 +86,9 @@
             <input type="text" name="export_markets" value="<%= profile.export_markets || '' %>">
           </label>
         </div>
+        <% var foundCaps = (profile.processes && profile.processes.length) || (profile.materials && profile.materials.length) || profile.machines; %>
+        <details class="cn-more" <%= foundCaps ? '' : 'open' %>>
+          <summary><%= t('cap_title') %></summary>
         <p class="cn-label"><%= t('processes') %></p>
         <div class="cn-checks">
           <% catalogs.PROCESSES.forEach((item) => { %>
@@ -136,6 +139,7 @@
             <input type="text" name="shipping" value="<%= profile.shipping || '' %>">
           </label>
         </div>
+        </details>
       </fieldset>
 
       <fieldset class="cn-interact">
@@ -165,6 +169,10 @@
         <label>
           <span><%= t('sample_lead_label') %></span>
           <input type="text" name="sample_lead" value="<%= profile.sample_lead || '' %>" placeholder="<%= t('sample_lead_ph') %>">
+        </label>
+        <label>
+          <span><%= t('holidays_label') %></span>
+          <input type="text" name="holidays" value="<%= profile.holidays || '' %>" placeholder="<%= t('holidays_ph') %>">
         </label>
         <label>
           <span><%= t('win_jobs') %></span>

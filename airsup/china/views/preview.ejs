@@ -13,6 +13,20 @@
     <% if (preview.summary) { %>
       <p class="cn-note"><%= preview.summary %></p>
     <% } %>
+    <% var found = [];
+      if (preview.companyName) found.push(preview.companyName);
+      if (preview.city) found.push(preview.city);
+      if (preview.capabilities && preview.capabilities.length) found = found.concat(preview.capabilities.slice(0, 6));
+      else if (preview.profile && preview.profile.processes && preview.profile.processes.length) found = found.concat(preview.profile.processes);
+    %>
+    <% if (found.length) { %>
+      <p class="cn-label"><%= t('found_facts') %></p>
+      <ul class="cn-peers">
+        <% found.forEach(function (item) { %>
+          <li><%= item %></li>
+        <% }) %>
+      </ul>
+    <% } %>
     <p class="cn-price"><%= preview.website %></p>
     <%- include('partials/diagram', {
       query: preview.demo && preview.demo.chatgptBuyer,
@@ -51,7 +65,7 @@
       <p class="cn-note"><%= t('note') %></p>
     </form>
     <% if (typeof peers !== 'undefined' && peers && peers.length) { %>
-      <h2><%= t('peers_title') %></h2>
+      <h2><%= t('peers_industry') %></h2>
       <p class="cn-note"><%= t('peers_lead') %></p>
       <ul class="cn-peers">
         <% peers.forEach((row) => { %>

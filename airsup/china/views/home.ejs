@@ -54,11 +54,11 @@
       </div>
     </section>
 
-    <% if (proof && proof.started > 0) { %>
     <section class="cn-wrap cn-growth" id="growth">
       <h2><%= t('growth_title') %></h2>
       <p class="cn-pitch"><%= t('pitch_line') %></p>
       <p class="cn-proof"><%= proofLine %></p>
+      <% if (proof && proof.started > 0) { %>
       <% const barMax = Math.max(proof.started, proof.verified, proof.live, 1); %>
       <div class="cn-bars" role="img" aria-label="<%= t('growth_title') %>">
         <div class="cn-bar">
@@ -77,17 +77,17 @@
           <em><%= proof.live %></em>
         </div>
       </div>
-      <% if (proof.recent && proof.recent.length) { %>
+      <% } %>
+      <% if (proof && proof.recent && proof.recent.length) { %>
         <h3><%= t('peers_title') %></h3>
         <p class="cn-note"><%= t('peers_lead') %></p>
         <ul class="cn-peers">
           <% proof.recent.forEach((row) => { %>
-            <li><a href="https://<%= row.domain %>" rel="noopener noreferrer" target="_blank"><%= row.domain %></a></li>
+            <li><a href="https://<%= row.domain %>" rel="noopener noreferrer" target="_blank"><%= row.domain %></a><% if (row.niche) { %> · <%= row.niche %><% } %></li>
           <% }) %>
         </ul>
       <% } %>
     </section>
-    <% } %>
 
     <section class="cn-wrap cn-activate-steps" id="how">
       <p class="cn-scribble cn-scribble-right"><%= t('scribble_steps') %></p>

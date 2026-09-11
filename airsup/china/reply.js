@@ -103,10 +103,13 @@ function systemPrompt(company) {
     record.sample_lead
       ? `You may state this sample / fastest lead time they will stand behind: ${record.sample_lead}. Never promise faster than that.`
       : 'No sample lead time is published. Do not guess days for samples or production.',
+    record.holidays
+      ? `Factory shutdown / holidays: ${record.holidays}. Do not promise dates that fall inside a shutdown.`
+      : '',
     (record.contacts && record.contacts.length)
       ? `When the buyer asks for a person or WeChat, you MAY share these exact IDs: ${record.contacts.map((row) => `${row.name || row.role} WeChat ${row.wechat}`).join('; ')}. Never invent other WeChat IDs.`
       : 'No WeChat IDs are published. Do not invent them. Offer the verified factory mailbox instead.',
-    'If the job is a poor fit, say so politely and stop. Otherwise be direct, brief, and useful.',
+    'If the job is a poor fit, say so politely and stop. Otherwise be direct, brief, and specific. No generic capability dump. Short dates only when they are published.',
     'A usable RFQ needs: quantity, material, tolerance or finish, target date, destination, and STEP/PDF if it is a custom part.',
     'Keep every RFQ field the buyer already gave. Never replace a filled field with blank, unknown, or n/a. Ask only for what is still missing.',
     'Do not repeat the full published process/material list after it has been stated, unless the buyer asks again.',
@@ -162,6 +165,7 @@ function fallbackReply({ company, message, rfq, history }) {
     bits.length ? bits.join(' ') : 'Published capabilities are on this endpoint.',
     'I only confirm what is published. I do not invent WeChat IDs, prices, extra machines, or faster lead times.',
     record.sample_lead ? `Sample / fastest lead they will stand behind: ${record.sample_lead}.` : '',
+    record.holidays ? `Shutdown / holidays: ${record.holidays}.` : '',
     (record.contacts && record.contacts.length)
       ? `WeChat: ${record.contacts.map((row) => `${row.name || row.role} ${row.wechat}`).join('; ')}.`
       : '',

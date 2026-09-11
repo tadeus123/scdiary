@@ -50,8 +50,21 @@ function proofPayload(rows) {
   return { ...counts, line_zh: line.zh, line_en: line.en, recent };
 }
 
+function industryPeers(recent, { niche, domain } = {}) {
+  const self = String(domain || '').replace(/^www\./, '').toLowerCase();
+  const want = String(niche || '').trim();
+  return (Array.isArray(recent) ? recent : []).filter((row) => {
+    const host = String(row.domain || '').replace(/^www\./, '').toLowerCase();
+    if (self && host === self) return false;
+    if (want && row.niche && row.niche !== want) return false;
+    if (want && !row.niche) return false;
+    return true;
+  });
+}
+
 module.exports = {
   countsFromRows,
   proofLines,
   proofPayload,
+  industryPeers,
 };
