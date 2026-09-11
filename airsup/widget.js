@@ -62,14 +62,21 @@ function withConversationWidget(tool) {
   return {
     ...tool,
     _meta: {
-      ui: { resourceUri: WIDGET_URI },
-      'openai/outputTemplate': WIDGET_URI,
+      ui: { visibility: ['model', 'app'] },
       'openai/widgetAccessible': true,
-      'openai/resultCanProduceWidget': true,
       'openai/toolInvocation/invoking': 'Airsup',
       'openai/toolInvocation/invoked': 'Airsup',
     },
   };
+}
+
+function shouldMountConversationWidget(opts) {
+  const args = (opts && opts.args) || {};
+  const meta = (opts && opts.requestMeta) || {};
+  if (meta['openai/widgetSessionId']) return false;
+  const conversationId = String(args.conversation_id || '').trim();
+  const personId = String(args.person_id || '').trim();
+  return Boolean(personId) && !conversationId;
 }
 
 module.exports = {
@@ -78,4 +85,5 @@ module.exports = {
   widgetResource,
   widgetContents,
   withConversationWidget,
+  shouldMountConversationWidget,
 };

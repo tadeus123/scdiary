@@ -252,15 +252,18 @@ function memoryChina(companies) {
   assert.deepStrictEqual(seenHistory, []);
 
   const { formatToolResult, formatWidgetResult } = require('../mcp');
+  const { WIDGET_URI } = require('../widget');
   const publicFirst = formatToolResult(first);
   assert.deepStrictEqual(Object.keys(publicFirst.structuredContent).sort(), ['conversation_id', 'reply', 'status']);
   assert.ok(!Object.prototype.hasOwnProperty.call(publicFirst.structuredContent, '_panel'));
-  const widgeted = await formatWidgetResult(null, caller, first);
+  const widgeted = await formatWidgetResult(null, caller, first, { args: { person_id: factory.company_id } });
   assert.strictEqual(widgeted._meta.ui.panel.messages.length, 2);
   assert.ok(!widgeted.structuredContent._panel);
   assert.ok(widgeted.content[0].text.includes(first.conversation_id));
   assert.ok(!widgeted.content[0].text.includes(first.reply));
   assert.ok(!widgeted.content[0].text.startsWith('{'));
+  assert.strictEqual(widgeted._meta['openai/outputTemplate'], WIDGET_URI);
+  assert.strictEqual(widgeted._meta['openai/resultCanProduceWidget'], true);
   const replyOnly = await formatWidgetResult(null, caller, {
     conversation_id: first.conversation_id,
     status: 'replied',
@@ -274,6 +277,9 @@ function memoryChina(companies) {
   assert.strictEqual(notices.length, 1);
   assert.strictEqual((seenHistory || []).length, 2);
   assert.strictEqual(second._panel.messages.length, 4);
+  const continued = await formatWidgetResult(null, caller, second, { args: { conversation_id: first.conversation_id } });
+  assert.strictEqual(continued._meta['openai/resultCanProduceWidget'], false);
+  assert.strictEqual(continued._meta['openai/outputTemplate'], undefined);
 
   const panel = await conversationPanel(caller, first.conversation_id, deps);
   assert.strictEqual(panel.other.name, 'Acme CNC');

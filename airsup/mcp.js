@@ -6,7 +6,7 @@ const { createConversations } = require('./conversations');
 const { createMailer } = require('./mail');
 const db = require('./db');
 const { sha256 } = require('./store-memory');
-const { widgetResource, widgetContents, withConversationWidget } = require('./widget');
+const { widgetResource, widgetContents, withConversationWidget, WIDGET_URI, shouldMountConversationWidget } = require('./widget');
 const {
   conversationPanel,
   conversationResourceContents,
@@ -122,8 +122,12 @@ async function formatWidgetResult(store, caller, data, opts) {
     }
   }
   result._meta = { ui: { panel: withReply(panel, data, caller) } };
-  const requestMeta = (opts && opts.requestMeta) || {};
-  if (requestMeta['openai/widgetSessionId']) {
+  if (shouldMountConversationWidget(opts)) {
+    result._meta.ui.resourceUri = WIDGET_URI;
+    result._meta['openai/outputTemplate'] = WIDGET_URI;
+    result._meta['openai/widgetAccessible'] = true;
+    result._meta['openai/resultCanProduceWidget'] = true;
+  } else {
     result._meta['openai/resultCanProduceWidget'] = false;
   }
   return result;
@@ -223,7 +227,7 @@ function createMcp({ store, mailer, sleep } = {}) {
         },
         serverInfo: { name: 'airsup', version: '3.0.0' },
         instructions:
-          `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. send_message.person_id is the recipient. People: wait for the other person's Airsup AI. Companies: the factory AI replies in the same send_message result — show that reply immediately and keep conversation_id. After send_message, one Airsup conversation widget stays on screen for that conversation_id. Do not call send_message again just to continue chatting — the user types in that widget. If you must send another message, reuse the same conversation_id and do not start a new conversation. If ChatGPT sends both ids, conversation_id wins when it exists.`,
+          `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. send_message.person_id is the recipient. People: wait for the other person's Airsup AI. Companies: the factory AI replies in the same send_message result — show that reply immediately and keep conversation_id. Call send_message with person_id once to open the Airsup widget. After that, do not call send_message again for that factory — the user types in the same widget. If you must send another message, reuse conversation_id; that will not open another widget. If ChatGPT sends both ids, conversation_id wins when it exists.`,
       };
     }
     if (method === 'ping') return {};
@@ -253,7 +257,10 @@ function createMcp({ store, mailer, sleep } = {}) {
     if (method === 'tools/call') {
       const data = await callTool(params.name, caller, params.arguments || {});
       if (params.name === 'send_message' || params.name === 'end_conversation') {
-        return formatWidgetResult(backing, caller, data, { requestMeta: params._meta });
+        return formatWidgetResult(backing, caller, data, {
+          requestMeta: params._meta,
+          args: params.arguments || {},
+        });
       }
       return formatToolResult(data);
     }

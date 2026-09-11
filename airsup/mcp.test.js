@@ -1,7 +1,7 @@
 const assert = require('assert');
 const { createMemoryStore, sha256, randomToken } = require('./store-memory');
 const { createMcp, toolList, formatWidgetResult } = require('./mcp');
-const { WIDGET_URI, widgetResource, widgetContents } = require('./widget');
+const { WIDGET_URI, widgetResource, widgetContents, shouldMountConversationWidget } = require('./widget');
 const { THREADS_URI } = require('./panel');
 const { wakeBody, wakeSubject } = require('./mail');
 
@@ -11,8 +11,17 @@ const { wakeBody, wakeSubject } = require('./mail');
   assert.ok(toolList().tools[1].description.includes('Provide exactly one of person_id or conversation_id'));
   assert.ok(toolList().tools[2].description.includes('Do not use this merely because you are temporarily waiting'));
   assert.strictEqual(toolList().tools[0]._meta, undefined);
-  assert.strictEqual(toolList().tools[1]._meta['openai/outputTemplate'], WIDGET_URI);
-  assert.strictEqual(toolList().tools[2]._meta['openai/outputTemplate'], WIDGET_URI);
+  assert.strictEqual(toolList().tools[1]._meta['openai/outputTemplate'], undefined);
+  assert.strictEqual(toolList().tools[2]._meta['openai/outputTemplate'], undefined);
+  assert.strictEqual(toolList().tools[1]._meta['openai/widgetAccessible'], true);
+  assert.strictEqual(toolList().tools[2]._meta['openai/widgetAccessible'], true);
+  assert.strictEqual(shouldMountConversationWidget({ args: { person_id: 'p1' } }), true);
+  assert.strictEqual(shouldMountConversationWidget({ args: { person_id: 'p1', conversation_id: 'c1' } }), false);
+  assert.strictEqual(shouldMountConversationWidget({ args: { conversation_id: 'c1' } }), false);
+  assert.strictEqual(shouldMountConversationWidget({
+    args: { person_id: 'p1' },
+    requestMeta: { 'openai/widgetSessionId': 'w1' },
+  }), false);
 
   const store = createMemoryStore();
   const tade = await store.upsertPerson({
@@ -147,6 +156,9 @@ const { wakeBody, wakeSubject } = require('./mail');
   assert.strictEqual(payload._meta.ui.panel.other.name, 'Anna Schmidt');
   assert.strictEqual(payload._meta.ui.panel.messages[0].body, 'hello anna');
   assert.strictEqual(payload._meta.ui.panel.messages[1].body, 'hello tade');
+  assert.strictEqual(payload._meta['openai/outputTemplate'], WIDGET_URI);
+  assert.strictEqual(payload._meta['openai/resultCanProduceWidget'], true);
+  assert.strictEqual(payload._meta.ui.resourceUri, WIDGET_URI);
 
   const replyOnly = await formatWidgetResult(store, tade, {
     conversation_id: 'missing-thread',
@@ -154,12 +166,29 @@ const { wakeBody, wakeSubject } = require('./mail');
     reply: 'We can make 500 pcs.',
   });
   assert.ok(replyOnly._meta.ui.panel.messages.some((row) => row.from === 'them' && row.body === 'We can make 500 pcs.'));
+  assert.strictEqual(replyOnly._meta['openai/resultCanProduceWidget'], false);
+  assert.strictEqual(replyOnly._meta['openai/outputTemplate'], undefined);
+  const openCard = await formatWidgetResult(store, tade, {
+    conversation_id: conversationId,
+    status: 'replied',
+    reply: 'open',
+  }, { args: { person_id: anna.person_id } });
+  assert.strictEqual(openCard._meta['openai/outputTemplate'], WIDGET_URI);
+  assert.strictEqual(openCard._meta['openai/resultCanProduceWidget'], true);
+  const continueCard = await formatWidgetResult(store, tade, {
+    conversation_id: conversationId,
+    status: 'replied',
+    reply: 'follow-up',
+  }, { args: { conversation_id: conversationId } });
+  assert.strictEqual(continueCard._meta['openai/resultCanProduceWidget'], false);
+  assert.strictEqual(continueCard._meta['openai/outputTemplate'], undefined);
   const fromWidget = await formatWidgetResult(store, tade, {
     conversation_id: conversationId,
     status: 'replied',
     reply: 'same card',
-  }, { requestMeta: { 'openai/widgetSessionId': 'w1' } });
+  }, { requestMeta: { 'openai/widgetSessionId': 'w1' }, args: { person_id: anna.person_id } });
   assert.strictEqual(fromWidget._meta['openai/resultCanProduceWidget'], false);
+  assert.strictEqual(fromWidget._meta['openai/outputTemplate'], undefined);
   const noId = await formatWidgetResult(store, tade, {
     conversation_id: '',
     status: 'replied',
@@ -180,6 +209,8 @@ const { wakeBody, wakeSubject } = require('./mail');
   assert.ok(!Object.prototype.hasOwnProperty.call(endedRes.body.result.structuredContent, 'reply'));
   assert.ok(endedRes.body.result.content[0].text.toLowerCase().includes('ended'));
   assert.ok(!endedRes.body.result.content[0].text.startsWith('{'));
+  assert.strictEqual(endedRes.body.result._meta['openai/resultCanProduceWidget'], false);
+  assert.strictEqual(endedRes.body.result._meta['openai/outputTemplate'], undefined);
 
   console.log('mcp tests passed');
 })().catch((error) => {
