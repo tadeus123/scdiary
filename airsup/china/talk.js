@@ -2,6 +2,7 @@ const defaultDb = require('./db');
 const { companyTitle } = require('./fields');
 const { completeReply } = require('./reply');
 const { sendFactoryNotice } = require('./mail');
+const { signedInBuyerName } = require('../directory');
 
 const CONV_PREFIX = 'cn_';
 const THREADS_URI = 'airsup://conversations';
@@ -47,7 +48,7 @@ async function loadCompany(store, companyId) {
 function personBrief(caller) {
   return {
     person_id: (caller && caller.person_id) || '',
-    name: (caller && (caller.display_name || caller.email)) || 'Airsup buyer',
+    name: signedInBuyerName(caller),
   };
 }
 
@@ -184,7 +185,7 @@ async function notifyIfNeeded(store, { thread, company, caller, message, reply, 
   });
   Promise.resolve(mailFn(deps)({
     company,
-    callerName: caller && (caller.display_name || caller.email),
+    callerName: signedInBuyerName(caller),
     message,
     reply,
     rfq: outcome.rfq,

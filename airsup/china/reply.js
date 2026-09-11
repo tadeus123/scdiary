@@ -1,4 +1,5 @@
 const { endpointRecord, companyTitle, normalizeActions } = require('./fields');
+const { signedInBuyerName } = require('../directory');
 
 const RFQ_KEYS = ['quantity', 'material', 'tolerance', 'finish', 'target_date', 'destination', 'drawings', 'notes'];
 const NOTIFY_REASONS = ['rfq', 'sales_contact', 'call', 'visit'];
@@ -175,7 +176,7 @@ async function completeReply({ company, caller, history, message, rfq, fetchImpl
     }, fallback);
   }
 
-  const callerName = (caller && (caller.display_name || caller.email)) || 'Airsup buyer';
+  const callerName = signedInBuyerName(caller);
   const prior = (history || []).slice(-8).map((row) => ({
     role: row.role === 'factory' ? 'assistant' : 'user',
     content: String(row.body || '').slice(0, 800),
@@ -201,7 +202,7 @@ async function completeReply({ company, caller, history, message, rfq, fetchImpl
           ...prior,
           {
             role: 'user',
-            content: `Buyer (${callerName}) said:\n${String(message || '').slice(0, 1600)}\n\nKnown RFQ so far:\n${JSON.stringify(merged)}`,
+            content: `Buyer signed in as ${callerName}. Address only this login. Do not use another Airsup directory name.\nBuyer said:\n${String(message || '').slice(0, 1600)}\n\nKnown RFQ so far:\n${JSON.stringify(merged)}`,
           },
         ],
       }),

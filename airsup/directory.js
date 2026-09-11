@@ -16,6 +16,18 @@ function publicDisplayName({ answers, displayName, email } = {}) {
   return displayNameFrom({ displayName, email }).replace(/\s+/g, ' ').trim();
 }
 
+function signedInBuyerName(caller) {
+  const email = clip(caller && caller.email, 320);
+  const listed = clip(caller && caller.display_name, 120);
+  if (!email) return listed || 'Airsup buyer';
+  const local = (email.split('@')[0] || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const listedKey = listed.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (listed && local && (listedKey.includes(local) || (listedKey.length > 2 && local.includes(listedKey)))) {
+    return listed;
+  }
+  return email;
+}
+
 function publicFieldsFromAnswers(answers) {
   const source = answers && typeof answers === 'object' ? answers : {};
   return {
@@ -29,5 +41,6 @@ module.exports = {
   clip,
   displayNameFrom,
   publicDisplayName,
+  signedInBuyerName,
   publicFieldsFromAnswers,
 };

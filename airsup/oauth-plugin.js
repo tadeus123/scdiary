@@ -144,10 +144,17 @@ async function handleAuthorize(req, res, store) {
   };
 
   const websiteUser = websiteAuth.readUser(req);
-  if (websiteUser && websiteUser.googleId) {
+  if (websiteUser && websiteUser.googleId && String(req.query.airsup_oauth) === '1') {
     return finishAuthorize(req, res, store, pending, websiteUser);
   }
-  const next = `/airsup/oauth/authorize?${new URLSearchParams(req.query).toString()}`;
+  const params = new URLSearchParams();
+  Object.keys(req.query || {}).forEach((key) => {
+    const value = req.query[key];
+    if (value == null) return;
+    params.set(key, String(value));
+  });
+  params.set('airsup_oauth', '1');
+  const next = `/airsup/oauth/authorize?${params.toString()}`;
   return res.redirect(`/airsup/auth/google?next=${encodeURIComponent(next)}`);
 }
 

@@ -328,6 +328,39 @@ function memoryChina(companies) {
   });
   assert.ok(ai.reply.includes('200 aluminum'));
 
+  const mixed = await completeReply({
+    company: factory,
+    caller: { person_id: 'tade', display_name: 'Anna Schmidt', email: 'tademehl@gmail.com' },
+    history: [],
+    message: 'Can you mill this?',
+    rfq: {},
+    fetchImpl: async (_url, opts) => {
+      const body = JSON.parse(opts.body);
+      const user = body.messages[body.messages.length - 1].content;
+      assert.ok(user.includes('tademehl@gmail.com'));
+      assert.ok(!user.includes('Anna Schmidt'));
+      return {
+        ok: true,
+        async json() {
+          return {
+            choices: [{
+              message: {
+                content: JSON.stringify({
+                  reply: 'Yes, we mill that.',
+                  rfq: {},
+                  rfq_complete: false,
+                  notify_factory: false,
+                  notify_reason: 'none',
+                }),
+              },
+            }],
+          };
+        },
+      };
+    },
+  });
+  assert.ok(mixed.reply.includes('mill'));
+
   const prevKey = process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_KEY;
   try {
