@@ -101,6 +101,17 @@ assert.strictEqual(isRfqComplete(mergeRfq(extracted, {
 })), true);
 assert.strictEqual(isRfqComplete({ quantity: '1', material: 'alu', tolerance: '', finish: '', target_date: '', destination: '' }), false);
 
+const laterDate = extractRfqFromText('Need 10 pieces 7075 aluminum, ship to Germany within 3 weeks, STEP attached');
+assert.strictEqual(laterDate.destination, 'Germany');
+assert.ok(/3 weeks/i.test(laterDate.target_date));
+assert.ok(/7075/i.test(laterDate.material));
+const kept = mergeRfq(
+  { destination: 'Germany', target_date: 'within 3 weeks', quantity: '10 pieces', material: '7075' },
+  { destination: 'unknown', target_date: '', quantity: '10 pieces', material: '7075' }
+);
+assert.strictEqual(kept.destination, 'Germany');
+assert.strictEqual(kept.target_date, 'within 3 weeks');
+
 const factory = {
   company_id: '11111111-1111-1111-1111-111111111111',
   domain: 'acme-cnc.com',
@@ -121,6 +132,19 @@ assert.ok(fallbackReply({ company: factory, message: 'Can you mill this?', rfq: 
 assert.ok(!fallbackReply({ company: factory, message: 'Can you mill this?', rfq: {} }).includes('How to answer'));
 assert.ok(systemPrompt(factory).includes('make this company money'));
 assert.ok(systemPrompt(factory).includes('5-axis aluminum brackets'));
+assert.ok(systemPrompt(factory).includes('Keep every RFQ field'));
+assert.ok(fallbackReply({
+  company: factory,
+  message: 'Also anodize them.',
+  rfq: { quantity: '10 pieces', material: '7075', destination: 'Germany', target_date: 'within 3 weeks' },
+  history: [{ role: 'buyer', body: 'Need 10 pieces' }],
+}).includes('Germany'));
+assert.ok(!fallbackReply({
+  company: factory,
+  message: 'Also anodize them.',
+  rfq: { quantity: '10 pieces', destination: 'Germany' },
+  history: [{ role: 'buyer', body: 'Need 10 pieces' }],
+}).includes('Processes:'));
 
 const notice = factoryNoticeMail({
   lang: 'zh',
