@@ -34,7 +34,9 @@ function matchView(company, query) {
   return {
     person_id: company.company_id,
     name: record.company_name_en || record.company_name || company.domain,
-    description: description || undefined,
+    description: description
+      ? `Published company endpoint (replies in this send_message). ${description}`
+      : 'Published company endpoint. Replies in this send_message.',
     score: scoreCompany(company, query),
   };
 }

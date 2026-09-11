@@ -48,16 +48,18 @@ function make({ sleep } = {}) {
   assert.strictEqual(tadeFirst.status, 'replied');
   assert.strictEqual(tadeFirst.reply, 'hello tade');
 
-  const tadeSecond = conv.sendMessage(tade.person_id, { conversation_id: conversationId, message: 'second turn' });
+  const bothIds = conv.sendMessage(tade.person_id, {
+    person_id: anna.person_id,
+    conversation_id: conversationId,
+    message: 'second turn',
+  });
   const annaFirst = await annaWait;
   assert.strictEqual(annaFirst.status, 'replied');
   assert.strictEqual(annaFirst.reply, 'second turn');
   assert.strictEqual(wakes.length, 1);
-
-  const ended = await conv.endConversation(tade.person_id, conversationId);
-  assert.strictEqual(ended.status, 'ended');
-  const annaEnded = await tadeSecond;
-  assert.strictEqual(annaEnded.status, 'ended');
+  await conv.endConversation(tade.person_id, conversationId);
+  const bothEnded = await bothIds;
+  assert.strictEqual(bothEnded.status, 'ended');
 
   const afterEnd = await conv.sendMessage(anna.person_id, { conversation_id: conversationId, message: 'too late' });
   assert.strictEqual(afterEnd.status, 'failed');

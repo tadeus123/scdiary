@@ -47,6 +47,9 @@ function delay(ms) {
   assert.strictEqual(panel.messages[1].from, 'them');
   assert.strictEqual(panel.messages[1].body, 'hello tade');
   assert.strictEqual(panel.threads.length, 1);
+  const fast = await conversationPanel(store, tade.person_id, conversationId, { includeThreads: false });
+  assert.strictEqual(fast.messages.length, 2);
+  assert.deepStrictEqual(fast.threads, []);
 
   const listed = await conversationResourceContents(store, tade.person_id, THREADS_URI);
   const threads = JSON.parse(listed.contents[0].text);

@@ -250,6 +250,17 @@ function memoryChina(companies) {
 
   const skipped = await maybeHandle(caller, { person_id: 'not-a-company', message: 'hello' }, deps);
   assert.strictEqual(skipped, null);
+  const peopleId = await maybeHandle(caller, { conversation_id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', message: 'hello' }, deps);
+  assert.strictEqual(peopleId, null);
+
+  const boomStore = memoryChina([factory]);
+  boomStore.insertMessage = async () => { throw new Error('db down'); };
+  const boom = await maybeHandle(caller, { person_id: factory.company_id, message: 'hello' }, {
+    db: boomStore,
+    completeReply: deps.completeReply,
+    sendFactoryNotice: deps.sendFactoryNotice,
+  });
+  assert.strictEqual(boom.status, 'failed');
 
   const both = await maybeHandle(caller, {
     person_id: factory.company_id,

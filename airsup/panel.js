@@ -30,9 +30,9 @@ async function listThreads(store, callerPersonId) {
   return threads;
 }
 
-async function conversationPanel(store, callerPersonId, conversationId) {
+async function conversationPanel(store, callerPersonId, conversationId, opts) {
   const you = personBrief(await store.getPerson(callerPersonId));
-  const threads = await listThreads(store, callerPersonId);
+  const threads = opts && opts.includeThreads === false ? [] : await listThreads(store, callerPersonId);
   const id = String(conversationId || '');
   const conv = id ? await store.getConversation(id) : null;
   if (!conv || !otherOf(conv, callerPersonId)) {

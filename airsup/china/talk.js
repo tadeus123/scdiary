@@ -266,6 +266,18 @@ async function turn(store, { thread, company, caller, message, deps }) {
   };
 }
 
+async function isCompanyId(personId, deps) {
+  const id = String(personId || '').trim();
+  if (!id) return false;
+  const store = storeFrom(deps);
+  if (!store.isConfigured()) return false;
+  try {
+    return Boolean(await store.getById(id));
+  } catch {
+    return false;
+  }
+}
+
 async function resolveThread(store, conversationId) {
   const raw = String(conversationId || '').trim();
   if (!raw) return null;
@@ -284,9 +296,17 @@ async function maybeHandle(caller, args, deps) {
   const personId = String((args && args.person_id) || '').trim();
   const conversationId = String((args && args.conversation_id) || '').trim();
   const message = String((args && args.message) || '').trim();
+  const chinaConv = Boolean(parsePublicId(conversationId));
 
-  if (conversationId) {
-    const thread = await resolveThread(store, conversationId);
+  if (conversationId && (chinaConv || !personId)) {
+    let thread = null;
+    try {
+      thread = await resolveThread(store, conversationId);
+    } catch (error) {
+      console.error('Airsup china thread lookup failed:', error.message);
+      if (chinaConv) return failed(conversationId);
+      return null;
+    }
     if (thread) {
       if (!message) return failed(publicConvId(thread));
       if (thread.caller_person_id && caller && caller.person_id !== thread.caller_person_id) {
@@ -294,9 +314,14 @@ async function maybeHandle(caller, args, deps) {
       }
       const company = await loadCompany(store, thread.company_id);
       if (!company) return failed(publicConvId(thread));
-      return turn(store, { thread, company, caller, message, deps });
+      try {
+        return await turn(store, { thread, company, caller, message, deps });
+      } catch (error) {
+        console.error('Airsup china turn failed:', error.message);
+        return failed(publicConvId(thread));
+      }
     }
-    if (parsePublicId(conversationId)) return failed(conversationId);
+    if (chinaConv) return failed(conversationId);
   }
 
   if (!personId) return null;
@@ -315,17 +340,22 @@ async function maybeHandle(caller, args, deps) {
       reply: `${companyTitle(company, 'en')} paused this Airsup endpoint. It is not answering new buyer messages.`,
     };
   }
-  let thread = await store.findOpenThread(company.company_id, caller && caller.person_id);
-  if (!thread) {
-    thread = await store.insertThread({
-      company_id: company.company_id,
-      caller_person_id: caller && caller.person_id ? caller.person_id : null,
-      status: 'open',
-      rfq: {},
-      notify_reasons: [],
-    });
+  try {
+    let thread = await store.findOpenThread(company.company_id, caller && caller.person_id);
+    if (!thread) {
+      thread = await store.insertThread({
+        company_id: company.company_id,
+        caller_person_id: caller && caller.person_id ? caller.person_id : null,
+        status: 'open',
+        rfq: {},
+        notify_reasons: [],
+      });
+    }
+    return await turn(store, { thread, company, caller, message, deps });
+  } catch (error) {
+    console.error('Airsup china turn failed:', error.message);
+    return failed('');
   }
-  return turn(store, { thread, company, caller, message, deps });
 }
 
 module.exports = {
@@ -333,6 +363,7 @@ module.exports = {
   parsePublicId,
   maybeHandle,
   maybeEnd,
+  isCompanyId,
   conversationPanel,
   listThreadViews,
   mergePanel,

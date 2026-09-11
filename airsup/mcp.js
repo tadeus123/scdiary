@@ -73,7 +73,7 @@ async function formatWidgetResult(store, caller, data) {
     }
     return result;
   }
-  let panel = await conversationPanel(store, caller.person_id, conversationId);
+  let panel = await conversationPanel(store, caller.person_id, conversationId, { includeThreads: false });
   // AIRSUP-CHINA-BEGIN
   try {
     const chinaTalk = require('./china/talk');
@@ -139,8 +139,15 @@ function createMcp({ store, mailer, sleep } = {}) {
       } catch (error) {
         console.error('Airsup china talk skipped:', error.message);
         const conversationId = String((args && args.conversation_id) || '');
-        if (conversationId.startsWith('cn_')) {
-          return { conversation_id: conversationId, status: 'failed', reply: null };
+        const personId = String((args && args.person_id) || '');
+        let company = false;
+        try {
+          company = await require('./china/talk').isCompanyId(personId);
+        } catch {
+          company = false;
+        }
+        if (conversationId.startsWith('cn_') || company) {
+          return { conversation_id: conversationId || '', status: 'failed', reply: null };
         }
       }
       // AIRSUP-CHINA-END
@@ -175,7 +182,7 @@ function createMcp({ store, mailer, sleep } = {}) {
         },
         serverInfo: { name: 'airsup', version: '3.0.0' },
         instructions:
-          `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. send_message.person_id is the recipient. People conversations wait for the other person's Airsup AI. A published company/factory endpoint replies in the same send_message result — show that reply in the live widget immediately.`,
+          `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. send_message.person_id is the recipient. People: wait for the other person's Airsup AI. Companies: the factory AI replies in the same send_message result — show that reply immediately and keep conversation_id. If ChatGPT sends both ids, conversation_id wins when it exists.`,
       };
     }
     if (method === 'ping') return {};

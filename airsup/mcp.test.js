@@ -67,6 +67,8 @@ const { wakeBody, wakeSubject } = require('./mail');
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('structured.reply'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('hostPanel'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('claimComposer'));
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('companyChat'));
+  assert.ok(!widgetContents(WIDGET_URI).contents[0].text.includes('requestDisplayMode'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('ui/notifications/initialized'));
   assert.ok(!widgetContents(WIDGET_URI).contents[0].text.includes('min-height: 360px'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('type="button"'));

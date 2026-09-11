@@ -21,10 +21,12 @@ function createConversations({ store, mailer, sleep }) {
       if (!conv || conv.status === 'ended') return ended(conversationId);
       if (conv.parked_for === personId) {
         const reply = conv.parked_text;
-        await store.updateConversation(conversationId, {
+        const patch = {
           parked_for: null,
           parked_text: null,
-        });
+        };
+        if (conv.inflight === personId) patch.inflight = null;
+        await store.updateConversation(conversationId, patch);
         return { conversation_id: conversationId, status: 'replied', reply };
       }
       await pause();
@@ -49,9 +51,14 @@ function createConversations({ store, mailer, sleep }) {
 
   async function sendMessage(callerPersonId, args) {
     const message = String((args && args.message) || '').trim();
-    const personId = String((args && args.person_id) || '').trim();
-    const conversationId = String((args && args.conversation_id) || '').trim();
+    let personId = String((args && args.person_id) || '').trim();
+    let conversationId = String((args && args.conversation_id) || '').trim();
     if (!message) return failed(conversationId);
+    if (personId && conversationId) {
+      const existing = await store.getConversation(conversationId);
+      if (existing) personId = '';
+      else return failed(conversationId);
+    }
     if (Boolean(personId) === Boolean(conversationId)) return failed(conversationId);
 
     if (personId) {
@@ -87,7 +94,9 @@ function createConversations({ store, mailer, sleep }) {
 
     if (conv.parked_for === callerPersonId) {
       const reply = conv.parked_text;
-      await store.updateConversation(conversationId, { parked_for: null, parked_text: null });
+      const patch = { parked_for: null, parked_text: null };
+      if (conv.inflight === callerPersonId) patch.inflight = null;
+      await store.updateConversation(conversationId, patch);
       return { conversation_id: conversationId, status: 'replied', reply };
     }
 

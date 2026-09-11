@@ -328,10 +328,11 @@
       });
     }
     async function callTool(name, args) {
+      const companyChat = String((args && args.conversation_id) || '').indexOf('cn_') === 0;
       if (window.openai && typeof window.openai.callTool === 'function') {
         return window.openai.callTool(name, args);
       }
-      return rpc('tools/call', { name: name, arguments: args });
+      return rpc('tools/call', { name: name, arguments: args }, companyChat ? 20000 : 280000);
     }
     async function readResource(uri) {
       const result = await rpc('resources/read', { uri: uri }, 1500);
@@ -346,7 +347,6 @@
       }, '*');
     }
     const MIN_HEIGHT = 120;
-    let claimed = false;
     let lastSaved = '';
     function reportHeight() {
       const root = document.getElementById('root');
@@ -363,11 +363,6 @@
       if (draft.disabled) return;
       try { draft.focus({ preventScroll: true }); }
       catch (error) { draft.focus(); }
-      if (claimed) return;
-      claimed = true;
-      if (window.openai && typeof window.openai.requestDisplayMode === 'function') {
-        Promise.resolve(window.openai.requestDisplayMode({ mode: 'fullscreen' })).catch(function () {});
-      }
     }
     function setBusy(next) {
       busy = next;
