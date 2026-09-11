@@ -227,6 +227,17 @@
     }
     .end.ask { color: var(--text); }
     .hidden { display: none !important; }
+    html.superseded,
+    html.superseded body,
+    html.superseded #root {
+      display: none !important;
+      height: 0 !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      pointer-events: none !important;
+    }
   </style>
 </head>
 <body>
@@ -262,6 +273,11 @@
     let ending = false;
     let lastHeight = 0;
     const cache = new Map();
+    const born = Date.now() + Math.random();
+    const peers = {};
+    let lastPublished = '';
+    let superseded = false;
+    const channel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('airsup-conversation') : null;
 
     function parseToolData(raw) {
       if (!raw || typeof raw !== 'object') return {};
@@ -417,12 +433,66 @@
     }
     const MIN_HEIGHT = 120;
     let lastSaved = '';
+    function conversationKey() {
+      return (panel && panel.conversation_id) || structured.conversation_id || String(currentInput().conversation_id || '');
+    }
+    function uniqueMessages(rows) {
+      const out = [];
+      const seen = {};
+      (rows || []).forEach(function (row) {
+        const body = String((row && row.body) || '');
+        if (!body) return;
+        const key = (row.from || '') + '\n' + body;
+        if (seen[key]) return;
+        seen[key] = true;
+        out.push(row);
+      });
+      return out;
+    }
+    function absorbPeers(conversationId) {
+      if (!conversationId || !panel) return;
+      const extra = peers[conversationId] && peers[conversationId].messages;
+      if (!extra || !extra.length) return;
+      panel.messages = uniqueMessages((panel.messages || []).concat(extra));
+    }
+    function elect(conversationId) {
+      if (!conversationId) return;
+      const info = peers[conversationId];
+      const newest = info && info.born > born ? info.born : born;
+      const hide = newest > born;
+      if (hide === superseded) return;
+      superseded = hide;
+      document.documentElement.classList.toggle('superseded', hide);
+      lastHeight = -1;
+      reportHeight();
+    }
+    function publish(force) {
+      const conversationId = conversationKey();
+      if (!channel || !conversationId) return;
+      const messages = uniqueMessages(((panel && panel.messages) || []).concat(
+        liveMessages(false).filter(function (row) { return !row.pending; })
+      ));
+      const payload = {
+        type: 'airsup-sync',
+        conversationId: conversationId,
+        born: born,
+        status: (panel && panel.status) || structured.status || '',
+        other: panel && panel.other,
+        messages: messages,
+      };
+      const packed = JSON.stringify(payload);
+      if (!force && packed === lastPublished) return;
+      lastPublished = packed;
+      channel.postMessage(payload);
+    }
     function reportHeight() {
       const root = document.getElementById('root');
-      const height = Math.max(MIN_HEIGHT, Math.ceil(Math.max(
-        root.getBoundingClientRect().height,
-        root.scrollHeight
-      )));
+      const height = superseded
+        ? 1
+        : Math.max(MIN_HEIGHT, Math.ceil(Math.max(
+          root.getBoundingClientRect().height,
+          root.scrollHeight
+        )));
       if (!height || height === lastHeight) return;
       lastHeight = height;
       if (window.openai && typeof window.openai.notifyIntrinsicHeight === 'function') {
@@ -509,6 +579,7 @@
       if (nextPanel) panel = nextPanel;
       else panel = panelFrom(nextStructured) || panel;
       const conversationId = (panel && panel.conversation_id) || structured.conversation_id || String(currentInput().conversation_id || '');
+      absorbPeers(conversationId);
       const personId = String(currentInput().person_id || '') || (panel && panel.other && panel.other.person_id) || '';
       const status = (panel && panel.status) || structured.status || '';
       const otherName = panel && panel.other && panel.other.name;
@@ -540,6 +611,8 @@
         });
       }
       if (panel && panel.conversation_id) cache.set(panel.conversation_id, panel);
+      publish();
+      elect(conversationId);
       lastHeight = 0;
       reportHeight();
     }
@@ -569,7 +642,7 @@
         .then(function (result) {
           document.getElementById('draft').value = '';
           document.getElementById('draft').style.height = 'auto';
-          tellModel('User sent a message in the Airsup panel.' + (args.conversation_id ? ' conversation_id is ' + args.conversation_id + '.' : ''));
+          tellModel('The user already sent that in the Airsup widget. Do not call send_message again for this conversation.' + (args.conversation_id ? ' conversation_id is ' + args.conversation_id + '.' : ''));
           hydrate(result);
         })
         .catch(function (error) {
@@ -593,7 +666,7 @@
       document.getElementById('err').textContent = '';
       try {
         const result = await callTool('end_conversation', { conversation_id: conversationId });
-        tellModel('User ended Airsup conversation ' + conversationId + '.');
+        tellModel('The user ended Airsup conversation ' + conversationId + ' in the widget. Do not call send_message again for it.');
         ending = false;
         await hydrate(result);
       } catch (error) {
@@ -678,7 +751,7 @@
           id: message.id,
           result: {
             protocolVersion: '2026-01-26',
-            appInfo: { name: 'airsup', version: '11' },
+            appInfo: { name: 'airsup', version: '12' },
             appCapabilities: { availableDisplayModes: ['inline', 'fullscreen', 'pip'] },
           },
         }, '*');
@@ -717,6 +790,36 @@
         reportHeight();
       }).observe(document.getElementById('root'));
     }
+    if (channel) {
+      channel.addEventListener('message', function (event) {
+        const payload = event.data;
+        if (!payload || typeof payload !== 'object') return;
+        if (payload.type === 'airsup-hello') {
+          const asked = String(payload.conversationId || '');
+          const mine = conversationKey();
+          if (!asked || !mine || asked === mine) publish(true);
+          return;
+        }
+        if (payload.type !== 'airsup-sync') return;
+        const conversationId = String(payload.conversationId || '');
+        if (!conversationId) return;
+        const prev = peers[conversationId] || { born: 0, messages: [] };
+        peers[conversationId] = {
+          born: Math.max(prev.born, Number(payload.born) || 0),
+          messages: uniqueMessages((prev.messages || []).concat(payload.messages || [])),
+          other: payload.other || prev.other,
+          status: payload.status || prev.status,
+        };
+        const mine = conversationKey();
+        if (mine && mine !== conversationId) return;
+        const before = ((panel && panel.messages) || []).length;
+        absorbPeers(conversationId);
+        elect(conversationId);
+        if (!superseded && panel && ((panel.messages || []).length > before)) {
+          render(structured, panel, false);
+        }
+      });
+    }
     function connectHost() {
       window.parent.postMessage({ jsonrpc: '2.0', method: 'ui/notifications/initialized' }, '*');
     }
@@ -732,6 +835,10 @@
     }
     hydrate(window.openai && window.openai.toolOutput);
     connectHost();
+    publish(true);
+    if (channel) {
+      channel.postMessage({ type: 'airsup-hello', conversationId: conversationKey(), born: born });
+    }
   </script>
 </body>
 </html>

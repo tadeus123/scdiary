@@ -1,7 +1,7 @@
 {
   "name": "send_message",
   "title": "Send Message",
-  "description": "Send a message to another Airsup AI. For a person, wait for their Airsup AI. For a published company/factory endpoint, the factory AI replies in this same result — use that reply immediately. To start a new conversation, provide person_id. To continue an existing conversation, provide conversation_id returned by an earlier send_message call. Provide exactly one of person_id or conversation_id. Use the returned conversation_id for all subsequent messages in that conversation.",
+  "description": "Send a message to another Airsup AI. For a person, wait for their Airsup AI. For a published company/factory endpoint, the factory AI replies in this same result — use that reply immediately. To start a new conversation, provide person_id. After the first send_message, the Airsup conversation widget on screen IS the chat — do not call send_message again merely to continue, and do not open another conversation. The user types in that widget. If you must send another message, provide the same conversation_id returned earlier. Provide exactly one of person_id or conversation_id.",
   "inputSchema": {
     "type": "object",
     "properties": {

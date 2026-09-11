@@ -59,7 +59,7 @@ const { wakeBody, wakeSubject } = require('./mail');
   });
   assert.strictEqual(both.status, 'failed');
   assert.deepStrictEqual(Object.keys(both).sort(), ['conversation_id', 'reply', 'status']);
-  assert.ok(WIDGET_URI.includes('airsup-conversation-v11.html'));
+  assert.ok(WIDGET_URI.includes('airsup-conversation-v12.html'));
   assert.strictEqual(widgetResource().uri, WIDGET_URI);
   assert.strictEqual(widgetResource()._meta['openai/widgetDomain'], 'https://www-tademehl-com.oaiusercontent.com');
   assert.strictEqual(widgetContents(WIDGET_URI).contents[0]._meta['openai/widgetDomain'], 'https://www-tademehl-com.oaiusercontent.com');
@@ -69,6 +69,10 @@ const { wakeBody, wakeSubject } = require('./mail');
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('hostPanel'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('syntheticPanel'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('parseToolData'));
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('BroadcastChannel'));
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('airsup-sync'));
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('airsup-hello'));
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('superseded'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('mcp_tool_result'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('ui/notifications/size-changed'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('claimComposer'));
@@ -148,6 +152,12 @@ const { wakeBody, wakeSubject } = require('./mail');
     reply: 'We can make 500 pcs.',
   });
   assert.ok(replyOnly._meta.ui.panel.messages.some((row) => row.from === 'them' && row.body === 'We can make 500 pcs.'));
+  const fromWidget = await formatWidgetResult(store, tade, {
+    conversation_id: conversationId,
+    status: 'replied',
+    reply: 'same card',
+  }, { requestMeta: { 'openai/widgetSessionId': 'w1' } });
+  assert.strictEqual(fromWidget._meta['openai/resultCanProduceWidget'], false);
   const noId = await formatWidgetResult(store, tade, {
     conversation_id: '',
     status: 'replied',

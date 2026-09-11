@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const WIDGET_URI = 'ui://widget/airsup-conversation-v11.html';
+const WIDGET_URI = 'ui://widget/airsup-conversation-v12.html';
 const WIDGET_MIME = 'text/html;profile=mcp-app';
 const WIDGET_DOMAIN = 'https://www-tademehl-com.oaiusercontent.com';
 

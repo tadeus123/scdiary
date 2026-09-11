@@ -97,7 +97,7 @@ function withReply(panel, data, caller) {
   return next;
 }
 
-async function formatWidgetResult(store, caller, data) {
+async function formatWidgetResult(store, caller, data, opts) {
   const result = formatToolResult(data);
   if (!caller || !data) return result;
   const conversationId = String(data.conversation_id || '');
@@ -122,6 +122,10 @@ async function formatWidgetResult(store, caller, data) {
     }
   }
   result._meta = { ui: { panel: withReply(panel, data, caller) } };
+  const requestMeta = (opts && opts.requestMeta) || {};
+  if (requestMeta['openai/widgetSessionId']) {
+    result._meta['openai/resultCanProduceWidget'] = false;
+  }
   return result;
 }
 
@@ -219,7 +223,7 @@ function createMcp({ store, mailer, sleep } = {}) {
         },
         serverInfo: { name: 'airsup', version: '3.0.0' },
         instructions:
-          `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. send_message.person_id is the recipient. People: wait for the other person's Airsup AI. Companies: the factory AI replies in the same send_message result — show that reply immediately and keep conversation_id. If ChatGPT sends both ids, conversation_id wins when it exists.`,
+          `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. send_message.person_id is the recipient. People: wait for the other person's Airsup AI. Companies: the factory AI replies in the same send_message result — show that reply immediately and keep conversation_id. After send_message, one Airsup conversation widget stays on screen for that conversation_id. Do not call send_message again just to continue chatting — the user types in that widget. If you must send another message, reuse the same conversation_id and do not start a new conversation. If ChatGPT sends both ids, conversation_id wins when it exists.`,
       };
     }
     if (method === 'ping') return {};
@@ -249,7 +253,7 @@ function createMcp({ store, mailer, sleep } = {}) {
     if (method === 'tools/call') {
       const data = await callTool(params.name, caller, params.arguments || {});
       if (params.name === 'send_message' || params.name === 'end_conversation') {
-        return formatWidgetResult(backing, caller, data);
+        return formatWidgetResult(backing, caller, data, { requestMeta: params._meta });
       }
       return formatToolResult(data);
     }
