@@ -33,8 +33,9 @@
       <p class="cn-ok"><%= t('saved') %></p>
     <% } %>
     <form class="cn-form cn-setup" method="post" action="/airsup/china/setup">
-      <fieldset>
-        <legend><%= t('setup_company') %></legend>
+      <fieldset class="cn-found">
+        <legend><%= t('found_title') %></legend>
+        <p class="cn-note"><%= t('found_lead') %></p>
         <div class="cn-grid">
           <label>
             <span><%= t('company_zh') %></span>
@@ -85,10 +86,6 @@
             <input type="text" name="export_markets" value="<%= profile.export_markets || '' %>">
           </label>
         </div>
-      </fieldset>
-
-      <fieldset>
-        <legend><%= t('cap_title') %></legend>
         <p class="cn-label"><%= t('processes') %></p>
         <div class="cn-checks">
           <% catalogs.PROCESSES.forEach((item) => { %>
@@ -141,22 +138,53 @@
         </div>
       </fieldset>
 
-      <fieldset>
-        <legend><%= t('endpoint_title') %></legend>
+      <fieldset class="cn-interact">
+        <legend><%= t('interact_title') %></legend>
+        <p class="cn-lead"><%= t('interact_lead') %></p>
+        <p class="cn-label"><%= t('wechat_title') %></p>
+        <p class="cn-note"><%= t('wechat_lead') %></p>
+        <div class="cn-wechat">
+          <% catalogs.CONTACT_SLOTS.forEach((slot, index) => {
+            var row = (profile.contacts && profile.contacts[index]) || {};
+          %>
+            <div class="cn-wechat-row">
+              <span><%= lang === 'en' ? slot.en : slot.zh %></span>
+              <input type="text" name="contact_name_<%= index %>" value="<%= row.name || '' %>" placeholder="<%= t('contact_ph') %>">
+              <input type="text" name="contact_wechat_<%= index %>" value="<%= row.wechat || '' %>" placeholder="WeChat ID">
+            </div>
+          <% }) %>
+        </div>
         <label>
-          <span><%= t('context') %></span>
+          <span><%= t('flex_title') %></span>
+          <select name="flexibility">
+            <% catalogs.FLEX.forEach((item) => { %>
+              <option value="<%= item.id %>" <%= profile.flexibility === item.id ? 'selected' : '' %>><%= lang === 'en' ? item.en : item.zh %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label>
+          <span><%= t('sample_lead_label') %></span>
+          <input type="text" name="sample_lead" value="<%= profile.sample_lead || '' %>" placeholder="<%= t('sample_lead_ph') %>">
+        </label>
+        <label>
+          <span><%= t('win_jobs') %></span>
           <textarea name="context" rows="5" placeholder="<%= t('context_ph') %>"><%= company.context || '' %></textarea>
         </label>
         <label>
           <span><%= t('goal') %></span>
           <textarea name="goal" rows="3" placeholder="<%= t('goal_ph') %>"><%= company.goal || '' %></textarea>
         </label>
-        <p class="cn-label"><%= t('actions') %></p>
-        <div class="cn-checks cn-checks-stack">
-          <% catalogs.ACTIONS.forEach((item) => { %>
-            <label class="cn-check"><input type="checkbox" name="actions" value="<%= item.id %>" <%= actions.includes(item.id) ? 'checked' : '' %>><span><%= lang === 'en' ? item.en : item.zh %></span></label>
-          <% }) %>
-        </div>
+        <% ['answer_capabilities','collect_rfq','request_missing','forward_sales'].forEach((id) => { %>
+          <input type="hidden" name="actions" value="<%= id %>">
+        <% }) %>
+        <details class="cn-more">
+          <summary><%= t('actions') %></summary>
+          <div class="cn-checks cn-checks-stack">
+            <% catalogs.ACTIONS.filter((item) => !['answer_capabilities','collect_rfq','request_missing','forward_sales'].includes(item.id)).forEach((item) => { %>
+              <label class="cn-check"><input type="checkbox" name="actions" value="<%= item.id %>" <%= actions.includes(item.id) ? 'checked' : '' %>><span><%= lang === 'en' ? item.en : item.zh %></span></label>
+            <% }) %>
+          </div>
+        </details>
       </fieldset>
 
       <div class="cn-actions">

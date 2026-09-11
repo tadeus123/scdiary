@@ -1,7 +1,7 @@
 const assert = require('assert');
 const { domainMatches, normalizeDomain } = require('./domain');
 const { proofLines, proofPayload } = require('./proof');
-const { canPublish, normalizeProfile } = require('./fields');
+const { canPublish, normalizeProfile, mapCityId, fillEmptyCompany, listedContacts } = require('./fields');
 const { verifyMail } = require('./mail');
 
 assert.strictEqual(normalizeDomain('https://www.WayKenRM.com/cnc'), 'waykenrm.com');
@@ -25,9 +25,10 @@ assert.ok(connected.en.startsWith('12 verified'));
 const dense = proofLines({ started: 80, verified: 70, live: 63 });
 assert.ok(dense.en.includes('63 verified export manufacturers'));
 
-const payload = proofPayload([{ status: 'pending' }, { status: 'live', live_at: 'x', verified_at: 'x' }]);
+const payload = proofPayload([{ status: 'pending' }, { status: 'live', live_at: 'x', verified_at: 'x', domain: 'acme.com' }]);
 assert.strictEqual(payload.started, 2);
 assert.strictEqual(payload.live, 1);
+assert.strictEqual(payload.recent[0].domain, 'acme.com');
 
 assert.strictEqual(canPublish({
   company_name: '深圳某某精密',
@@ -37,6 +38,23 @@ assert.strictEqual(canPublish({
 }), true);
 assert.strictEqual(canPublish({ company_name: 'x', city: 'shenzhen', profile: {}, goal: '' }), false);
 
+assert.strictEqual(mapCityId('Dongguan, China'), 'dongguan');
+assert.strictEqual(mapCityId('深圳市南山区'), 'shenzhen');
+assert.strictEqual(mapCityId('Ningbo'), 'other');
+const filled = fillEmptyCompany(
+  { company_name: '', profile: {} },
+  { company_name: '深圳某某', city: 'dongguan', profile: { processes: ['5axis'], site_notes: 'scraped about page' } }
+);
+assert.strictEqual(filled.company_name, '深圳某某');
+assert.ok(filled.profile.processes.includes('5axis'));
+assert.ok(filled.profile.site_notes.includes('scraped'));
+const withChat = normalizeProfile({
+  contacts: [{ name: 'Li', wechat: 'wxid_li' }],
+  sample_lead: 'samples in 7 days',
+  flexibility: 'creative',
+});
+assert.strictEqual(listedContacts(withChat.contacts)[0].wechat, 'wxid_li');
+
 const mail = verifyMail({ lang: 'zh', link: 'https://www.tademehl.com/airsup/china/verify?token=abc', contactName: '张工' });
 assert.ok(mail.subject.includes('确认'));
 assert.ok(mail.text.includes('https://www.tademehl.com/airsup/china/verify?token=abc'));
@@ -44,7 +62,7 @@ assert.ok(mail.html.includes('张工'));
 
 const { COPY } = require('./i18n');
 const { genericDemo, personalizedDemo, guessNiche } = require('./demo');
-const { isBlockedHost, isPrivateIp, stripHtml } = require('./site-preview');
+const { isBlockedHost, isPrivateIp, stripHtml, extraPathsFromHtml, companyDraftFromPreview } = require('./site-preview');
 const emoji = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
 for (const lang of Object.keys(COPY)) {
   for (const [key, value] of Object.entries(COPY[lang])) {
@@ -68,6 +86,21 @@ assert.strictEqual(guessNiche('PA66 injection molding 注塑'), 'injection');
 assert.strictEqual(isBlockedHost('localhost'), true);
 assert.strictEqual(isPrivateIp('127.0.0.1'), true);
 assert.ok(stripHtml('<title>Hi</title><p>Factory</p>').includes('Factory'));
+assert.ok(extraPathsFromHtml('<a href="/about">x</a><a href="https://acme.com/contact">y</a>', 'acme.com').length >= 1);
+const siteDraft = companyDraftFromPreview({
+  companyNameZh: '某某精密',
+  companyNameEn: 'Acme',
+  city: 'Dongguan',
+  cityId: 'dongguan',
+  niche: 'cnc',
+  summary: '5-axis aluminum',
+  profile: { processes: ['5axis'] },
+});
+assert.strictEqual(siteDraft.city, 'dongguan');
+assert.ok(siteDraft.profile.processes.includes('5axis'));
+assert.ok(COPY.zh.found_title.includes('网站'));
+assert.ok(COPY.en.wechat_title.toLowerCase().includes('wechat'));
+assert.ok(COPY.zh.pitch_line.includes('ChatGPT'));
 
 const crypto = require('crypto');
 const {
@@ -133,6 +166,14 @@ assert.ok(!fallbackReply({ company: factory, message: 'Can you mill this?', rfq:
 assert.ok(systemPrompt(factory).includes('make this company money'));
 assert.ok(systemPrompt(factory).includes('5-axis aluminum brackets'));
 assert.ok(systemPrompt(factory).includes('Keep every RFQ field'));
+assert.ok(systemPrompt({
+  ...factory,
+  profile: { ...factory.profile, contacts: [{ name: 'Li', wechat: 'wxid_li' }], sample_lead: 'samples in 7 days', flexibility: 'creative' },
+}).includes('wxid_li'));
+assert.ok(systemPrompt({
+  ...factory,
+  profile: { ...factory.profile, sample_lead: 'samples in 7 days', flexibility: 'creative' },
+}).includes('samples in 7 days'));
 assert.ok(fallbackReply({
   company: factory,
   message: 'Also anodize them.',

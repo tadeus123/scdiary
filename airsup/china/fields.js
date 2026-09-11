@@ -65,6 +65,19 @@ const ACTIONS = [
 
 const DEFAULT_ACTIONS = ['answer_capabilities', 'collect_rfq', 'request_missing', 'forward_sales'];
 
+const FLEX = [
+  { id: 'strict', zh: '严格：只确认已填写内容，不给替代方案', en: 'Strict: confirm listed facts only, no alternatives' },
+  { id: 'normal', zh: '正常：可在已填写工艺内建议可行做法', en: 'Normal: suggest options that are already listed' },
+  { id: 'creative', zh: '灵活：在已填写能力内主动找可行方案', en: 'Flexible: hunt for a fit inside listed capabilities' },
+];
+
+const CONTACT_SLOTS = [
+  { role: 'ceo', zh: '负责人 / 老板微信', en: 'Owner / CEO WeChat' },
+  { role: 'sales', zh: '销售 1 微信', en: 'Sales 1 WeChat' },
+  { role: 'sales', zh: '销售 2 微信', en: 'Sales 2 WeChat' },
+  { role: 'sales', zh: '销售 3 微信', en: 'Sales 3 WeChat' },
+];
+
 function asList(raw) {
   if (Array.isArray(raw)) return raw.map((item) => String(item || '').trim()).filter(Boolean);
   if (typeof raw === 'string') {
@@ -79,6 +92,40 @@ function asList(raw) {
 function pickIds(raw, allowed) {
   const allow = new Set(allowed.map((item) => item.id));
   return asList(raw).filter((id) => allow.has(id));
+}
+
+function emptyContacts() {
+  return CONTACT_SLOTS.map((slot) => ({ role: slot.role, name: '', wechat: '' }));
+}
+
+function normalizeContacts(raw) {
+  const rows = Array.isArray(raw) ? raw : [];
+  return emptyContacts().map((slot, index) => {
+    const row = rows[index] && typeof rows[index] === 'object' ? rows[index] : {};
+    return {
+      role: slot.role,
+      name: String(row.name || '').trim().slice(0, 80),
+      wechat: String(row.wechat || '').trim().slice(0, 80),
+    };
+  });
+}
+
+function listedContacts(raw) {
+  return normalizeContacts(raw).filter((row) => row.wechat);
+}
+
+function normalizeFlexibility(raw) {
+  const id = String(raw || '').trim();
+  return FLEX.some((item) => item.id === id) ? id : 'normal';
+}
+
+function mapCityId(city) {
+  const value = String(city || '').trim();
+  if (!value) return '';
+  const lower = value.toLowerCase();
+  if (/深圳|shenzhen/.test(lower)) return 'shenzhen';
+  if (/东莞|dongguan/.test(lower)) return 'dongguan';
+  return 'other';
 }
 
 function cityLabel(id, lang) {
@@ -105,6 +152,10 @@ function normalizeProfile(raw) {
     moq: String(source.moq || '').trim(),
     lead_time: String(source.lead_time || '').trim(),
     shipping: String(source.shipping || '').trim(),
+    sample_lead: String(source.sample_lead || '').trim(),
+    flexibility: normalizeFlexibility(source.flexibility),
+    contacts: normalizeContacts(source.contacts),
+    site_notes: String(source.site_notes || '').trim().slice(0, 8000),
   };
 }
 
@@ -155,6 +206,11 @@ function listingText(company) {
     profile.lead_time ? `Lead time: ${profile.lead_time}` : '',
     profile.export_markets ? `Export markets: ${profile.export_markets}` : '',
     profile.machines ? `Machines: ${profile.machines}` : '',
+    profile.sample_lead ? `Sample / fastest lead they will stand behind: ${profile.sample_lead}` : '',
+    profile.flexibility ? `Reply style: ${profile.flexibility}` : '',
+    listedContacts(profile.contacts).length
+      ? `WeChat contacts: ${listedContacts(profile.contacts).map((row) => `${row.name || row.role} ${row.wechat}`).join('; ')}`
+      : '',
     company && company.context ? `Context: ${company.context}` : '',
     company && company.goal ? `Goal: ${company.goal}` : '',
   ];
@@ -205,8 +261,34 @@ function endpointRecord(company) {
     action_labels: labelsFor(normalizeActions(company.actions), ACTIONS, 'en'),
     machines: profile.machines,
     export_markets: profile.export_markets,
+    sample_lead: profile.sample_lead,
+    flexibility: profile.flexibility,
+    contacts: listedContacts(profile.contacts),
     listing_text: listingText(company),
   };
+}
+
+function fillEmptyCompany(company, draft) {
+  const current = company && typeof company === 'object' ? company : {};
+  const incoming = draft && typeof draft === 'object' ? draft : {};
+  const next = { ...current };
+  for (const key of ['company_name', 'company_name_en', 'city', 'niche', 'context', 'goal']) {
+    if (!String(next[key] || '').trim() && String(incoming[key] || '').trim()) next[key] = incoming[key];
+  }
+  const prevProfile = normalizeProfile(current.profile);
+  const draftProfile = normalizeProfile(incoming.profile);
+  next.profile = {
+    ...prevProfile,
+    ...Object.fromEntries(Object.entries(draftProfile).filter(([key, value]) => {
+      if (key === 'contacts' || key === 'flexibility') return false;
+      if (Array.isArray(value)) return value.length && !(Array.isArray(prevProfile[key]) && prevProfile[key].length);
+      return Boolean(String(value || '').trim()) && !String(prevProfile[key] || '').trim();
+    })),
+    contacts: listedContacts(prevProfile.contacts).length ? prevProfile.contacts : draftProfile.contacts,
+    flexibility: prevProfile.flexibility || draftProfile.flexibility,
+    site_notes: prevProfile.site_notes || draftProfile.site_notes,
+  };
+  return next;
 }
 
 module.exports = {
@@ -218,9 +300,16 @@ module.exports = {
   CERTS,
   ACTIONS,
   DEFAULT_ACTIONS,
+  FLEX,
+  CONTACT_SLOTS,
   normalizeProfile,
   normalizeActions,
   normalizeNiche,
+  normalizeContacts,
+  normalizeFlexibility,
+  listedContacts,
+  mapCityId,
+  fillEmptyCompany,
   cityLabel,
   displayCity,
   companyTitle,

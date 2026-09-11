@@ -1,5 +1,6 @@
 const { normalizeDomain, isFreeMail } = require('./domain');
 const { genericDemo, personalizedDemo, nameFromDomain, guessNiche } = require('./demo');
+const { normalizeProfile, normalizeNiche, mapCityId } = require('./fields');
 
 const BLOCKED_HOSTS = new Set(['localhost', 'localhost.localdomain', 'metadata.google.internal']);
 
@@ -48,7 +49,7 @@ function titleFromHtml(html) {
 
 async function fetchSiteText(domain) {
   if (!domain || isBlockedHost(domain) || isFreeMail(domain)) {
-    return { ok: false, text: '', title: '' };
+    return { ok: false, text: '', title: '', html: '' };
   }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4500);
@@ -70,26 +71,102 @@ async function fetchSiteText(domain) {
       }
     })();
     if (isBlockedHost(finalHost) || isFreeMail(finalHost)) {
-      return { ok: false, text: '', title: '' };
+      return { ok: false, text: '', title: '', html: '' };
     }
-    if (!res.ok) return { ok: false, text: '', title: '' };
+    if (!res.ok) return { ok: false, text: '', title: '', html: '' };
     const buf = await res.arrayBuffer();
     const html = Buffer.from(buf).toString('utf8').slice(0, 400000);
-    return { ok: true, text: stripHtml(html), title: titleFromHtml(html) };
+    return { ok: true, text: stripHtml(html), title: titleFromHtml(html), html };
   } catch {
-    return { ok: false, text: '', title: '' };
+    return { ok: false, text: '', title: '', html: '' };
   } finally {
     clearTimeout(timer);
   }
 }
 
+function extraPathsFromHtml(html, domain) {
+  const hrefs = String(html || '').match(/href=["']([^"']+)["']/gi) || [];
+  const want = /about|capabilit|contact|product|factory|company|process|machine|quality|cert|关于|能力|联系|产品|工厂|简介|设备/i;
+  const urls = [];
+  const seen = new Set();
+  hrefs.forEach((raw) => {
+    const href = String(raw).replace(/^href=["']|["']$/gi, '');
+    let url;
+    try {
+      url = new URL(href, `https://${domain}/`);
+    } catch {
+      return;
+    }
+    const host = url.hostname.replace(/^www\./, '');
+    if (host !== domain) return;
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return;
+    if (!want.test(`${url.pathname} ${href}`)) return;
+    const key = url.pathname.replace(/\/$/, '') || '/';
+    if (key === '/' || seen.has(key)) return;
+    seen.add(key);
+    urls.push(`https://${domain}${url.pathname}`);
+  });
+  return urls.slice(0, 3);
+}
+
+async function fetchOnePage(url, domain) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 2500);
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controller.signal,
+      headers: {
+        Accept: 'text/html,text/plain',
+        'User-Agent': 'AirsupPreview/1 (https://www.tademehl.com/airsup/china)',
+      },
+    });
+    const finalHost = (() => {
+      try {
+        return new URL(res.url).hostname.replace(/^www\./, '');
+      } catch {
+        return domain;
+      }
+    })();
+    if (isBlockedHost(finalHost) || isFreeMail(finalHost) || !res.ok) return '';
+    const buf = await res.arrayBuffer();
+    return stripHtml(Buffer.from(buf).toString('utf8').slice(0, 200000));
+  } catch {
+    return '';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchSiteBundle(domain) {
+  const home = await fetchSiteText(domain);
+  if (!home.ok) return home;
+  const extras = extraPathsFromHtml(home.html, domain);
+  const extraText = (await Promise.all(extras.map((url) => fetchOnePage(url, domain))))
+    .filter(Boolean)
+    .join('\n');
+  return {
+    ok: true,
+    title: home.title,
+    text: `${home.text}\n${extraText}`.trim().slice(0, 14000),
+    pages: 1 + extras.length,
+  };
+}
+
 async function inferFromText(domain, page) {
+  const cityId = mapCityId(`${page.title} ${page.text}`);
   const fallback = {
     companyName: page.title || nameFromDomain(domain),
-    city: '',
+    companyNameEn: '',
+    companyNameZh: '',
+    city: cityId === 'other' ? '' : cityId,
+    cityId,
     capabilities: [],
     summary: '',
     niche: guessNiche(`${page.title} ${page.text}`),
+    profile: normalizeProfile({}),
+    siteNotes: String(page.text || '').slice(0, 8000),
     fromSite: Boolean(page.text),
   };
   const key = process.env.OPENAI_API_KEY;
@@ -109,11 +186,11 @@ async function inferFromText(domain, page) {
           {
             role: 'system',
             content:
-              'Extract only facts stated on a public manufacturer website. Return JSON: companyName, city, niche (cnc|injection|pcba|other), capabilities (string array, max 5), summary. Do not invent machines, certificates, prices or lead times. If unknown, use empty strings or [].',
+              'Extract only facts stated on a public manufacturer website. Return JSON with keys: companyNameZh, companyNameEn, city, niche (cnc|injection|pcba|other), processes (ids from 3axis,4axis,5axis,turning,swiss,edm,grinding,sheet,injection,mold,pcba), materials (ids from alu,steel,stainless,titanium,copper,plastic), finishing (ids from anodize,powder,plating,bead,polish,heat), certifications (ids from iso9001,iso13485,as9100,iatf,iso14001), machines, tolerance, max_workpiece, moq, lead_time, shipping, year_founded, employees, address, export_markets, capabilities (string array max 8), summary. Do not invent machines, certificates, prices or lead times. Unknown = empty string or [].',
           },
           {
             role: 'user',
-            content: `Domain: ${domain}\nTitle: ${page.title}\nText: ${page.text.slice(0, 6000)}`,
+            content: `Domain: ${domain}\nTitle: ${page.title}\nText: ${page.text.slice(0, 12000)}`,
           },
         ],
       }),
@@ -121,20 +198,63 @@ async function inferFromText(domain, page) {
     if (!res.ok) return fallback;
     const data = await res.json();
     const parsed = JSON.parse(String(data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '{}'));
-    const niche = ['cnc', 'injection', 'pcba', 'other'].includes(parsed.niche) ? parsed.niche : fallback.niche;
+    const niche = normalizeNiche(parsed.niche || fallback.niche);
+    const cityRaw = String(parsed.city || '');
+    const mapped = mapCityId(cityRaw) || fallback.cityId;
+    const profile = normalizeProfile({
+      year_founded: parsed.year_founded,
+      employees: parsed.employees,
+      address: parsed.address,
+      export_markets: parsed.export_markets,
+      other_city: mapped === 'other' ? cityRaw : '',
+      processes: parsed.processes,
+      materials: parsed.materials,
+      finishing: parsed.finishing,
+      certifications: parsed.certifications,
+      machines: parsed.machines,
+      tolerance: parsed.tolerance,
+      max_workpiece: parsed.max_workpiece,
+      moq: parsed.moq,
+      lead_time: parsed.lead_time,
+      shipping: parsed.shipping,
+      site_notes: String(page.text || '').slice(0, 8000),
+    });
     return {
-      companyName: String(parsed.companyName || fallback.companyName).slice(0, 120),
-      city: String(parsed.city || '').slice(0, 80),
+      companyName: String(parsed.companyNameEn || parsed.companyNameZh || fallback.companyName).slice(0, 120),
+      companyNameEn: String(parsed.companyNameEn || '').slice(0, 120),
+      companyNameZh: String(parsed.companyNameZh || '').slice(0, 120),
+      city: cityRaw.slice(0, 80),
+      cityId: mapped || 'shenzhen',
       capabilities: Array.isArray(parsed.capabilities)
-        ? parsed.capabilities.map((item) => String(item).slice(0, 80)).filter(Boolean).slice(0, 5)
+        ? parsed.capabilities.map((item) => String(item).slice(0, 80)).filter(Boolean).slice(0, 8)
         : [],
-      summary: String(parsed.summary || '').slice(0, 280),
+      summary: String(parsed.summary || '').slice(0, 600),
       niche: niche === 'other' ? guessNiche(page.text) : niche,
+      profile,
+      siteNotes: profile.site_notes,
       fromSite: true,
     };
   } catch {
     return fallback;
   }
+}
+
+function companyDraftFromPreview(preview) {
+  const cityId = preview.cityId || mapCityId(preview.city) || 'shenzhen';
+  const profile = normalizeProfile({
+    ...(preview.profile || {}),
+    other_city: (preview.profile && preview.profile.other_city) || (cityId === 'other' ? preview.city : ''),
+    site_notes: preview.siteNotes || (preview.profile && preview.profile.site_notes) || '',
+  });
+  return {
+    company_name: String(preview.companyNameZh || '').trim(),
+    company_name_en: String(preview.companyNameEn || preview.companyName || '').trim(),
+    city: cityId,
+    niche: preview.niche || 'cnc',
+    context: String(preview.summary || '').trim(),
+    goal: '',
+    profile,
+  };
 }
 
 const previewCache = new Map();
@@ -146,21 +266,27 @@ async function buildPreview(website, lang) {
   const cacheKey = `${lang}:${domain}`;
   const hit = previewCache.get(cacheKey);
   if (hit && Date.now() - hit.at < 10 * 60 * 1000) return hit.data;
-  const page = await fetchSiteText(domain);
+  const page = await fetchSiteBundle(domain);
   const inferred = await inferFromText(domain, page);
   const preview = {
     domain,
     website: `https://${domain}`,
     companyName: inferred.companyName || nameFromDomain(domain),
+    companyNameEn: inferred.companyNameEn,
+    companyNameZh: inferred.companyNameZh,
     city: inferred.city,
+    cityId: inferred.cityId || mapCityId(inferred.city),
     capabilities: inferred.capabilities,
     summary: inferred.summary,
     niche: inferred.niche,
+    profile: inferred.profile,
+    siteNotes: inferred.siteNotes,
     fromSite: inferred.fromSite,
   };
   const data = {
     ok: true,
     ...preview,
+    draft: companyDraftFromPreview(preview),
     demo: personalizedDemo(lang, preview),
     generic: genericDemo(lang),
   };
@@ -173,5 +299,8 @@ module.exports = {
   isBlockedHost,
   stripHtml,
   fetchSiteText,
+  extraPathsFromHtml,
+  companyDraftFromPreview,
+  mapCityId,
   buildPreview,
 };

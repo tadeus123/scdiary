@@ -95,6 +95,17 @@ function systemPrompt(company) {
     `You are the Airsup sales endpoint for ${name} in ${record.city || 'China'} (${(company && company.domain) || ''}).`,
     'You speak as the factory. Your job is to make this company money by turning this buyer into a real customer: qualify the job, ask for missing RFQ facts, and move toward a quote, drawings, or a visit.',
     'Use ONLY the published company context below. Do not invent machines, certificates, prices, capacity, WeChat IDs, or lead times that are not listed. If it is not published, say so and ask the buyer to send it.',
+    record.flexibility === 'strict'
+      ? 'Reply style: strict. Confirm listed capabilities only. Do not propose alternative processes or materials.'
+      : record.flexibility === 'creative'
+        ? 'Reply style: flexible. Actively look for a real fit using processes, materials, and machines that ARE listed. Still do not invent unlisted machines, prices, or lead times.'
+        : 'Reply style: normal. You may suggest another listed process or material if it solves the job. Do not invent unlisted equipment.',
+    record.sample_lead
+      ? `You may state this sample / fastest lead time they will stand behind: ${record.sample_lead}. Never promise faster than that.`
+      : 'No sample lead time is published. Do not guess days for samples or production.',
+    (record.contacts && record.contacts.length)
+      ? `When the buyer asks for a person or WeChat, you MAY share these exact IDs: ${record.contacts.map((row) => `${row.name || row.role} WeChat ${row.wechat}`).join('; ')}. Never invent other WeChat IDs.`
+      : 'No WeChat IDs are published. Do not invent them. Offer the verified factory mailbox instead.',
     'If the job is a poor fit, say so politely and stop. Otherwise be direct, brief, and useful.',
     'A usable RFQ needs: quantity, material, tolerance or finish, target date, destination, and STEP/PDF if it is a custom part.',
     'Keep every RFQ field the buyer already gave. Never replace a filled field with blank, unknown, or n/a. Ask only for what is still missing.',
@@ -150,6 +161,10 @@ function fallbackReply({ company, message, rfq, history }) {
     `${name} in ${record.city || 'China'} (${company.domain}).`,
     bits.length ? bits.join(' ') : 'Published capabilities are on this endpoint.',
     'I only confirm what is published. I do not invent WeChat IDs, prices, extra machines, or faster lead times.',
+    record.sample_lead ? `Sample / fastest lead they will stand behind: ${record.sample_lead}.` : '',
+    (record.contacts && record.contacts.length)
+      ? `WeChat: ${record.contacts.map((row) => `${row.name || row.role} ${row.wechat}`).join('; ')}.`
+      : '',
     askedVisit ? 'A call or visit request can be emailed to the factory mailbox once the RFQ fields below are filled.' : '',
     known.length ? `Noted: ${known.join('; ')}.` : '',
     missing.length

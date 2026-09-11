@@ -38,7 +38,16 @@ function proofLines({ started, verified, live }) {
 function proofPayload(rows) {
   const counts = countsFromRows(rows);
   const line = proofLines(counts);
-  return { ...counts, line_zh: line.zh, line_en: line.en };
+  const recent = (Array.isArray(rows) ? rows : [])
+    .filter((row) => row.status === 'live' && row.live_at && row.domain)
+    .sort((a, b) => new Date(b.live_at).getTime() - new Date(a.live_at).getTime())
+    .slice(0, 8)
+    .map((row) => ({
+      domain: row.domain,
+      niche: row.niche || '',
+      name: row.company_name_en || row.company_name || row.domain,
+    }));
+  return { ...counts, line_zh: line.zh, line_en: line.en, recent };
 }
 
 module.exports = {

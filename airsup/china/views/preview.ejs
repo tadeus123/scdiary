@@ -10,6 +10,9 @@
     <p><a class="cn-btn-ghost" href="/airsup/china"><%= t('preview_back') %></a></p>
     <h1><%= preview.companyName || preview.domain %></h1>
     <p class="cn-lead"><%= preview.fromSite ? t('preview_from_site') : t('preview_from_domain') %></p>
+    <% if (preview.summary) { %>
+      <p class="cn-note"><%= preview.summary %></p>
+    <% } %>
     <p class="cn-price"><%= preview.website %></p>
     <%- include('partials/diagram', {
       query: preview.demo && preview.demo.chatgptBuyer,
@@ -47,6 +50,15 @@
       <input type="hidden" name="locale" value="<%= lang %>">
       <p class="cn-note"><%= t('note') %></p>
     </form>
+    <% if (typeof peers !== 'undefined' && peers && peers.length) { %>
+      <h2><%= t('peers_title') %></h2>
+      <p class="cn-note"><%= t('peers_lead') %></p>
+      <ul class="cn-peers">
+        <% peers.forEach((row) => { %>
+          <li><a href="https://<%= row.domain %>" rel="noopener noreferrer" target="_blank"><%= row.domain %></a></li>
+        <% }) %>
+      </ul>
+    <% } %>
   </main>
   <%- include('partials/footer') %>
 </body>

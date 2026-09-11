@@ -11,7 +11,7 @@ const session = require('./session');
 const { t, otherLang } = require('./i18n');
 const { domainMatches } = require('./domain');
 const { genericDemo } = require('./demo');
-const { buildPreview } = require('./site-preview');
+const { buildPreview, companyDraftFromPreview } = require('./site-preview');
 const {
   NICHES,
   CITIES,
@@ -20,10 +20,14 @@ const {
   FINISHES,
   CERTS,
   ACTIONS,
+  DEFAULT_ACTIONS,
+  FLEX,
+  CONTACT_SLOTS,
   normalizeProfile,
   normalizeActions,
   normalizeNiche,
   canPublish,
+  fillEmptyCompany,
 } = require('./fields');
 const { proofPayload } = require('./proof');
 const { sendVerifyEmail } = require('./mail');
@@ -145,6 +149,33 @@ function formFromCompany(company) {
   };
 }
 
+async function applySiteDraft(company, website, lang) {
+  if (!company || company.status === 'live') return company;
+  try {
+    const built = await buildPreview(website || company.website || company.domain, lang);
+    if (!built.ok) return company;
+    const draft = built.draft || companyDraftFromPreview(built);
+    const next = fillEmptyCompany(company, draft);
+    if (!String(next.goal || '').trim()) {
+      next.goal = lang === 'en'
+        ? 'Win qualified export RFQs from buyers who find us in ChatGPT.'
+        : '让欧美采购通过 ChatGPT 找到我们并收到可报价的询盘。';
+    }
+    return db.updateCompany(company.company_id, {
+      company_name: next.company_name,
+      company_name_en: next.company_name_en,
+      city: next.city,
+      niche: next.niche,
+      context: next.context,
+      goal: next.goal,
+      profile: next.profile,
+    });
+  } catch (error) {
+    console.error('Airsup china scrape draft skipped:', error.message);
+    return company;
+  }
+}
+
 function tooSoon(company) {
   if (!company || !company.last_email_at) return false;
   return Date.now() - new Date(company.last_email_at).getTime() < 2 * 60 * 1000;
@@ -187,14 +218,16 @@ async function renderPreview(req, res, { website, form, error, source }) {
       genericDemo: genericDemo(lang),
     });
   }
-  const nextForm = form || { website: built.website, email: '', contact: '', city: 'shenzhen' };
+  const nextForm = form || { website: built.website, email: '', contact: '', city: built.cityId || 'shenzhen' };
+  const peers = (await proof()).recent.filter((row) => !built.niche || row.niche === built.niche || !row.niche);
   return render(req, res, 'preview.ejs', {
     proof: await proof(),
-    form: { ...nextForm, website: nextForm.website || built.website },
+    form: { ...nextForm, website: nextForm.website || built.website, city: nextForm.city || built.cityId || 'shenzhen' },
     error: error || null,
     cities: CITIES,
     source: source || 'web',
     preview: built,
+    peers,
     here: `/airsup/china/preview?w=${encodeURIComponent(built.domain)}`,
   });
 }
@@ -268,6 +301,9 @@ router.post('/start', async (req, res) => {
     } else if (matched.email !== String(company.contact_email || '').toLowerCase()) {
       return fail('err_taken');
     }
+    if (company.status === 'pending') {
+      company = await applySiteDraft(company, matched.website, lang);
+    }
     const purpose = company.status === 'pending' ? 'verify' : 'login';
     const token = await session.createToken(company.company_id, matched.email, purpose);
     const link = `${publicOrigin(req)}/airsup/china/verify?token=${token}`;
@@ -331,6 +367,8 @@ router.get('/verify', async (req, res) => {
     }
     await db.updateCompany(company.company_id, patch);
     await session.createSession(req, res, company.company_id);
+    const fresh = await db.getById(company.company_id);
+    await applySiteDraft(fresh || company, company.website || company.domain, lang);
     return res.redirect('/airsup/china/setup');
   } catch (error) {
     console.error('Airsup china verify error:', error);
@@ -352,7 +390,13 @@ async function requireCompany(req, res) {
   return company;
 }
 
-function readSetup(body) {
+function readSetup(body, company) {
+  const prev = normalizeProfile(company && company.profile);
+  const contacts = [0, 1, 2, 3].map((index) => ({
+    role: index === 0 ? 'ceo' : 'sales',
+    name: body[`contact_name_${index}`],
+    wechat: body[`contact_wechat_${index}`],
+  }));
   const profile = normalizeProfile({
     year_founded: body.year_founded,
     employees: body.employees,
@@ -369,6 +413,10 @@ function readSetup(body) {
     moq: body.moq,
     lead_time: body.lead_time,
     shipping: body.shipping,
+    sample_lead: body.sample_lead,
+    flexibility: body.flexibility,
+    contacts,
+    site_notes: prev.site_notes,
   });
   return {
     company_name: String(body.company_name || '').trim(),
@@ -378,7 +426,7 @@ function readSetup(body) {
     contact_name: String(body.contact_name || '').trim(),
     context: String(body.context || '').trim(),
     goal: String(body.goal || '').trim(),
-    actions: normalizeActions([].concat(body.actions || [])),
+    actions: normalizeActions([].concat(body.actions || DEFAULT_ACTIONS)),
     profile,
   };
 }
@@ -389,7 +437,7 @@ async function showSetup(req, res, { company, error, saved, paused }) {
     company,
     profile: normalizeProfile(company.profile),
     actions: normalizeActions(company.actions),
-    catalogs: { NICHES, CITIES, PROCESSES, MATERIALS, FINISHES, CERTS, ACTIONS },
+    catalogs: { NICHES, CITIES, PROCESSES, MATERIALS, FINISHES, CERTS, ACTIONS, FLEX, CONTACT_SLOTS },
     error: error || null,
     saved: Boolean(saved),
     paused: Boolean(paused),
@@ -418,7 +466,7 @@ router.post('/setup', async (req, res) => {
   if (!peopleAuth.allowedOrigin(req)) return res.redirect('/airsup/china');
   const company = await requireCompany(req, res);
   if (!company) return;
-  const patch = readSetup(req.body || {});
+  const patch = readSetup(req.body || {}, company);
   const next = { ...company, ...patch };
   try {
     await db.updateCompany(company.company_id, patch);
@@ -434,7 +482,7 @@ router.post('/publish', async (req, res) => {
   if (!peopleAuth.allowedOrigin(req)) return res.redirect('/airsup/china');
   const company = await requireCompany(req, res);
   if (!company) return;
-  const patch = readSetup(req.body || {});
+  const patch = readSetup(req.body || {}, company);
   const next = { ...company, ...patch };
   try {
     if (!canPublish(next)) {
