@@ -34,7 +34,8 @@
     * { box-sizing: border-box; }
     html, body {
       margin: 0;
-      height: 100%;
+      width: 100%;
+      height: auto;
       min-height: 0;
       background: transparent;
       overflow: hidden;
@@ -44,9 +45,10 @@
       display: flex;
       flex-direction: column;
       min-height: 0;
-      height: 100%;
-      padding: 18px 18px 14px;
-      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      width: 100%;
+      height: auto;
+      padding: 14px 14px 12px;
+      font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
       color: var(--text);
       -webkit-font-smoothing: antialiased;
       pointer-events: auto;
@@ -121,9 +123,9 @@
     .transcript {
       position: relative;
       margin-top: 12px;
-      flex: 0 1 auto;
+      flex: 0 0 auto;
       min-height: 0;
-      max-height: 420px;
+      max-height: 360px;
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -268,18 +270,59 @@
       }
       return data;
     }
-    function panelFrom(raw) {
-      if (!raw || typeof raw !== 'object') return null;
+    function panelFrom(raw, depth) {
+      if (!raw || typeof raw !== 'object' || depth > 6) return null;
       if (raw._meta && raw._meta.ui && raw._meta.ui.panel) return raw._meta.ui.panel;
       if (raw.ui && raw.ui.panel) return raw.ui.panel;
-      if (raw.toolResponseMetadata) return panelFrom(raw.toolResponseMetadata);
-      if (raw.meta) return panelFrom(raw.meta);
-      if (Array.isArray(raw.messages)) return raw;
+      if (Array.isArray(raw.messages) && (raw.conversation_id || raw.other || raw.you || raw.messages.length)) {
+        return raw;
+      }
+      const nested = [
+        raw.toolResponseMetadata,
+        raw.meta,
+        raw._meta,
+        raw.mcp_tool_result,
+        raw.call_tool_result,
+        raw.result,
+      ];
+      for (let i = 0; i < nested.length; i++) {
+        const found = panelFrom(nested[i], (depth || 0) + 1);
+        if (found) return found;
+      }
       return null;
     }
     function hostPanel() {
       const o = window.openai || {};
-      return panelFrom(o.toolOutput) || panelFrom(o.toolResponseMetadata) || panelFrom(o.meta);
+      return panelFrom(o.toolOutput)
+        || panelFrom(o.toolResponseMetadata)
+        || panelFrom(o.meta)
+        || panelFrom(o.widgetProps)
+        || panelFrom(o);
+    }
+    function syntheticPanel(data) {
+      const input = currentInput();
+      const outgoing = String(input.message || '').trim();
+      const reply = String((data && data.reply) || '').trim();
+      const saved = (panel && panel.messages) || [];
+      const rows = saved.slice();
+      if (outgoing && !rows.some(function (row) { return row.from === 'you' && row.body === outgoing; })) {
+        rows.push({ from: 'you', name: 'You', body: outgoing });
+      }
+      if (reply && !rows.some(function (row) { return row.from === 'them' && row.body === reply; })) {
+        rows.push({ from: 'them', name: (panel && panel.other && panel.other.name) || 'Airsup', body: reply });
+      }
+      const conversationId = (data && data.conversation_id)
+        || (panel && panel.conversation_id)
+        || String(input.conversation_id || '');
+      if (!rows.length && !conversationId) return null;
+      return {
+        conversation_id: conversationId,
+        status: (data && data.status) || (panel && panel.status) || 'open',
+        you: (panel && panel.you) || { name: 'You' },
+        other: (panel && panel.other) || { name: 'Airsup' },
+        messages: rows,
+        threads: (panel && panel.threads) || [],
+      };
     }
     function inputFrom(raw) {
       if (!raw || typeof raw !== 'object') return {};
@@ -350,12 +393,20 @@
     let lastSaved = '';
     function reportHeight() {
       const root = document.getElementById('root');
-      const height = Math.max(MIN_HEIGHT, Math.ceil(root.getBoundingClientRect().height));
+      const height = Math.max(MIN_HEIGHT, Math.ceil(Math.max(
+        root.getBoundingClientRect().height,
+        root.scrollHeight
+      )));
       if (!height || height === lastHeight) return;
       lastHeight = height;
       if (window.openai && typeof window.openai.notifyIntrinsicHeight === 'function') {
         window.openai.notifyIntrinsicHeight(height);
       }
+      window.parent.postMessage({
+        jsonrpc: '2.0',
+        method: 'ui/notifications/size-changed',
+        params: { height: height },
+      }, '*');
     }
     function claimComposer(event) {
       if (event) event.stopPropagation();
@@ -392,10 +443,10 @@
           lbl.className = 'lbl';
           lbl.textContent = 'You';
           wrap.appendChild(lbl);
-        } else if (item.name && item.name !== otherName) {
+        } else {
           const lbl = document.createElement('div');
           lbl.className = 'lbl';
-          lbl.textContent = item.name;
+          lbl.textContent = item.name || otherName || 'Airsup';
           wrap.appendChild(lbl);
         }
         const bubble = document.createElement('p');
@@ -468,7 +519,9 @@
     }
     function hydrate(raw) {
       const data = pick(raw);
-      const next = panelFrom(raw) || hostPanel();
+      const found = panelFrom(raw) || hostPanel();
+      if (found) panel = found;
+      const next = syntheticPanel(data) || found;
       render(data, next, !data.status && !String(data.reply || '').trim());
     }
     function sendMessage(event) {
@@ -598,7 +651,7 @@
           id: message.id,
           result: {
             protocolVersion: '2026-01-26',
-            appInfo: { name: 'airsup', version: '8' },
+            appInfo: { name: 'airsup', version: '10' },
             appCapabilities: { availableDisplayModes: ['inline', 'fullscreen', 'pip'] },
           },
         }, '*');
@@ -619,9 +672,16 @@
       if (globals && globals.toolInput) latestInput = inputFrom(globals.toolInput);
       const out = globals && globals.toolOutput;
       const data = pick(out);
-      const next = panelFrom(out) || panelFrom(globals && globals.toolResponseMetadata) || panelFrom(globals && globals.meta);
-      if (data && (data.status || data.reply)) render(data, next || hostPanel(), false);
-      else if (String(currentInput().message || '').trim()) render(structured, panel, true);
+      const found = panelFrom(out)
+        || panelFrom(globals && globals.toolResponseMetadata)
+        || panelFrom(globals && globals.meta)
+        || hostPanel();
+      if (found) panel = found;
+      if (data && (data.status || data.reply || data.conversation_id)) {
+        render(data, syntheticPanel(data) || found, false);
+      } else if (String(currentInput().message || '').trim()) {
+        render(structured, panel, true);
+      }
     }, { passive: true });
     if (typeof ResizeObserver === 'function') {
       new ResizeObserver(function () {
@@ -631,16 +691,6 @@
     }
     function connectHost() {
       window.parent.postMessage({ jsonrpc: '2.0', method: 'ui/notifications/initialized' }, '*');
-      window.parent.postMessage({
-        jsonrpc: '2.0',
-        id: nextId++,
-        method: 'ui/initialize',
-        params: {
-          protocolVersion: '2026-01-26',
-          appInfo: { name: 'airsup', version: '8' },
-          appCapabilities: { availableDisplayModes: ['inline', 'fullscreen', 'pip'] },
-        },
-      }, '*');
     }
     latestInput = inputFrom(window.openai && window.openai.toolInput);
     const saved = window.openai && window.openai.widgetState;

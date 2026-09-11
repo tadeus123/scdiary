@@ -55,36 +55,52 @@ function publicToolData(data) {
   return out;
 }
 
+function withReply(panel, data, caller) {
+  const next = panel && typeof panel === 'object'
+    ? { ...panel, messages: Array.isArray(panel.messages) ? panel.messages.slice() : [] }
+    : {
+      conversation_id: (data && data.conversation_id) || '',
+      status: (data && data.status) || '',
+      you: { person_id: (caller && caller.person_id) || '', name: (caller && (caller.display_name || caller.email)) || 'You' },
+      other: { person_id: '', name: 'Airsup' },
+      messages: [],
+      threads: [],
+    };
+  if (data && data.conversation_id) next.conversation_id = data.conversation_id;
+  if (data && data.status) next.status = data.status;
+  const reply = data && data.reply != null ? String(data.reply) : '';
+  if (reply && !next.messages.some((row) => row.from === 'them' && row.body === reply)) {
+    next.messages.push({
+      from: 'them',
+      name: (next.other && next.other.name) || 'Airsup',
+      body: reply,
+    });
+  }
+  return next;
+}
+
 async function formatWidgetResult(store, caller, data) {
   const result = formatToolResult(data);
   if (!caller || !data || !data.conversation_id) return result;
-  if (data._panel) {
-    result._meta = { ui: { panel: data._panel } };
-    return result;
-  }
-  const conversationId = String(data.conversation_id);
-  if (conversationId.startsWith('cn_')) {
+  let panel = data._panel || null;
+  if (!panel && String(data.conversation_id).startsWith('cn_')) {
     try {
       const chinaTalk = require('./china/talk');
-      const panel = await chinaTalk.conversationPanel(caller, conversationId);
-      if (panel) result._meta = { ui: { panel } };
+      panel = await chinaTalk.conversationPanel(caller, data.conversation_id);
     } catch (error) {
       console.error('Airsup china panel skipped:', error.message);
     }
-    return result;
   }
-  let panel = await conversationPanel(store, caller.person_id, conversationId, { includeThreads: false });
-  // AIRSUP-CHINA-BEGIN
-  try {
-    const chinaTalk = require('./china/talk');
-    panel = await chinaTalk.mergePanel(caller, conversationId, panel);
-  } catch (error) {
-    console.error('Airsup china panel skipped:', error.message);
+  if (!panel && !String(data.conversation_id).startsWith('cn_')) {
+    panel = await conversationPanel(store, caller.person_id, data.conversation_id, { includeThreads: false });
+    try {
+      const chinaTalk = require('./china/talk');
+      panel = await chinaTalk.mergePanel(caller, data.conversation_id, panel);
+    } catch (error) {
+      console.error('Airsup china panel skipped:', error.message);
+    }
   }
-  // AIRSUP-CHINA-END
-  result._meta = {
-    ui: { panel },
-  };
+  result._meta = { ui: { panel: withReply(panel, data, caller) } };
   return result;
 }
 

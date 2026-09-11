@@ -234,6 +234,12 @@ function memoryChina(companies) {
   const widgeted = await formatWidgetResult(null, caller, first);
   assert.strictEqual(widgeted._meta.ui.panel.messages.length, 2);
   assert.ok(!widgeted.structuredContent._panel);
+  const replyOnly = await formatWidgetResult(null, caller, {
+    conversation_id: first.conversation_id,
+    status: 'replied',
+    reply: first.reply,
+  });
+  assert.ok(replyOnly._meta.ui.panel.messages.some((row) => row.from === 'them' && row.body === first.reply));
 
   const second = await maybeHandle(caller, { conversation_id: first.conversation_id, message: 'Also anodize them.' }, deps);
   assert.strictEqual(second.conversation_id, first.conversation_id);

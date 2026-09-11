@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { createMemoryStore, sha256, randomToken } = require('./store-memory');
-const { createMcp, toolList } = require('./mcp');
+const { createMcp, toolList, formatWidgetResult } = require('./mcp');
 const { WIDGET_URI, widgetResource, widgetContents } = require('./widget');
 const { THREADS_URI } = require('./panel');
 const { wakeBody, wakeSubject } = require('./mail');
@@ -59,6 +59,7 @@ const { wakeBody, wakeSubject } = require('./mail');
   });
   assert.strictEqual(both.status, 'failed');
   assert.deepStrictEqual(Object.keys(both).sort(), ['conversation_id', 'reply', 'status']);
+  assert.ok(WIDGET_URI.includes('airsup-conversation-v10.html'));
   assert.strictEqual(widgetResource().uri, WIDGET_URI);
   assert.strictEqual(widgetResource()._meta['openai/widgetDomain'], 'https://www-tademehl-com.oaiusercontent.com');
   assert.strictEqual(widgetContents(WIDGET_URI).contents[0]._meta['openai/widgetDomain'], 'https://www-tademehl-com.oaiusercontent.com');
@@ -66,7 +67,13 @@ const { wakeBody, wakeSubject } = require('./mail');
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('liveMessages'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('structured.reply'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('hostPanel'));
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('syntheticPanel'));
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('mcp_tool_result'));
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('ui/notifications/size-changed'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('claimComposer'));
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('height: auto'));
+  assert.ok(!widgetContents(WIDGET_URI).contents[0].text.includes('height: 100%'));
+  assert.ok(!widgetContents(WIDGET_URI).contents[0].text.includes('document.documentElement.scrollHeight'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('companyChat'));
   assert.ok(!widgetContents(WIDGET_URI).contents[0].text.includes('requestDisplayMode'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('ui/notifications/initialized'));
@@ -129,6 +136,13 @@ const { wakeBody, wakeSubject } = require('./mail');
   assert.strictEqual(payload._meta.ui.panel.other.name, 'Anna Schmidt');
   assert.strictEqual(payload._meta.ui.panel.messages[0].body, 'hello anna');
   assert.strictEqual(payload._meta.ui.panel.messages[1].body, 'hello tade');
+
+  const replyOnly = await formatWidgetResult(store, tade, {
+    conversation_id: 'missing-thread',
+    status: 'replied',
+    reply: 'We can make 500 pcs.',
+  });
+  assert.ok(replyOnly._meta.ui.panel.messages.some((row) => row.from === 'them' && row.body === 'We can make 500 pcs.'));
 
   const endedRes = fakeRes();
   await mcp.handleMcp(fakeReq({
