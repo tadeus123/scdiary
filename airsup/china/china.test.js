@@ -82,6 +82,8 @@ const {
   mergeRfq,
   fallbackReply,
   normalizeOutcome,
+  completeReply,
+  systemPrompt,
 } = require('./reply');
 const { factoryNoticeMail } = require('./mail');
 
@@ -117,6 +119,8 @@ const factory = {
 };
 assert.ok(fallbackReply({ company: factory, message: 'Can you mill this?', rfq: {} }).includes('Acme CNC'));
 assert.ok(!fallbackReply({ company: factory, message: 'Can you mill this?', rfq: {} }).includes('How to answer'));
+assert.ok(systemPrompt(factory).includes('make this company money'));
+assert.ok(systemPrompt(factory).includes('5-axis aluminum brackets'));
 
 const notice = factoryNoticeMail({
   lang: 'zh',
@@ -191,7 +195,12 @@ function memoryChina(companies) {
   const notices = [];
   const deps = {
     db: store,
-    completeReply: async ({ message }) => ({
+    sendFactoryNotice: async (payload) => { notices.push(payload); },
+  };
+  let seenHistory = null;
+  deps.completeReply = async ({ message, history }) => {
+    seenHistory = history;
+    return {
       reply: `Endpoint reply to: ${message}`,
       rfq: {
         quantity: '500 pcs',
@@ -205,19 +214,33 @@ function memoryChina(companies) {
       rfq_complete: true,
       notify_factory: true,
       notify_reason: 'rfq',
-    }),
-    sendFactoryNotice: async (payload) => { notices.push(payload); },
+    };
   };
   const first = await maybeHandle(caller, { person_id: factory.company_id, message: 'Can you make 500 aluminum brackets?' }, deps);
   assert.ok(first.conversation_id.startsWith(CONV_PREFIX));
   assert.strictEqual(first.status, 'replied');
   assert.ok(first.reply.includes('500 aluminum'));
   assert.strictEqual(notices.length, 1);
+  assert.ok(Array.isArray(first._panel && first._panel.messages));
+  assert.strictEqual(first._panel.messages.length, 2);
+  assert.strictEqual(first._panel.messages[0].from, 'you');
+  assert.strictEqual(first._panel.messages[1].from, 'them');
+  assert.deepStrictEqual(seenHistory, []);
+
+  const { formatToolResult, formatWidgetResult } = require('../mcp');
+  const publicFirst = formatToolResult(first);
+  assert.deepStrictEqual(Object.keys(publicFirst.structuredContent).sort(), ['conversation_id', 'reply', 'status']);
+  assert.ok(!Object.prototype.hasOwnProperty.call(publicFirst.structuredContent, '_panel'));
+  const widgeted = await formatWidgetResult(null, caller, first);
+  assert.strictEqual(widgeted._meta.ui.panel.messages.length, 2);
+  assert.ok(!widgeted.structuredContent._panel);
 
   const second = await maybeHandle(caller, { conversation_id: first.conversation_id, message: 'Also anodize them.' }, deps);
   assert.strictEqual(second.conversation_id, first.conversation_id);
   assert.ok(second.reply.includes('anodize'));
   assert.strictEqual(notices.length, 1);
+  assert.strictEqual((seenHistory || []).length, 2);
+  assert.strictEqual(second._panel.messages.length, 4);
 
   const panel = await conversationPanel(caller, first.conversation_id, deps);
   assert.strictEqual(panel.other.name, 'Acme CNC');
@@ -246,6 +269,54 @@ function memoryChina(companies) {
   const paused = await maybeHandle(caller, { person_id: factory.company_id, message: 'hello' }, { db: pausedStore, completeReply: deps.completeReply, sendFactoryNotice: deps.sendFactoryNotice });
   assert.strictEqual(paused.status, 'replied');
   assert.ok(paused.reply.toLowerCase().includes('paused'));
+
+  const ai = await completeReply({
+    company: factory,
+    caller,
+    history: [{ role: 'buyer', body: 'Can you mill brackets?' }, { role: 'factory', body: 'Yes, 5-axis aluminum.' }],
+    message: 'Need 200 pcs to Germany',
+    rfq: {},
+    fetchImpl: async (_url, opts) => {
+      const body = JSON.parse(opts.body);
+      assert.strictEqual(body.model, 'gpt-4o-mini');
+      assert.ok(body.messages[0].content.includes('Acme CNC'));
+      assert.strictEqual(body.messages[1].role, 'user');
+      assert.strictEqual(body.messages[2].role, 'assistant');
+      return {
+        ok: true,
+        async json() {
+          return {
+            choices: [{
+              message: {
+                content: JSON.stringify({
+                  reply: 'We can mill 200 aluminum brackets for Germany. Send STEP plus tolerance.',
+                  rfq: { quantity: '200 pcs', material: 'aluminum', destination: 'Germany' },
+                  rfq_complete: false,
+                  notify_factory: false,
+                  notify_reason: 'none',
+                }),
+              },
+            }],
+          };
+        },
+      };
+    },
+  });
+  assert.ok(ai.reply.includes('200 aluminum'));
+
+  const prevKey = process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  try {
+    const fallbackAi = await completeReply({
+      company: factory,
+      history: [],
+      message: 'Can you mill this?',
+      rfq: {},
+    });
+    assert.ok(fallbackAi.reply.includes('Acme CNC'));
+  } finally {
+    if (prevKey !== undefined) process.env.OPENAI_API_KEY = prevKey;
+  }
 
   const outcome = normalizeOutcome({
     reply: 'We can mill that.',

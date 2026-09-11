@@ -65,6 +65,8 @@ const { wakeBody, wakeSubject } = require('./mail');
   assert.ok(Array.isArray(widgetContents(WIDGET_URI).contents[0]._meta.ui.csp.connectDomains));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('liveMessages'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('structured.reply'));
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('hostPanel'));
+  assert.ok(!widgetContents(WIDGET_URI).contents[0].text.includes('if (next || !data.conversation_id) return'));
   assert.ok(!widgetContents(WIDGET_URI).contents[0].text.includes('Waiting for a reply'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('End conversation'));
   assert.strictEqual(toolList().tools[1]._meta['openai/toolInvocation/invoking'], 'Airsup');

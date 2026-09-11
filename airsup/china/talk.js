@@ -195,16 +195,44 @@ async function notifyIfNeeded(store, { thread, company, caller, message, reply, 
   return next;
 }
 
+function livePanel({ caller, company, thread, history, message, reply }) {
+  const you = personBrief(caller);
+  const other = factoryBrief(company);
+  const prior = (history || []).map((row) => ({
+    from: row.role === 'buyer' ? 'you' : 'them',
+    name: row.role === 'buyer' ? you.name : other.name,
+    body: String(row.body || ''),
+    at: row.created_at,
+  }));
+  const now = new Date().toISOString();
+  prior.push({ from: 'you', name: you.name, body: message, at: now });
+  if (reply) prior.push({ from: 'them', name: other.name, body: reply, at: now });
+  return {
+    conversation_id: publicConvId(thread),
+    status: thread.status || 'open',
+    you,
+    other,
+    messages: prior,
+    threads: [],
+  };
+}
+
 async function turn(store, { thread, company, caller, message, deps }) {
   if (thread.status === 'ended') return failed(publicConvId(thread));
   if (company.status !== 'live') {
     const reply = `${companyTitle(company, 'en')} paused this Airsup endpoint. It is not answering new buyer messages.`;
-    return { conversation_id: publicConvId(thread), status: 'replied', reply };
+    return {
+      conversation_id: publicConvId(thread),
+      status: 'replied',
+      reply,
+      _panel: livePanel({ caller, company, thread, history: [], message, reply }),
+    };
   }
+  const history = await store.listMessages(thread.conversation_id);
   const outcome = await replyFn(deps)({
     company,
     caller,
-    history: [],
+    history,
     message,
     rfq: thread.rfq,
   });
@@ -234,6 +262,7 @@ async function turn(store, { thread, company, caller, message, deps }) {
     conversation_id: publicConvId(next || thread),
     status: 'replied',
     reply,
+    _panel: livePanel({ caller, company, thread: next || thread, history, message, reply }),
   };
 }
 

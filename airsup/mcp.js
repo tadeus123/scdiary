@@ -42,15 +42,27 @@ function extractBearer(req) {
 }
 
 function formatToolResult(data) {
+  const clean = publicToolData(data);
   return {
-    structuredContent: data,
-    content: [{ type: 'text', text: JSON.stringify(data) }],
+    structuredContent: clean,
+    content: [{ type: 'text', text: JSON.stringify(clean) }],
   };
+}
+
+function publicToolData(data) {
+  if (!data || typeof data !== 'object') return data;
+  const out = { ...data };
+  delete out._panel;
+  return out;
 }
 
 async function formatWidgetResult(store, caller, data) {
   const result = formatToolResult(data);
   if (!caller || !data || !data.conversation_id) return result;
+  if (data._panel) {
+    result._meta = { ui: { panel: data._panel } };
+    return result;
+  }
   const conversationId = String(data.conversation_id);
   if (conversationId.startsWith('cn_')) {
     try {
@@ -164,7 +176,7 @@ function createMcp({ store, mailer, sleep } = {}) {
         },
         serverInfo: { name: 'airsup', version: '3.0.0' },
         instructions:
-          `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. send_message.person_id is the recipient. send_message waits for the other Airsup AI.`,
+          `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. send_message.person_id is the recipient. People conversations wait for the other person's Airsup AI. A published company/factory endpoint replies in the same send_message result — show that reply in the live widget immediately.`,
       };
     }
     if (method === 'ping') return {};
@@ -265,6 +277,7 @@ module.exports = {
   createMcp,
   toolList,
   formatToolResult,
+  formatWidgetResult,
   extractBearer,
   publicOrigin,
   resourceMetadataUrl,
