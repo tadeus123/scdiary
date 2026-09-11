@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const WIDGET_URI = 'ui://widget/airsup-conversation-v13.html';
+const WIDGET_URI = 'ui://widget/airsup-conversation-v14.html';
 const WIDGET_MIME = 'text/html;profile=mcp-app';
 const WIDGET_DOMAIN = 'https://www-tademehl-com.oaiusercontent.com';
 
@@ -58,16 +58,18 @@ function widgetContents(uri) {
   };
 }
 
-function withConversationWidget(tool) {
-  return {
-    ...tool,
-    _meta: {
-      ui: { visibility: ['model', 'app'] },
-      'openai/widgetAccessible': true,
-      'openai/toolInvocation/invoking': 'Airsup',
-      'openai/toolInvocation/invoked': 'Airsup',
-    },
+function withConversationWidget(tool, opts) {
+  const meta = {
+    ui: { visibility: ['model', 'app'] },
+    'openai/widgetAccessible': true,
+    'openai/toolInvocation/invoking': 'Sending',
+    'openai/toolInvocation/invoked': 'Airsup',
   };
+  if (opts && opts.template) {
+    meta.ui.resourceUri = WIDGET_URI;
+    meta['openai/outputTemplate'] = WIDGET_URI;
+  }
+  return { ...tool, _meta: meta };
 }
 
 function shouldMountConversationWidget(opts) {

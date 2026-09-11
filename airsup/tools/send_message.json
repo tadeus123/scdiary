@@ -1,7 +1,7 @@
 {
   "name": "send_message",
   "title": "Send Message",
-  "description": "Send a message to another Airsup AI. For a person, wait for their Airsup AI. For a published company/factory endpoint, the factory AI replies in this same result — use that reply immediately. Call send_message with person_id once to open the Airsup widget. After that, do not call send_message again for that factory — the user types in the same widget. If you must send another message, reuse conversation_id; that does not open another widget. Provide exactly one of person_id or conversation_id.",
+  "description": "Send a message to another Airsup AI. For a person, wait for their Airsup AI. For a published company/factory endpoint, the factory AI replies in this same result — use that reply immediately. Call send_message with person_id once; the Airsup widget opens while that send is in flight and shows each message as it happens. After that, do not call send_message again — the user types in the same widget. If you must send another message, reuse conversation_id; that does not open another widget. Provide exactly one of person_id or conversation_id.",
   "inputSchema": {
     "type": "object",
     "properties": {

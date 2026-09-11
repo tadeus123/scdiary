@@ -164,8 +164,30 @@
     }
     .bubble.pending {
       min-width: 52px;
-      letter-spacing: 0.18em;
-      opacity: 0.55;
+      min-height: 1.45em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.85;
+    }
+    .dots {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .dots i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.28;
+      animation: airsup-dot 1.2s infinite;
+    }
+    .dots i:nth-child(2) { animation-delay: 0.15s; }
+    .dots i:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes airsup-dot {
+      0%, 80%, 100% { opacity: 0.28; transform: translateY(0); }
+      40% { opacity: 1; transform: translateY(-2px); }
     }
     .composer {
       position: sticky;
@@ -387,7 +409,7 @@
       if (waitingNow) {
         const last = rows[rows.length - 1];
         if (!last || last.from === 'you') {
-          rows.push({ from: 'them', name: otherName, body: '...', pending: true });
+          rows.push({ from: 'them', name: otherName, body: '', pending: true });
         }
       }
       return rows;
@@ -547,7 +569,16 @@
         }
         const bubble = document.createElement('p');
         bubble.className = 'bubble' + (item.pending ? ' pending' : '');
-        bubble.textContent = item.body || '';
+        if (item.pending) {
+          const dots = document.createElement('span');
+          dots.className = 'dots';
+          dots.appendChild(document.createElement('i'));
+          dots.appendChild(document.createElement('i'));
+          dots.appendChild(document.createElement('i'));
+          bubble.appendChild(dots);
+        } else {
+          bubble.textContent = item.body || '';
+        }
         wrap.appendChild(bubble);
         root.appendChild(wrap);
       });
@@ -616,13 +647,28 @@
       lastHeight = 0;
       reportHeight();
     }
+    function hasThemReply(data, nextPanel) {
+      if (String((data && data.reply) || '').trim()) return true;
+      const rows = (nextPanel && nextPanel.messages) || (panel && panel.messages) || [];
+      return rows.some(function (row) { return row.from === 'them' && !row.pending && String(row.body || '').trim(); });
+    }
     function hydrate(raw) {
       const data = pick(raw);
       const found = panelFrom(raw) || hostPanel();
       if (found) panel = found;
       const next = syntheticPanel(data) || found;
       const outgoing = String(currentInput().message || '').trim();
-      render(data, next, !data.status && !String(data.reply || '').trim() && Boolean(outgoing));
+      const waiting = !hasThemReply(data, next) && (Boolean(outgoing) || busy);
+      render(data, next, waiting);
+    }
+    function takeInput(raw) {
+      latestInput = inputFrom(raw);
+      const outgoing = String(currentInput().message || '').trim();
+      if (!outgoing && !panel) {
+        render(structured, panel, false);
+        return;
+      }
+      render(structured, panel, !hasThemReply(structured, panel));
     }
     function sendMessage(event) {
       if (event) event.preventDefault();
@@ -751,17 +797,20 @@
           id: message.id,
           result: {
             protocolVersion: '2026-01-26',
-            appInfo: { name: 'airsup', version: '13' },
+            appInfo: { name: 'airsup', version: '14' },
             appCapabilities: { availableDisplayModes: ['inline', 'fullscreen', 'pip'] },
           },
         }, '*');
         window.parent.postMessage({ jsonrpc: '2.0', method: 'ui/notifications/initialized' }, '*');
+        hydrate(window.openai && window.openai.toolOutput);
+        return;
+      }
+      if (message.method === 'ui/notifications/tool-input-partial') {
+        takeInput(message.params);
         return;
       }
       if (message.method === 'ui/notifications/tool-input') {
-        latestInput = inputFrom(message.params);
-        const outgoing = String(currentInput().message || '').trim();
-        render(structured, panel, Boolean(outgoing) && !String(structured.reply || '').trim());
+        takeInput(message.params);
         return;
       }
       if (message.method === 'ui/notifications/tool-result') {
@@ -779,8 +828,8 @@
         || hostPanel();
       if (found) panel = found;
       if (data && (data.status || data.reply || data.conversation_id)) {
-        render(data, syntheticPanel(data) || found, false);
-      } else if (String(currentInput().message || '').trim()) {
+        render(data, syntheticPanel(data) || found, !hasThemReply(data, found));
+      } else if (String(currentInput().message || '').trim() || busy) {
         render(structured, panel, true);
       }
     }, { passive: true });
