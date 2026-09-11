@@ -47,7 +47,7 @@
       min-height: 0;
       width: 100%;
       height: auto;
-      padding: 14px 14px 12px;
+      padding: 14px 18px 12px;
       font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
       color: var(--text);
       -webkit-font-smoothing: antialiased;
@@ -122,24 +122,24 @@
     }
     .transcript {
       position: relative;
-      margin-top: 12px;
+      margin-top: 14px;
       flex: 0 0 auto;
       min-height: 0;
-      max-height: 360px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      overflow-y: auto;
-      padding-right: 2px;
+      gap: 8px;
+      overflow: visible;
+      padding: 2px 8px 4px;
     }
+    .transcript::-webkit-scrollbar { display: none; }
     .msg {
       display: flex;
       flex-direction: column;
       width: fit-content;
-      max-width: 88%;
+      max-width: 74%;
     }
-    .msg.you { align-self: flex-end; align-items: flex-end; }
-    .msg.them { align-self: flex-start; align-items: flex-start; }
+    .msg.you { align-self: flex-end; align-items: flex-end; margin-left: 26%; }
+    .msg.them { align-self: flex-start; align-items: flex-start; margin-right: 26%; }
     .lbl {
       font-size: 11px;
       color: var(--faint);
@@ -751,7 +751,7 @@
           id: message.id,
           result: {
             protocolVersion: '2026-01-26',
-            appInfo: { name: 'airsup', version: '12' },
+            appInfo: { name: 'airsup', version: '13' },
             appCapabilities: { availableDisplayModes: ['inline', 'fullscreen', 'pip'] },
           },
         }, '*');
