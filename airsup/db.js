@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { sha256 } = require('./store-memory');
+const { publicDisplayName } = require('./directory');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
@@ -56,11 +57,17 @@ async function upsertPerson({ googleId, email, displayName, listing }) {
     if (error) throw error;
     existing = data;
   }
+  const nextListing = listing || (existing && existing.listing) || {};
+  const answers = nextListing && typeof nextListing === 'object' ? nextListing.answers || {} : {};
   const row = {
     google_id: google || (existing && existing.google_id) || null,
     email: mail || (existing && existing.email) || '',
-    display_name: displayName || (existing && existing.display_name) || '',
-    listing: listing || (existing && existing.listing) || {},
+    display_name: publicDisplayName({
+      answers,
+      displayName: displayName || (existing && existing.display_name) || '',
+      email: mail || (existing && existing.email) || '',
+    }),
+    listing: nextListing,
     updated_at: new Date().toISOString(),
   };
   if (existing) {

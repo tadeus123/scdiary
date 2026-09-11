@@ -1,4 +1,5 @@
 const { listingText, scorePerson, matchDescription } = require('./listing');
+const { publicDisplayName } = require('./directory');
 
 function personView(row) {
   if (!row) return null;
@@ -10,6 +11,11 @@ function personView(row) {
     display_name: row.display_name || '',
     contactable: listing.contactable !== false,
     listing_text: listingText({
+      answers,
+      displayName: row.display_name,
+      email: row.email,
+    }),
+    name: publicDisplayName({
       answers,
       displayName: row.display_name,
       email: row.email,
@@ -32,7 +38,7 @@ async function findPeople(store, { callerPersonId, query, maximumResults }) {
   const matches = scored.map(({ person }) => {
     const match = {
       person_id: person.person_id,
-      name: person.display_name || person.email,
+      name: person.name || person.display_name || person.email,
     };
     const description = matchDescription(person, q);
     if (description) match.description = description;

@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { publicDisplayName } = require('./directory');
 
 function sha256(value) {
   return crypto.createHash('sha256').update(String(value || '')).digest('hex');
@@ -30,13 +31,20 @@ function createMemoryStore() {
       const mail = String(email || '').trim();
       const mailKey = mail.toLowerCase();
       let person = (google && peopleByGoogle.get(google)) || (mailKey && peopleByEmail.get(mailKey)) || null;
+      const nextListing = listing || (person && person.listing) || {};
+      const answers = nextListing && typeof nextListing === 'object' ? nextListing.answers || {} : {};
+      const nextName = publicDisplayName({
+        answers,
+        displayName: displayName || (person && person.display_name) || '',
+        email: mail || (person && person.email) || '',
+      });
       if (!person) {
         person = {
           person_id: newId(),
           google_id: google || null,
           email: mail,
-          display_name: displayName || '',
-          listing: listing || {},
+          display_name: nextName,
+          listing: nextListing,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
@@ -44,7 +52,7 @@ function createMemoryStore() {
       } else {
         if (google) person.google_id = google;
         if (mail) person.email = mail;
-        if (displayName) person.display_name = displayName;
+        person.display_name = nextName;
         if (listing) person.listing = listing;
         person.updated_at = new Date().toISOString();
       }

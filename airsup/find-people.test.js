@@ -34,6 +34,15 @@ const { toolList } = require('./mcp');
   assert.strictEqual(named.matches[0].person_id, anna.person_id);
   assert.strictEqual(named.matches[0].name, 'Anna Schmidt');
 
+  await store.upsertPerson({
+    googleId: 'g-anna',
+    email: 'tm9sko@gmail.com',
+    displayName: 'Tade Mehl',
+  });
+  const stillAnna = await findPeople(store, { callerPersonId: tade.person_id, query: 'Anna Schmidt' });
+  assert.strictEqual(stillAnna.matches[0].person_id, anna.person_id);
+  assert.strictEqual(stillAnna.matches[0].name, 'Anna Schmidt');
+
   const none = await findPeople(store, { callerPersonId: tade.person_id, query: 'Konstantin' });
   assert.deepStrictEqual(none.matches, []);
 
