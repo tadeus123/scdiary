@@ -51,11 +51,22 @@ function formatToolResult(data) {
 async function formatWidgetResult(store, caller, data) {
   const result = formatToolResult(data);
   if (!caller || !data || !data.conversation_id) return result;
-  let panel = await conversationPanel(store, caller.person_id, data.conversation_id);
+  const conversationId = String(data.conversation_id);
+  if (conversationId.startsWith('cn_')) {
+    try {
+      const chinaTalk = require('./china/talk');
+      const panel = await chinaTalk.conversationPanel(caller, conversationId);
+      if (panel) result._meta = { ui: { panel } };
+    } catch (error) {
+      console.error('Airsup china panel skipped:', error.message);
+    }
+    return result;
+  }
+  let panel = await conversationPanel(store, caller.person_id, conversationId);
   // AIRSUP-CHINA-BEGIN
   try {
     const chinaTalk = require('./china/talk');
-    panel = await chinaTalk.mergePanel(caller, data.conversation_id, panel);
+    panel = await chinaTalk.mergePanel(caller, conversationId, panel);
   } catch (error) {
     console.error('Airsup china panel skipped:', error.message);
   }

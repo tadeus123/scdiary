@@ -99,19 +99,35 @@ function fallbackReply({ company, message, rfq }) {
   const record = endpointRecord(company);
   const name = companyTitle(company, 'en');
   const missing = missingRfqFields(rfq);
-  const asked = String(message || '').trim();
+  const processes = (record.processes || []).join(', ');
+  const materials = (record.materials || []).join(', ');
+  const bits = [
+    processes ? `Processes: ${processes}.` : '',
+    materials ? `Materials: ${materials}.` : '',
+    record.tolerance ? `Tolerance: ${record.tolerance}.` : '',
+    record.lead_time ? `Lead time: ${record.lead_time}.` : '',
+    record.moq ? `MOQ: ${record.moq}.` : '',
+  ].filter(Boolean);
+  const askedVisit = /\b(visit|wechat|微信|call|phone)\b/i.test(String(message || ''));
   const lines = [
-    `${name} is a verified Airsup supplier endpoint in ${record.city || 'China'} (${company.domain}).`,
-    'I can only confirm fit from the published capabilities below. I do not invent prices, capacity, machines, or lead times.',
-    '',
-    record.listing_text,
-    '',
-    asked ? `You asked: ${asked}` : '',
+    `${name} in ${record.city || 'China'} (${company.domain}).`,
+    bits.length ? bits.join(' ') : 'Published capabilities are on this endpoint.',
+    'I only confirm what is published. I do not invent WeChat IDs, prices, extra machines, or faster lead times.',
+    askedVisit ? 'A call or visit request can be emailed to the factory mailbox once the RFQ fields below are filled.' : '',
     missing.length
-      ? `To treat this as a complete RFQ I still need: ${missing.join(', ')}.`
-      : 'That looks complete enough to forward to the factory mailbox.',
+      ? `Still needed for a usable RFQ: ${missing.join(', ')}.`
+      : 'That is complete enough to email the factory mailbox.',
   ];
-  return lines.filter((line) => line !== '').join('\n');
+  return lines.filter(Boolean).join(' ');
+}
+
+function notifyReasonFromMessage(message, rfq) {
+  const raw = String(message || '');
+  if (/\b(visit|看厂|factory visit)\b/i.test(raw)) return 'visit';
+  if (/\b(call me|phone|telephone)\b/i.test(raw)) return 'call';
+  if (/\b(sales|contact us|please quote)\b/i.test(raw)) return 'sales_contact';
+  if (isRfqComplete(rfq)) return 'rfq';
+  return 'none';
 }
 
 function normalizeOutcome(parsed, base) {
@@ -134,10 +150,11 @@ function normalizeOutcome(parsed, base) {
   };
 }
 
-async function completeReply({ company, caller, history, message, rfq, fetchImpl }) {
+async function completeReply({ company, history, message, rfq }) {
   const actions = normalizeActions(company && company.actions);
   const transcript = `${(history || []).map((row) => row.body).join('\n')}\n${message || ''}`;
   const merged = mergeRfq(mergeRfq(rfq, null), extractRfqFromText(transcript));
+  const reason = notifyReasonFromMessage(message, merged);
   const fallback = {
     reply: fallbackReply({ company, message, rfq: merged }),
     rfq: merged,
@@ -146,56 +163,13 @@ async function completeReply({ company, caller, history, message, rfq, fetchImpl
     notify_reason: 'none',
     actions,
   };
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) {
-    return normalizeOutcome({
-      reply: fallback.reply,
-      rfq: merged,
-      rfq_complete: fallback.rfq_complete,
-      notify_factory: fallback.rfq_complete,
-      notify_reason: fallback.rfq_complete ? 'rfq' : 'none',
-    }, fallback);
-  }
-
-  const callerName = (caller && (caller.display_name || caller.email)) || 'Airsup buyer';
-  const prior = (history || []).slice(-12).map((row) => ({
-    role: row.role === 'factory' ? 'assistant' : 'user',
-    content: String(row.body || '').slice(0, 1200),
-  }));
-  const controller = typeof AbortController === 'function' ? new AbortController() : null;
-  const timer = controller ? setTimeout(() => controller.abort(), 12000) : null;
-  try {
-    const fetchFn = fetchImpl || fetch;
-    const res = await fetchFn('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json',
-      },
-      signal: controller ? controller.signal : undefined,
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        temperature: 0,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: systemPrompt(company) },
-          ...prior,
-          {
-            role: 'user',
-            content: `Buyer (${callerName}) said:\n${String(message || '').slice(0, 2000)}\n\nKnown RFQ so far:\n${JSON.stringify(merged)}`,
-          },
-        ],
-      }),
-    });
-    if (!res.ok) return normalizeOutcome({ reply: fallback.reply, rfq: merged }, fallback);
-    const data = await res.json();
-    const parsed = JSON.parse(String(data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '{}'));
-    return normalizeOutcome(parsed, fallback);
-  } catch {
-    return normalizeOutcome({ reply: fallback.reply, rfq: merged }, fallback);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
+  return normalizeOutcome({
+    reply: fallback.reply,
+    rfq: merged,
+    rfq_complete: fallback.rfq_complete,
+    notify_factory: reason !== 'none',
+    notify_reason: reason,
+  }, fallback);
 }
 
 module.exports = {

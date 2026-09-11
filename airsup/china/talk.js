@@ -111,13 +111,9 @@ async function conversationPanel(caller, conversationId, deps) {
 }
 
 async function mergePanel(caller, conversationId, peoplePanel, deps) {
-  const extra = caller && caller.person_id ? await listThreadViews(caller.person_id, deps) : [];
-  const threads = [...((peoplePanel && peoplePanel.threads) || []), ...extra];
   const chinaPanel = await conversationPanel(caller, conversationId, deps);
-  if (!chinaPanel) {
-    return { ...(peoplePanel || {}), threads };
-  }
-  return { ...chinaPanel, threads };
+  if (!chinaPanel) return peoplePanel || {};
+  return chinaPanel;
 }
 
 function jsonContents(uri, payload) {
@@ -181,24 +177,22 @@ async function notifyIfNeeded(store, { thread, company, caller, message, reply, 
   if (!outcome.notify_factory || !reason || reason === 'none') return thread;
   const reasons = notifyList(thread);
   if (reasons.includes(reason)) return thread;
-  const send = mailFn(deps);
-  try {
-    await send({
-      company,
-      callerName: caller && (caller.display_name || caller.email),
-      message,
-      reply,
-      rfq: outcome.rfq,
-      reason,
-    });
-  } catch (error) {
-    console.error('Airsup china factory notice failed:', error.message);
-  }
-  return store.updateThread(thread.conversation_id, {
+  const next = await store.updateThread(thread.conversation_id, {
     notify_reasons: [...reasons, reason],
     emailed_at: new Date().toISOString(),
     rfq: outcome.rfq,
   });
+  Promise.resolve(mailFn(deps)({
+    company,
+    callerName: caller && (caller.display_name || caller.email),
+    message,
+    reply,
+    rfq: outcome.rfq,
+    reason,
+  })).catch((error) => {
+    console.error('Airsup china factory notice failed:', error.message);
+  });
+  return next;
 }
 
 async function turn(store, { thread, company, caller, message, deps }) {
@@ -207,26 +201,25 @@ async function turn(store, { thread, company, caller, message, deps }) {
     const reply = `${companyTitle(company, 'en')} paused this Airsup endpoint. It is not answering new buyer messages.`;
     return { conversation_id: publicConvId(thread), status: 'replied', reply };
   }
-  const history = await store.listMessages(thread.conversation_id);
-  await store.insertMessage({
-    conversation_id: thread.conversation_id,
-    role: 'buyer',
-    body: message,
-  });
   const outcome = await replyFn(deps)({
     company,
     caller,
-    history,
+    history: [],
     message,
     rfq: thread.rfq,
   });
   const reply = String(outcome.reply || '').trim();
   await store.insertMessage({
     conversation_id: thread.conversation_id,
+    role: 'buyer',
+    body: message,
+  });
+  await store.insertMessage({
+    conversation_id: thread.conversation_id,
     role: 'factory',
     body: reply,
   });
-  await store.insertInquiry({
+  store.insertInquiry({
     company_id: company.company_id,
     caller_person_id: caller && caller.person_id ? caller.person_id : null,
     conversation_id: thread.conversation_id,

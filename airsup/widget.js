@@ -63,8 +63,8 @@ function withConversationWidget(tool) {
       'openai/outputTemplate': WIDGET_URI,
       'openai/widgetAccessible': true,
       'openai/resultCanProduceWidget': true,
-      'openai/toolInvocation/invoking': 'Talking on Airsup',
-      'openai/toolInvocation/invoked': 'On Airsup',
+      'openai/toolInvocation/invoking': 'Airsup',
+      'openai/toolInvocation/invoked': 'Airsup',
     },
   };
 }

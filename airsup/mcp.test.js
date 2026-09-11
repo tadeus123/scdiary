@@ -66,7 +66,7 @@ const { wakeBody, wakeSubject } = require('./mail');
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('Airsup'));
   assert.ok(!widgetContents(WIDGET_URI).contents[0].text.includes('Waiting for a reply'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('End conversation'));
-  assert.strictEqual(toolList().tools[1]._meta['openai/toolInvocation/invoking'], 'Talking on Airsup');
+  assert.strictEqual(toolList().tools[1]._meta['openai/toolInvocation/invoking'], 'Airsup');
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('send_message'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('end_conversation'));
   assert.deepStrictEqual(widgetContents('ui://other').contents, []);
