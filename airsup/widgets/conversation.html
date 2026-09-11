@@ -35,7 +35,7 @@
     html, body {
       margin: 0;
       height: 100%;
-      min-height: 680px;
+      min-height: 0;
       background: transparent;
       overflow: hidden;
     }
@@ -43,12 +43,13 @@
       position: relative;
       display: flex;
       flex-direction: column;
-      min-height: 680px;
+      min-height: 0;
       height: 100%;
       padding: 18px 18px 14px;
-      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
       color: var(--text);
       -webkit-font-smoothing: antialiased;
+      pointer-events: auto;
     }
     #root::before {
       content: "";
@@ -164,7 +165,9 @@
       opacity: 0.55;
     }
     .composer {
-      position: relative;
+      position: sticky;
+      bottom: 0;
+      z-index: 5;
       margin-top: 14px;
       flex: 0 0 auto;
       display: flex;
@@ -174,6 +177,7 @@
       border: 1px solid var(--line);
       border-radius: 22px;
       background: var(--composer);
+      pointer-events: auto;
     }
     textarea {
       flex: 1;
@@ -186,6 +190,9 @@
       min-height: 40px;
       max-height: 140px;
       padding: 10px 0;
+      pointer-events: auto;
+      -webkit-user-select: text;
+      user-select: text;
     }
     .send {
       border: 0;
@@ -230,10 +237,10 @@
     </div>
     <div id="threads" class="threads hidden"></div>
     <div id="transcript" class="transcript hidden"></div>
-    <form id="composer" class="composer hidden">
-      <textarea id="draft" rows="1" placeholder="Your message" maxlength="8000"></textarea>
-      <button class="send" type="submit">Send</button>
-    </form>
+    <div id="composer" class="composer hidden">
+      <textarea id="draft" rows="1" placeholder="Your message" maxlength="8000" tabindex="0" enterkeyhint="send" autocomplete="off"></textarea>
+      <button class="send" id="send" type="button">Send</button>
+    </div>
     <div id="foot" class="foot hidden">
       <p id="err" class="err"></p>
       <div>
@@ -337,7 +344,9 @@
         params: { content: [{ type: 'text', text: text }] },
       }, '*');
     }
-    const MIN_HEIGHT = 680;
+    const MIN_HEIGHT = 420;
+    let claimed = false;
+    let lastSaved = '';
     function reportHeight() {
       const root = document.getElementById('root');
       const height = Math.max(MIN_HEIGHT, Math.ceil(root.getBoundingClientRect().height));
@@ -347,10 +356,22 @@
         window.openai.notifyIntrinsicHeight(height);
       }
     }
+    function claimComposer(event) {
+      if (event) event.stopPropagation();
+      const draft = document.getElementById('draft');
+      if (draft.disabled) return;
+      try { draft.focus({ preventScroll: true }); }
+      catch (error) { draft.focus(); }
+      if (claimed) return;
+      claimed = true;
+      if (window.openai && typeof window.openai.requestDisplayMode === 'function') {
+        Promise.resolve(window.openai.requestDisplayMode({ mode: 'fullscreen' })).catch(function () {});
+      }
+    }
     function setBusy(next) {
       busy = next;
       document.getElementById('draft').disabled = next;
-      document.querySelector('.send').disabled = next;
+      document.getElementById('send').disabled = next;
     }
     function statusCopy(status, waiting, otherName) {
       if (status === 'ended') return 'Ended';
@@ -413,7 +434,8 @@
       structured = pick(nextStructured);
       if (nextPanel) panel = nextPanel;
       else panel = panelFrom(nextStructured) || panel;
-      const conversationId = (panel && panel.conversation_id) || structured.conversation_id || '';
+      const conversationId = (panel && panel.conversation_id) || structured.conversation_id || String(currentInput().conversation_id || '');
+      const personId = String(currentInput().person_id || '') || (panel && panel.other && panel.other.person_id) || '';
       const status = (panel && panel.status) || structured.status || '';
       const otherName = panel && panel.other && panel.other.name;
       const waitingNow = Boolean(waiting) && status !== 'ended' && status !== 'failed' && !String(structured.reply || '').trim();
@@ -423,7 +445,7 @@
       const rows = liveMessages(waitingNow);
       renderMessages(rows, otherName);
       renderThreads(panel && panel.threads, conversationId);
-      const open = Boolean(conversationId) && status !== 'ended' && status !== 'failed';
+      const open = (Boolean(conversationId) || Boolean(personId)) && status !== 'ended' && status !== 'failed';
       document.getElementById('composer').classList.toggle('hidden', !open);
       const showEnd = Boolean(conversationId) && status !== 'ended';
       document.getElementById('end').classList.toggle('hidden', !showEnd);
@@ -432,7 +454,12 @@
       document.getElementById('cancel').classList.toggle('hidden', !ending);
       const showFoot = showEnd || Boolean(document.getElementById('err').textContent);
       document.getElementById('foot').classList.toggle('hidden', !showFoot);
-      if (window.openai && typeof window.openai.setWidgetState === 'function') {
+      const snapshot = JSON.stringify({
+        conversation_id: conversationId,
+        messages: rows.filter(function (row) { return !row.pending; }),
+      });
+      if (window.openai && typeof window.openai.setWidgetState === 'function' && snapshot !== lastSaved) {
+        lastSaved = snapshot;
         window.openai.setWidgetState({
           conversation_id: conversationId,
           messages: rows.filter(function (row) { return !row.pending; }),
@@ -447,26 +474,35 @@
       const next = panelFrom(raw) || hostPanel();
       render(data, next, !data.status && !String(data.reply || '').trim());
     }
-    async function sendMessage(event) {
-      event.preventDefault();
-      const conversationId = (panel && panel.conversation_id) || structured.conversation_id;
+    function sendMessage(event) {
+      if (event) event.preventDefault();
+      const conversationId = (panel && panel.conversation_id) || structured.conversation_id || String(currentInput().conversation_id || '');
+      const personId = String(currentInput().person_id || '') || (panel && panel.other && panel.other.person_id) || '';
       const message = document.getElementById('draft').value.trim();
-      if (!conversationId || !message || busy) return;
-      latestInput = { conversation_id: conversationId, message: message };
+      if ((!conversationId && !personId) || !message || busy) return;
+      const args = conversationId
+        ? { conversation_id: conversationId, message: message }
+        : { person_id: personId, message: message };
+      latestInput = args;
       setBusy(true);
       document.getElementById('err').textContent = '';
       render(structured, panel, true);
-      try {
-        const result = await callTool('send_message', { conversation_id: conversationId, message: message });
-        document.getElementById('draft').value = '';
-        document.getElementById('draft').style.height = 'auto';
-        tellModel('User sent a message in the Airsup panel. conversation_id is ' + conversationId + '.');
-        await hydrate(result);
-      } catch (error) {
-        document.getElementById('err').textContent = error.message || 'Could not send.';
-        render(structured, panel, false);
-      }
-      setBusy(false);
+      Promise.resolve()
+        .then(function () { return callTool('send_message', args); })
+        .then(function (result) {
+          document.getElementById('draft').value = '';
+          document.getElementById('draft').style.height = 'auto';
+          tellModel('User sent a message in the Airsup panel.' + (args.conversation_id ? ' conversation_id is ' + args.conversation_id + '.' : ''));
+          hydrate(result);
+        })
+        .catch(function (error) {
+          document.getElementById('err').textContent = error.message || 'Could not send.';
+          render(structured, panel, false);
+        })
+        .then(function () {
+          setBusy(false);
+          claimComposer();
+        });
     }
     async function endConversation() {
       const conversationId = (panel && panel.conversation_id) || structured.conversation_id;
@@ -517,7 +553,12 @@
       setBusy(false);
     }
 
-    document.getElementById('composer').addEventListener('submit', sendMessage);
+    document.getElementById('send').addEventListener('click', sendMessage);
+    document.getElementById('composer').addEventListener('pointerdown', claimComposer);
+    document.getElementById('draft').addEventListener('pointerdown', claimComposer);
+    document.getElementById('draft').addEventListener('focus', function () {
+      claimComposer();
+    });
     document.getElementById('end').addEventListener('click', endConversation);
     document.getElementById('cancel').addEventListener('click', function () {
       ending = false;
@@ -530,10 +571,17 @@
       reportHeight();
     });
     document.getElementById('draft').addEventListener('keydown', function (event) {
+      event.stopPropagation();
       if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
-        document.getElementById('composer').requestSubmit();
+        document.getElementById('send').click();
       }
+    });
+    document.getElementById('draft').addEventListener('keyup', function (event) {
+      event.stopPropagation();
+    });
+    document.getElementById('draft').addEventListener('keypress', function (event) {
+      event.stopPropagation();
     });
 
     window.addEventListener('message', function (event) {
@@ -571,6 +619,28 @@
         reportHeight();
       }).observe(document.getElementById('root'));
     }
+    function connectHost() {
+      const id = nextId++;
+      const timer = setTimeout(function () { pending.delete(id); }, 2500);
+      pending.set(id, {
+        resolve: function () {
+          clearTimeout(timer);
+          window.parent.postMessage({ jsonrpc: '2.0', method: 'ui/notifications/initialized' }, '*');
+        },
+        reject: function () { clearTimeout(timer); },
+      });
+      window.parent.postMessage({
+        jsonrpc: '2.0',
+        id: id,
+        method: 'ui/initialize',
+        params: {
+          protocolVersion: '2026-01-26',
+          appInfo: { name: 'airsup', version: '7' },
+          appCapabilities: { availableDisplayModes: ['inline', 'fullscreen', 'pip'] },
+        },
+      }, '*');
+    }
+    connectHost();
     latestInput = inputFrom(window.openai && window.openai.toolInput);
     const saved = window.openai && window.openai.widgetState;
     if (saved && Array.isArray(saved.messages) && saved.messages.length) {
