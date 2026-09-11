@@ -231,9 +231,11 @@ function memoryChina(companies) {
   const both = await maybeHandle(caller, {
     person_id: factory.company_id,
     conversation_id: first.conversation_id,
-    message: 'x',
+    message: 'Need 200 pcs more.',
   }, deps);
-  assert.strictEqual(both, null);
+  assert.strictEqual(both.status, 'replied');
+  assert.strictEqual(both.conversation_id, first.conversation_id);
+  assert.ok(both.reply.includes('200 pcs'));
 
   const ended = await maybeEnd(caller, first.conversation_id, deps);
   assert.strictEqual(ended.status, 'ended');
@@ -241,8 +243,9 @@ function memoryChina(companies) {
   assert.strictEqual(afterEnd.status, 'failed');
 
   const pausedStore = memoryChina([{ ...factory, status: 'verified' }]);
-  const ignored = await maybeHandle(caller, { person_id: factory.company_id, message: 'hello' }, { db: pausedStore, completeReply: deps.completeReply, sendFactoryNotice: deps.sendFactoryNotice });
-  assert.strictEqual(ignored, null);
+  const paused = await maybeHandle(caller, { person_id: factory.company_id, message: 'hello' }, { db: pausedStore, completeReply: deps.completeReply, sendFactoryNotice: deps.sendFactoryNotice });
+  assert.strictEqual(paused.status, 'replied');
+  assert.ok(paused.reply.toLowerCase().includes('paused'));
 
   const outcome = normalizeOutcome({
     reply: 'We can mill that.',

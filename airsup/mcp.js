@@ -116,6 +116,10 @@ function createMcp({ store, mailer, sleep } = {}) {
         if (handled) return handled;
       } catch (error) {
         console.error('Airsup china talk skipped:', error.message);
+        const conversationId = String((args && args.conversation_id) || '');
+        if (conversationId.startsWith('cn_')) {
+          return { conversation_id: conversationId, status: 'failed', reply: null };
+        }
       }
       // AIRSUP-CHINA-END
       return conversations.sendMessage(caller.person_id, args);

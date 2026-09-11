@@ -162,6 +162,8 @@ async function completeReply({ company, caller, history, message, rfq, fetchImpl
     role: row.role === 'factory' ? 'assistant' : 'user',
     content: String(row.body || '').slice(0, 1200),
   }));
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), 12000) : null;
   try {
     const fetchFn = fetchImpl || fetch;
     const res = await fetchFn('https://api.openai.com/v1/chat/completions', {
@@ -170,6 +172,7 @@ async function completeReply({ company, caller, history, message, rfq, fetchImpl
         Authorization: `Bearer ${key}`,
         'Content-Type': 'application/json',
       },
+      signal: controller ? controller.signal : undefined,
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         temperature: 0,
@@ -190,6 +193,8 @@ async function completeReply({ company, caller, history, message, rfq, fetchImpl
     return normalizeOutcome(parsed, fallback);
   } catch {
     return normalizeOutcome({ reply: fallback.reply, rfq: merged }, fallback);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 

@@ -244,31 +244,55 @@ async function turn(store, { thread, company, caller, message, deps }) {
   };
 }
 
+async function resolveThread(store, conversationId) {
+  const raw = String(conversationId || '').trim();
+  if (!raw) return null;
+  const prefixed = parsePublicId(raw);
+  try {
+    if (prefixed) return store.getThread(prefixed);
+    return store.getThread(raw);
+  } catch {
+    return null;
+  }
+}
+
 async function maybeHandle(caller, args, deps) {
   const store = storeFrom(deps);
   if (!store.isConfigured()) return null;
   const personId = String((args && args.person_id) || '').trim();
   const conversationId = String((args && args.conversation_id) || '').trim();
-  if (Boolean(personId) === Boolean(conversationId)) return null;
   const message = String((args && args.message) || '').trim();
 
   if (conversationId) {
-    const id = parsePublicId(conversationId);
-    if (!id) return null;
-    if (!message) return failed(conversationId);
-    const thread = await store.getThread(id);
-    if (!thread) return failed(conversationId);
-    if (thread.caller_person_id && caller && caller.person_id !== thread.caller_person_id) {
-      return failed(conversationId);
+    const thread = await resolveThread(store, conversationId);
+    if (thread) {
+      if (!message) return failed(publicConvId(thread));
+      if (thread.caller_person_id && caller && caller.person_id !== thread.caller_person_id) {
+        return failed(publicConvId(thread));
+      }
+      const company = await loadCompany(store, thread.company_id);
+      if (!company) return failed(publicConvId(thread));
+      return turn(store, { thread, company, caller, message, deps });
     }
-    const company = await loadCompany(store, thread.company_id);
-    if (!company) return failed(conversationId);
-    return turn(store, { thread, company, caller, message, deps });
+    if (parsePublicId(conversationId)) return failed(conversationId);
   }
 
-  const company = await store.getById(personId);
-  if (!company || company.status !== 'live') return null;
+  if (!personId) return null;
+  let company = null;
+  try {
+    company = await store.getById(personId);
+  } catch {
+    company = null;
+  }
+  if (!company) return null;
   if (!message) return failed('');
+  if (company.status !== 'live') {
+    return {
+      conversation_id: '',
+      status: 'replied',
+      reply: `${companyTitle(company, 'en')} paused this Airsup endpoint. It is not answering new buyer messages.`,
+    };
+  }
   let thread = await store.findOpenThread(company.company_id, caller && caller.person_id);
   if (!thread) {
     thread = await store.insertThread({
