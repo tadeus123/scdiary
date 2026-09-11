@@ -34,14 +34,18 @@
     * { box-sizing: border-box; }
     html, body {
       margin: 0;
-      height: auto !important;
-      min-height: 0 !important;
+      height: 100%;
+      min-height: 680px;
       background: transparent;
-      overflow: visible;
+      overflow: hidden;
     }
     #root {
       position: relative;
-      padding: 22px 22px 18px;
+      display: flex;
+      flex-direction: column;
+      min-height: 680px;
+      height: 100%;
+      padding: 18px 18px 14px;
       font: 15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
       color: var(--text);
       -webkit-font-smoothing: antialiased;
@@ -116,9 +120,13 @@
     .transcript {
       position: relative;
       margin-top: 16px;
+      flex: 1 1 auto;
+      min-height: 360px;
       display: flex;
       flex-direction: column;
       gap: 12px;
+      overflow-y: auto;
+      padding-right: 2px;
     }
     .msg {
       display: flex;
@@ -152,11 +160,12 @@
     }
     .composer {
       position: relative;
-      margin-top: 16px;
+      margin-top: 14px;
+      flex: 0 0 auto;
       display: flex;
       align-items: flex-end;
       gap: 8px;
-      padding: 6px 6px 6px 14px;
+      padding: 8px 8px 8px 16px;
       border: 1px solid var(--line);
       border-radius: 22px;
       background: var(--composer);
@@ -169,9 +178,9 @@
       background: transparent;
       color: inherit;
       font: inherit;
-      min-height: 24px;
-      max-height: 88px;
-      padding: 7px 0;
+      min-height: 40px;
+      max-height: 140px;
+      padding: 10px 0;
     }
     .send {
       border: 0;
@@ -302,9 +311,10 @@
         params: { content: [{ type: 'text', text: text }] },
       }, '*');
     }
+    const MIN_HEIGHT = 680;
     function reportHeight() {
       const root = document.getElementById('root');
-      const height = Math.ceil(root.getBoundingClientRect().height);
+      const height = Math.max(MIN_HEIGHT, Math.ceil(root.getBoundingClientRect().height));
       if (!height || height === lastHeight) return;
       lastHeight = height;
       if (window.openai && typeof window.openai.notifyIntrinsicHeight === 'function') {
@@ -327,7 +337,7 @@
       root.replaceChildren();
       const rows = messages || [];
       if (!rows.length) {
-        root.classList.add('hidden');
+        root.classList.remove('hidden');
         return;
       }
       rows.forEach(function (item) {
@@ -351,6 +361,7 @@
         root.appendChild(wrap);
       });
       root.classList.remove('hidden');
+      root.scrollTop = root.scrollHeight;
     }
     function renderThreads(threads, conversationId) {
       const root = document.getElementById('threads');
@@ -488,7 +499,7 @@
     });
     document.getElementById('draft').addEventListener('input', function (event) {
       event.target.style.height = 'auto';
-      event.target.style.height = Math.min(event.target.scrollHeight, 88) + 'px';
+      event.target.style.height = Math.min(event.target.scrollHeight, 140) + 'px';
       lastHeight = 0;
       reportHeight();
     });
