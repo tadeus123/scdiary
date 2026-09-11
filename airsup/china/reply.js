@@ -181,7 +181,7 @@ async function completeReply({ company, caller, history, message, rfq, fetchImpl
     content: String(row.body || '').slice(0, 800),
   }));
   const controller = typeof AbortController === 'function' ? new AbortController() : null;
-  const timer = controller ? setTimeout(() => controller.abort(), 4000) : null;
+  const timer = controller ? setTimeout(() => controller.abort(), 2500) : null;
   try {
     const fetchFn = fetchImpl || fetch;
     const res = await fetchFn('https://api.openai.com/v1/chat/completions', {

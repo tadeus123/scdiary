@@ -120,12 +120,13 @@
     }
     .transcript {
       position: relative;
-      margin-top: 16px;
-      flex: 1 1 auto;
-      min-height: 360px;
+      margin-top: 12px;
+      flex: 0 1 auto;
+      min-height: 0;
+      max-height: 420px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
       overflow-y: auto;
       padding-right: 2px;
     }
@@ -237,7 +238,7 @@
     </div>
     <div id="threads" class="threads hidden"></div>
     <div id="transcript" class="transcript hidden"></div>
-    <div id="composer" class="composer hidden">
+    <div id="composer" class="composer">
       <textarea id="draft" rows="1" placeholder="Your message" maxlength="8000" tabindex="0" enterkeyhint="send" autocomplete="off"></textarea>
       <button class="send" id="send" type="button">Send</button>
     </div>
@@ -344,7 +345,7 @@
         params: { content: [{ type: 'text', text: text }] },
       }, '*');
     }
-    const MIN_HEIGHT = 420;
+    const MIN_HEIGHT = 120;
     let claimed = false;
     let lastSaved = '';
     function reportHeight() {
@@ -384,7 +385,8 @@
       root.replaceChildren();
       const rows = messages || [];
       if (!rows.length) {
-        root.classList.remove('hidden');
+        root.replaceChildren();
+        root.classList.add('hidden');
         return;
       }
       rows.forEach(function (item) {
@@ -445,7 +447,7 @@
       const rows = liveMessages(waitingNow);
       renderMessages(rows, otherName);
       renderThreads(panel && panel.threads, conversationId);
-      const open = (Boolean(conversationId) || Boolean(personId)) && status !== 'ended' && status !== 'failed';
+      const open = status !== 'ended' && status !== 'failed';
       document.getElementById('composer').classList.toggle('hidden', !open);
       const showEnd = Boolean(conversationId) && status !== 'ended';
       document.getElementById('end').classList.toggle('hidden', !showEnd);
@@ -595,6 +597,19 @@
         else item.resolve(message.result);
         return;
       }
+      if (message.method === 'ui/initialize' && message.id !== undefined) {
+        window.parent.postMessage({
+          jsonrpc: '2.0',
+          id: message.id,
+          result: {
+            protocolVersion: '2026-01-26',
+            appInfo: { name: 'airsup', version: '8' },
+            appCapabilities: { availableDisplayModes: ['inline', 'fullscreen', 'pip'] },
+          },
+        }, '*');
+        window.parent.postMessage({ jsonrpc: '2.0', method: 'ui/notifications/initialized' }, '*');
+        return;
+      }
       if (message.method === 'ui/notifications/tool-input') {
         latestInput = inputFrom(message.params);
         render(structured, panel, true);
@@ -620,27 +635,18 @@
       }).observe(document.getElementById('root'));
     }
     function connectHost() {
-      const id = nextId++;
-      const timer = setTimeout(function () { pending.delete(id); }, 2500);
-      pending.set(id, {
-        resolve: function () {
-          clearTimeout(timer);
-          window.parent.postMessage({ jsonrpc: '2.0', method: 'ui/notifications/initialized' }, '*');
-        },
-        reject: function () { clearTimeout(timer); },
-      });
+      window.parent.postMessage({ jsonrpc: '2.0', method: 'ui/notifications/initialized' }, '*');
       window.parent.postMessage({
         jsonrpc: '2.0',
-        id: id,
+        id: nextId++,
         method: 'ui/initialize',
         params: {
           protocolVersion: '2026-01-26',
-          appInfo: { name: 'airsup', version: '7' },
+          appInfo: { name: 'airsup', version: '8' },
           appCapabilities: { availableDisplayModes: ['inline', 'fullscreen', 'pip'] },
         },
       }, '*');
     }
-    connectHost();
     latestInput = inputFrom(window.openai && window.openai.toolInput);
     const saved = window.openai && window.openai.widgetState;
     if (saved && Array.isArray(saved.messages) && saved.messages.length) {
@@ -652,6 +658,7 @@
       };
     }
     hydrate(window.openai && window.openai.toolOutput);
+    connectHost();
   </script>
 </body>
 </html>

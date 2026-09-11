@@ -67,7 +67,8 @@ const { wakeBody, wakeSubject } = require('./mail');
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('structured.reply'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('hostPanel'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('claimComposer'));
-  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('ui/initialize'));
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('ui/notifications/initialized'));
+  assert.ok(!widgetContents(WIDGET_URI).contents[0].text.includes('min-height: 360px'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('type="button"'));
   assert.ok(!widgetContents(WIDGET_URI).contents[0].text.includes('if (next || !data.conversation_id) return'));
   assert.ok(!widgetContents(WIDGET_URI).contents[0].text.includes('Waiting for a reply'));
@@ -105,7 +106,8 @@ const { wakeBody, wakeSubject } = require('./mail');
 
   const listed = fakeRes();
   await mcp.handleMcp(fakeReq({ jsonrpc: '2.0', id: 8, method: 'resources/list' }, access), listed);
-  assert.ok(listed.body.result.resources.some((row) => row.uri === THREADS_URI));
+  assert.ok(listed.body.result.resources.some((row) => row.uri === WIDGET_URI));
+  assert.ok(!listed.body.result.resources.some((row) => row.uri === THREADS_URI));
 
   const tadeRes = fakeRes();
   const tadeSend = mcp.handleMcp(fakeReq({

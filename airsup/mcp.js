@@ -9,7 +9,6 @@ const { sha256 } = require('./store-memory');
 const { widgetResource, widgetContents, withConversationWidget } = require('./widget');
 const {
   conversationPanel,
-  threadsResource,
   conversationResourceContents,
   isPublicResource,
 } = require('./panel');
@@ -182,9 +181,7 @@ function createMcp({ store, mailer, sleep } = {}) {
     if (method === 'ping') return {};
     if (method === 'tools/list') return toolList();
     if (method === 'resources/list') {
-      const resources = [widgetResource()];
-      if (caller) resources.push(threadsResource());
-      return { resources };
+      return { resources: [widgetResource()] };
     }
     if (method === 'resources/read') {
       if (isPublicResource(params.uri)) return widgetContents(params.uri);
