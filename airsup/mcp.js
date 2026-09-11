@@ -40,19 +40,37 @@ function extractBearer(req) {
   return '';
 }
 
-function formatToolResult(data) {
-  const clean = publicToolData(data);
-  return {
-    structuredContent: clean,
-    content: [{ type: 'text', text: JSON.stringify(clean) }],
-  };
-}
-
 function publicToolData(data) {
   if (!data || typeof data !== 'object') return data;
   const out = { ...data };
   delete out._panel;
   return out;
+}
+
+function toolNarration(data) {
+  const clean = publicToolData(data) || {};
+  const id = String(clean.conversation_id || '').trim();
+  if (clean.status === 'ended') {
+    return id ? `Airsup conversation ended. conversation_id ${id}.` : 'Airsup conversation ended.';
+  }
+  if (clean.status === 'failed') {
+    return id
+      ? `Airsup could not complete that message. conversation_id ${id}.`
+      : 'Airsup could not complete that message.';
+  }
+  if (id) return `Airsup replied in the conversation widget. conversation_id ${id}. Use that id for the next send_message.`;
+  return 'Airsup replied in the conversation widget.';
+}
+
+function formatToolResult(data) {
+  const clean = publicToolData(data);
+  const text = clean && typeof clean === 'object' && (clean.status || clean.conversation_id)
+    ? toolNarration(clean)
+    : JSON.stringify(clean);
+  return {
+    structuredContent: clean,
+    content: [{ type: 'text', text }],
+  };
 }
 
 function withReply(panel, data, caller) {
@@ -81,21 +99,24 @@ function withReply(panel, data, caller) {
 
 async function formatWidgetResult(store, caller, data) {
   const result = formatToolResult(data);
-  if (!caller || !data || !data.conversation_id) return result;
+  if (!caller || !data) return result;
+  const conversationId = String(data.conversation_id || '');
+  const hasReply = data.reply != null && String(data.reply).trim();
+  if (!conversationId && !hasReply && data.status !== 'ended' && data.status !== 'failed') return result;
   let panel = data._panel || null;
-  if (!panel && String(data.conversation_id).startsWith('cn_')) {
+  if (!panel && conversationId.startsWith('cn_')) {
     try {
       const chinaTalk = require('./china/talk');
-      panel = await chinaTalk.conversationPanel(caller, data.conversation_id);
+      panel = await chinaTalk.conversationPanel(caller, conversationId);
     } catch (error) {
       console.error('Airsup china panel skipped:', error.message);
     }
   }
-  if (!panel && !String(data.conversation_id).startsWith('cn_')) {
-    panel = await conversationPanel(store, caller.person_id, data.conversation_id, { includeThreads: false });
+  if (!panel && conversationId && !conversationId.startsWith('cn_')) {
+    panel = await conversationPanel(store, caller.person_id, conversationId, { includeThreads: false });
     try {
       const chinaTalk = require('./china/talk');
-      panel = await chinaTalk.mergePanel(caller, data.conversation_id, panel);
+      panel = await chinaTalk.mergePanel(caller, conversationId, panel);
     } catch (error) {
       console.error('Airsup china panel skipped:', error.message);
     }

@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { createMemoryStore } = require('./store-memory');
-const { findPeople } = require('./find-people');
+  const { findPeople, mergeMatches } = require('./find-people');
 const { toolList } = require('./mcp');
 
 (async () => {
@@ -50,8 +50,13 @@ const { toolList } = require('./mcp');
   assert.ok(!skippedSelf.matches.some((row) => row.person_id === anna.person_id));
 
   const noMail = await findPeople(store, { callerPersonId: tade.person_id, query: 'No Mail' });
-  assert.deepStrictEqual(none.matches, []);
   assert.ok(!noMail.matches.some((row) => row.name === 'No Mail'));
+
+  const people = [1, 2, 3, 4, 5].map((n) => ({ person_id: 'p' + n, name: 'P' + n }));
+  const companies = [{ person_id: 'c1', name: 'C1' }, { person_id: 'c2', name: 'C2' }];
+  const mixed = mergeMatches(people, companies, 5);
+  assert.deepStrictEqual(mixed.map((row) => row.person_id), ['p1', 'p2', 'p3', 'c1', 'c2']);
+  assert.deepStrictEqual(mergeMatches(people, [], 5).map((row) => row.person_id), ['p1', 'p2', 'p3', 'p4', 'p5']);
 
   console.log('find_people tests passed');
 })().catch((error) => {

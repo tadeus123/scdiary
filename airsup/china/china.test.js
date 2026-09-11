@@ -234,6 +234,9 @@ function memoryChina(companies) {
   const widgeted = await formatWidgetResult(null, caller, first);
   assert.strictEqual(widgeted._meta.ui.panel.messages.length, 2);
   assert.ok(!widgeted.structuredContent._panel);
+  assert.ok(widgeted.content[0].text.includes(first.conversation_id));
+  assert.ok(!widgeted.content[0].text.includes(first.reply));
+  assert.ok(!widgeted.content[0].text.startsWith('{'));
   const replyOnly = await formatWidgetResult(null, caller, {
     conversation_id: first.conversation_id,
     status: 'replied',
@@ -286,6 +289,10 @@ function memoryChina(companies) {
   const paused = await maybeHandle(caller, { person_id: factory.company_id, message: 'hello' }, { db: pausedStore, completeReply: deps.completeReply, sendFactoryNotice: deps.sendFactoryNotice });
   assert.strictEqual(paused.status, 'replied');
   assert.ok(paused.reply.toLowerCase().includes('paused'));
+  assert.ok(Array.isArray(paused._panel && paused._panel.messages));
+  assert.ok(paused._panel.messages.some((row) => row.from === 'them'));
+  const pausedWidget = await formatWidgetResult(null, caller, paused);
+  assert.ok(pausedWidget._meta.ui.panel.messages.some((row) => row.from === 'them' && row.body === paused.reply));
 
   const ai = await completeReply({
     company: factory,

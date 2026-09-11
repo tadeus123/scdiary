@@ -59,7 +59,7 @@ const { wakeBody, wakeSubject } = require('./mail');
   });
   assert.strictEqual(both.status, 'failed');
   assert.deepStrictEqual(Object.keys(both).sort(), ['conversation_id', 'reply', 'status']);
-  assert.ok(WIDGET_URI.includes('airsup-conversation-v10.html'));
+  assert.ok(WIDGET_URI.includes('airsup-conversation-v11.html'));
   assert.strictEqual(widgetResource().uri, WIDGET_URI);
   assert.strictEqual(widgetResource()._meta['openai/widgetDomain'], 'https://www-tademehl-com.oaiusercontent.com');
   assert.strictEqual(widgetContents(WIDGET_URI).contents[0]._meta['openai/widgetDomain'], 'https://www-tademehl-com.oaiusercontent.com');
@@ -68,12 +68,14 @@ const { wakeBody, wakeSubject } = require('./mail');
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('structured.reply'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('hostPanel'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('syntheticPanel'));
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('parseToolData'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('mcp_tool_result'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('ui/notifications/size-changed'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('claimComposer'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('height: auto'));
   assert.ok(!widgetContents(WIDGET_URI).contents[0].text.includes('height: 100%'));
   assert.ok(!widgetContents(WIDGET_URI).contents[0].text.includes('document.documentElement.scrollHeight'));
+  assert.ok(!widgetContents(WIDGET_URI).contents[0].text.includes('panelFrom(o);'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('companyChat'));
   assert.ok(!widgetContents(WIDGET_URI).contents[0].text.includes('requestDisplayMode'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('ui/notifications/initialized'));
@@ -133,6 +135,9 @@ const { wakeBody, wakeSubject } = require('./mail');
   const payload = tadeRes.body.result;
   assert.strictEqual(payload.structuredContent.status, 'replied');
   assert.deepStrictEqual(Object.keys(payload.structuredContent).sort(), ['conversation_id', 'reply', 'status']);
+  assert.ok(payload.content[0].text.includes(conversationId));
+  assert.ok(!payload.content[0].text.includes('hello tade'));
+  assert.ok(!payload.content[0].text.startsWith('{'));
   assert.strictEqual(payload._meta.ui.panel.other.name, 'Anna Schmidt');
   assert.strictEqual(payload._meta.ui.panel.messages[0].body, 'hello anna');
   assert.strictEqual(payload._meta.ui.panel.messages[1].body, 'hello tade');
@@ -143,6 +148,12 @@ const { wakeBody, wakeSubject } = require('./mail');
     reply: 'We can make 500 pcs.',
   });
   assert.ok(replyOnly._meta.ui.panel.messages.some((row) => row.from === 'them' && row.body === 'We can make 500 pcs.'));
+  const noId = await formatWidgetResult(store, tade, {
+    conversation_id: '',
+    status: 'replied',
+    reply: 'Paused endpoint.',
+  });
+  assert.ok(noId._meta.ui.panel.messages.some((row) => row.body === 'Paused endpoint.'));
 
   const endedRes = fakeRes();
   await mcp.handleMcp(fakeReq({
@@ -155,6 +166,8 @@ const { wakeBody, wakeSubject } = require('./mail');
   assert.strictEqual(annaEnded.status, 'ended');
   assert.strictEqual(endedRes.body.result.structuredContent.status, 'ended');
   assert.ok(!Object.prototype.hasOwnProperty.call(endedRes.body.result.structuredContent, 'reply'));
+  assert.ok(endedRes.body.result.content[0].text.toLowerCase().includes('ended'));
+  assert.ok(!endedRes.body.result.content[0].text.startsWith('{'));
 
   console.log('mcp tests passed');
 })().catch((error) => {

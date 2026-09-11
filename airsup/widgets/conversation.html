@@ -263,12 +263,29 @@
     let lastHeight = 0;
     const cache = new Map();
 
-    function pick(data) {
-      if (!data || typeof data !== 'object') return {};
-      if (data.structuredContent && typeof data.structuredContent === 'object') {
-        return data.structuredContent;
+    function parseToolData(raw) {
+      if (!raw || typeof raw !== 'object') return {};
+      if (raw.structuredContent && typeof raw.structuredContent === 'object') {
+        return raw.structuredContent;
       }
-      return data;
+      if (raw.result && typeof raw.result === 'object') {
+        const nested = parseToolData(raw.result);
+        if (nested.status || nested.reply != null || nested.conversation_id) return nested;
+      }
+      if (Array.isArray(raw.content) && raw.content[0]) {
+        const text = raw.content[0].text || raw.content[0];
+        if (typeof text === 'string' && text.charAt(0) === '{') {
+          try {
+            const parsed = JSON.parse(text);
+            if (parsed && typeof parsed === 'object') return parseToolData(parsed);
+          } catch (error) {}
+        }
+      }
+      if (raw.status || raw.reply != null || raw.conversation_id) return raw;
+      return {};
+    }
+    function pick(data) {
+      return parseToolData(data);
     }
     function panelFrom(raw, depth) {
       if (!raw || typeof raw !== 'object' || depth > 6) return null;
@@ -296,8 +313,7 @@
       return panelFrom(o.toolOutput)
         || panelFrom(o.toolResponseMetadata)
         || panelFrom(o.meta)
-        || panelFrom(o.widgetProps)
-        || panelFrom(o);
+        || panelFrom(o.widgetProps);
     }
     function syntheticPanel(data) {
       const input = currentInput();
@@ -330,7 +346,11 @@
       return raw;
     }
     function currentInput() {
-      return inputFrom(latestInput) || inputFrom(window.openai && window.openai.toolInput) || {};
+      const fromLatest = inputFrom(latestInput);
+      if (fromLatest && (fromLatest.message || fromLatest.conversation_id || fromLatest.person_id)) {
+        return fromLatest;
+      }
+      return inputFrom(window.openai && window.openai.toolInput) || {};
     }
     function withOutgoing(messages) {
       const rows = (messages || []).slice();
@@ -372,10 +392,16 @@
     }
     async function callTool(name, args) {
       const companyChat = String((args && args.conversation_id) || '').indexOf('cn_') === 0;
+      const timeoutMs = companyChat ? 20000 : 280000;
       if (window.openai && typeof window.openai.callTool === 'function') {
-        return window.openai.callTool(name, args);
+        return Promise.race([
+          window.openai.callTool(name, args),
+          new Promise(function (_, reject) {
+            setTimeout(function () { reject(new Error('That took too long.')); }, timeoutMs);
+          }),
+        ]);
       }
-      return rpc('tools/call', { name: name, arguments: args }, companyChat ? 20000 : 280000);
+      return rpc('tools/call', { name: name, arguments: args }, timeoutMs);
     }
     async function readResource(uri) {
       const result = await rpc('resources/read', { uri: uri }, 1500);
@@ -493,7 +519,7 @@
       const rows = liveMessages(waitingNow);
       renderMessages(rows, otherName);
       renderThreads(panel && panel.threads, conversationId);
-      const open = status !== 'ended' && status !== 'failed';
+      const open = status !== 'ended';
       document.getElementById('composer').classList.toggle('hidden', !open);
       const showEnd = Boolean(conversationId) && status !== 'ended';
       document.getElementById('end').classList.toggle('hidden', !showEnd);
@@ -522,7 +548,8 @@
       const found = panelFrom(raw) || hostPanel();
       if (found) panel = found;
       const next = syntheticPanel(data) || found;
-      render(data, next, !data.status && !String(data.reply || '').trim());
+      const outgoing = String(currentInput().message || '').trim();
+      render(data, next, !data.status && !String(data.reply || '').trim() && Boolean(outgoing));
     }
     function sendMessage(event) {
       if (event) event.preventDefault();
@@ -651,7 +678,7 @@
           id: message.id,
           result: {
             protocolVersion: '2026-01-26',
-            appInfo: { name: 'airsup', version: '10' },
+            appInfo: { name: 'airsup', version: '11' },
             appCapabilities: { availableDisplayModes: ['inline', 'fullscreen', 'pip'] },
           },
         }, '*');
@@ -660,7 +687,8 @@
       }
       if (message.method === 'ui/notifications/tool-input') {
         latestInput = inputFrom(message.params);
-        render(structured, panel, true);
+        const outgoing = String(currentInput().message || '').trim();
+        render(structured, panel, Boolean(outgoing) && !String(structured.reply || '').trim());
         return;
       }
       if (message.method === 'ui/notifications/tool-result') {

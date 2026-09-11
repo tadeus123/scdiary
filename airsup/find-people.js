@@ -52,14 +52,12 @@ async function findPeople(store, { callerPersonId, query, maximumResults }) {
       limit,
       excludeIds: [callerPersonId, ...matches.map((row) => row.person_id)],
     });
-    for (const row of extra || []) {
-      if (matches.length >= limit) break;
-      matches.push({
-        person_id: row.person_id,
-        name: row.name,
-        ...(row.description ? { description: row.description } : {}),
-      });
-    }
+    const companies = (extra || []).map((row) => ({
+      person_id: row.person_id,
+      name: row.name,
+      ...(row.description ? { description: row.description } : {}),
+    }));
+    return { matches: mergeMatches(matches, companies, limit) };
   } catch (error) {
     console.error('Airsup china find skipped:', error.message);
   }
@@ -67,7 +65,19 @@ async function findPeople(store, { callerPersonId, query, maximumResults }) {
   return { matches };
 }
 
+function mergeMatches(peopleMatches, companyMatches, limit) {
+  const cap = Math.min(Math.max(Number(limit) || 5, 1), 50);
+  const people = Array.isArray(peopleMatches) ? peopleMatches : [];
+  const extra = Array.isArray(companyMatches) ? companyMatches : [];
+  if (!extra.length) return people.slice(0, cap);
+  const reserved = Math.min(2, extra.length);
+  const keptPeople = people.slice(0, Math.max(0, cap - reserved));
+  const keptCompanies = extra.slice(0, cap - keptPeople.length);
+  return [...keptPeople, ...keptCompanies];
+}
+
 module.exports = {
   findPeople,
   personView,
+  mergeMatches,
 };

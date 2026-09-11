@@ -334,10 +334,19 @@ async function maybeHandle(caller, args, deps) {
   if (!company) return null;
   if (!message) return failed('');
   if (company.status !== 'live') {
+    const reply = `${companyTitle(company, 'en')} paused this Airsup endpoint. It is not answering new buyer messages.`;
     return {
       conversation_id: '',
       status: 'replied',
-      reply: `${companyTitle(company, 'en')} paused this Airsup endpoint. It is not answering new buyer messages.`,
+      reply,
+      _panel: livePanel({
+        caller,
+        company,
+        thread: { conversation_id: '', status: 'open' },
+        history: [],
+        message,
+        reply,
+      }),
     };
   }
   try {
