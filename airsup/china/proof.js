@@ -17,25 +17,25 @@ function proofLines({ started, verified, live }) {
   const nStarted = Number(started) || 0;
   if (nLive >= 50) {
     return {
-      zh: `采购商已可通过 Airsup 联系 ${nLive} 家已验证的出口制造商。`,
-      en: `Buyers can already reach ${nLive} verified export manufacturers through Airsup.`,
+      zh: `采购已经能在 ChatGPT 里找到 ${nLive} 家已确认的出口制造商。`,
+      en: `Buyers can already find ${nLive} verified export manufacturers in ChatGPT.`,
     };
   }
   if (nVerified >= 10) {
     return {
-      zh: `已有 ${nVerified} 家出口制造商完成验证并接入。`,
-      en: `${nVerified} verified export manufacturers are already connected.`,
+      zh: `已有 ${nVerified} 家出口制造商完成确认，ChatGPT 可以找到他们。`,
+      en: `${nVerified} verified export manufacturers are already findable in ChatGPT.`,
     };
   }
   if (nStarted > 0) {
     return {
-      zh: `我目前人在中国，已在与 ${nStarted} 家出口供应商沟通此事。`,
+      zh: `我目前人在中国，已在与 ${nStarted} 家出口供应商谈这件事。`,
       en: `I am in China right now and already talking with ${nStarted} export suppliers about this.`,
     };
   }
   return {
-    zh: '我们正在开通深圳、东莞第一批出口厂家，让西方买家能通过 AI 找到他们。',
-    en: 'We are currently onboarding the first export factories in Shenzhen/Dongguan so Western buyers can find them in AI.',
+    zh: '我们正在让深圳、东莞第一批出口厂家能被 ChatGPT 找到。',
+    en: 'We are currently helping the first export factories in Shenzhen/Dongguan so Western buyers can find them in ChatGPT.',
   };
 }
 
@@ -208,7 +208,7 @@ function liveRoster(rows, now) {
   }));
   return {
     meaning: 'published_live_endpoint',
-    note: 'Only factories that completed signup and published an endpoint appear here. Match pipeline rows by domain. Do not ask these companies to sign up again.',
+    note: 'Only factories ChatGPT can already find appear here (published). Match pipeline rows by domain. Do not ask these companies to sign up again.',
     fetched_at: (now || new Date()).toISOString(),
     live: factories.length,
     factories,

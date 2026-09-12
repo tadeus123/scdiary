@@ -35,8 +35,8 @@ function matchView(company, query) {
     person_id: company.company_id,
     name: record.company_name_en || record.company_name || company.domain,
     description: description
-      ? `Published company endpoint (replies in this send_message). ${description}`
-      : 'Published company endpoint. Replies in this send_message.',
+      ? `A factory ChatGPT can ask (replies in this send_message). ${description}`
+      : 'A factory ChatGPT can ask. Replies in this send_message.',
     score: scoreCompany(company, query),
   };
 }

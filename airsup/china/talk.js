@@ -221,7 +221,7 @@ function livePanel({ caller, company, thread, history, message, reply }) {
 async function turn(store, { thread, company, caller, message, deps }) {
   if (thread.status === 'ended') return failed(publicConvId(thread));
   if (company.status !== 'live') {
-    const reply = `${companyTitle(company, 'en')} paused this Airsup endpoint. It is not answering new buyer messages.`;
+    const reply = `${companyTitle(company, 'en')} paused. ChatGPT cannot find this factory right now. It is not answering new buyer messages.`;
     return {
       conversation_id: publicConvId(thread),
       status: 'replied',
@@ -335,7 +335,7 @@ async function maybeHandle(caller, args, deps) {
   if (!company) return null;
   if (!message) return failed('');
   if (company.status !== 'live') {
-    const reply = `${companyTitle(company, 'en')} paused this Airsup endpoint. It is not answering new buyer messages.`;
+    const reply = `${companyTitle(company, 'en')} paused. ChatGPT cannot find this factory right now. It is not answering new buyer messages.`;
     return {
       conversation_id: '',
       status: 'replied',

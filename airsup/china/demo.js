@@ -27,8 +27,8 @@ function genericDemo(lang) {
       ? '帮我找一家东莞的注塑厂，做这个壳体。首单 5000 件，材料 PA66 GF30。'
       : 'find me a good injection molding supplier in Dongguan for this housing. 5,000 pcs first order, PA66 GF30.',
     statusLines: zh
-      ? ['ChatGPT 正在使用 Airsup', '正在检索已验证厂家…', '找到 6 家相关工厂。', '正在与最匹配的厂家沟通…']
-      : ['ChatGPT uses Airsup', 'Searching verified suppliers...', 'Found 6 relevant factories.', 'Talking to the best matches...'],
+      ? ['ChatGPT 正在找工厂', '正在查找能直接问到的厂家…', '找到 6 家相关工厂。', '正在与最匹配的厂家沟通…']
+      : ['ChatGPT is looking for factories', 'Searching factories it can ask...', 'Found 6 relevant factories.', 'Talking to the best matches...'],
     agents: zh
       ? [
           { from: 'buyer', text: '能否生产约 82g 的 PA66 GF30 零件？' },
@@ -129,8 +129,8 @@ function personalizedDemo(lang, preview) {
   const capLines = caps.length
     ? caps
     : zh
-      ? ['按网站公开信息理解的能力（预览，需厂家确认）', '验证域名后才能被真实买家问到']
-      : ['capabilities inferred from the public website (preview, factory must confirm)', 'buyers cannot actually reach you until the domain is verified'];
+      ? ['按网站公开信息理解的能力（预览，需厂家确认）', '确认域名并发布后，ChatGPT 才能真正找到你们']
+      : ['capabilities inferred from the public website (preview, factory must confirm)', 'ChatGPT cannot actually find you until the domain is confirmed'];
 
   return {
     ...base,

@@ -112,6 +112,7 @@ for (const lang of Object.keys(COPY)) {
     assert.ok(!emoji.test(String(value)), `emoji in ${lang}.${key}`);
   }
 }
+assert.deepStrictEqual(Object.keys(COPY.zh).sort(), Object.keys(COPY.en).sort());
 assert.ok(COPY.zh.hero.includes('ChatGPT'));
 assert.ok(COPY.zh.price.includes('免费'));
 assert.ok(COPY.en.price.toLowerCase().includes('free for suppliers'));
@@ -162,6 +163,15 @@ assert.ok(COPY.en.flow2_t.includes('ChatGPT'));
 assert.ok(!COPY.en.flow2_d.toLowerCase().includes('airsup'));
 assert.ok(COPY.zh.flow2_t.includes('ChatGPT'));
 assert.ok(!COPY.zh.plugin_lead.includes('客服'));
+assert.ok(COPY.en.cta_activate.toLowerCase().includes('chatgpt'));
+assert.ok(!COPY.en.cta_activate.toLowerCase().includes('endpoint'));
+assert.ok(!COPY.en.plugin_lead.toLowerCase().includes('plugin'));
+assert.ok(!COPY.en.lead.toLowerCase().includes('airsup connects'));
+assert.ok(!COPY.en.nav_why.toLowerCase().includes('join'));
+assert.ok(COPY.en.faq4_q.toLowerCase().includes('chatgpt'));
+assert.ok(!COPY.en.faq4_q.toLowerCase().includes('onboarding'));
+assert.ok(!COPY.en.a2a_title.toLowerCase().includes('airsup'));
+assert.ok(!COPY.zh.plugin_lead.includes('插件'));
 assert.ok(COPY.en.plugin_video.toLowerCase().includes('chatgpt'));
 assert.ok(COPY.zh.plugin_video.includes('ChatGPT'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('buyer-plugin.mp4'));
@@ -294,7 +304,7 @@ const notice = factoryNoticeMail({
   rfq: { quantity: '500 pcs', material: 'aluminum' },
   reason: 'rfq',
 });
-assert.ok(notice.subject.includes('询盘') || notice.subject.toLowerCase().includes('inquiry'));
+assert.ok(notice.subject.includes('ChatGPT'));
 assert.ok(notice.text.includes('500 pcs'));
 assert.ok(!/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(notice.subject + notice.text));
 

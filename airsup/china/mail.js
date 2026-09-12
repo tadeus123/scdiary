@@ -145,9 +145,9 @@ function verifyMail({ lang, link, contactName }) {
 
 function inquiryMail({ lang, company, message, callerName }) {
   const name = String((company && company.contact_name) || '').trim();
-  const buyer = String(callerName || 'Airsup').trim() || 'Airsup';
-  const zhBody = `有采购通过 Airsup 问到贵司端点。\n\n来自：${buyer}\n\n问题：\n${message}\n\n端点已按贵司填写的能力与说明作答。如需改口，请打开设置页更新内容。`;
-  const enBody = `A buyer reached your Airsup endpoint.\n\nFrom: ${buyer}\n\nQuestion:\n${message}\n\nThe endpoint answered from the capabilities you entered. Update the setup page if the answer should change.`;
+  const buyer = String(callerName || 'ChatGPT buyer').trim() || 'ChatGPT buyer';
+  const zhBody = `有采购在 ChatGPT 里问到贵司。\n\n来自：${buyer}\n\n问题：\n${message}\n\n已按贵司填写并发布的内容作答。如需改口，请打开设置页更新内容。`;
+  const enBody = `A buyer found you in ChatGPT.\n\nFrom: ${buyer}\n\nQuestion:\n${message}\n\nThe answer used the capabilities you published. Update the setup page if the answer should change.`;
   const body = lang === 'en' ? `${enBody}\n\n${zhBody}` : `${zhBody}\n\n${enBody}`;
   const subject = lang === 'en'
     ? `${t('en', 'inquiry_subject')} / ${t('zh', 'inquiry_subject')}`
@@ -217,12 +217,12 @@ function formatRfq(rfq) {
 
 function factoryNoticeMail({ lang, company, callerName, message, reply, rfq, reason }) {
   const name = String((company && company.contact_name) || '').trim();
-  const buyer = String(callerName || 'Airsup').trim() || 'Airsup';
+  const buyer = String(callerName || 'ChatGPT buyer').trim() || 'ChatGPT buyer';
   const whyZh = reasonLabel(reason, 'zh');
   const whyEn = reasonLabel(reason, 'en');
   const spec = formatRfq(rfq);
-  const zhBody = `有采购通过 Airsup 联系贵司端点。\n\n原因：${whyZh}\n来自：${buyer}\n\n询盘字段：\n${spec}\n\n最新问题：\n${message}\n\n端点答复：\n${reply}\n\n如需改口，请打开设置页更新已发布内容。`;
-  const enBody = `A buyer reached your Airsup endpoint.\n\nReason: ${whyEn}\nFrom: ${buyer}\n\nRFQ fields:\n${spec}\n\nLatest question:\n${message}\n\nEndpoint reply:\n${reply}\n\nUpdate the setup page if the published answer should change.`;
+  const zhBody = `有采购在 ChatGPT 里联系到贵司。\n\n原因：${whyZh}\n来自：${buyer}\n\n询盘字段：\n${spec}\n\n最新问题：\n${message}\n\n当时的答复：\n${reply}\n\n如需改口，请打开设置页更新已发布内容。`;
+  const enBody = `A buyer found you in ChatGPT.\n\nReason: ${whyEn}\nFrom: ${buyer}\n\nRFQ fields:\n${spec}\n\nLatest question:\n${message}\n\nReply given in ChatGPT:\n${reply}\n\nUpdate the setup page if the published answer should change.`;
   const body = lang === 'en' ? `${enBody}\n\n${zhBody}` : `${zhBody}\n\n${enBody}`;
   const subject = lang === 'en'
     ? `${t('en', 'inquiry_subject')} / ${t('zh', 'inquiry_subject')}`
