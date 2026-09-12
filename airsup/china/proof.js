@@ -104,6 +104,7 @@ function liveSeries(rows, now) {
   const series = [];
   let cursor = lives[0];
   let total = 0;
+  series.push({ day: cursor, count: 0 });
   while (cursor && cursor <= today) {
     total += byDay.get(cursor) || 0;
     series.push({ day: cursor, count: total });

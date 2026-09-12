@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const { domainMatches, normalizeDomain } = require('./domain');
-const { proofLines, proofPayload, industryPeers, liveSeries, formatChartDay } = require('./proof');
+const { proofLines, proofPayload, industryPeers, liveSeries, formatChartDay, chartFromSeries } = require('./proof');
 const { canPublish, normalizeProfile, mapCityId, fillEmptyCompany, listedContacts } = require('./fields');
 const { verifyMail } = require('./mail');
 
@@ -43,9 +43,13 @@ const grown = liveSeries([
   { status: 'live', live_at: '2026-09-11T08:00:00.000Z' },
   { status: 'live', live_at: '2026-09-12T02:00:00.000Z' },
 ], new Date('2026-09-12T08:00:00.000Z'));
-assert.strictEqual(grown[0].count, 2);
+assert.strictEqual(grown[0].count, 0);
+assert.strictEqual(grown[1].count, 2);
+assert.strictEqual(grown[1].day, grown[0].day);
 assert.strictEqual(grown[grown.length - 1].count, 3);
 assert.ok(formatChartDay(grown[0].day, 'zh').includes('月'));
+const grownChart = chartFromSeries(grown);
+assert.ok(grownChart.line.startsWith(`${grownChart.left},${grownChart.baseline}`));
 
 assert.strictEqual(canPublish({
   company_name: '深圳某某精密',
