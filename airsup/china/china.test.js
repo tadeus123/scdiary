@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { domainMatches, normalizeDomain } = require('./domain');
-const { proofLines, proofPayload, industryPeers } = require('./proof');
+const { proofLines, proofPayload, industryPeers, liveSeries, formatChartDay } = require('./proof');
 const { canPublish, normalizeProfile, mapCityId, fillEmptyCompany, listedContacts } = require('./fields');
 const { verifyMail } = require('./mail');
 
@@ -25,15 +25,24 @@ assert.ok(connected.en.startsWith('12 verified'));
 const dense = proofLines({ started: 80, verified: 70, live: 63 });
 assert.ok(dense.en.includes('63 verified export manufacturers'));
 
-const payload = proofPayload([{ status: 'pending' }, { status: 'live', live_at: 'x', verified_at: 'x', domain: 'acme.com' }]);
+const payload = proofPayload([{ status: 'pending' }, { status: 'live', live_at: '2026-09-11T04:00:00.000Z', verified_at: 'x', domain: 'acme.com', niche: 'cnc', company_name_en: 'Acme' }]);
 assert.strictEqual(payload.started, 2);
 assert.strictEqual(payload.live, 1);
 assert.strictEqual(payload.recent[0].domain, 'acme.com');
+assert.ok(payload.chart && payload.chart.line);
 assert.deepStrictEqual(industryPeers(payload.recent, { niche: 'cnc', domain: 'acme.com' }), []);
 assert.strictEqual(industryPeers([
   { domain: 'peer.com', niche: 'injection' },
   { domain: 'me.com', niche: 'injection' },
 ], { niche: 'injection', domain: 'me.com' })[0].domain, 'peer.com');
+const grown = liveSeries([
+  { status: 'live', live_at: '2026-09-11T02:00:00.000Z' },
+  { status: 'live', live_at: '2026-09-11T08:00:00.000Z' },
+  { status: 'live', live_at: '2026-09-12T02:00:00.000Z' },
+], new Date('2026-09-12T08:00:00.000Z'));
+assert.strictEqual(grown[0].count, 2);
+assert.strictEqual(grown[grown.length - 1].count, 3);
+assert.ok(formatChartDay(grown[0].day, 'zh').includes('月'));
 
 assert.strictEqual(canPublish({
   company_name: '深圳某某精密',
@@ -119,6 +128,8 @@ assert.ok(COPY.zh.found_title.includes('网站'));
 assert.ok(COPY.en.wechat_title.toLowerCase().includes('wechat'));
 assert.ok(COPY.zh.holidays_label.includes('放假'));
 assert.ok(COPY.en.peers_industry.toLowerCase().includes('industry'));
+assert.ok(COPY.zh.peers_col_name.includes('公司'));
+assert.ok(COPY.en.growth_chart.toLowerCase().includes('live'));
 
 const crypto = require('crypto');
 const {

@@ -1050,6 +1050,94 @@ h3 {
   color: #7a1e2b;
 }
 
+.cn-chart {
+  margin: 1.1rem 0 1.6rem;
+}
+
+.cn-chart figcaption {
+  margin: 0 0 0.55rem;
+  font-size: 0.92rem;
+  font-weight: 650;
+  color: #3b2a24;
+}
+
+.cn-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #faf6ef;
+  border: 1px solid #e6dccb;
+  border-radius: 10px;
+}
+
+.cn-chart-fill {
+  fill: rgba(122, 30, 43, 0.14);
+}
+
+.cn-chart-line {
+  stroke: #7a1e2b;
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.cn-chart-y,
+.cn-chart-x {
+  fill: #6a5a52;
+  font-size: 11px;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+.cn-chart-axes {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: #6a5a52;
+}
+
+.cn-live-scroll {
+  max-height: 17rem;
+  overflow: auto;
+  border: 1px solid #e6dccb;
+  border-radius: 10px;
+  background: #faf6ef;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cn-live-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.cn-live-table th,
+.cn-live-table td {
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid #eee4d6;
+}
+
+.cn-live-table th {
+  position: sticky;
+  top: 0;
+  background: #f3eadc;
+  font-weight: 650;
+  color: #3b2a24;
+  z-index: 1;
+}
+
+.cn-live-table td:nth-child(3) {
+  white-space: nowrap;
+  color: #6a5a52;
+}
+
+.cn-live-table a {
+  color: #7a1e2b;
+  word-break: break-all;
+}
+
 .cn-bars {
   display: grid;
   gap: 0.7rem;

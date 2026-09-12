@@ -29,7 +29,7 @@ const {
   canPublish,
   fillEmptyCompany,
 } = require('./fields');
-const { proofPayload, industryPeers } = require('./proof');
+const { proofPayload, industryPeers, formatChartDay } = require('./proof');
 const { sendVerifyEmail } = require('./mail');
 const peopleAuth = require('../auth');
 
@@ -61,7 +61,7 @@ let proofCache = { at: 0, data: proofPayload([]) };
 
 async function proof() {
   const now = Date.now();
-  if (now - proofCache.at < 60 * 1000) return proofCache.data;
+  if (now - proofCache.at < 15 * 1000) return proofCache.data;
   if (!db.isConfigured()) return proofCache.data;
   try {
     const data = await Promise.race([
@@ -88,6 +88,7 @@ function render(req, res, viewName, extra = {}) {
     lang,
     otherLang: otherLang(lang),
     t: (key) => t(lang, key),
+    formatChartDay: (day) => formatChartDay(day, lang),
     here: `/airsup/china${req.path === '/' ? '' : req.path}`,
     landing: extra.landing !== undefined ? extra.landing : viewName === 'home.ejs',
     chinaCss: readChinaCss(),

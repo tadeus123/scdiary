@@ -58,34 +58,45 @@
       <h2><%= t('growth_title') %></h2>
       <p class="cn-pitch"><%= t('pitch_line') %></p>
       <p class="cn-proof"><%= proofLine %></p>
-      <% if (proof && proof.started > 0) { %>
-      <% const barMax = Math.max(proof.started, proof.verified, proof.live, 1); %>
-      <div class="cn-bars" role="img" aria-label="<%= t('growth_title') %>">
-        <div class="cn-bar">
-          <span><%= t('growth_started') %></span>
-          <b style="width:<%= Math.round((proof.started / barMax) * 100) %>%"></b>
-          <em><%= proof.started %></em>
-        </div>
-        <div class="cn-bar">
-          <span><%= t('growth_verified') %></span>
-          <b style="width:<%= Math.round((proof.verified / barMax) * 100) %>%"></b>
-          <em><%= proof.verified %></em>
-        </div>
-        <div class="cn-bar">
-          <span><%= t('growth_live') %></span>
-          <b style="width:<%= Math.round((proof.live / barMax) * 100) %>%"></b>
-          <em><%= proof.live %></em>
-        </div>
-      </div>
+      <% if (proof && proof.chart && proof.live > 0) { %>
+      <figure class="cn-chart">
+        <figcaption><%= t('growth_chart') %> · <%= proof.live %></figcaption>
+        <svg viewBox="0 0 <%= proof.chart.width %> <%= proof.chart.height %>" role="img" aria-label="<%= t('growth_chart') %>">
+          <polygon class="cn-chart-fill" points="<%= proof.chart.area %>"></polygon>
+          <polyline class="cn-chart-line" fill="none" points="<%= proof.chart.line %>"></polyline>
+          <% proof.chart.yTicks.forEach((tick) => { %>
+            <text class="cn-chart-y" x="<%= proof.chart.left - 8 %>" y="<%= tick.y + 4 %>" text-anchor="end"><%= tick.label %></text>
+          <% }) %>
+          <% proof.chart.labels.forEach((label) => { %>
+            <text class="cn-chart-x" x="<%= label.x %>" y="<%= proof.chart.height - 12 %>" text-anchor="middle"><%= formatChartDay(label.day) %></text>
+          <% }) %>
+        </svg>
+        <p class="cn-chart-axes"><span><%= t('growth_axis_y') %></span><span><%= t('growth_axis_x') %></span></p>
+      </figure>
       <% } %>
       <% if (proof && proof.recent && proof.recent.length) { %>
         <h3><%= t('peers_title') %></h3>
         <p class="cn-note"><%= t('peers_lead') %></p>
-        <ul class="cn-peers">
-          <% proof.recent.forEach((row) => { %>
-            <li><a href="https://<%= row.domain %>" rel="noopener noreferrer" target="_blank"><%= row.domain %></a><% if (row.niche) { %> · <%= row.niche %><% } %></li>
-          <% }) %>
-        </ul>
+        <div class="cn-live-scroll">
+          <table class="cn-live-table">
+            <thead>
+              <tr>
+                <th><%= t('peers_col_name') %></th>
+                <th><%= t('peers_col_site') %></th>
+                <th><%= t('peers_col_cat') %></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% proof.recent.forEach((row) => { %>
+                <tr>
+                  <td><%= lang === 'en' ? (row.name || row.name_zh) : (row.name_zh || row.name) %></td>
+                  <td><a href="<%= row.website || ('https://' + row.domain) %>" rel="noopener noreferrer" target="_blank"><%= row.domain %></a></td>
+                  <td><%= lang === 'en' ? (row.niche_en || row.niche) : (row.niche_zh || row.niche) %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
       <% } %>
     </section>
 
