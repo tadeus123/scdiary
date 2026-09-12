@@ -175,7 +175,9 @@ const COPY = {
     growth_axis_y: '已上线厂家',
     growth_axis_x: '上线日期',
     growth_launch: '开通',
-    growth_adoption: '开通以来，CNC、注塑、PCBA 三类厂家接入很快，增长很快。',
+    growth_launched: '我们于',
+    growth_launched_end: '开通',
+    growth_adoption: '东莞三个新类目增长很快：CNC、注塑、PCBA。',
     plugin_title: '买家怎么找到你们',
     plugin_lead: '西方采购在 ChatGPT 里使用 Airsup 插件。插件在已验证厂家里查找，直接问你们的端点。不是挂在你们网站上的客服。',
     plugin_video: '买家在 ChatGPT 里用 Airsup 找到工厂',
@@ -419,7 +421,9 @@ const COPY = {
     growth_axis_y: 'Live factories',
     growth_axis_x: 'Day live',
     growth_launch: 'Launch',
-    growth_adoption: 'Fast adoption and growth across CNC machining, injection molding, and PCBA.',
+    growth_launched: 'We launched on',
+    growth_launched_end: '',
+    growth_adoption: 'Incredible growth in our three new Dongguan categories: CNC machining, injection molding, and PCBA.',
     plugin_title: 'How a buyer finds you',
     plugin_lead: 'A Western buyer uses the Airsup plugin inside ChatGPT. The plugin searches verified factories and talks to your endpoint. This is not a chatbot on your website.',
     plugin_video: 'A buyer finding a factory through Airsup in ChatGPT',
@@ -492,7 +496,9 @@ const COPY = {
 
 function t(lang, key) {
   const pack = COPY[lang] || COPY.zh;
-  return pack[key] || COPY.zh[key] || key;
+  if (Object.prototype.hasOwnProperty.call(pack, key)) return pack[key];
+  if (Object.prototype.hasOwnProperty.call(COPY.zh, key)) return COPY.zh[key];
+  return key;
 }
 
 function otherLang(lang) {
