@@ -185,7 +185,7 @@
         <% ['answer_capabilities','collect_rfq','request_missing','forward_sales'].forEach((id) => { %>
           <input type="hidden" name="actions" value="<%= id %>">
         <% }) %>
-        <details class="cn-more">
+        <details class="cn-more cn-more-stay" open>
           <summary><%= t('actions') %></summary>
           <div class="cn-checks cn-checks-stack">
             <% catalogs.ACTIONS.filter((item) => !['answer_capabilities','collect_rfq','request_missing','forward_sales'].includes(item.id)).forEach((item) => { %>

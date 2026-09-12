@@ -177,6 +177,8 @@ assert.ok(COPY.zh.plugin_video.includes('ChatGPT'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('buyer-plugin.mp4'));
 assert.ok(fs.existsSync(path.join(__dirname, 'public/buyer-plugin.mp4')));
 assert.ok(fs.existsSync(path.join(__dirname, 'public/buyer-plugin.jpg')));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('cn-more-stay'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('cn-more-stay" open'));
 
 const crypto = require('crypto');
 const {

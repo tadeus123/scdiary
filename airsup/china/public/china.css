@@ -1250,3 +1250,13 @@ h3 {
   cursor: pointer;
   font-weight: 650;
 }
+
+.cn-more-stay > summary {
+  cursor: default;
+  pointer-events: none;
+  list-style: none;
+}
+
+.cn-more-stay > summary::-webkit-details-marker {
+  display: none;
+}
