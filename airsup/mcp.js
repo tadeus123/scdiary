@@ -227,7 +227,7 @@ function createMcp({ store, mailer, sleep } = {}) {
         },
         serverInfo: { name: 'airsup', version: '3.0.0' },
         instructions:
-          `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. send_message.person_id is the recipient. People: wait for the other person's Airsup AI. Companies: the factory AI replies in the same send_message result. Call send_message with person_id once — the Airsup widget opens while that send is in flight and paints each bubble as it happens. After that, do not call send_message again; the user types in that same widget. If you must send another message, reuse conversation_id. If ChatGPT sends both ids, conversation_id wins when it exists.`,
+          `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. send_message.person_id is the recipient. People: wait for the other person's Airsup AI. Companies: the factory AI replies in the same send_message result. Call send_message with person_id once — the Airsup widget opens while that send is in flight and paints each bubble as it happens. After that, if the user continues, reuse conversation_id. If ChatGPT sends both ids, conversation_id wins when it exists. The widget has End conversation; call end_conversation when the user clicks it or the objective is complete.`,
       };
     }
     if (method === 'ping') return {};

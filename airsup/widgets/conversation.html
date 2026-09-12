@@ -11,7 +11,6 @@
       --faint: var(--color-text-tertiary, color-mix(in srgb, CanvasText 38%, Canvas));
       --line: var(--color-border-primary, color-mix(in srgb, CanvasText 10%, Canvas));
       --fill: var(--color-background-secondary, color-mix(in srgb, CanvasText 7%, Canvas));
-      --composer: var(--color-background-tertiary, color-mix(in srgb, CanvasText 7%, Canvas));
       --you: #3d6ea8;
       --you-text: #f4f7fb;
       --accent: #7e9bb4;
@@ -91,14 +90,36 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .corner {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
     .state {
-      flex: 0 1 auto;
-      max-width: 42%;
       font-size: 12px;
       letter-spacing: 0.01em;
       color: var(--muted);
-      text-align: right;
-      line-height: 1.3;
+      white-space: nowrap;
+    }
+    .end {
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, Canvas 82%, CanvasText);
+      color: var(--text);
+      font: 600 12px/1 inherit;
+      letter-spacing: 0.01em;
+      border-radius: 999px;
+      padding: 7px 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .end:hover {
+      border-color: color-mix(in srgb, var(--text) 28%, var(--line));
+    }
+    .end:disabled {
+      opacity: 0.45;
+      cursor: default;
     }
     .threads {
       position: relative;
@@ -189,65 +210,7 @@
       0%, 80%, 100% { opacity: 0.28; transform: translateY(0); }
       40% { opacity: 1; transform: translateY(-2px); }
     }
-    .composer {
-      position: sticky;
-      bottom: 0;
-      z-index: 5;
-      margin-top: 14px;
-      flex: 0 0 auto;
-      display: flex;
-      align-items: flex-end;
-      gap: 8px;
-      padding: 8px 8px 8px 16px;
-      border: 1px solid var(--line);
-      border-radius: 22px;
-      background: var(--composer);
-      pointer-events: auto;
-    }
-    textarea {
-      flex: 1;
-      resize: none;
-      border: 0;
-      outline: none;
-      background: transparent;
-      color: inherit;
-      font: inherit;
-      min-height: 40px;
-      max-height: 140px;
-      padding: 10px 0;
-      pointer-events: auto;
-      -webkit-user-select: text;
-      user-select: text;
-    }
-    .send {
-      border: 0;
-      background: var(--accent);
-      color: #f4f7fb;
-      font: 600 13px/1 inherit;
-      border-radius: 16px;
-      padding: 8px 12px;
-      cursor: pointer;
-    }
-    .send:disabled,
-    textarea:disabled { opacity: 0.45; cursor: default; }
-    .foot {
-      position: relative;
-      margin-top: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .err { margin: 0; font-size: 12px; color: var(--muted); }
-    .end, .cancel {
-      border: 0;
-      background: transparent;
-      color: var(--faint);
-      font: 12px inherit;
-      cursor: pointer;
-      padding: 0;
-    }
-    .end.ask { color: var(--text); }
+    .err { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
     .hidden { display: none !important; }
     html.superseded,
     html.superseded body,
@@ -269,21 +232,14 @@
         <span id="mark" class="mark"></span>
         <h1 id="title">Airsup</h1>
       </div>
-      <span id="state" class="state hidden">Live</span>
-    </div>
-    <div id="threads" class="threads hidden"></div>
-    <div id="transcript" class="transcript hidden"></div>
-    <div id="composer" class="composer">
-      <textarea id="draft" rows="1" placeholder="Your message" maxlength="8000" tabindex="0" enterkeyhint="send" autocomplete="off"></textarea>
-      <button class="send" id="send" type="button">Send</button>
-    </div>
-    <div id="foot" class="foot hidden">
-      <p id="err" class="err"></p>
-      <div>
-        <button id="cancel" class="cancel hidden" type="button">Cancel</button>
+      <div class="corner">
+        <span id="state" class="state hidden">Ended</span>
         <button id="end" class="end hidden" type="button">End conversation</button>
       </div>
     </div>
+    <div id="threads" class="threads hidden"></div>
+    <div id="transcript" class="transcript hidden"></div>
+    <p id="err" class="err hidden"></p>
   </div>
   <script>
     const pending = new Map();
@@ -453,7 +409,7 @@
         params: { content: [{ type: 'text', text: text }] },
       }, '*');
     }
-    const MIN_HEIGHT = 120;
+    const MIN_HEIGHT = 88;
     let lastSaved = '';
     function conversationKey() {
       return (panel && panel.conversation_id) || structured.conversation_id || String(currentInput().conversation_id || '');
@@ -526,17 +482,15 @@
         params: { height: height },
       }, '*');
     }
-    function claimComposer(event) {
-      if (event) event.stopPropagation();
-      const draft = document.getElementById('draft');
-      if (draft.disabled) return;
-      try { draft.focus({ preventScroll: true }); }
-      catch (error) { draft.focus(); }
-    }
     function setBusy(next) {
       busy = next;
-      document.getElementById('draft').disabled = next;
-      document.getElementById('send').disabled = next;
+      const end = document.getElementById('end');
+      if (end) end.disabled = next;
+    }
+    function setErr(text) {
+      const err = document.getElementById('err');
+      err.textContent = text || '';
+      err.classList.toggle('hidden', !err.textContent);
     }
     function statusCopy(status, waiting, otherName) {
       if (status === 'ended') return 'Ended';
@@ -611,8 +565,12 @@
       else panel = panelFrom(nextStructured) || panel;
       const conversationId = (panel && panel.conversation_id) || structured.conversation_id || String(currentInput().conversation_id || '');
       absorbPeers(conversationId);
-      const personId = String(currentInput().person_id || '') || (panel && panel.other && panel.other.person_id) || '';
-      const status = (panel && panel.status) || structured.status || '';
+      let status = (panel && panel.status) || structured.status || '';
+      if (structured.status === 'ended' || (panel && panel.status === 'ended')) {
+        status = 'ended';
+        if (panel) panel.status = 'ended';
+        structured.status = 'ended';
+      }
       const otherName = panel && panel.other && panel.other.name;
       const waitingNow = Boolean(waiting) && status !== 'ended' && status !== 'failed' && !String(structured.reply || '').trim();
       document.getElementById('title').textContent = otherName || 'Airsup';
@@ -621,15 +579,11 @@
       const rows = liveMessages(waitingNow);
       renderMessages(rows, otherName);
       renderThreads(panel && panel.threads, conversationId);
-      const open = status !== 'ended';
-      document.getElementById('composer').classList.toggle('hidden', !open);
-      const showEnd = Boolean(conversationId) && status !== 'ended';
+      const showEnd = Boolean(conversationId) && status !== 'ended' && status !== 'failed';
       document.getElementById('end').classList.toggle('hidden', !showEnd);
-      document.getElementById('end').textContent = ending ? 'End now' : 'End conversation';
-      document.getElementById('end').classList.toggle('ask', ending);
-      document.getElementById('cancel').classList.toggle('hidden', !ending);
-      const showFoot = showEnd || Boolean(document.getElementById('err').textContent);
-      document.getElementById('foot').classList.toggle('hidden', !showFoot);
+      document.getElementById('end').textContent = ending ? 'Ending' : 'End conversation';
+      document.getElementById('end').disabled = busy || ending;
+      setErr(document.getElementById('err').textContent);
       const snapshot = JSON.stringify({
         conversation_id: conversationId,
         messages: rows.filter(function (row) { return !row.pending; }),
@@ -670,60 +624,35 @@
       }
       render(structured, panel, !hasThemReply(structured, panel));
     }
-    function sendMessage(event) {
-      if (event) event.preventDefault();
-      const conversationId = (panel && panel.conversation_id) || structured.conversation_id || String(currentInput().conversation_id || '');
-      const personId = String(currentInput().person_id || '') || (panel && panel.other && panel.other.person_id) || '';
-      const message = document.getElementById('draft').value.trim();
-      if ((!conversationId && !personId) || !message || busy) return;
-      const args = conversationId
-        ? { conversation_id: conversationId, message: message }
-        : { person_id: personId, message: message };
-      latestInput = args;
-      setBusy(true);
-      document.getElementById('err').textContent = '';
-      render(structured, panel, true);
-      Promise.resolve()
-        .then(function () { return callTool('send_message', args); })
-        .then(function (result) {
-          document.getElementById('draft').value = '';
-          document.getElementById('draft').style.height = 'auto';
-          tellModel('The user already sent that in the Airsup widget. Do not call send_message again for this conversation.' + (args.conversation_id ? ' conversation_id is ' + args.conversation_id + '.' : ''));
-          hydrate(result);
-        })
-        .catch(function (error) {
-          document.getElementById('err').textContent = error.message || 'Could not send.';
-          render(structured, panel, false);
-        })
-        .then(function () {
-          setBusy(false);
-          claimComposer();
-        });
-    }
     async function endConversation() {
-      const conversationId = (panel && panel.conversation_id) || structured.conversation_id;
-      if (!conversationId || busy) return;
-      if (!ending) {
-        ending = true;
-        render(structured, panel, false);
+      const conversationId = (panel && panel.conversation_id) || structured.conversation_id || String(currentInput().conversation_id || '');
+      if (busy || ending) return;
+      if (!conversationId) {
+        setErr('No conversation to end yet.');
         return;
       }
+      ending = true;
       setBusy(true);
-      document.getElementById('err').textContent = '';
+      setErr('');
+      document.getElementById('end').textContent = 'Ending';
       try {
         const result = await callTool('end_conversation', { conversation_id: conversationId });
         tellModel('The user ended Airsup conversation ' + conversationId + ' in the widget. Do not call send_message again for it.');
+        if (panel) panel.status = 'ended';
+        structured = Object.assign({}, structured, { conversation_id: conversationId, status: 'ended', reply: null });
         ending = false;
         await hydrate(result);
       } catch (error) {
-        document.getElementById('err').textContent = error.message || 'Could not end.';
+        ending = false;
+        setErr(error.message || 'Could not end.');
       }
       setBusy(false);
+      render(structured, panel, false);
     }
     async function switchThread(conversationId) {
       if (!conversationId || busy) return;
       setBusy(true);
-      document.getElementById('err').textContent = '';
+      setErr('');
       try {
         let next = null;
         try { next = await readResource('airsup://conversations/' + conversationId); }
@@ -744,41 +673,12 @@
         tellModel('User is viewing Airsup conversation ' + conversationId + '. Use that conversation_id for later send_message calls.');
         render({ conversation_id: conversationId, status: next.status, reply: null }, next, false);
       } catch (error) {
-        document.getElementById('err').textContent = error.message || 'Could not open that conversation.';
+        setErr(error.message || 'Could not open that conversation.');
       }
       setBusy(false);
     }
 
-    document.getElementById('send').addEventListener('click', sendMessage);
-    document.getElementById('composer').addEventListener('pointerdown', claimComposer);
-    document.getElementById('draft').addEventListener('pointerdown', claimComposer);
-    document.getElementById('draft').addEventListener('focus', function () {
-      claimComposer();
-    });
     document.getElementById('end').addEventListener('click', endConversation);
-    document.getElementById('cancel').addEventListener('click', function () {
-      ending = false;
-      render(structured, panel, false);
-    });
-    document.getElementById('draft').addEventListener('input', function (event) {
-      event.target.style.height = 'auto';
-      event.target.style.height = Math.min(event.target.scrollHeight, 140) + 'px';
-      lastHeight = 0;
-      reportHeight();
-    });
-    document.getElementById('draft').addEventListener('keydown', function (event) {
-      event.stopPropagation();
-      if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
-        document.getElementById('send').click();
-      }
-    });
-    document.getElementById('draft').addEventListener('keyup', function (event) {
-      event.stopPropagation();
-    });
-    document.getElementById('draft').addEventListener('keypress', function (event) {
-      event.stopPropagation();
-    });
 
     window.addEventListener('message', function (event) {
       if (event.source !== window.parent) return;
@@ -797,7 +697,7 @@
           id: message.id,
           result: {
             protocolVersion: '2026-01-26',
-            appInfo: { name: 'airsup', version: '14' },
+            appInfo: { name: 'airsup', version: '15' },
             appCapabilities: { availableDisplayModes: ['inline', 'fullscreen', 'pip'] },
           },
         }, '*');
