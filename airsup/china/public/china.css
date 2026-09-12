@@ -364,6 +364,12 @@ h3 {
   color: #5a544c;
 }
 
+.cn-spark,
+.cn-gpt-mark {
+  display: block;
+  flex-shrink: 0;
+}
+
 .cn-gpt-dot {
   width: 1.15rem;
   height: 1.15rem;

@@ -72,6 +72,8 @@ assert.deepStrictEqual(companies[0], {
   activated_at: '2026-09-11T04:00:00.000Z',
 });
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/partials/head.ejs'), 'utf8').includes('/airsup/live-companies.json'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/partials/diagram.ejs'), 'utf8').includes('cn-gpt-mark'));
+assert.ok(!fs.readFileSync(path.join(__dirname, 'views/partials/diagram.ejs'), 'utf8').includes('M9 1.5l1.2 5.2'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/partials/head.ejs'), 'utf8').includes('/airsup/china/live.json'));
 assert.ok(fs.readFileSync(path.join(__dirname, '../routes.js'), 'utf8').includes("router.get('/live-companies.json'"));
 
