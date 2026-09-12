@@ -57,7 +57,19 @@ const PAGES = {
   },
 };
 
-const SITEMAP_PATHS = ['/', '/bookshelf', '/eisenkind', '/cause', '/want', '/corner', '/ce', '/liquidity', '/graph', '/graph/zh'];
+const SITEMAP_PATHS = [
+  '/',
+  '/bookshelf',
+  '/eisenkind',
+  '/cause',
+  '/want',
+  '/corner',
+  '/ce',
+  '/liquidity',
+  '/graph',
+  '/graph/zh',
+  '/airsup/china',
+];
 
 function normalizePath(pathname) {
   if (!pathname || pathname === '/') return '/';

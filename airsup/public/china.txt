@@ -1,0 +1,26 @@
+Airsup China — let ChatGPT find your factory
+
+URL: https://www.tademehl.com/airsup/china
+Live JSON: https://www.tademehl.com/airsup/live-companies.json
+
+What it is
+Buyers stay in ChatGPT. They do not join a new platform.
+Airsup is infrastructure that helps ChatGPT find real company domains,
+answer from what the factory published, and send a clearer project.
+Free for suppliers. Buyers pay.
+
+How a factory becomes findable
+1. Enter the company website
+2. Confirm with a mailbox on that domain
+3. Check scraped facts and add WeChat / sample lead / reply style
+4. Publish so ChatGPT can ask you
+
+Success means domain confirmed and published. Filling a form alone is not enough.
+
+Live factories
+GET https://www.tademehl.com/airsup/live-companies.json
+Each row: name, domain, category, live, activated_at
+Match by domain. 503 with live:null means unavailable, not empty.
+
+Contact
+A Tade Mehl production · tademehl@gmail.com

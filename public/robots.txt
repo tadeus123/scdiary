@@ -1,6 +1,22 @@
+# OpenAI / ChatGPT — allow fetch, search, and crawl
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-AdsBot
+Allow: /
+
+# Everyone else
 User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /edu
 
 Sitemap: https://www.tademehl.com/sitemap.xml
+# AI summary of this site:
+# https://www.tademehl.com/llms.txt

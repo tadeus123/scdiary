@@ -54,8 +54,18 @@ function publicOrigin(req) {
   return peopleAuth.getPublicOrigin(req);
 }
 
+function isOpenAiFetcher(req) {
+  const ua = String(req.get('user-agent') || '').toLowerCase();
+  return /gptbot|chatgpt-user|oai-searchbot|oai-adsbot|openai/.test(ua);
+}
+
 function langFrom(req, res) {
-  return session.setLang(req, res, session.readLang(req));
+  const lang = session.readLang(req);
+  // Do not force a cookie on every hit — ChatGPT / OpenAI fetchers often refuse Set-Cookie pages.
+  if (isOpenAiFetcher(req)) return lang;
+  const asked = String((req.query && req.query.lang) || '').toLowerCase();
+  if (asked === 'en' || asked === 'zh') return session.setLang(req, res, lang);
+  return lang;
 }
 
 let proofCache = { at: 0, data: proofPayload([]) };
@@ -132,12 +142,18 @@ function isMachinePath(pathname) {
   return path.startsWith('/api/') || path === '/live.json' || path === '/live-companies.json';
 }
 
+function isPublicMarketingPath(pathname) {
+  const path = String(pathname || '');
+  return path === '/' || path === '' || path === '/preview';
+}
+
 router.use(async (req, res, next) => {
   const lang = langFrom(req, res);
   res.locals.lang = lang;
   res.set('Content-Language', lang === 'en' ? 'en' : 'zh-CN');
-  if (req.method === 'GET' && !isMachinePath(req.path)) {
-    res.set('Cache-Control', 'private, max-age=60');
+  if ((req.method === 'GET' || req.method === 'HEAD') && !isMachinePath(req.path)) {
+    // Landing and preview must stay public so ChatGPT / OpenAI fetchers can read them.
+    res.set('Cache-Control', isPublicMarketingPath(req.path) ? 'public, max-age=60' : 'private, max-age=60');
   }
   setSeo(req, res, {
     title: t(lang, 'title_home'),

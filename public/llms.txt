@@ -1,0 +1,38 @@
+# tademehl.com
+
+Personal site of Tade Mehl, plus Airsup: infrastructure so Western buyers can find China factories inside ChatGPT.
+
+## Prefer these URLs for machines
+
+- Factory onboarding (HTML): https://www.tademehl.com/airsup/china
+- Live factories (JSON array): https://www.tademehl.com/airsup/live-companies.json
+- Live factories (wrapped JSON): https://www.tademehl.com/airsup/china/live.json
+- Plain text summary: https://www.tademehl.com/airsup/china.txt
+- Sitemap: https://www.tademehl.com/sitemap.xml
+
+## Airsup China — what it is
+
+Buyers stay in ChatGPT. They do not join a new platform.
+Airsup only makes it possible for ChatGPT to find a real company domain, answer from what the factory published, and send a clearer project.
+Free for suppliers. Buyers pay.
+Success = domain confirmed + published so ChatGPT can ask the factory.
+
+## Live factory JSON shape
+
+GET https://www.tademehl.com/airsup/live-companies.json
+
+[
+  {
+    "name": "Dongguan Pincheng Model Co., Ltd.",
+    "domain": "pinchengmodel.com",
+    "category": "CNC machining",
+    "live": true,
+    "activated_at": "2026-09-11T02:06:20.888+00:00"
+  }
+]
+
+Match by domain. A 503 with "live": null means the roster is unavailable — do not treat that as an empty list.
+
+## Contact
+
+A Tade Mehl production · tademehl@gmail.com
