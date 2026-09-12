@@ -133,6 +133,8 @@ assert.ok(COPY.zh.peers_col_name.includes('公司'));
 assert.ok(COPY.en.growth_chart.toLowerCase().includes('live'));
 assert.ok(COPY.en.growth_launch.toLowerCase().includes('launch'));
 assert.ok(COPY.zh.growth_launch.includes('开通'));
+assert.ok(COPY.en.growth_adoption.includes('CNC'));
+assert.ok(COPY.zh.growth_adoption.includes('PCBA'));
 
 const crypto = require('crypto');
 const {

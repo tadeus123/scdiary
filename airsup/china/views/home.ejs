@@ -55,8 +55,15 @@
     </section>
 
     <section class="cn-wrap cn-growth" id="growth">
-      <h2><%= t('growth_title') %></h2>
+      <% var launchDay = proof && proof.series && proof.series[0] && proof.series[0].day; %>
+      <h2>
+        <%= t('growth_title') %>
+        <% if (launchDay) { %>
+          <span class="cn-growth-date"><%= t('growth_launch') %> <%= formatChartDay(launchDay) %></span>
+        <% } %>
+      </h2>
       <p class="cn-pitch"><%= t('pitch_line') %></p>
+      <p class="cn-growth-adopt"><%= t('growth_adoption') %></p>
       <% if (proof && proof.chart && proof.live > 0) { %>
       <figure class="cn-chart">
         <figcaption><%= t('growth_chart') %> · <%= proof.live %></figcaption>
