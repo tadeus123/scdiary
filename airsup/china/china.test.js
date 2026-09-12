@@ -135,6 +135,7 @@ const {
   normalizeOutcome,
   completeReply,
   systemPrompt,
+  isGarbageRfqValue,
 } = require('./reply');
 const { factoryNoticeMail } = require('./mail');
 
@@ -162,6 +163,13 @@ const kept = mergeRfq(
 );
 assert.strictEqual(kept.destination, 'Germany');
 assert.strictEqual(kept.target_date, 'within 3 weeks');
+assert.strictEqual(isGarbageRfqValue('tolerance or finish, target date, destination.'), true);
+assert.strictEqual(mergeRfq(
+  { tolerance: 'tolerance or finish, target date, destination.', destination: 'Shenzhen' },
+  { tolerance: '', destination: 'Shenzhen' }
+).tolerance, '');
+const dump = extractRfqFromText('Noted from this thread: quantity 20 pieces; material Stainless; tolerance tolerance or finish, target date, destination.; destination Shenzhen; Still needed for a usable RFQ: target date.');
+assert.ok(!/tolerance or finish/i.test(dump.tolerance || ''));
 
 const factory = {
   company_id: '11111111-1111-1111-1111-111111111111',
@@ -181,14 +189,22 @@ const factory = {
 };
 assert.ok(fallbackReply({ company: factory, message: 'Can you mill this?', rfq: {} }).includes('Acme CNC'));
 assert.ok(!fallbackReply({ company: factory, message: 'Can you mill this?', rfq: {} }).includes('How to answer'));
-assert.ok(fallbackReply({
+assert.ok(!fallbackReply({ company: factory, message: 'Can you mill this?', rfq: {} }).includes('Noted from this thread'));
+assert.ok(!fallbackReply({
   company: { ...factory, profile: { ...factory.profile, holidays: 'CNY shutdown' } },
   message: 'Can you mill this?',
   rfq: {},
 }).includes('CNY shutdown'));
-assert.ok(systemPrompt(factory).includes('make this company money'));
+assert.ok(fallbackReply({
+  company: { ...factory, profile: { ...factory.profile, holidays: 'CNY shutdown' } },
+  message: 'Can you mill this by February?',
+  rfq: {},
+}).includes('CNY shutdown'));
+assert.ok(fallbackReply({ company: factory, message: 'Need a PCBA run', rfq: {} }).toLowerCase().includes('not what we do'));
+assert.ok(systemPrompt(factory).includes('sales engineer'));
 assert.ok(systemPrompt(factory).includes('5-axis aluminum brackets'));
 assert.ok(systemPrompt(factory).includes('Keep every RFQ field'));
+assert.ok(systemPrompt(factory).includes('brochure'));
 assert.ok(systemPrompt({
   ...factory,
   profile: { ...factory.profile, contacts: [{ name: 'Li', wechat: 'wxid_li' }], sample_lead: 'samples in 7 days', flexibility: 'creative' },
@@ -214,6 +230,12 @@ assert.ok(!fallbackReply({
   rfq: { quantity: '10 pieces', destination: 'Germany' },
   history: [{ role: 'buyer', body: 'Need 10 pieces' }],
 }).includes('Processes:'));
+assert.ok(!fallbackReply({
+  company: factory,
+  message: 'Also anodize them.',
+  rfq: { quantity: '20 pieces', material: 'Stainless', destination: 'Shenzhen' },
+  history: [{ role: 'buyer', body: 'Need 20 pieces' }, { role: 'factory', body: 'Still needed for a usable RFQ: target date.' }],
+}).includes('Noted from this thread'));
 
 const notice = factoryNoticeMail({
   lang: 'zh',
@@ -470,6 +492,17 @@ function memoryChina(companies) {
       rfq: {},
     });
     assert.ok(fallbackAi.reply.includes('Acme CNC'));
+    const notDump = await completeReply({
+      company: factory,
+      history: [
+        { role: 'buyer', body: 'Need 20 pieces stainless' },
+        { role: 'factory', body: 'Still needed for a usable RFQ: tolerance or finish, target date, destination.' },
+      ],
+      message: 'drawings attached',
+      rfq: { quantity: '20 pieces', material: 'Stainless', tolerance: 'tolerance or finish, target date, destination.' },
+    });
+    assert.ok(!notDump.reply.includes('Noted from this thread'));
+    assert.ok(!String(notDump.rfq.tolerance || '').includes('tolerance or finish'));
   } finally {
     if (prevKey !== undefined) process.env.OPENAI_API_KEY = prevKey;
   }
