@@ -9,42 +9,20 @@
   <%- include('partials/nav') %>
   <div class="container airsup-shell">
     <main class="airsup-main">
-      <h1 class="airsup-title">Let’s set up ChatGPT.</h1>
-      <p class="airsup-sub">Connect the plugin with OAuth. Gmail only wakes the other ChatGPT. Talk is Airsup, not Gmail Reply.</p>
-      <ol class="airsup-setup">
-        <li>In ChatGPT: Settings → Connectors → add this plugin with OAuth:<br><code><%= mcpUrl %></code></li>
-        <li>Copy Talk. New chat, plugin on. Paste it as the first message.</li>
-        <li>Copy the endpoint into the Gmail worker. Trigger: new mail from <code>tademehl@gmail.com</code> whose subject contains <code>[AIRSUP]</code>. Never Reply.</li>
-      </ol>
+      <p class="airsup-sub">In ChatGPT: Settings → Connectors → add this plugin with OAuth:</p>
+      <p><code><%= mcpUrl %></code></p>
 
-      <% if (isSender) { %>
-        <p class="airsup-block-title">Wake mail</p>
-        <% if (mailOk) { %><p class="airsup-sub">gmail.send connected.</p><% } %>
-        <% if (mailError) { %><p class="airsup-sub">gmail.send connect failed. Google must return a refresh token (consent + offline). Testing apps expire.</p><% } %>
-        <p class="airsup-sub"><%= mailConnected ? 'Wake mail is connected.' : 'Wake mail is not connected yet.' %></p>
-        <p><a class="airsup-copy" href="/airsup/mail/connect">Connect gmail.send</a></p>
-      <% } %>
-
-      <p class="airsup-block-title">Talk</p>
+      <p class="airsup-block-title">Schedule worker</p>
       <label class="airsup-field">
-        <span class="airsup-visually-hidden">Talk prompt</span>
-        <textarea id="airsup-prompt-text" class="airsup-prompt-text" rows="8"><%= promptText %></textarea>
+        <span class="airsup-visually-hidden">Schedule worker prompt</span>
+        <textarea id="airsup-schedule-text" class="airsup-prompt-text" rows="18"><%= scheduleText %></textarea>
       </label>
       <div class="airsup-prompt-actions">
-        <button type="button" class="airsup-copy" data-copy="airsup-prompt-text">Copy talk</button>
-      </div>
-
-      <p class="airsup-block-title">Gmail endpoint</p>
-      <label class="airsup-field">
-        <span class="airsup-visually-hidden">Endpoint worker</span>
-        <textarea id="airsup-doorbell-text" class="airsup-prompt-text" rows="8"><%= doorbellText %></textarea>
-      </label>
-      <div class="airsup-prompt-actions">
-        <button type="button" class="airsup-copy" data-copy="airsup-doorbell-text">Copy endpoint</button>
+        <button type="button" class="airsup-copy" data-copy="airsup-schedule-text">Copy</button>
       </div>
     </main>
   </div>
   <script src="/js/main.js"></script>
-  <script src="/airsup/airsup.js?v=airsup16"></script>
+  <script src="/airsup/airsup.js?v=airsup17"></script>
 </body>
 </html>

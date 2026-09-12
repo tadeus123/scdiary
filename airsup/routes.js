@@ -12,7 +12,7 @@ const db = require('./db');
 const { createMcp } = require('./mcp');
 const pluginOauth = require('./oauth-plugin');
 const gmailOauth = require('./oauth-gmail-send');
-const { talkPrompt, doorbellText } = require('./prompt');
+const { doorbellText } = require('./prompt');
 const auth = require('./auth');
 
 const router = express.Router();
@@ -76,14 +76,6 @@ function renderAirsup(req, res, viewName, extra = {}) {
   );
 }
 
-function userDisplayName(user, profile) {
-  return publicDisplayName({
-    answers: profile && profile.answers,
-    displayName: (profile && profile.displayName) || (user && user.displayName) || '',
-    email: (user && user.email) || '',
-  });
-}
-
 router.use((req, res, next) => {
   const suffix = req.path === '/' ? '' : req.path;
   res.locals.seo = {
@@ -139,29 +131,19 @@ router.get('/you', async (req, res) => {
 router.get('/prompt', async (req, res) => {
   const user = auth.readUser(req);
   if (!user) return res.redirect('/airsup');
-  let answers = normalizeAnswers({});
-  let profile = null;
   try {
-    profile = await getProfile(user.googleId);
-    if (profile) answers = profile.answers;
-    await syncPersonFromWebsiteUser(user, profile || { answers, displayName: user.displayName });
+    const profile = await getProfile(user.googleId);
+    await syncPersonFromWebsiteUser(user, profile || {
+      answers: normalizeAnswers({}),
+      displayName: user.displayName,
+    });
   } catch (error) {
     console.error('Airsup prompt load error:', error);
   }
-  const mailConnected = db.isConfigured() ? Boolean(await db.getGmailSend().catch(() => null)) : false;
   renderAirsup(req, res, 'prompt.ejs', {
     user,
     mcpUrl: MCP_URL,
-    promptText: talkPrompt({
-      answers,
-      email: user.email,
-      displayName: userDisplayName(user, profile),
-    }),
-    doorbellText: doorbellText(),
-    mailConnected,
-    isSender: String(user.email || '').toLowerCase() === GMAIL_SENDER,
-    mailError: req.query.error === 'mail',
-    mailOk: req.query.mail === 'connected',
+    scheduleText: doorbellText(),
   });
 });
 

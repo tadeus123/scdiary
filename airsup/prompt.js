@@ -9,13 +9,7 @@ const ENDPOINT_INSTRUCTIONS = fs.readFileSync(
 ).trim();
 
 function doorbellText() {
-  return [
-    ENDPOINT_INSTRUCTIONS,
-    '',
-    'Trigger this worker on a new Gmail where:',
-    'from = tademehl@gmail.com',
-    'subject contains [AIRSUP]',
-  ].join('\n');
+  return ENDPOINT_INSTRUCTIONS;
 }
 
 function talkPrompt({ answers, email, displayName }) {
