@@ -29,7 +29,7 @@ const {
   canPublish,
   fillEmptyCompany,
 } = require('./fields');
-const { proofPayload, industryPeers, formatChartDay } = require('./proof');
+const { proofPayload, industryPeers, formatChartDay, liveRoster } = require('./proof');
 const { sendVerifyEmail } = require('./mail');
 const peopleAuth = require('../auth');
 
@@ -126,11 +126,16 @@ function setSeo(req, res, { title, description, noindex }) {
   };
 }
 
+function isMachinePath(pathname) {
+  const path = String(pathname || '');
+  return path.startsWith('/api/') || path === '/live.json';
+}
+
 router.use(async (req, res, next) => {
   const lang = langFrom(req, res);
   res.locals.lang = lang;
   res.set('Content-Language', lang === 'en' ? 'en' : 'zh-CN');
-  if (req.method === 'GET' && !String(req.path || '').startsWith('/api/')) {
+  if (req.method === 'GET' && !isMachinePath(req.path)) {
     res.set('Cache-Control', 'private, max-age=60');
   }
   setSeo(req, res, {
@@ -531,6 +536,28 @@ router.post('/logout', async (req, res) => {
 router.get('/api/proof', async (req, res) => {
   res.set('Cache-Control', 'public, max-age=60');
   res.json(await proof());
+});
+
+function sendLiveRoster(res, rows) {
+  res.set('Cache-Control', 'public, max-age=60');
+  res.set('Content-Type', 'application/json; charset=utf-8');
+  res.json(liveRoster(rows));
+}
+
+router.get(['/live.json', '/api/live'], async (req, res) => {
+  if (!db.isConfigured()) return sendLiveRoster(res, []);
+  try {
+    return sendLiveRoster(res, await db.listLive());
+  } catch (error) {
+    console.error('Airsup china live roster error:', error);
+    res.set('Cache-Control', 'no-store');
+    return res.status(503).json({
+      error: 'unavailable',
+      meaning: 'published_live_endpoint',
+      live: null,
+      factories: [],
+    });
+  }
 });
 
 router.get('/api/registry', async (req, res) => {

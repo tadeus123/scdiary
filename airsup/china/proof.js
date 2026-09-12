@@ -83,6 +83,7 @@ function liveRows(rows) {
         name: row.company_name_en || row.company_name || row.domain,
         name_zh: row.company_name || row.company_name_en || row.domain,
         live_at: row.live_at,
+        city: row.city || '',
         ...niche,
       };
     });
@@ -192,6 +193,28 @@ function proofPayload(rows) {
   };
 }
 
+function liveRoster(rows, now) {
+  const factories = liveRows(rows).map((row) => ({
+    domain: row.domain,
+    website: row.website,
+    name: row.name,
+    name_zh: row.name_zh,
+    city: row.city || '',
+    category: row.niche,
+    category_en: row.niche_en,
+    category_zh: row.niche_zh,
+    live_at: row.live_at,
+    status: 'live',
+  }));
+  return {
+    meaning: 'published_live_endpoint',
+    note: 'Only factories that completed signup and published an endpoint appear here. Match pipeline rows by domain. Do not ask these companies to sign up again.',
+    fetched_at: (now || new Date()).toISOString(),
+    live: factories.length,
+    factories,
+  };
+}
+
 function industryPeers(recent, { niche, domain } = {}) {
   const self = String(domain || '').replace(/^www\./, '').toLowerCase();
   const want = String(niche || '').trim();
@@ -211,6 +234,7 @@ module.exports = {
   industryPeers,
   liveSeries,
   liveRows,
+  liveRoster,
   chartFromSeries,
   formatChartDay,
   shanghaiDay,
