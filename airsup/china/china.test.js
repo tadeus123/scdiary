@@ -1,4 +1,6 @@
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const { domainMatches, normalizeDomain } = require('./domain');
 const { proofLines, proofPayload, industryPeers, liveSeries, formatChartDay } = require('./proof');
 const { canPublish, normalizeProfile, mapCityId, fillEmptyCompany, listedContacts } = require('./fields');
@@ -135,6 +137,11 @@ assert.ok(COPY.en.growth_launch.toLowerCase().includes('launch'));
 assert.ok(COPY.zh.growth_launch.includes('开通'));
 assert.ok(COPY.en.growth_adoption.includes('CNC'));
 assert.ok(COPY.zh.growth_adoption.includes('PCBA'));
+assert.ok(COPY.en.plugin_video.toLowerCase().includes('chatgpt'));
+assert.ok(COPY.zh.plugin_video.includes('ChatGPT'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('buyer-plugin.mp4'));
+assert.ok(fs.existsSync(path.join(__dirname, 'public/buyer-plugin.mp4')));
+assert.ok(fs.existsSync(path.join(__dirname, 'public/buyer-plugin.jpg')));
 
 const crypto = require('crypto');
 const {

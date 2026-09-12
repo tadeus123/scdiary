@@ -515,6 +515,28 @@ h3 {
   padding: 3rem 0;
 }
 
+.cn-activate-steps {
+  scroll-margin-top: 5.5rem;
+}
+
+.cn-plugin-video {
+  margin: 1.2rem 0 2.6rem;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #111111;
+  border: 1px solid #e2d6c4;
+  box-shadow: 0 14px 36px rgba(26, 21, 18, 0.12);
+}
+
+.cn-plugin-video video {
+  display: block;
+  width: 100%;
+  height: auto;
+  vertical-align: middle;
+  border-radius: 18px;
+}
+
 .cn-four {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
