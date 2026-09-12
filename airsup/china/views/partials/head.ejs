@@ -10,6 +10,7 @@
 <% } %>
 <meta itemprop="image" content="<%= SITE_URL %>/og-image.png">
 <%- include('/partials/seo-head') %>
+<link rel="alternate" type="application/json" href="/airsup/live-companies.json">
 <link rel="alternate" type="application/json" href="/airsup/china/live.json">
 <% if (typeof chinaCss === 'string' && chinaCss) { %>
 <style><%- chinaCss %></style>

@@ -32,6 +32,7 @@ const {
 const { proofPayload, industryPeers, formatChartDay, liveRoster } = require('./proof');
 const { sendVerifyEmail } = require('./mail');
 const peopleAuth = require('../auth');
+const handleLiveCompanies = require('./live-companies');
 
 const router = express.Router();
 const VIEWS = path.join(__dirname, 'views');
@@ -128,7 +129,7 @@ function setSeo(req, res, { title, description, noindex }) {
 
 function isMachinePath(pathname) {
   const path = String(pathname || '');
-  return path.startsWith('/api/') || path === '/live.json';
+  return path.startsWith('/api/') || path === '/live.json' || path === '/live-companies.json';
 }
 
 router.use(async (req, res, next) => {
@@ -541,8 +542,11 @@ router.get('/api/proof', async (req, res) => {
 function sendLiveRoster(res, rows) {
   res.set('Cache-Control', 'public, max-age=60');
   res.set('Content-Type', 'application/json; charset=utf-8');
+  res.set('Access-Control-Allow-Origin', '*');
   res.json(liveRoster(rows));
 }
+
+router.get('/live-companies.json', handleLiveCompanies);
 
 router.get(['/live.json', '/api/live'], async (req, res) => {
   if (!db.isConfigured()) return sendLiveRoster(res, []);
@@ -551,6 +555,7 @@ router.get(['/live.json', '/api/live'], async (req, res) => {
   } catch (error) {
     console.error('Airsup china live roster error:', error);
     res.set('Cache-Control', 'no-store');
+    res.set('Access-Control-Allow-Origin', '*');
     return res.status(503).json({
       error: 'unavailable',
       meaning: 'published_live_endpoint',

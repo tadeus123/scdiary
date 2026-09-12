@@ -21,3 +21,4 @@ Do not drop `airsup_people`, `airsup_gmail_send`, conversations, or diary tables
 - `https://www.tademehl.com/airsup` still loads
 - `/airsup/mcp` still serves the people plugin
 - `/airsup/china` 404s
+- `/airsup/live-companies.json` 404s

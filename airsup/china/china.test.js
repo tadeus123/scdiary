@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const { domainMatches, normalizeDomain } = require('./domain');
-const { proofLines, proofPayload, industryPeers, liveSeries, formatChartDay, chartFromSeries, liveRoster } = require('./proof');
+const { proofLines, proofPayload, industryPeers, liveSeries, formatChartDay, chartFromSeries, liveRoster, liveCompanies } = require('./proof');
 const { canPublish, normalizeProfile, mapCityId, fillEmptyCompany, listedContacts } = require('./fields');
 const { verifyMail } = require('./mail');
 
@@ -59,7 +59,21 @@ assert.strictEqual(roster.live, 1);
 assert.strictEqual(roster.factories[0].domain, 'acme.com');
 assert.strictEqual(roster.factories[0].status, 'live');
 assert.ok(!JSON.stringify(roster).includes('wechat'));
+const companies = liveCompanies([
+  { status: 'pending', domain: 'skip.com', live_at: '2026-09-11T04:00:00.000Z', company_name_en: 'Skip' },
+  { status: 'live', live_at: '2026-09-11T04:00:00.000Z', domain: 'acme.com', niche: 'cnc', company_name_en: 'Acme', city: 'dongguan' },
+]);
+assert.strictEqual(companies.length, 1);
+assert.deepStrictEqual(companies[0], {
+  name: 'Acme',
+  domain: 'acme.com',
+  category: 'CNC machining',
+  live: true,
+  activated_at: '2026-09-11T04:00:00.000Z',
+});
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/partials/head.ejs'), 'utf8').includes('/airsup/live-companies.json'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/partials/head.ejs'), 'utf8').includes('/airsup/china/live.json'));
+assert.ok(fs.readFileSync(path.join(__dirname, '../routes.js'), 'utf8').includes("router.get('/live-companies.json'"));
 
 assert.strictEqual(canPublish({
   company_name: '深圳某某精密',

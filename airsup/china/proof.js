@@ -193,6 +193,16 @@ function proofPayload(rows) {
   };
 }
 
+function liveCompanies(rows) {
+  return liveRows(rows).map((row) => ({
+    name: row.name,
+    domain: row.domain,
+    category: row.niche_en || row.niche,
+    live: true,
+    activated_at: row.live_at,
+  }));
+}
+
 function liveRoster(rows, now) {
   const factories = liveRows(rows).map((row) => ({
     domain: row.domain,
@@ -208,7 +218,7 @@ function liveRoster(rows, now) {
   }));
   return {
     meaning: 'published_live_endpoint',
-    note: 'Only factories ChatGPT can already find appear here (published). Match pipeline rows by domain. Do not ask these companies to sign up again.',
+    note: 'Only factories ChatGPT can already find appear here (published). Match pipeline rows by domain. Prefer GET /airsup/live-companies.json for the flat list. Do not ask these companies to sign up again.',
     fetched_at: (now || new Date()).toISOString(),
     live: factories.length,
     factories,
@@ -234,6 +244,7 @@ module.exports = {
   industryPeers,
   liveSeries,
   liveRows,
+  liveCompanies,
   liveRoster,
   chartFromSeries,
   formatChartDay,

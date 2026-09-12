@@ -291,6 +291,7 @@ router.options('/oauth/token', (req, res) => {
 router.all('/mcp', (req, res) => mcp.handleMcp(req, res));
 
 // AIRSUP-CHINA-BEGIN
+router.get('/live-companies.json', require('./china/live-companies'));
 router.use('/china', require('./china/routes'));
 // AIRSUP-CHINA-END
 
