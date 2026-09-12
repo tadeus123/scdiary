@@ -139,13 +139,27 @@ function chartFromSeries(series) {
   const last = points[points.length - 1];
   const first = points[0];
   const area = `${first.x},${top + innerH} ${line} ${last.x},${top + innerH}`;
-  const labelDays = rows.filter((row, index) => (
-    index === 0 || index === rows.length - 1 || (rows.length > 3 && index === Math.floor(rows.length / 2))
-  ));
-  const labels = labelDays.map((row) => {
-    const match = points.find((point) => point.day === row.day) || points[0];
-    return { x: match.x, day: row.day, count: row.count };
-  });
+  const labels = [{
+    x: first.x,
+    day: rows[0].day,
+    count: rows[0].count,
+    first: true,
+  }];
+  if (rows.length > 1) {
+    labels.push({
+      x: last.x,
+      day: rows[rows.length - 1].day,
+      count: rows[rows.length - 1].count,
+      last: true,
+    });
+  }
+  if (rows.length > 3) {
+    const mid = rows[Math.floor(rows.length / 2)];
+    const match = points.find((point) => point.day === mid.day);
+    if (match && mid.day !== rows[0].day && mid.day !== rows[rows.length - 1].day) {
+      labels.splice(1, 0, { x: match.x, day: mid.day, count: mid.count });
+    }
+  }
   return {
     width,
     height,

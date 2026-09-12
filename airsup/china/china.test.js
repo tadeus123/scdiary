@@ -30,6 +30,7 @@ assert.strictEqual(payload.started, 2);
 assert.strictEqual(payload.live, 1);
 assert.strictEqual(payload.recent[0].domain, 'acme.com');
 assert.ok(payload.chart && payload.chart.line);
+assert.ok(payload.chart.labels[0].first);
 assert.deepStrictEqual(industryPeers(payload.recent, { niche: 'cnc', domain: 'acme.com' }), []);
 assert.strictEqual(industryPeers([
   { domain: 'peer.com', niche: 'injection' },
@@ -130,6 +131,8 @@ assert.ok(COPY.zh.holidays_label.includes('放假'));
 assert.ok(COPY.en.peers_industry.toLowerCase().includes('industry'));
 assert.ok(COPY.zh.peers_col_name.includes('公司'));
 assert.ok(COPY.en.growth_chart.toLowerCase().includes('live'));
+assert.ok(COPY.en.growth_launch.toLowerCase().includes('launch'));
+assert.ok(COPY.zh.growth_launch.includes('开通'));
 
 const crypto = require('crypto');
 const {

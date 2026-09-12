@@ -68,7 +68,7 @@
             <text class="cn-chart-y" x="<%= proof.chart.left - 8 %>" y="<%= tick.y + 4 %>" text-anchor="end"><%= tick.label %></text>
           <% }) %>
           <% proof.chart.labels.forEach((label) => { %>
-            <text class="cn-chart-x" x="<%= label.x %>" y="<%= proof.chart.height - 12 %>" text-anchor="middle"><%= formatChartDay(label.day) %></text>
+            <text class="cn-chart-x" x="<%= label.x %>" y="<%= proof.chart.height - 12 %>" text-anchor="<%= label.first ? 'start' : (label.last ? 'end' : 'middle') %>"><%= label.first ? t('growth_launch') : formatChartDay(label.day) %></text>
           <% }) %>
         </svg>
         <p class="cn-chart-axes"><span><%= t('growth_axis_y') %></span><span><%= t('growth_axis_x') %></span></p>
