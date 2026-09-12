@@ -66,7 +66,7 @@
       <p class="cn-pitch"><%= t('growth_adoption') %></p>
       <% if (proof && proof.chart && proof.live > 0) { %>
       <figure class="cn-chart">
-        <figcaption><%= t('growth_chart') %> · <%= proof.live %></figcaption>
+        <figcaption><%= t('growth_chart') %></figcaption>
         <svg viewBox="0 0 <%= proof.chart.width %> <%= proof.chart.height %>" role="img" aria-label="<%= t('growth_chart') %>">
           <polygon class="cn-chart-fill" points="<%= proof.chart.area %>"></polygon>
           <polyline class="cn-chart-line" fill="none" points="<%= proof.chart.line %>"></polyline>
