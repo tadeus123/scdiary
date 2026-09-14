@@ -1,0 +1,32 @@
+---
+description: Airsup20 lives in airsup20/ only and must stay removable
+---
+
+# Airsup20 isolation
+
+`/airsup20` is a standalone slice. Keep it easy to delete.
+
+## Put Airsup20 code only in
+- `airsup20/` (routes, mcp, sql, oauth, services, endpoint, tools)
+- the marked `AIRSUP20-BEGIN` / `AIRSUP20-END` blocks in `server/server.js`
+- `"airsup20/**"` in `vercel.json` includeFiles
+
+## Product rules
+- No product website/dashboard — minimal Google consent only
+- MCP: `https://www.tademehl.com/airsup20/mcp`
+- Tools: `me`, `setup`, `update_listing`, `fulfill`, `get_inbox`, `get_trace`
+- Layers: raw history, knowledge/facts, intents+evidence, listing (user projection), endpoint (our OpenAI), inbox
+- Endpoint talk is our compute (fast `fulfill` path). Never Gmail-wake another ChatGPT. No chat widget.
+- Trace every tool call with accurate spans from day one
+- Tables are `airsup20_*` only — never share with `airsup_*` or diary
+
+## Do not
+- Import diary, admin, or `server/db/supabase.js` from Airsup20
+- Add Airsup20 UI to other site pages
+- Copy old Airsup people/Gmail/widget code into this slice
+
+## Revert
+```bash
+node airsup20/revert-airsup20.js
+```
+See `airsup20/REVERT.md`.

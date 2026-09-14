@@ -1,0 +1,19 @@
+{
+  "name": "get_inbox",
+  "description": "Read the user's Airsup20 inbox — actionable outcomes from other people's endpoint conversations (matches, connect suggestions, offers). Use when the user asks about inbox, or when me/fulfill reports unread items.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "description": "Optional filter: unread | seen | acted | dismissed"
+      },
+      "limit": { "type": "number" },
+      "mark_seen": {
+        "type": "boolean",
+        "description": "If true, mark returned unread items as seen."
+      }
+    },
+    "additionalProperties": false
+  }
+}

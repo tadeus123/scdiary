@@ -1,0 +1,26 @@
+{
+  "name": "fulfill",
+  "description": "Main Airsup20 action. Fulfill a people goal fast: search candidates, probe endpoints in parallel, run internal endpoint↔endpoint rounds with our models (not other users' ChatGPT), store the conversation, optionally write inbox items, and return a human end-answer plus status labels. Examples: find a road-trip partner, find a chair seller in Shenzhen, hire an EE, find a tango training partner. Prefer one fulfill call over many tiny tools.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "goal": {
+        "type": "string",
+        "description": "What the user wants regarding other people."
+      },
+      "query": {
+        "type": "string",
+        "description": "Alias for goal."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Max candidates to probe (default 8)."
+      },
+      "rounds": {
+        "type": "number",
+        "description": "Internal endpoint talk rounds per deep target (default 2, max 4)."
+      }
+    },
+    "additionalProperties": false
+  }
+}

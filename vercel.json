@@ -11,7 +11,8 @@
           "eisenkind/**",
           "views/**",
           "public/**",
-          "airsup/**"
+          "airsup/**",
+          "airsup20/**"
         ]
       }
     }

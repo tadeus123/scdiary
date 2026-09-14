@@ -106,6 +106,18 @@ app.get('/.well-known/oauth-authorization-server/airsup/oauth', (req, res) => {
 });
 // AIRSUP-END
 
+// AIRSUP20-BEGIN
+const airsup20Routes = require('../airsup20/routes');
+const airsup20Oauth = require('../airsup20/oauth-plugin');
+app.use('/airsup20', airsup20Routes);
+app.get('/.well-known/oauth-protected-resource/airsup20/mcp', (req, res) => {
+  res.json(airsup20Oauth.protectedResourceMetadata(req));
+});
+app.get('/.well-known/oauth-authorization-server/airsup20/oauth', (req, res) => {
+  res.json(airsup20Oauth.authorizationServerMetadata(req));
+});
+// AIRSUP20-END
+
 // Import routes
 const diaryRoutes = require('./routes/diary');
 const adminRoutes = require('./routes/admin');

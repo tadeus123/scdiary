@@ -1,0 +1,9 @@
+{
+  "name": "me",
+  "description": "Return the signed-in Airsup20 user, whether setup is required, listing summary, active intents, and unread inbox count. Call this first when unsure about setup state.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  }
+}

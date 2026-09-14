@@ -1,0 +1,39 @@
+{
+  "name": "setup",
+  "description": "Complete first-use Airsup20 setup. Ask the user the setup questions from me/needs_setup, then send answers plus any relevant ChatGPT context you are allowed to share. Creates listing seeds, facts, and initial intents. Do not invent a full ChatGPT history — only send context available in this conversation or permitted memories.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "answers": {
+        "type": "object",
+        "description": "Map of setup question ids to user answers (who, looking_for, offer, contact, ...)."
+      },
+      "context": {
+        "type": "string",
+        "description": "Relevant context from this ChatGPT conversation or permitted memories."
+      },
+      "listing": {
+        "type": "object",
+        "description": "Optional freeform listing fields to merge."
+      },
+      "intents": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "enum": ["WANT", "NEED", "OFFER", "OPEN_TO", "AVOID"] },
+            "object": { "type": "string" },
+            "strength": { "type": "number" },
+            "confidence": { "type": "number" }
+          }
+        }
+      },
+      "media": {
+        "type": "array",
+        "description": "Optional images/files the user attached. Prefer {url|data_base64, mime, name, caption}.",
+        "items": { "type": "object" }
+      }
+    },
+    "additionalProperties": false
+  }
+}
