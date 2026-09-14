@@ -1,5 +1,12 @@
 const crypto = require('crypto');
-const { googleClientId, googleClientSecret, sessionSecret, publicOriginFromEnv } = require('./config');
+const {
+  googleClientId,
+  googleClientSecret,
+  sessionSecret,
+  publicOriginFromEnv,
+  demoUsername,
+  demoPassword,
+} = require('./config');
 
 const COOKIE_USER = 'airsup20_user';
 const COOKIE_STATE = 'airsup20_oauth_state';
@@ -176,6 +183,40 @@ function safeNext(next) {
   return path || '/airsup20/oauth/done';
 }
 
+function isDemoLoginEnabled() {
+  return Boolean(demoPassword());
+}
+
+function demoUserProfile() {
+  return {
+    googleId: 'airsup20-demo-reviewer',
+    email: 'airsup-reviewer@demo.tademehl.com',
+    displayName: 'Airsup Reviewer',
+    picture: '',
+    locale: 'en',
+    googleProfile: {
+      id: 'airsup20-demo-reviewer',
+      email: 'airsup-reviewer@demo.tademehl.com',
+      name: 'Airsup Reviewer',
+      demo: true,
+    },
+  };
+}
+
+function timingSafeEqualString(a, b) {
+  const left = Buffer.from(String(a || ''), 'utf8');
+  const right = Buffer.from(String(b || ''), 'utf8');
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
+
+function verifyDemoCredentials(username, password) {
+  if (!isDemoLoginEnabled()) return false;
+  const userOk = timingSafeEqualString(String(username || '').trim(), demoUsername());
+  const passOk = timingSafeEqualString(String(password || ''), demoPassword());
+  return userOk && passOk;
+}
+
 module.exports = {
   COOKIE_PATH,
   isGoogleConfigured,
@@ -189,4 +230,7 @@ module.exports = {
   googleAuthUrl,
   exchangeCode,
   safeNext,
+  isDemoLoginEnabled,
+  demoUserProfile,
+  verifyDemoCredentials,
 };

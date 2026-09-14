@@ -58,7 +58,25 @@ function renderSite(req, res, viewName, extras = {}) {
   );
 }
 
-function consentHtml({ error }) {
+function consentHtml({ error, next, demoEnabled }) {
+  const nextPath = auth.safeNext(next);
+  const googleHref = `/airsup20/auth/google?next=${encodeURIComponent(nextPath)}`;
+  const demoForm = demoEnabled ? `
+    <hr style="border:none;border-top:1px solid #e6e6e6;margin:1.75rem 0" />
+    <p>OpenAI / reviewer demo login (no Google account required):</p>
+    <form method="post" action="/airsup20/auth/demo" style="margin-top:1rem">
+      <input type="hidden" name="next" value="${String(nextPath).replace(/"/g, '&quot;')}" />
+      <p style="margin:0 0 .75rem">
+        <label style="display:block;font-size:.9rem;margin-bottom:.25rem">Username</label>
+        <input name="username" autocomplete="username" required style="width:100%;padding:.55rem .65rem;border:1px solid #ccc;font:inherit" />
+      </p>
+      <p style="margin:0 0 1rem">
+        <label style="display:block;font-size:.9rem;margin-bottom:.25rem">Password</label>
+        <input name="password" type="password" autocomplete="current-password" required style="width:100%;padding:.55rem .65rem;border:1px solid #ccc;font:inherit" />
+      </p>
+      <button type="submit" class="button" style="border:0;cursor:pointer;font:inherit">Sign in with demo account</button>
+    </form>
+  ` : '';
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -71,7 +89,7 @@ function consentHtml({ error }) {
     main{max-width:28rem;padding:2rem}
     h1{font-size:1.5rem;font-weight:normal;margin:0 0 .75rem}
     p{line-height:1.45}
-    a.button{display:inline-block;margin-top:1.25rem;padding:.7rem 1rem;background:#111;color:#fff;text-decoration:none}
+    a.button,button.button{display:inline-block;margin-top:1.25rem;padding:.7rem 1rem;background:#111;color:#fff;text-decoration:none}
     .err{color:#8a1f11}
     code{font-size:.85rem;word-break:break-all}
     a.back{display:inline-block;margin-top:1.5rem;color:#555}
@@ -80,9 +98,10 @@ function consentHtml({ error }) {
 <body>
   <main>
     <h1>Connect Airsup</h1>
-    <p>Sign in with Google so ChatGPT can use your Airsup identity. Listing and conversations happen through your connected AI.</p>
+    <p>Sign in so ChatGPT can use your Airsup identity. Listing and conversations happen through your connected AI.</p>
     ${error ? `<p class="err">${error}</p>` : ''}
-    <p><a class="button" href="/airsup20/auth/google?next=${encodeURIComponent('/airsup20/oauth/done')}">Continue with Google</a></p>
+    <p><a class="button" href="${googleHref}">Continue with Google</a></p>
+    ${demoForm}
     <p>Plugin URL: <code>${MCP_URL}</code></p>
     <p><a class="back" href="/airsup20">Back to Airsup</a></p>
   </main>
@@ -176,9 +195,37 @@ router.get(['/demovideo', '/demo'], (req, res) => {
 
 router.get('/connect', (req, res) => {
   res.set('X-Robots-Tag', 'noindex');
+  let error = '';
+  if (req.query.error === 'oauth') error = 'Google sign-in failed. Try again.';
+  if (req.query.error === 'demo') error = 'Demo login failed. Check username and password.';
   res.type('html').send(consentHtml({
-    error: req.query.error === 'oauth' ? 'Google sign-in failed. Try again.' : '',
+    error,
+    next: req.query.next,
+    demoEnabled: auth.isDemoLoginEnabled(),
   }));
+});
+
+router.post('/auth/demo', async (req, res) => {
+  res.set('X-Robots-Tag', 'noindex');
+  const next = auth.safeNext(req.body && req.body.next);
+  if (!auth.verifyDemoCredentials(req.body && req.body.username, req.body && req.body.password)) {
+    return res.redirect(`/airsup20/connect?error=demo&next=${encodeURIComponent(next)}`);
+  }
+  const demoUser = auth.demoUserProfile();
+  auth.setUser(req, res, demoUser);
+  try {
+    await store.upsertUser({
+      googleId: demoUser.googleId,
+      email: demoUser.email,
+      displayName: demoUser.displayName,
+      picture: demoUser.picture,
+      locale: demoUser.locale,
+      googleProfile: demoUser.googleProfile,
+    });
+  } catch (error) {
+    console.error('Airsup20 demo login upsert error:', error);
+  }
+  return res.redirect(next);
 });
 
 router.get('/oauth/done', (req, res) => {

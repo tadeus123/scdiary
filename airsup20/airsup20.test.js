@@ -130,6 +130,15 @@ async function run() {
   const listed = await mcp.callTool('me', await store.getUser(alice.user_id), {});
   assert.strictEqual(listed.needs_setup, false);
 
+  process.env.AIRSUP20_DEMO_USERNAME = 'airsup-reviewer';
+  process.env.AIRSUP20_DEMO_PASSWORD = 'test-demo-password';
+  const auth = require('./auth');
+  assert.strictEqual(auth.isDemoLoginEnabled(), true);
+  assert.strictEqual(auth.verifyDemoCredentials('airsup-reviewer', 'test-demo-password'), true);
+  assert.strictEqual(auth.verifyDemoCredentials('wrong', 'test-demo-password'), false);
+  assert.strictEqual(auth.verifyDemoCredentials('airsup-reviewer', 'wrong'), false);
+  assert.strictEqual(auth.demoUserProfile().googleId, 'airsup20-demo-reviewer');
+
   console.log('airsup20 tests ok');
 }
 

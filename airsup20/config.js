@@ -23,6 +23,14 @@ function publicOriginFromEnv() {
   return (process.env.AIRSUP20_PUBLIC_ORIGIN || process.env.AIRSUP_PUBLIC_ORIGIN || '').replace(/\/$/, '');
 }
 
+function demoUsername() {
+  return String(process.env.AIRSUP20_DEMO_USERNAME || 'airsup-reviewer').trim();
+}
+
+function demoPassword() {
+  return String(process.env.AIRSUP20_DEMO_PASSWORD || '').trim();
+}
+
 module.exports = {
   MCP_URL,
   MCP_PROTOCOL,
@@ -33,4 +41,6 @@ module.exports = {
   googleClientSecret,
   sessionSecret,
   publicOriginFromEnv,
+  demoUsername,
+  demoPassword,
 };

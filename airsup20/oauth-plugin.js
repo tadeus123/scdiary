@@ -138,7 +138,8 @@ async function handleAuthorize(req, res, store) {
   };
 
   const websiteUser = auth.readUser(req);
-  if (websiteUser && websiteUser.googleId && String(req.query.airsup20_oauth) === '1') {
+  // Already signed in (Google or demo reviewer) — finish without another Google hop.
+  if (websiteUser && websiteUser.googleId) {
     return finishAuthorize(req, res, store, pending, websiteUser);
   }
 
@@ -148,9 +149,9 @@ async function handleAuthorize(req, res, store) {
     if (value == null) return;
     params.set(key, String(value));
   });
-  params.set('airsup20_oauth', '1');
   const next = `/airsup20/oauth/authorize?${params.toString()}`;
-  return res.redirect(`/airsup20/auth/google?next=${encodeURIComponent(next)}`);
+  // Connect page supports Google and password demo login for OpenAI reviewers.
+  return res.redirect(`/airsup20/connect?next=${encodeURIComponent(next)}`);
 }
 
 async function handleToken(req, res, store) {
