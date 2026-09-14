@@ -163,6 +163,17 @@ router.get('/imprint', (req, res) => {
   });
 });
 
+router.get(['/demovideo', '/demo'], (req, res) => {
+  res.set('X-Robots-Tag', 'noindex');
+  renderSite(req, res, 'demo.ejs', {
+    active: 'demo',
+    title: 'Demo video — Airsup',
+    description: 'Airsup ChatGPT plugin demo recording for OpenAI review.',
+    canonicalPath: '/airsup20/demovideo',
+    noindex: true,
+  });
+});
+
 router.get('/connect', (req, res) => {
   res.set('X-Robots-Tag', 'noindex');
   res.type('html').send(consentHtml({
