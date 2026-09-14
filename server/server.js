@@ -116,6 +116,14 @@ app.get('/.well-known/oauth-protected-resource/airsup20/mcp', (req, res) => {
 app.get('/.well-known/oauth-authorization-server/airsup20/oauth', (req, res) => {
   res.json(airsup20Oauth.authorizationServerMetadata(req));
 });
+// OpenAI Plugins Directory domain verification (plain token only).
+app.get('/.well-known/openai-apps-challenge', (req, res) => {
+  res
+    .status(200)
+    .type('text/plain')
+    .set('Cache-Control', 'no-store')
+    .send('n8fEliTuk9U6PCu3LY6bu5Ro6mEfpFa6Fpn0veobyeQ');
+});
 // AIRSUP20-END
 
 // Import routes
