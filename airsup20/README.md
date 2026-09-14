@@ -1,6 +1,6 @@
 # Airsup20 (`/airsup20`)
 
-AI-native people platform. **No product website** — ChatGPT plugin / MCP only, plus a minimal Google consent page.
+AI-native people platform. Public pages at `/airsup20` (home, privacy, terms, support, imprint). ChatGPT plugin / MCP plus Google connect at `/airsup20/connect`.
 
 ## Plugin
 

@@ -12,8 +12,9 @@ description: Airsup20 lives in airsup20/ only and must stay removable
 - `"airsup20/**"` in `vercel.json` includeFiles
 
 ## Product rules
-- No product website/dashboard — minimal Google consent only
+- Public marketing/legal pages live under `/airsup20` (home, privacy, terms, support, imprint)
 - MCP: `https://www.tademehl.com/airsup20/mcp`
+- Google connect UI: `/airsup20/connect` (not the marketing home)
 - Tools: `me`, `setup`, `update_listing`, `fulfill`, `get_inbox`, `get_trace`
 - Layers: raw history, knowledge/facts, intents+evidence, listing (user projection), endpoint (our OpenAI), inbox
 - Endpoint talk is our compute (fast `fulfill` path). Never Gmail-wake another ChatGPT. No chat widget.
@@ -23,6 +24,7 @@ description: Airsup20 lives in airsup20/ only and must stay removable
 ## Do not
 - Import diary, admin, or `server/db/supabase.js` from Airsup20
 - Add Airsup20 UI to other site pages
+- Change MCP/auth/database behavior when only editing public pages
 - Copy old Airsup people/Gmail/widget code into this slice
 
 ## Revert

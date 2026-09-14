@@ -172,7 +172,8 @@ function safeNext(next) {
   const path = String(next || '');
   if (!path.startsWith('/airsup20')) return '/airsup20/oauth/done';
   if (path.startsWith('//')) return '/airsup20/oauth/done';
-  return path;
+  // Keep OAuth return targets inside airsup20; default to done page.
+  return path || '/airsup20/oauth/done';
 }
 
 module.exports = {
