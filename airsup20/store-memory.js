@@ -271,6 +271,21 @@ function createMemoryStore() {
         .map((m) => ({ ...m, meta: { ...m.meta } }));
     },
 
+    async listPriorBetweenUsers(userA, userB, { limit } = {}) {
+      const max = Math.min(Math.max(Number(limit) || 12, 1), 40);
+      const pair = [...conversations.values()].filter((c) => (
+        (c.initiator_id === userA && c.recipient_id === userB)
+        || (c.initiator_id === userB && c.recipient_id === userA)
+      ));
+      pair.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
+      const out = [];
+      for (const conv of pair.slice(0, 3)) {
+        const rows = messages.filter((m) => m.conversation_id === conv.conversation_id);
+        for (const row of rows) out.push({ ...row, meta: { ...row.meta } });
+      }
+      return out.slice(-max);
+    },
+
     async insertInboxItem(row) {
       const item = {
         item_id: newId(),

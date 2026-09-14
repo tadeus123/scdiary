@@ -160,7 +160,7 @@ function createMcp({ store, fetchImpl } = {}) {
   async function handleMcp(req, res) {
     mcpCors(res);
     if (req.method === 'OPTIONS') return res.status(204).end();
-    if (req.method === 'GET' && !req.body) return unauthorized(req, res);
+    if (req.method === 'GET') return unauthorized(req, res);
     if (req.method !== 'POST') {
       return res.status(405).json({ jsonrpc: '2.0', error: { code: -32600, message: 'MCP uses POST' } });
     }

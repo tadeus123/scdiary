@@ -121,9 +121,9 @@ async function probeCandidate({ caller, candidate, goal, fetchImpl }) {
   const ctx = workingContext({
     user: candidate.user,
     listing: candidate.listing,
-    facts: [],
+    facts: candidate.facts || [],
     intents: candidate.intents,
-    priorWithCaller: [],
+    priorWithCaller: candidate.priorWithCaller || [],
   });
   const parsed = await openaiJson({
     model: PROBE_MODEL,
@@ -145,22 +145,31 @@ async function probeCandidate({ caller, candidate, goal, fetchImpl }) {
   };
 }
 
-async function deepTalk({ caller, callerListing, callerIntents, candidate, goal, rounds, fetchImpl }) {
+async function deepTalk({
+  caller,
+  callerListing,
+  callerIntents,
+  callerFacts,
+  candidate,
+  goal,
+  rounds,
+  fetchImpl,
+}) {
   const maxRounds = Math.min(Math.max(Number(rounds) || 2, 1), 4);
   const fallback = fallbackDeep({ caller, candidate, goal });
   const ownerCtx = workingContext({
     user: candidate.user,
     listing: candidate.listing,
-    facts: [],
+    facts: candidate.facts || [],
     intents: candidate.intents,
-    priorWithCaller: [],
+    priorWithCaller: candidate.priorWithCaller || [],
   });
   const callerCtx = workingContext({
     user: caller,
     listing: callerListing,
-    facts: [],
+    facts: callerFacts || [],
     intents: callerIntents,
-    priorWithCaller: [],
+    priorWithCaller: candidate.priorWithCaller || [],
   });
 
   let packet = {

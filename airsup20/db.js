@@ -306,6 +306,26 @@ async function listMessages(conversationId) {
   return data || [];
 }
 
+async function listPriorBetweenUsers(userA, userB, { limit } = {}) {
+  const db = requireDb();
+  const max = Math.min(Math.max(Number(limit) || 12, 1), 40);
+  const { data: convs, error } = await db
+    .from('airsup20_conversations')
+    .select('conversation_id, updated_at')
+    .or(
+      `and(initiator_id.eq.${userA},recipient_id.eq.${userB}),and(initiator_id.eq.${userB},recipient_id.eq.${userA})`,
+    )
+    .order('updated_at', { ascending: false })
+    .limit(3);
+  if (error) throw error;
+  const out = [];
+  for (const conv of convs || []) {
+    const rows = await listMessages(conv.conversation_id);
+    out.push(...rows);
+  }
+  return out.slice(-max);
+}
+
 async function insertInboxItem(row) {
   const db = requireDb();
   const { data, error } = await db.from('airsup20_inbox_items').insert({
@@ -496,6 +516,7 @@ const supabaseStore = {
   updateConversation,
   insertMessage,
   listMessages,
+  listPriorBetweenUsers,
   insertInboxItem,
   listInbox,
   updateInboxItem,

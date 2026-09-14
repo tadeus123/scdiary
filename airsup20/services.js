@@ -332,6 +332,7 @@ function createServices({ store, fetchImpl } = {}) {
       status.push('searching');
       const callerListing = await tracer.timed(trace, 'db.caller_listing', () => store.getListing(user.user_id));
       const callerIntents = await tracer.timed(trace, 'db.caller_intents', () => store.listIntents(user.user_id, { activeOnly: true }));
+      const callerFacts = await tracer.timed(trace, 'db.caller_facts', () => store.listFacts(user.user_id));
       const inboxUnread = await unreadInboxCount(store, user.user_id);
       if (inboxUnread) status.push(`also ${inboxUnread} unread inbox`);
 
@@ -353,9 +354,17 @@ function createServices({ store, fetchImpl } = {}) {
         };
       }
 
-      status.push(`probing ${candidates.length}`);
+      // Attach knowledge + prior chat context before probes/deep talk.
+      const enriched = [];
+      for (const candidate of candidates) {
+        const facts = await store.listFacts(candidate.user.user_id);
+        const priorWithCaller = await store.listPriorBetweenUsers(user.user_id, candidate.user.user_id, { limit: 12 });
+        enriched.push({ ...candidate, facts, priorWithCaller });
+      }
+
+      status.push(`probing ${enriched.length}`);
       const probes = await tracer.timed(trace, 'endpoint.parallel_probes', async () => {
-        const jobs = candidates.map(async (candidate) => {
+        const jobs = enriched.map(async (candidate) => {
           const probe = await probeCandidate({
             caller: user,
             candidate,
@@ -381,6 +390,7 @@ function createServices({ store, fetchImpl } = {}) {
             caller: user,
             callerListing,
             callerIntents,
+            callerFacts,
             candidate: target.candidate,
             goal,
             rounds: Number((args && args.rounds) || 2),

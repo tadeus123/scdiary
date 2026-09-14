@@ -103,6 +103,18 @@ async function run() {
   assert.ok(Array.isArray(fulfilled.matches));
   assert.ok(fulfilled.matches.length >= 1);
 
+  // Knowledge layer must be wired into endpoint context (not left empty forever).
+  await store.insertFact({
+    user_id: alice.user_id,
+    statement: 'Alice can deliver the chair this week in Shenzhen',
+    confidence: 0.9,
+    source: 'explicit',
+  });
+  const prior = await store.listPriorBetweenUsers(freshBob.user_id, alice.user_id, { limit: 20 });
+  assert.ok(prior.length >= 1);
+  const aliceFacts = await store.listFacts(alice.user_id);
+  assert.ok(aliceFacts.some((f) => /deliver the chair/i.test(f.statement)));
+
   const aliceInbox = await services.getInbox(await store.getUser(alice.user_id), { status: 'unread' });
   assert.ok(aliceInbox.count >= 1);
 
