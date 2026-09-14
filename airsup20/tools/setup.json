@@ -1,5 +1,6 @@
 {
   "name": "setup",
+  "title": "Setup",
   "description": "Complete first-use Airsup20 setup. Ask the user the setup questions from me/needs_setup, then send answers plus any relevant ChatGPT context you are allowed to share. Creates listing seeds, facts, and initial intents. Do not invent a full ChatGPT history — only send context available in this conversation or permitted memories.",
   "inputSchema": {
     "type": "object",
@@ -22,10 +23,12 @@
           "type": "object",
           "properties": {
             "type": { "type": "string", "enum": ["WANT", "NEED", "OFFER", "OPEN_TO", "AVOID"] },
-            "object": { "type": "string" },
+            "object": { "type": "string", "minLength": 1 },
             "strength": { "type": "number" },
             "confidence": { "type": "number" }
-          }
+          },
+          "required": ["object"],
+          "additionalProperties": false
         }
       },
       "media": {
@@ -35,5 +38,22 @@
       }
     },
     "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "needs_setup": { "type": "boolean" },
+      "intents_created": { "type": "number" },
+      "trace_id": { "type": "string" }
+    },
+    "required": ["ok", "trace_id"],
+    "additionalProperties": true
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false
   }
 }

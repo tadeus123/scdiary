@@ -1,5 +1,6 @@
 {
   "name": "update_listing",
+  "title": "Update Listing",
   "description": "Create or modify the user's freeform Airsup20 listing via ChatGPT. Examples: sell a chair with price range and PayPal QR, add interest in tango, publish skills. Listing is user-controlled projection — never dump the whole knowledge/intent database into it.",
   "inputSchema": {
     "type": "object",
@@ -27,14 +28,31 @@
           "type": "object",
           "properties": {
             "type": { "type": "string", "enum": ["WANT", "NEED", "OFFER", "OPEN_TO", "AVOID"] },
-            "object": { "type": "string" },
+            "object": { "type": "string", "minLength": 1 },
             "status": { "type": "string" },
             "strength": { "type": "number" },
             "confidence": { "type": "number" }
-          }
+          },
+          "required": ["object"],
+          "additionalProperties": false
         }
       }
     },
     "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "trace_id": { "type": "string" }
+    },
+    "required": ["ok", "trace_id"],
+    "additionalProperties": true
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false
   }
 }

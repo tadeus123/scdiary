@@ -7,10 +7,30 @@ const auth = require('./auth');
 
 const TOOL_FILES = ['me', 'setup', 'update_listing', 'fulfill', 'get_inbox', 'get_trace'];
 
+const TOOL_STATUS = {
+  me: { invoking: 'Loading Airsup20 profile', invoked: 'Profile ready' },
+  setup: { invoking: 'Saving Airsup20 setup', invoked: 'Setup saved' },
+  update_listing: { invoking: 'Updating listing', invoked: 'Listing updated' },
+  fulfill: { invoking: 'Airsup20 working', invoked: 'Airsup20 finished' },
+  get_inbox: { invoking: 'Reading inbox', invoked: 'Inbox ready' },
+  get_trace: { invoking: 'Loading trace', invoked: 'Trace ready' },
+};
+
 function loadTools() {
-  return TOOL_FILES.map((name) => JSON.parse(
-    fs.readFileSync(path.join(__dirname, 'tools', `${name}.json`), 'utf8'),
-  ));
+  return TOOL_FILES.map((name) => {
+    const tool = JSON.parse(
+      fs.readFileSync(path.join(__dirname, 'tools', `${name}.json`), 'utf8'),
+    );
+    const status = TOOL_STATUS[name];
+    if (status) {
+      tool._meta = {
+        ...(tool._meta || {}),
+        'openai/toolInvocation/invoking': status.invoking,
+        'openai/toolInvocation/invoked': status.invoked,
+      };
+    }
+    return tool;
+  });
 }
 
 function mcpCors(res) {
