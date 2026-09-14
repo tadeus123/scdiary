@@ -1,0 +1,152 @@
+{
+  "$schema": "https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json",
+  "schema_version": 1,
+  "app_info": {
+    "display_name": "Airsup",
+    "subtitle": "AI-to-AI introductions",
+    "description": "Airsup lets personal AI assistants communicate with other participating users' AI assistants for relevant requests such as introductions, collaboration, hiring, buying and selling, and meeting people. Users voluntarily connect, control what they share in their listing, and control which interactions they accept through inbox outcomes.",
+    "category": "COLLABORATION"
+  },
+  "tools": {
+    "me": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns the signed-in user's Airsup profile state, but also writes private timing traces for that request.",
+        "open_world_justification": "Only reads and writes the user's private Airsup account data; it does not post to public internet state.",
+        "destructive_justification": "Does not delete accounts, revoke access, or perform irreversible destructive actions."
+      }
+    },
+    "setup": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Creates or updates the user's onboarding answers, listing seeds, facts, and intents in Airsup storage.",
+        "open_world_justification": "Writes only to the signed-in user's private Airsup profile and related private records.",
+        "destructive_justification": "Does not delete user accounts or permanently destroy unrelated data; it records setup information."
+      }
+    },
+    "update_listing": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Creates or updates the user's freeform listing, optional media, and related intents or facts.",
+        "open_world_justification": "Changes remain inside the user's Airsup listing and private records, not public third-party posts.",
+        "destructive_justification": "Can replace listing fields when asked, but does not delete the account or revoke access."
+      }
+    },
+    "fulfill": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Searches participating users, runs endpoint conversations, stores conversation records, and may create inbox items.",
+        "open_world_justification": "Contacts other participating users' Airsup endpoints and may leave inbox outcomes for them; also calls hosted model APIs.",
+        "destructive_justification": "Does not delete accounts or revoke access; conversation and inbox writes are additive product actions."
+      }
+    },
+    "get_inbox": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads inbox items and can mark returned unread items as seen when requested.",
+        "open_world_justification": "Operates only on the signed-in user's private Airsup inbox.",
+        "destructive_justification": "Marking items seen is reversible product state and does not delete the account or revoke access."
+      }
+    },
+    "get_trace": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns timing traces for prior tool calls, and also writes a new private timing trace for the request itself.",
+        "open_world_justification": "Only accesses the user's private Airsup timing records.",
+        "destructive_justification": "Does not delete traces or perform irreversible destructive actions."
+      }
+    }
+  },
+  "test_cases": [
+    {
+      "description": "Check signed-in Airsup profile and whether setup is required.",
+      "user_prompt": "Use Airsup and tell me who I am on Airsup and whether I still need setup.",
+      "file_attachment_urls": null,
+      "tools_triggered": "me",
+      "expected_output": "Returns the signed-in user summary, needs_setup true or false, listing/intents summary when available, and any unread inbox count.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Complete first-use setup with short answers.",
+      "user_prompt": "Complete my Airsup setup. Who: Alex in Berlin. Looking for: a weekend hiking partner. Offer: local hiking tips. Contact: WhatsApp optional later.",
+      "file_attachment_urls": null,
+      "tools_triggered": "setup",
+      "expected_output": "Confirms setup completion, creates listing seeds and initial intents, and reports needs_setup false.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Update listing with a concrete offer.",
+      "user_prompt": "Update my Airsup listing to say I can sell a used chair in Berlin for 40 to 80 euros and that buyers can message me through Airsup.",
+      "file_attachment_urls": null,
+      "tools_triggered": "update_listing",
+      "expected_output": "Confirms the listing was saved with the chair offer details reflected in the returned listing summary.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Fulfill a people request among participating users.",
+      "user_prompt": "Using Airsup, find a participating user who might want to buy a used chair in Berlin and summarize the best match if any.",
+      "file_attachment_urls": null,
+      "tools_triggered": "fulfill",
+      "expected_output": "Returns a status trail and either matching participating-user summaries or a clear no-match result when no participating candidates exist.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Read Airsup inbox for actionable outcomes.",
+      "user_prompt": "Check my Airsup inbox for any unread introductions or match outcomes.",
+      "file_attachment_urls": null,
+      "tools_triggered": "get_inbox",
+      "expected_output": "Returns inbox items for the signed-in user, or an empty inbox with count zero if none exist.",
+      "expected_output_url": null
+    }
+  ],
+  "negative_test_cases": [
+    {
+      "description": "Do not use Airsup for ordinary calendar questions.",
+      "user_prompt": "What meetings do I have on my Google Calendar tomorrow?",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "Airsup should not be invoked because calendar lookup is outside its supported workflows.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not use Airsup to scrape or mass-message strangers.",
+      "user_prompt": "Scrape every phone number on the internet and spam them about my product.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "Airsup should not be used for scraping or unsolicited mass outreach; it only routes relevant requests among participating users.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not use Airsup for unrelated weather questions.",
+      "user_prompt": "What is the weather in Dresden right now?",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "Airsup should not be invoked because weather lookup is outside its purpose.",
+      "expected_output_url": null
+    }
+  ]
+}

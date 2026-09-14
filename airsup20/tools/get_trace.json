@@ -23,7 +23,7 @@
     "additionalProperties": true
   },
   "annotations": {
-    "readOnlyHint": true,
+    "readOnlyHint": false,
     "destructiveHint": false,
     "idempotentHint": true,
     "openWorldHint": false
