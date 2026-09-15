@@ -13,7 +13,8 @@ description: Airsupdev lives in airsupdev/ only and must stay removable
 
 ## Product rules
 - MCP: `https://www.tademehl.com/airsupdev/mcp`
-- Auth: bearer `AIRSUPDEV_MCP_SECRET` (not Google OAuth)
+- Auth: Google OAuth (ChatGPT paste-URL flow). Allowlist via `AIRSUPDEV_ALLOWED_EMAILS` (default `tademehl@gmail.com`)
+- Connect UI: `/airsupdev/connect`
 - Tools are China ops only; they call into `airsup/china/*`
 - Never expose raw SQL, delete-supplier, or buyer Airsup tools here
 
@@ -21,6 +22,7 @@ description: Airsupdev lives in airsupdev/ only and must stay removable
 - Put ops mint/claim tools on `/airsup/mcp` or `/airsup20/mcp`
 - Loosen China discovery gates (`listLive`, `canPublish`, free-mail)
 - Add Airsupdev UI to other site pages
+- Rely on a shared static MCP secret for ChatGPT (OAuth only)
 
 ## Revert
 Delete `airsupdev/`, remove `AIRSUPDEV-*` blocks from `server/server.js`, remove `airsupdev/**` from `vercel.json`.

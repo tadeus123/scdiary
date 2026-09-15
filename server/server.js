@@ -128,7 +128,14 @@ app.get('/.well-known/openai-apps-challenge', (req, res) => {
 
 // AIRSUPDEV-BEGIN
 const airsupdevRoutes = require('../airsupdev/routes');
+const airsupdevOauth = require('../airsupdev/oauth-plugin');
 app.use('/airsupdev', airsupdevRoutes);
+app.get('/.well-known/oauth-protected-resource/airsupdev/mcp', (req, res) => {
+  res.json(airsupdevOauth.protectedResourceMetadata(req));
+});
+app.get('/.well-known/oauth-authorization-server/airsupdev/oauth', (req, res) => {
+  res.json(airsupdevOauth.authorizationServerMetadata(req));
+});
 // AIRSUPDEV-END
 
 // Import routes

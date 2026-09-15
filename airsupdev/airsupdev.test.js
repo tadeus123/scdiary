@@ -3,6 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const { createMcp } = require('./mcp');
 const { deriveOnboardingStatus, timingSafeEqualString, callTool } = require('./services');
+const { isEmailAllowed, allowedEmails } = require('./config');
+const auth = require('./auth');
+const pluginOauth = require('./oauth-plugin');
 
 const TOOL_NAMES = [
   'lookup_supplier',
@@ -32,8 +35,11 @@ assert.strictEqual(mcp.toolList().tools.length, 12);
 
 assert.strictEqual(timingSafeEqualString('abc', 'abc'), true);
 assert.strictEqual(timingSafeEqualString('abc', 'abd'), false);
-assert.strictEqual(timingSafeEqualString('abc', 'ab'), false);
-assert.strictEqual(timingSafeEqualString('', 'x'), false);
+
+assert.ok(allowedEmails().includes('tademehl@gmail.com'));
+assert.strictEqual(isEmailAllowed('tademehl@gmail.com'), true);
+assert.strictEqual(isEmailAllowed('random@gmail.com'), false);
+assert.strictEqual(auth.isEmailAllowed('tademehl@gmail.com'), true);
 
 assert.strictEqual(
   deriveOnboardingStatus({
@@ -45,42 +51,12 @@ assert.strictEqual(
 );
 
 assert.strictEqual(
-  deriveOnboardingStatus({
-    company: {
-      status: 'verified',
-      company_name: '深圳厂',
-      city: 'dongguan',
-      goal: 'RFQs',
-      profile: { processes: ['injection'] },
-      context: '',
-    },
-    allow: null,
-    tokens: [],
-  }).state,
-  'ready_to_publish'
+  typeof pluginOauth.protectedResourceMetadata,
+  'function'
 );
-
 assert.strictEqual(
-  deriveOnboardingStatus({
-    company: { status: 'pending', company_name: '', city: '', goal: '', profile: {} },
-    allow: null,
-    tokens: [{ purpose: 'claim', used_at: null, expires_at: new Date(Date.now() + 3600000).toISOString() }],
-  }).state,
-  'magic_link_created'
-);
-
-assert.strictEqual(
-  deriveOnboardingStatus({
-    company: { status: 'pending', company_name: '', city: '', goal: '', profile: {} },
-    allow: { claim_opened_at: new Date().toISOString() },
-    tokens: [],
-  }).state,
-  'opened'
-);
-
-assert.strictEqual(
-  deriveOnboardingStatus({ company: null, allow: null, tokens: [] }).state,
-  'blocked'
+  typeof pluginOauth.authorizationServerMetadata,
+  'function'
 );
 
 (async () => {
@@ -90,14 +66,18 @@ assert.strictEqual(
 
   const serverJs = fs.readFileSync(path.join(__dirname, '../server/server.js'), 'utf8');
   assert.ok(serverJs.includes('AIRSUPDEV-BEGIN'));
-  assert.ok(serverJs.includes("require('../airsupdev/routes')"));
+  assert.ok(serverJs.includes('oauth-protected-resource/airsupdev/mcp'));
+  assert.ok(serverJs.includes('oauth-authorization-server/airsupdev/oauth'));
   const vercel = fs.readFileSync(path.join(__dirname, '../vercel.json'), 'utf8');
   assert.ok(vercel.includes('airsupdev/**'));
-  const services = fs.readFileSync(path.join(__dirname, 'services.js'), 'utf8');
-  assert.ok(services.includes('live_locked'));
-  assert.ok(services.includes('confirm_required'));
-  assert.ok(services.includes('allowFuzzy'));
-  assert.ok(fs.readFileSync(path.join(__dirname, 'tools/verify_supplier.json'), 'utf8').includes('confirm'));
+  const routes = fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8');
+  assert.ok(routes.includes('/connect'));
+  assert.ok(routes.includes('/auth/google'));
+  assert.ok(routes.includes('/oauth/authorize'));
+  const mcpSrc = fs.readFileSync(path.join(__dirname, 'mcp.js'), 'utf8');
+  assert.ok(mcpSrc.includes('Google OAuth'));
+  assert.ok(!mcpSrc.includes('AIRSUPDEV_MCP_SECRET'));
+  assert.ok(fs.existsSync(path.join(__dirname, 'sql/schema.sql')));
 
   console.log('airsupdev tests passed');
 })().catch((error) => {

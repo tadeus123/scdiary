@@ -1,7 +1,10 @@
 const fs = require('fs');
 const path = require('path');
-const { MCP_PROTOCOL, MCP_URL, SERVER_NAME, SERVER_VERSION, mcpSecret } = require('./config');
-const { callTool, timingSafeEqualString } = require('./services');
+const { MCP_PROTOCOL, MCP_URL, SERVER_NAME, SERVER_VERSION } = require('./config');
+const { callTool } = require('./services');
+const { sha256 } = require('./util');
+const auth = require('./auth');
+const db = require('./db');
 
 const TOOL_FILES = [
   'lookup_supplier',
@@ -61,20 +64,26 @@ function extractBearer(req) {
   return '';
 }
 
-function authorized(req) {
-  const secret = mcpSecret();
-  if (!secret) return false;
-  const token = extractBearer(req);
-  if (!token) return false;
-  return timingSafeEqualString(token, secret);
+function resourceMetadataUrl(req) {
+  return `${auth.getPublicOrigin(req)}/.well-known/oauth-protected-resource/airsupdev/mcp`;
 }
 
-function unauthorized(res) {
-  res.set('WWW-Authenticate', 'Bearer realm="airsupdev"');
+function unauthorized(req, res) {
+  res.set('WWW-Authenticate', `Bearer realm="airsupdev", resource_metadata="${resourceMetadataUrl(req)}"`);
   return res.status(401).json({
     jsonrpc: '2.0',
-    error: { code: -32000, message: 'Airsupdev bearer token required (AIRSUPDEV_MCP_SECRET)' },
+    error: { code: -32000, message: 'Airsupdev Google OAuth required (allowlisted accounts only)' },
   });
+}
+
+async function userFromRequest(req, store) {
+  const token = extractBearer(req);
+  if (!token || !store.isConfigured()) return null;
+  const row = await store.getPluginToken(sha256(token));
+  if (!row) return null;
+  const user = await store.getUser(row.user_id);
+  if (!user || !auth.isEmailAllowed(user.email)) return null;
+  return user;
 }
 
 function formatToolResult(data) {
@@ -84,14 +93,15 @@ function formatToolResult(data) {
   };
 }
 
-function createMcp() {
+function createMcp({ store } = {}) {
+  const backing = store || db.getStore();
   const tools = loadTools();
 
   function toolList() {
     return { tools };
   }
 
-  async function dispatch(message, authed) {
+  async function dispatch(message, caller) {
     const method = message && message.method;
     const params = (message && message.params) || {};
     if (method === 'initialize') {
@@ -104,10 +114,9 @@ function createMcp() {
         serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
         instructions: [
           `Airsupdev ops MCP at ${MCP_URL}.`,
-          'Auth: Authorization Bearer AIRSUPDEV_MCP_SECRET.',
+          'Auth: Google OAuth. Only allowlisted emails may connect (default tademehl@gmail.com; expand via AIRSUPDEV_ALLOWED_EMAILS).',
           'China factory ops only. Prefer create_magic_link after lookup_supplier.',
           'Do not use for buyer ChatGPT discovery; that is /airsup/mcp.',
-          'Verification methods: manual, email_link, site_listed (dns not built).',
         ].join(' '),
       };
     }
@@ -121,8 +130,8 @@ function createMcp() {
     }
     if (method === 'prompts/list') return { prompts: [] };
     if (method === 'tools/call') {
-      if (!authed) {
-        const error = new Error('Airsupdev bearer token required');
+      if (!caller) {
+        const error = new Error('Airsupdev Google OAuth required');
         error.code = -32000;
         throw error;
       }
@@ -134,24 +143,24 @@ function createMcp() {
     throw error;
   }
 
-  async function handleOne(message, authed) {
+  async function handleOne(message, caller) {
     if (typeof message.method === 'string' && message.method.startsWith('notifications/')) {
       return { notify: true };
     }
-    const result = await dispatch(message, authed);
+    const result = await dispatch(message, caller);
     return { jsonrpc: '2.0', id: message.id ?? null, result };
   }
 
   async function handleMcp(req, res) {
     mcpCors(res);
     if (req.method === 'OPTIONS') return res.status(204).end();
-    if (req.method === 'GET') return unauthorized(res);
+    if (req.method === 'GET') return unauthorized(req, res);
     if (req.method !== 'POST') {
       return res.status(405).json({ jsonrpc: '2.0', error: { code: -32600, message: 'MCP uses POST' } });
     }
     const message = req.body || {};
     const method = message && message.method;
-    const authed = authorized(req);
+    const caller = await userFromRequest(req, backing).catch(() => null);
     const publicMethod =
       method === 'initialize'
       || method === 'ping'
@@ -159,18 +168,18 @@ function createMcp() {
       || method === 'resources/list'
       || method === 'prompts/list'
       || (typeof method === 'string' && method.startsWith('notifications/'));
-    if (!authed && !publicMethod) return unauthorized(res);
+    if (!caller && !publicMethod) return unauthorized(req, res);
     try {
       if (Array.isArray(message)) {
         const replies = [];
         for (const item of message) {
-          const out = await handleOne(item || {}, authed);
+          const out = await handleOne(item || {}, caller);
           if (!out.notify) replies.push(out);
         }
         res.set('MCP-Protocol-Version', MCP_PROTOCOL);
         return res.json(replies);
       }
-      const out = await handleOne(message, authed);
+      const out = await handleOne(message, caller);
       if (out.notify) return res.status(202).end();
       res.set('MCP-Protocol-Version', MCP_PROTOCOL);
       return res.json(out);
