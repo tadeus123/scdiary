@@ -83,6 +83,26 @@ h3 {
   max-width: 46rem;
 }
 
+.cn-hero-trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  max-width: 34rem;
+}
+
+.cn-hero-trust li {
+  margin: 0;
+  padding: 0.28rem 0.65rem;
+  border: 1px solid #e6dccb;
+  border-radius: 999px;
+  background: rgba(250, 246, 239, 0.9);
+  font-size: 0.86rem;
+  color: #3b2a24;
+}
+
 .cn-price {
   margin: 0 0 1.15rem;
   color: #7a1e2b;

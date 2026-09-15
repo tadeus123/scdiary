@@ -15,16 +15,16 @@ function proofLines({ started, verified, live }) {
   const nLive = Number(live) || 0;
   const nVerified = Number(verified) || 0;
   const nStarted = Number(started) || 0;
-  if (nLive >= 50) {
+  if (nLive > 0) {
     return {
-      zh: `采购已经能在 ChatGPT 里找到 ${nLive} 家已确认的出口制造商。`,
-      en: `Buyers can already find ${nLive} verified export manufacturers in ChatGPT.`,
+      zh: `已有 ${nLive} 家中国工厂上线，采购可在 ChatGPT 里找到他们。`,
+      en: `${nLive} Chinese factories are already live and findable in ChatGPT.`,
     };
   }
   if (nVerified >= 10) {
     return {
-      zh: `已有 ${nVerified} 家出口制造商完成确认，ChatGPT 可以找到他们。`,
-      en: `${nVerified} verified export manufacturers are already findable in ChatGPT.`,
+      zh: `已有 ${nVerified} 家出口制造商完成确认，准备上线。`,
+      en: `${nVerified} export manufacturers are verified and preparing to go live.`,
     };
   }
   if (nStarted > 0) {

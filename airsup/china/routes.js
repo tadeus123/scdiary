@@ -225,6 +225,7 @@ router.get(['/', ''], async (req, res) => {
     cities: CITIES,
     source: String(req.query.ref || 'web').slice(0, 40),
     genericDemo: genericDemo(langFrom(req, res)),
+    showWechatQr: fs.existsSync(path.join(__dirname, 'public', 'wechat-ops.png')),
   });
 });
 

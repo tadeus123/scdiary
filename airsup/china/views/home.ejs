@@ -17,6 +17,13 @@
           <% if (typeof proofLine !== 'undefined' && proofLine) { %>
             <p class="cn-proof"><%= proofLine %></p>
           <% } %>
+          <p class="cn-note"><%= t('hero_privacy') %></p>
+          <ul class="cn-hero-trust" aria-label="<%= t('risk_title') %>">
+            <li><%= t('hero_trust_1') %></li>
+            <li><%= t('hero_trust_2') %></li>
+            <li><%= t('hero_trust_3') %></li>
+            <li><%= t('hero_trust_4') %></li>
+          </ul>
           <div class="cn-hero-cta">
             <a class="cn-btn" href="#activate"><%= t('cta_activate') %> →</a>
             <a class="cn-btn-ghost" href="#how"><%= t('cta_how') %> →</a>
@@ -187,7 +194,44 @@
       <details><summary><%= t('faq4_q') %></summary><p><%= t('faq4_a') %></p></details>
     </section>
 
+    <section class="cn-wrap" id="rfq-path" aria-labelledby="rfq-title">
+      <h2 id="rfq-title"><%= t('rfq_title') %></h2>
+      <p class="cn-lead"><%= t('rfq_lead') %></p>
+      <ol class="cn-four">
+        <li><span>01</span><h3><%= t('rfq_1') %></h3><p><%= t('rfq_2') %></p></li>
+        <li><span>02</span><h3><%= t('rfq_3') %></h3><p><%= t('rfq_4') %></p></li>
+        <li><span>03</span><h3><%= t('rfq_5') %></h3><p><%= t('case_badge') %></p></li>
+      </ol>
+      <article class="cn-found">
+        <p class="cn-stamp"><%= t('case_badge') %></p>
+        <h3><%= t('case_title') %></h3>
+        <p class="cn-note"><%= t('case_body') %></p>
+      </article>
+    </section>
+
     <section class="cn-wrap cn-activate" id="activate">
+      <div class="cn-found" aria-labelledby="risk-title">
+        <h2 id="risk-title"><%= t('risk_title') %></h2>
+        <ul class="cn-note">
+          <li><%= t('risk_1') %></li>
+          <li><%= t('risk_2') %></li>
+          <li><%= t('risk_3') %></li>
+          <li><%= t('risk_4') %></li>
+          <li><%= t('risk_5') %></li>
+          <li><%= t('risk_6') %></li>
+          <li><%= t('risk_7') %></li>
+          <li><%= t('risk_8') %></li>
+        </ul>
+      </div>
+      <aside class="cn-found" aria-labelledby="ops-wechat-title">
+        <h2 id="ops-wechat-title" class="cn-live-h2"><%= t('ops_wechat_title') %></h2>
+        <p class="cn-note"><%= t('ops_wechat_lead') %></p>
+        <p class="cn-meta"><%= t('ops_wechat_id') %></p>
+        <p class="cn-note"><%= t('ops_wechat_hint') %></p>
+        <% if (typeof showWechatQr !== 'undefined' && showWechatQr) { %>
+          <p><img src="/airsup/china/wechat-ops.png" alt="<%= t('ops_wechat_title') %>" width="160" height="160" loading="lazy"></p>
+        <% } %>
+      </aside>
       <form class="cn-form cn-preview-form" method="post" action="/airsup/china/preview">
         <h2><%= t('activate_title') %></h2>
         <p class="cn-lead"><%= t('activate_lead') %></p>
@@ -202,6 +246,7 @@
         <input type="hidden" name="source" value="<%= typeof source !== 'undefined' && source ? source : 'web' %>">
         <input type="hidden" name="locale" value="<%= lang %>">
         <p class="cn-note"><%= t('preview_lead') %></p>
+        <p class="cn-note"><%= t('note') %></p>
       </form>
     </section>
   </main>
