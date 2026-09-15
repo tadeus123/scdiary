@@ -126,6 +126,11 @@ app.get('/.well-known/openai-apps-challenge', (req, res) => {
 });
 // AIRSUP20-END
 
+// AIRSUPDEV-BEGIN
+const airsupdevRoutes = require('../airsupdev/routes');
+app.use('/airsupdev', airsupdevRoutes);
+// AIRSUPDEV-END
+
 // Import routes
 const diaryRoutes = require('./routes/diary');
 const adminRoutes = require('./routes/admin');

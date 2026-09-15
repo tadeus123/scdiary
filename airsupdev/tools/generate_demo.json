@@ -1,0 +1,21 @@
+{
+  "name": "generate_demo",
+  "title": "Generate buyer demo",
+  "description": "Create a supplier-specific buyer-side demo: ChatGPT prompt, listing text, and public endpoint URLs.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" },
+      "name": { "type": "string" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}

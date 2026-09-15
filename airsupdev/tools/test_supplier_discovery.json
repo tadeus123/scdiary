@@ -1,0 +1,22 @@
+{
+  "name": "test_supplier_discovery",
+  "title": "Test supplier discovery",
+  "description": "Run a buyer query against live China find and report whether this supplier is surfaced and what score/card ChatGPT would get.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "query": { "type": "string", "description": "Buyer search query" },
+      "buyer_query": { "type": "string" },
+      "limit": { "type": "number" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}

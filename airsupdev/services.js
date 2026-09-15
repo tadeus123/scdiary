@@ -1,0 +1,619 @@
+const crypto = require('crypto');
+const chinaDb = require('../airsup/china/db');
+const { mintClaim } = require('../airsup/china/mint-claim');
+const { buildPreview, companyDraftFromPreview } = require('../airsup/china/site-preview');
+const { findForPlugin } = require('../airsup/china/find');
+const {
+  canPublish,
+  endpointRecord,
+  listingText,
+  buyerTestPrompt,
+  fillEmptyCompany,
+  normalizeProfile,
+  normalizeNiche,
+  normalizeActions,
+  DEFAULT_ACTIONS,
+  NICHES,
+  CITIES,
+} = require('../airsup/china/fields');
+const {
+  normalizeDomain,
+  emailParts,
+  isFreeMail,
+  emailAllowedForSite,
+} = require('../airsup/china/domain');
+const session = require('../airsup/china/session');
+const { sendVerifyEmail } = require('../airsup/china/mail');
+const { publicOriginFromEnv } = require('./config');
+
+function requireChinaDb() {
+  if (!chinaDb.isConfigured()) {
+    const error = new Error('Airsup China database is not configured');
+    error.code = -32001;
+    throw error;
+  }
+}
+
+function summarizeCompany(company, allow) {
+  if (!company) return null;
+  return {
+    company_id: company.company_id,
+    domain: company.domain,
+    website: company.website,
+    company_name: company.company_name,
+    company_name_en: company.company_name_en,
+    city: company.city,
+    niche: company.niche,
+    contact_email: company.contact_email,
+    contact_name: company.contact_name,
+    status: company.status,
+    source: company.source,
+    can_publish: canPublish(company),
+    verified_at: company.verified_at || null,
+    live_at: company.live_at || null,
+    allow: allow
+      ? {
+          source: allow.source,
+          note: allow.note || '',
+          claim_opened_at: allow.claim_opened_at || null,
+          published_at: allow.published_at || null,
+        }
+      : null,
+  };
+}
+
+async function resolveCompany(args = {}) {
+  requireChinaDb();
+  const companyId = String(args.company_id || args.supplier_id || '').trim();
+  if (companyId) {
+    const row = await chinaDb.getById(companyId);
+    if (row) return row;
+  }
+  const domain = normalizeDomain(args.domain || args.website || '');
+  if (domain) {
+    const row = await chinaDb.getByDomain(domain);
+    if (row) return row;
+  }
+  const email = String(args.email || args.contact_email || '').trim().toLowerCase();
+  if (email) {
+    const all = await chinaDb.listCompanies();
+    const hit = all.find((row) => String(row.contact_email || '').toLowerCase() === email);
+    if (hit) return hit;
+  }
+  const name = String(args.name || args.company_name || args.query || '').trim().toLowerCase();
+  if (name && name.length >= 2) {
+    const all = await chinaDb.listCompanies();
+    const hit = all.find((row) => {
+      const zh = String(row.company_name || '').toLowerCase();
+      const en = String(row.company_name_en || '').toLowerCase();
+      return zh.includes(name) || en.includes(name) || String(row.domain || '').includes(name);
+    });
+    if (hit) return hit;
+  }
+  return null;
+}
+
+function deriveOnboardingStatus({ company, allow, tokens }) {
+  if (!company) {
+    return { state: 'blocked', reason: 'supplier_not_found' };
+  }
+  if (company.status === 'live') {
+    return { state: 'live', published: true, reason: null };
+  }
+
+  const missing = [];
+  if (!canPublish(company)) {
+    if (!String(company.company_name || company.company_name_en || '').trim()) missing.push('company_name');
+    if (!String(company.city || '').trim()) missing.push('city');
+    if (!String(company.goal || '').trim()) missing.push('goal');
+    const profile = normalizeProfile(company.profile);
+    if (!profile.processes.length && !profile.materials.length && !String(company.context || '').trim()) {
+      missing.push('capabilities');
+    }
+  }
+
+  if (company.status === 'verified') {
+    if (canPublish(company)) return { state: 'ready_to_publish', reason: null };
+    return { state: 'email_verified', reason: missing.length ? `missing:${missing.join(',')}` : null };
+  }
+
+  if (allow && allow.claim_opened_at) {
+    return { state: 'opened', reason: null };
+  }
+
+  const openClaim = (tokens || []).find(
+    (row) => row.purpose === 'claim' && !row.used_at && new Date(row.expires_at).getTime() > Date.now()
+  );
+  if (openClaim) {
+    return { state: 'magic_link_created', reason: null };
+  }
+
+  if (company.status === 'pending') {
+    if (missing.length) return { state: 'draft', reason: `missing:${missing.join(',')}` };
+    return { state: 'draft', reason: null };
+  }
+
+  return { state: 'blocked', reason: `unknown_status:${company.status}` };
+}
+
+async function lookupSupplier(args = {}) {
+  requireChinaDb();
+  const query = String(args.query || args.domain || args.email || args.name || '').trim();
+  const all = await chinaDb.listCompanies();
+  const domain = normalizeDomain(args.domain || query);
+  const email = String(args.email || '').trim().toLowerCase()
+    || (query.includes('@') ? query.toLowerCase() : '');
+  const name = String(args.name || (!domain && !email ? query : '')).trim().toLowerCase();
+
+  let matches = [];
+  if (domain) {
+    matches = all.filter((row) => String(row.domain || '').toLowerCase() === domain);
+  } else if (email) {
+    matches = all.filter((row) => String(row.contact_email || '').toLowerCase() === email);
+  } else if (name) {
+    matches = all.filter((row) => {
+      const zh = String(row.company_name || '').toLowerCase();
+      const en = String(row.company_name_en || '').toLowerCase();
+      return zh.includes(name) || en.includes(name) || String(row.domain || '').includes(name);
+    }).slice(0, 20);
+  }
+
+  const primary = matches[0] || null;
+  let allow = null;
+  if (primary) {
+    allow = await chinaDb.getDomainAllow(primary.domain, primary.contact_email).catch(() => null);
+  }
+
+  const duplicates = [];
+  if (primary && primary.contact_email) {
+    for (const row of all) {
+      if (row.company_id === primary.company_id) continue;
+      if (String(row.contact_email || '').toLowerCase() === String(primary.contact_email).toLowerCase()) {
+        duplicates.push({ company_id: row.company_id, domain: row.domain, status: row.status });
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    found: Boolean(primary),
+    supplier: summarizeCompany(primary, allow),
+    matches: matches.map((row) => ({
+      company_id: row.company_id,
+      domain: row.domain,
+      status: row.status,
+      contact_email: row.contact_email,
+      company_name: row.company_name || row.company_name_en,
+    })),
+    duplicates,
+  };
+}
+
+async function createSupplierDraft(args = {}) {
+  requireChinaDb();
+  const domain = normalizeDomain(args.domain || args.website || '');
+  if (!domain) return { ok: false, error: 'invalid_domain' };
+  if (isFreeMail(domain)) return { ok: false, error: 'website_public' };
+
+  let email = '';
+  if (args.email) {
+    const parts = emailParts(args.email);
+    if (!parts) return { ok: false, error: 'invalid_email' };
+    if (isFreeMail(parts.domain)) return { ok: false, error: 'free_mail' };
+    email = parts.email;
+  }
+
+  const lang = args.lang === 'en' ? 'en' : 'zh';
+  let company = await chinaDb.getByDomain(domain);
+  if (company && company.status === 'live') {
+    return { ok: false, error: 'already_live', supplier: summarizeCompany(company, null) };
+  }
+  if (company && company.status !== 'pending' && email && email !== String(company.contact_email || '').toLowerCase()) {
+    return { ok: false, error: 'domain_taken_other_email', contact_email: company.contact_email };
+  }
+
+  if (!company) {
+    company = await chinaDb.insertCompany({
+      domain,
+      website: `https://${domain}`,
+      contact_email: email || '',
+      contact_name: String(args.contact_name || '').trim(),
+      city: 'shenzhen',
+      locale: lang,
+      niche: 'cnc',
+      status: 'pending',
+      source: String(args.source || 'outreach').slice(0, 40),
+    });
+  } else if (company.status === 'pending') {
+    company = await chinaDb.updateCompany(company.company_id, {
+      website: company.website || `https://${domain}`,
+      contact_email: email || company.contact_email,
+      contact_name: String(args.contact_name || company.contact_name || '').trim(),
+      locale: lang,
+    });
+  }
+
+  const built = await buildPreview(domain, lang);
+  if (built.ok) {
+    const draft = companyDraftFromPreview(built);
+    if (!draft.goal) {
+      draft.goal = lang === 'en'
+        ? 'Receive qualified RFQs from Western buyers who find us in ChatGPT.'
+        : '让在 ChatGPT 里找到我们的西方采购把合格询盘发到邮箱。';
+    }
+    if (args.company_name) draft.company_name = String(args.company_name).slice(0, 120);
+    if (args.company_name_en) draft.company_name_en = String(args.company_name_en).slice(0, 120);
+    company = await chinaDb.updateCompany(company.company_id, fillEmptyCompany(company, draft));
+  } else if (args.company_name || args.company_name_en) {
+    company = await chinaDb.updateCompany(company.company_id, {
+      company_name: String(args.company_name || company.company_name || '').slice(0, 120),
+      company_name_en: String(args.company_name_en || company.company_name_en || '').slice(0, 120),
+    });
+  }
+
+  return {
+    ok: true,
+    supplier: summarizeCompany(company, null),
+    scraped: Boolean(built && built.ok),
+    card: endpointRecord(company),
+  };
+}
+
+async function getSupplierCard(args = {}) {
+  const company = await resolveCompany(args);
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  return {
+    ok: true,
+    company_id: company.company_id,
+    status: company.status,
+    discoverable: company.status === 'live',
+    card: endpointRecord(company),
+    listing_text: listingText(company),
+  };
+}
+
+async function updateSupplierCard(args = {}) {
+  requireChinaDb();
+  const company = await resolveCompany(args);
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+
+  const patch = {};
+  if (args.company_name != null) patch.company_name = String(args.company_name).slice(0, 120);
+  if (args.company_name_en != null) patch.company_name_en = String(args.company_name_en).slice(0, 120);
+  if (args.website != null) {
+    const site = normalizeDomain(args.website);
+    if (!site || isFreeMail(site)) return { ok: false, error: 'invalid_website' };
+    if (site !== company.domain) return { ok: false, error: 'website_domain_locked' };
+    patch.website = `https://${site}`;
+  }
+  if (args.city != null) {
+    const city = String(args.city).trim().toLowerCase();
+    patch.city = CITIES.some((item) => item.id === city) ? city : company.city;
+  }
+  if (args.niche != null) patch.niche = normalizeNiche(args.niche);
+  if (args.context != null) patch.context = String(args.context).slice(0, 4000);
+  if (args.goal != null) patch.goal = String(args.goal).slice(0, 1000);
+  if (args.contact_name != null) patch.contact_name = String(args.contact_name).slice(0, 120);
+  if (args.contact_email != null) {
+    const parts = emailParts(args.contact_email);
+    if (!parts) return { ok: false, error: 'invalid_email' };
+    if (isFreeMail(parts.domain)) return { ok: false, error: 'free_mail' };
+    if (company.status !== 'pending' && parts.email !== String(company.contact_email || '').toLowerCase()) {
+      return { ok: false, error: 'contact_email_locked' };
+    }
+    patch.contact_email = parts.email;
+  }
+  if (args.actions != null) patch.actions = normalizeActions(args.actions);
+  if (args.profile != null && typeof args.profile === 'object') {
+    patch.profile = normalizeProfile({ ...normalizeProfile(company.profile), ...args.profile });
+  }
+
+  const next = await chinaDb.updateCompany(company.company_id, patch);
+  return {
+    ok: true,
+    supplier: summarizeCompany(next, null),
+    can_publish: canPublish(next),
+    card: endpointRecord(next),
+  };
+}
+
+async function createMagicLink(args = {}) {
+  requireChinaDb();
+  const domain = normalizeDomain(args.domain || args.website || '');
+  const parts = emailParts(args.email || args.contact_email || '');
+  if (!domain) return { ok: false, error: 'invalid_domain' };
+  if (!parts) return { ok: false, error: 'invalid_email' };
+  const source = args.source === 'manual' ? 'manual' : 'outreach';
+  try {
+    const result = await mintClaim({
+      domain,
+      email: parts.email,
+      source,
+      note: String(args.note || '').slice(0, 500),
+      lang: args.lang === 'en' ? 'en' : 'zh',
+    });
+    return { ok: true, ...result };
+  } catch (error) {
+    return { ok: false, error: error.message || 'mint_failed' };
+  }
+}
+
+async function getOnboardingStatus(args = {}) {
+  const company = await resolveCompany(args);
+  if (!company) return { ok: false, state: 'blocked', reason: 'supplier_not_found' };
+  const allow = await chinaDb.getDomainAllow(company.domain, company.contact_email).catch(() => null);
+  const tokens = await chinaDb.listTokensForCompany(company.company_id).catch(() => []);
+  const derived = deriveOnboardingStatus({ company, allow, tokens });
+  return {
+    ok: true,
+    company_id: company.company_id,
+    domain: company.domain,
+    status: company.status,
+    ...derived,
+    can_publish: canPublish(company),
+    allow: allow
+      ? { source: allow.source, claim_opened_at: allow.claim_opened_at, published_at: allow.published_at }
+      : null,
+  };
+}
+
+async function verifySupplier(args = {}) {
+  const method = String(args.method || '').trim();
+  if (method === 'dns' || method === 'website_token') {
+    return { ok: false, supported: false, error: 'not_built_yet', method };
+  }
+  if (!['manual', 'email_link', 'site_listed'].includes(method)) {
+    return { ok: false, error: 'invalid_method', supported_methods: ['manual', 'email_link', 'site_listed'] };
+  }
+  requireChinaDb();
+
+  const company = await resolveCompany(args);
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  const email = String(args.email || company.contact_email || '').trim().toLowerCase();
+  const parts = emailParts(email);
+  if (!parts) return { ok: false, error: 'invalid_email' };
+  if (isFreeMail(parts.domain)) return { ok: false, error: 'free_mail' };
+
+  if (method === 'manual') {
+    await chinaDb.upsertDomainAllow({
+      domain: company.domain,
+      contact_email: parts.email,
+      source: 'manual',
+      note: String(args.note || 'ops manual verify').slice(0, 500),
+    });
+    let next = company;
+    if (company.status === 'pending') {
+      next = await chinaDb.updateCompany(company.company_id, {
+        contact_email: parts.email,
+        status: 'verified',
+        verified_at: company.verified_at || new Date().toISOString(),
+      });
+    } else if (parts.email !== String(company.contact_email || '').toLowerCase() && company.status === 'pending') {
+      next = await chinaDb.updateCompany(company.company_id, { contact_email: parts.email });
+    }
+    return {
+      ok: true,
+      method: 'manual',
+      supplier: summarizeCompany(next, await chinaDb.getDomainAllow(next.domain, next.contact_email)),
+    };
+  }
+
+  if (method === 'site_listed') {
+    const built = await buildPreview(company.website || company.domain, 'en');
+    const siteEmails = (built.ok && built.siteEmails) || [];
+    const allowed = emailAllowedForSite({
+      website: company.domain,
+      email: parts.email,
+      siteEmails,
+    });
+    if (!allowed.ok) {
+      return { ok: false, method: 'site_listed', error: allowed.error || 'mismatch', siteEmails };
+    }
+    await chinaDb.upsertDomainAllow({
+      domain: company.domain,
+      contact_email: parts.email,
+      source: 'site',
+      note: 'email listed on website',
+    });
+    return { ok: true, method: 'site_listed', reason: allowed.reason, siteEmails };
+  }
+
+  // email_link
+  if (company.status !== 'pending' && parts.email !== String(company.contact_email || '').toLowerCase()) {
+    return { ok: false, error: 'contact_email_locked' };
+  }
+  await chinaDb.updateCompany(company.company_id, { contact_email: parts.email });
+  const token = await session.createToken(company.company_id, parts.email, company.status === 'pending' ? 'verify' : 'login');
+  const link = `${publicOriginFromEnv()}/airsup/china/verify?token=${token}`;
+  await sendVerifyEmail({
+    lang: args.lang === 'en' ? 'en' : 'zh',
+    to: parts.email,
+    link,
+    contactName: company.contact_name,
+  });
+  await chinaDb.updateCompany(company.company_id, { last_email_at: new Date().toISOString() });
+  return { ok: true, method: 'email_link', email: parts.email, link };
+}
+
+async function publishSupplier(args = {}) {
+  requireChinaDb();
+  const company = await resolveCompany(args);
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  if (!canPublish(company)) {
+    return { ok: false, error: 'cannot_publish', status: deriveOnboardingStatus({ company, allow: null, tokens: [] }) };
+  }
+  if (company.status !== 'verified' && company.status !== 'live') {
+    return { ok: false, error: 'not_verified', status: company.status };
+  }
+  if (company.status === 'live') {
+    return { ok: true, already_live: true, supplier: summarizeCompany(company, null) };
+  }
+  const next = await chinaDb.updateCompany(company.company_id, {
+    status: 'live',
+    live_at: company.live_at || new Date().toISOString(),
+    verified_at: company.verified_at || new Date().toISOString(),
+  });
+  await chinaDb.touchDomainAllow(next.domain, next.contact_email, {
+    published_at: new Date().toISOString(),
+  }).catch(() => null);
+  return { ok: true, supplier: summarizeCompany(next, null), card: endpointRecord(next) };
+}
+
+async function testSupplierDiscovery(args = {}) {
+  requireChinaDb();
+  const company = await resolveCompany(args);
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  const query = String(args.query || args.buyer_query || '').trim();
+  if (!query) return { ok: false, error: 'missing_query' };
+  if (company.status !== 'live') {
+    return {
+      ok: true,
+      surfaced: false,
+      reason: 'not_live',
+      status: company.status,
+      query,
+    };
+  }
+  const matches = await findForPlugin({ query, limit: Number(args.limit) || 10 });
+  const hit = matches.find((row) => row.person_id === company.company_id);
+  return {
+    ok: true,
+    surfaced: Boolean(hit),
+    query,
+    score: hit ? hit.score : 0,
+    match: hit || null,
+    card: endpointRecord(company),
+    other_matches: matches.filter((row) => row.person_id !== company.company_id).slice(0, 5),
+  };
+}
+
+async function generateDemo(args = {}) {
+  const company = await resolveCompany(args);
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  const origin = publicOriginFromEnv();
+  return {
+    ok: true,
+    company_id: company.company_id,
+    domain: company.domain,
+    status: company.status,
+    discoverable: company.status === 'live',
+    buyer_prompt: buyerTestPrompt(company),
+    listing_text: listingText(company),
+    card: endpointRecord(company),
+    live_json_url: `${origin}/airsup/china/live.json`,
+    endpoint_url: `${origin}/airsup/china/api/endpoint/${company.company_id}`,
+  };
+}
+
+async function getGrowthFunnel() {
+  requireChinaDb();
+  const [live, companies, allows] = await Promise.all([
+    chinaDb.listLive(),
+    chinaDb.listCompanies(),
+    chinaDb.listDomainAllows(),
+  ]);
+  const byStatus = companies.reduce((acc, row) => {
+    const key = row.status || 'unknown';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  return {
+    ok: true,
+    metric: 'outreach → clicked claim → published → live → first inquiry',
+    live: live.length,
+    companies_by_status: byStatus,
+    allows_total: allows.length,
+    allows_claim_opened: allows.filter((row) => row.claim_opened_at).length,
+    allows_published: allows.filter((row) => row.published_at).length,
+    allows: allows.slice(0, 100).map((row) => ({
+      domain: row.domain,
+      email: row.contact_email,
+      source: row.source,
+      opened: Boolean(row.claim_opened_at),
+      published: Boolean(row.published_at),
+      note: row.note || '',
+    })),
+  };
+}
+
+async function getSupplierEvents(args = {}) {
+  requireChinaDb();
+  const company = await resolveCompany(args);
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  const allow = await chinaDb.getDomainAllow(company.domain, company.contact_email).catch(() => null);
+  const inquiries = await chinaDb.listInquiriesForCompany(company.company_id).catch(() => []);
+  const tokens = await chinaDb.listTokensForCompany(company.company_id).catch(() => []);
+  const events = [];
+  const push = (at, type, detail) => {
+    if (!at) return;
+    events.push({ at, type, detail: detail || '' });
+  };
+  push(company.created_at, 'draft_created', company.source || '');
+  push(company.last_email_at, 'email_sent', company.contact_email || '');
+  for (const token of tokens) {
+    if (token.purpose === 'claim' && !token.used_at) push(token.created_at, 'magic_link_created', token.email);
+    if (token.used_at) push(token.used_at, `token_used_${token.purpose}`, token.email);
+  }
+  if (allow) {
+    push(allow.claim_opened_at, 'magic_link_opened', allow.source);
+    push(allow.published_at, 'published_from_allow', allow.source);
+  }
+  push(company.verified_at, 'email_verified', '');
+  push(company.live_at, 'published_live', '');
+  for (const inquiry of inquiries) {
+    push(inquiry.created_at, 'buyer_inquiry_received', String(inquiry.message || '').slice(0, 120));
+  }
+  events.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+  return { ok: true, company_id: company.company_id, domain: company.domain, events };
+}
+
+async function callTool(name, args) {
+  switch (name) {
+    case 'lookup_supplier':
+      return lookupSupplier(args);
+    case 'create_supplier_draft':
+      return createSupplierDraft(args);
+    case 'get_supplier_card':
+      return getSupplierCard(args);
+    case 'update_supplier_card':
+      return updateSupplierCard(args);
+    case 'create_magic_link':
+      return createMagicLink(args);
+    case 'get_onboarding_status':
+      return getOnboardingStatus(args);
+    case 'verify_supplier':
+      return verifySupplier(args);
+    case 'publish_supplier':
+      return publishSupplier(args);
+    case 'test_supplier_discovery':
+      return testSupplierDiscovery(args);
+    case 'generate_demo':
+      return generateDemo(args);
+    case 'get_growth_funnel':
+      return getGrowthFunnel(args);
+    case 'get_supplier_events':
+      return getSupplierEvents(args);
+    default: {
+      const error = new Error(`Unknown tool: ${name}`);
+      error.code = -32601;
+      throw error;
+    }
+  }
+}
+
+function timingSafeEqualString(a, b) {
+  const left = Buffer.from(String(a || ''), 'utf8');
+  const right = Buffer.from(String(b || ''), 'utf8');
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
+
+module.exports = {
+  callTool,
+  deriveOnboardingStatus,
+  timingSafeEqualString,
+  summarizeCompany,
+  NICHES,
+  CITIES,
+  DEFAULT_ACTIONS,
+};

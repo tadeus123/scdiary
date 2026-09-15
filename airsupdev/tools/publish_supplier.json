@@ -1,0 +1,20 @@
+{
+  "name": "publish_supplier",
+  "title": "Publish supplier",
+  "description": "Publish a verified supplier to live discovery when canPublish requirements are met. Does not publish pending/unverified factories.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}

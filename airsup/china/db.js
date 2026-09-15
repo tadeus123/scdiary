@@ -89,6 +89,32 @@ async function takeToken(tokenHash) {
   return data;
 }
 
+async function listTokensForCompany(companyId) {
+  const db = requireDb();
+  if (!companyId) return [];
+  const { data, error } = await db
+    .from('airsup_china_tokens')
+    .select('*')
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false })
+    .limit(40);
+  if (error) throw error;
+  return data || [];
+}
+
+async function listInquiriesForCompany(companyId) {
+  const db = requireDb();
+  if (!companyId) return [];
+  const { data, error } = await db
+    .from('airsup_china_inquiries')
+    .select('*')
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false })
+    .limit(40);
+  if (error) throw error;
+  return data || [];
+}
+
 async function insertSession(row) {
   const db = requireDb();
   const { error } = await db.from('airsup_china_sessions').insert(row);
@@ -284,6 +310,8 @@ module.exports = {
   insertToken,
   takeToken,
   getToken,
+  listTokensForCompany,
+  listInquiriesForCompany,
   insertSession,
   getSession,
   deleteSession,

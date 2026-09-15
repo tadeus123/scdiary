@@ -12,7 +12,8 @@
           "views/**",
           "public/**",
           "airsup/**",
-          "airsup20/**"
+          "airsup20/**",
+          "airsupdev/**"
         ]
       }
     }

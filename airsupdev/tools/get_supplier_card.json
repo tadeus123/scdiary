@@ -1,0 +1,22 @@
+{
+  "name": "get_supplier_card",
+  "title": "Get supplier card",
+  "description": "Return exactly what buyers/ChatGPT would see for this factory (endpointRecord + listing_text).",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "supplier_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" },
+      "name": { "type": "string" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}

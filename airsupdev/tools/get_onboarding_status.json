@@ -1,0 +1,21 @@
+{
+  "name": "get_onboarding_status",
+  "title": "Get onboarding status",
+  "description": "Return explicit onboarding state: draft, magic_link_created, opened, email_verified, ready_to_publish, live, or blocked with reason.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" },
+      "name": { "type": "string" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}

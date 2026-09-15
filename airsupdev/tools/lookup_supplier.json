@@ -1,0 +1,21 @@
+{
+  "name": "lookup_supplier",
+  "title": "Lookup supplier",
+  "description": "Find an Airsup China factory by domain, email, company name, or free-text query. Returns status, allowlist pairing, can_publish, and duplicate email domains.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "query": { "type": "string", "description": "Domain, email, or company name" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" },
+      "name": { "type": "string" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}

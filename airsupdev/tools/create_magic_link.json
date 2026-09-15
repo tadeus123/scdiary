@@ -1,0 +1,25 @@
+{
+  "name": "create_magic_link",
+  "title": "Create magic link",
+  "description": "Most important ops tool. Prefills the factory from the website, allowlists domain↔email, and returns a one-click claim URL for the supplier to confirm and publish.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "domain": { "type": "string" },
+      "website": { "type": "string" },
+      "email": { "type": "string" },
+      "contact_email": { "type": "string" },
+      "source": { "type": "string", "enum": ["outreach", "manual"] },
+      "note": { "type": "string" },
+      "lang": { "type": "string", "enum": ["zh", "en"] }
+    },
+    "required": ["domain", "email"],
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": true
+  }
+}

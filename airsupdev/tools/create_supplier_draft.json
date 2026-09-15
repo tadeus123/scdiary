@@ -1,0 +1,26 @@
+{
+  "name": "create_supplier_draft",
+  "title": "Create supplier draft",
+  "description": "Crawl the company website and create or refresh a pending Airsup China supplier card. Never publishes live.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "domain": { "type": "string", "description": "Company website domain" },
+      "website": { "type": "string" },
+      "email": { "type": "string", "description": "Optional contact email" },
+      "company_name": { "type": "string" },
+      "company_name_en": { "type": "string" },
+      "contact_name": { "type": "string" },
+      "source": { "type": "string" },
+      "lang": { "type": "string", "enum": ["zh", "en"] }
+    },
+    "required": ["domain"],
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": true
+  }
+}

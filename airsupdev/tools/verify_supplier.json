@@ -1,0 +1,27 @@
+{
+  "name": "verify_supplier",
+  "title": "Verify supplier",
+  "description": "Verification methods built today: manual (ops approve + mark verified), email_link (send magic verify mail), site_listed (email appears on scraped site). dns and website_token are not built.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": ["manual", "email_link", "site_listed", "dns", "website_token"]
+      },
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" },
+      "note": { "type": "string" },
+      "lang": { "type": "string", "enum": ["zh", "en"] }
+    },
+    "required": ["method"],
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": true
+  }
+}

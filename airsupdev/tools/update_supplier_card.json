@@ -1,0 +1,30 @@
+{
+  "name": "update_supplier_card",
+  "title": "Update supplier card",
+  "description": "Update capabilities, names, city, niche, context, goal, or contact fields on an Airsup China supplier. Free-mail contacts are rejected. Domain cannot be changed.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "company_name": { "type": "string" },
+      "company_name_en": { "type": "string" },
+      "website": { "type": "string" },
+      "city": { "type": "string" },
+      "niche": { "type": "string" },
+      "context": { "type": "string" },
+      "goal": { "type": "string" },
+      "contact_name": { "type": "string" },
+      "contact_email": { "type": "string" },
+      "actions": { "type": "array", "items": { "type": "string" } },
+      "profile": { "type": "object", "additionalProperties": true }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}

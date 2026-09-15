@@ -1,0 +1,20 @@
+{
+  "name": "get_supplier_events",
+  "title": "Get supplier events",
+  "description": "Derived timeline: draft created, magic link created/opened, email verified, published, buyer inquiries. No raw SQL.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}
