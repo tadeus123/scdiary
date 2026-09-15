@@ -85,6 +85,33 @@ function domainMatches(website, email) {
     domain: site,
     website: `https://${site}`,
     email: parts.email,
+    reason: 'domain_match',
+  };
+}
+
+function emailAllowedForSite({ website, email, siteEmails }) {
+  const matched = domainMatches(website, email);
+  if (matched.ok) return matched;
+  if (matched.error !== 'mismatch') return matched;
+
+  const site = normalizeDomain(website);
+  const parts = emailParts(email);
+  if (!site || !parts) return matched;
+  if (isFreeMail(parts.domain)) return { ok: false, error: 'free_mail' };
+
+  const allowed = new Set(
+    (Array.isArray(siteEmails) ? siteEmails : [])
+      .map((item) => String(item || '').trim().toLowerCase())
+      .filter(Boolean)
+  );
+  if (!allowed.has(parts.email)) return { ok: false, error: 'mismatch' };
+
+  return {
+    ok: true,
+    domain: site,
+    website: `https://${site}`,
+    email: parts.email,
+    reason: 'site_contact',
   };
 }
 
@@ -99,5 +126,6 @@ module.exports = {
   emailParts,
   isFreeMail,
   domainMatches,
+  emailAllowedForSite,
   publicWebsite,
 };

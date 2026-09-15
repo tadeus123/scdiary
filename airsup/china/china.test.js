@@ -1,9 +1,10 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const { domainMatches, normalizeDomain } = require('./domain');
+const { domainMatches, emailAllowedForSite, normalizeDomain } = require('./domain');
 const { proofLines, proofPayload, industryPeers, liveSeries, formatChartDay, chartFromSeries, liveRoster, liveCompanies } = require('./proof');
 const { canPublish, normalizeProfile, mapCityId, fillEmptyCompany, listedContacts, buyerTestPrompt } = require('./fields');
+const { extractSiteEmails } = require('./site-preview');
 const { verifyMail } = require('./mail');
 
 assert.strictEqual(normalizeDomain('https://www.WayKenRM.com/cnc'), 'waykenrm.com');
@@ -12,6 +13,30 @@ assert.strictEqual(domainMatches('waykenrm.com', 'sales@mail.waykenrm.com').ok, 
 assert.strictEqual(domainMatches('waykenrm.com', 'sales@gmail.com').error, 'free_mail');
 assert.strictEqual(domainMatches('waykenrm.com', 'sales@other.com').error, 'mismatch');
 assert.strictEqual(domainMatches('gmail.com', 'a@gmail.com').error, 'website_public');
+assert.strictEqual(emailAllowedForSite({
+  website: 'lk-moulds.com',
+  email: 'sales@group-trade.cn',
+  siteEmails: [],
+}).error, 'mismatch');
+assert.strictEqual(emailAllowedForSite({
+  website: 'lk-moulds.com',
+  email: 'sales@group-trade.cn',
+  siteEmails: ['sales@group-trade.cn'],
+}).ok, true);
+assert.strictEqual(emailAllowedForSite({
+  website: 'lk-moulds.com',
+  email: 'sales@group-trade.cn',
+  siteEmails: ['sales@group-trade.cn'],
+}).reason, 'site_contact');
+assert.strictEqual(emailAllowedForSite({
+  website: 'lk-moulds.com',
+  email: 'boss@gmail.com',
+  siteEmails: ['boss@gmail.com'],
+}).error, 'free_mail');
+assert.deepStrictEqual(
+  extractSiteEmails('Contact <a href="mailto:Info@Factory-CN.com">mail</a>', 'Also sales@partner-export.com and junk@gmail.com'),
+  ['info@factory-cn.com', 'sales@partner-export.com']
+);
 
 const empty = proofLines({ started: 0, verified: 0, live: 0 });
 assert.ok(empty.en.includes('first export factories'));

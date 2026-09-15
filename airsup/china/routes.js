@@ -9,7 +9,7 @@ const ejs = require('ejs');
 const db = require('./db');
 const session = require('./session');
 const { t, otherLang } = require('./i18n');
-const { domainMatches } = require('./domain');
+const { domainMatches, emailAllowedForSite } = require('./domain');
 const { genericDemo } = require('./demo');
 const { buildPreview, companyDraftFromPreview } = require('./site-preview');
 const {
@@ -299,7 +299,14 @@ router.post('/start', async (req, res) => {
     source,
   });
   if (!peopleAuth.allowedOrigin(req)) return fail('err_origin');
-  const matched = domainMatches(website, email);
+  let siteEmails = [];
+  try {
+    const built = await buildPreview(website, lang);
+    if (built.ok && Array.isArray(built.siteEmails)) siteEmails = built.siteEmails;
+  } catch (error) {
+    console.error('Airsup china site email scrape skipped:', error.message);
+  }
+  const matched = emailAllowedForSite({ website, email, siteEmails });
   if (!matched.ok) return fail(`err_${matched.error}`);
   if (!db.isConfigured()) return fail('err_db');
   try {

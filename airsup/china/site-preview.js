@@ -47,6 +47,25 @@ function titleFromHtml(html) {
   return match ? String(match[1]).replace(/\s+/g, ' ').trim().slice(0, 120) : '';
 }
 
+function extractSiteEmails(html, text) {
+  const found = new Set();
+  const add = (raw) => {
+    const value = String(raw || '').trim().toLowerCase().replace(/^mailto:/i, '');
+    const match = value.match(/^([a-z0-9._%+-]+)@([a-z0-9.-]+\.[a-z]{2,})$/i);
+    if (!match) return;
+    const domain = String(match[2]).replace(/^www\./, '').toLowerCase();
+    if (isFreeMail(domain)) return;
+    found.add(`${match[1].toLowerCase()}@${domain}`);
+  };
+  const mailto = String(html || '').match(/mailto:([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/gi) || [];
+  mailto.forEach((item) => add(item.replace(/^mailto:/i, '')));
+  const plain = String(`${html || ''}\n${text || ''}`).match(
+    /\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b/gi
+  ) || [];
+  plain.forEach(add);
+  return Array.from(found).slice(0, 40);
+}
+
 async function fetchSiteText(domain) {
   if (!domain || isBlockedHost(domain) || isFreeMail(domain)) {
     return { ok: false, text: '', title: '', html: '' };
@@ -146,10 +165,13 @@ async function fetchSiteBundle(domain) {
   const extraText = (await Promise.all(extras.map((url) => fetchOnePage(url, domain))))
     .filter(Boolean)
     .join('\n');
+  const text = `${home.text}\n${extraText}`.trim().slice(0, 14000);
   return {
     ok: true,
     title: home.title,
-    text: `${home.text}\n${extraText}`.trim().slice(0, 14000),
+    text,
+    html: home.html || '',
+    siteEmails: extractSiteEmails(home.html, text),
     pages: 1 + extras.length,
   };
 }
@@ -286,6 +308,7 @@ async function buildPreview(website, lang) {
     niche: inferred.niche,
     profile: inferred.profile,
     siteNotes: inferred.siteNotes,
+    siteEmails: Array.isArray(page.siteEmails) ? page.siteEmails : extractSiteEmails(page.html, page.text),
     fromSite: inferred.fromSite,
   };
   const data = {
@@ -303,6 +326,7 @@ module.exports = {
   isPrivateIp,
   isBlockedHost,
   stripHtml,
+  extractSiteEmails,
   fetchSiteText,
   extraPathsFromHtml,
   companyDraftFromPreview,
