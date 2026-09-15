@@ -157,6 +157,7 @@ function normalizeProfile(raw) {
     flexibility: normalizeFlexibility(source.flexibility),
     contacts: normalizeContacts(source.contacts),
     site_notes: String(source.site_notes || '').trim().slice(0, 8000),
+    claim_ready: Boolean(source.claim_ready),
   };
 }
 

@@ -68,7 +68,7 @@ function langFrom(req, res) {
   // Do not force a cookie on every hit — ChatGPT / OpenAI fetchers often refuse Set-Cookie pages.
   if (isOpenAiFetcher(req)) return lang;
   const asked = String((req.query && req.query.lang) || '').toLowerCase();
-  if (asked === 'en' || asked === 'zh') return session.setLang(req, res, lang);
+  if (asked === 'en' || asked === 'zh') return session.setLang(req, res, asked);
   return lang;
 }
 
@@ -329,12 +329,13 @@ router.post('/start', async (req, res) => {
   if (!matched.ok) return fail(`err_${matched.error}`);
   if (!db.isConfigured()) return fail('err_db');
   try {
-    if (matched.reason === 'site_contact' || matched.reason === 'outreach' || matched.reason === 'manual') {
+    // Only persist outreach/manual allow rows. Site-contact is re-checked via scrape each time.
+    if (matched.reason === 'outreach' || matched.reason === 'manual') {
       await db.upsertDomainAllow({
         domain: matched.domain,
         contact_email: matched.email,
-        source: matched.reason === 'site_contact' ? 'site' : matched.reason,
-        note: matched.reason === 'site_contact' ? 'email listed on website' : '',
+        source: matched.reason,
+        note: '',
       }).catch((error) => console.error('Airsup china allow upsert skipped:', error.message));
     }
     let company = await db.getByDomain(matched.domain);
@@ -352,6 +353,10 @@ router.post('/start', async (req, res) => {
         source,
       });
     } else if (company.status === 'pending') {
+      const existingEmail = String(company.contact_email || '').toLowerCase();
+      if (existingEmail && existingEmail !== matched.email) {
+        return fail('err_taken');
+      }
       company = await db.updateCompany(company.company_id, {
         website: matched.website,
         contact_email: matched.email,
@@ -412,9 +417,9 @@ router.get('/claim', async (req, res) => {
   try {
     const row = await db.getToken(session.sha256(token));
     if (!row || row.purpose !== 'claim') return fail('err_claim');
-    let company = await db.getById(row.company_id);
+    const company = await db.getById(row.company_id);
     if (!company) return fail('err_claim');
-    company = await applySiteDraft(company, company.website || company.domain, lang) || company;
+    // Read-only view: do not scrape/write on GET (bots/prefetch).
     try {
       await db.touchDomainAllow(company.domain, row.email || company.contact_email, {
         claim_opened_at: new Date().toISOString(),
@@ -449,14 +454,26 @@ router.post('/claim/confirm', async (req, res) => {
   if (!peopleAuth.allowedOrigin(req)) return fail('err_origin');
   if (!token || !db.isConfigured()) return fail('err_claim');
   try {
+    const peek = await db.getToken(session.sha256(token));
+    if (!peek || peek.purpose !== 'claim') return fail('err_claim');
     const row = await db.takeToken(session.sha256(token));
     if (!row || row.purpose !== 'claim') return fail('err_claim');
     let company = await db.getById(row.company_id);
     if (!company) return fail('err_claim');
     const email = String(row.email || company.contact_email || '').toLowerCase();
+    if (company.status === 'live') {
+      // Live: session via verify only; do not change contact_email here.
+    } else {
     company = await db.updateCompany(company.company_id, {
       contact_email: email,
+      // Mark that claim confirm happened so /verify may auto-publish once.
+      source: company.source === 'web' ? 'outreach' : company.source,
+      profile: normalizeProfile({
+        ...normalizeProfile(company.profile),
+        claim_ready: true,
+      }),
     });
+    }
     company = await applySiteDraft(company, company.website || company.domain, lang) || company;
     const verifyToken = await session.createToken(company.company_id, email, 'verify');
     const link = `${publicOrigin(req)}/airsup/china/verify?token=${verifyToken}`;
@@ -486,8 +503,17 @@ router.get('/verify', async (req, res) => {
     });
   }
   try {
+    const peek = await db.getToken(session.sha256(token));
+    if (!peek || (peek.purpose !== 'verify' && peek.purpose !== 'login')) {
+      return render(req, res, 'home.ejs', {
+        proof: await proof(),
+        form: formFromCompany(null),
+        error: t(lang, 'err_token'),
+        cities: CITIES,
+      });
+    }
     const row = await db.takeToken(session.sha256(token));
-    if (!row) {
+    if (!row || (row.purpose !== 'verify' && row.purpose !== 'login')) {
       return render(req, res, 'home.ejs', {
         proof: await proof(),
         form: formFromCompany(null),
@@ -504,23 +530,44 @@ router.get('/verify', async (req, res) => {
         cities: CITIES,
       });
     }
-    const patch = {
-      contact_email: row.email || company.contact_email,
-    };
+    const patch = {};
     if (company.status === 'pending') {
+      patch.contact_email = row.email || company.contact_email;
       patch.status = 'verified';
       patch.verified_at = new Date().toISOString();
+    } else if (company.status === 'verified' && row.email) {
+      // Keep mailbox aligned only while not live.
+      patch.contact_email = row.email;
     }
-    await db.updateCompany(company.company_id, patch);
+    // Never change contact_email or status for live (pause stays paused until explicit publish).
+    if (Object.keys(patch).length) {
+      await db.updateCompany(company.company_id, patch);
+    }
     await session.createSession(req, res, company.company_id);
     let fresh = await db.getById(company.company_id);
-    fresh = await applySiteDraft(fresh || company, company.website || company.domain, lang) || fresh;
-    const claimSources = new Set(['outreach', 'manual', 'claim']);
-    if (fresh && claimSources.has(String(fresh.source || '')) && canPublish(fresh) && fresh.status !== 'live') {
+    if (fresh && fresh.status === 'pending') {
+      fresh = await applySiteDraft(fresh, company.website || company.domain, lang) || fresh;
+    } else if (fresh && fresh.status === 'verified') {
+      fresh = await applySiteDraft(fresh, company.website || company.domain, lang) || fresh;
+    }
+    const profile = normalizeProfile(fresh && fresh.profile);
+    const claimReady = Boolean(profile.claim_ready);
+    const outreachSource = ['outreach', 'manual'].includes(String((fresh && fresh.source) || ''));
+    // Auto-publish only after claim confirm + verify (not on login, not for paused re-login).
+    if (
+      fresh
+      && row.purpose === 'verify'
+      && claimReady
+      && outreachSource
+      && canPublish(fresh)
+      && fresh.status === 'verified'
+      && !fresh.live_at
+    ) {
       fresh = await db.updateCompany(fresh.company_id, {
         status: 'live',
-        live_at: fresh.live_at || new Date().toISOString(),
+        live_at: new Date().toISOString(),
         verified_at: fresh.verified_at || new Date().toISOString(),
+        profile: { ...profile, claim_ready: false },
       });
       try {
         await db.touchDomainAllow(fresh.domain, fresh.contact_email, {

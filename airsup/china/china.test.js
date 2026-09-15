@@ -132,8 +132,13 @@ assert.ok(buyerTestPrompt({
   city: 'dongguan',
   profile: normalizeProfile({ processes: ['injection'] }),
 }).includes('Dongguan'));
+assert.strictEqual(normalizeProfile({ claim_ready: true, processes: ['5axis'] }).claim_ready, true);
+assert.strictEqual(normalizeProfile({ processes: ['5axis'] }).claim_ready, false);
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('live-buyer-prompt'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('listingPreview'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('claim_ready'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("purpose !== 'verify' &&"));
+assert.ok(!fs.readFileSync(path.join(__dirname, 'mint-claim.js'), 'utf8').startsWith("require('dotenv')"));
 
 assert.strictEqual(mapCityId('Dongguan, China'), 'dongguan');
 assert.strictEqual(mapCityId('深圳市南山区'), 'shenzhen');

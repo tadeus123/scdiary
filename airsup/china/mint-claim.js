@@ -4,12 +4,11 @@
  *   node airsup/china/mint-claim.js --domain=lk-moulds.com --email=sales@group.cn --source=outreach
  *   node airsup/china/mint-claim.js --domain=adm.com --email=info@adm-group.cn --source=manual --note="replied Mar 12"
  */
-require('dotenv').config();
 const { normalizeDomain, emailParts, isFreeMail } = require('./domain');
 const db = require('./db');
 const session = require('./session');
 const { buildPreview, companyDraftFromPreview } = require('./site-preview');
-const { fillEmptyCompany, canPublish } = require('./fields');
+const { fillEmptyCompany, canPublish, normalizeProfile } = require('./fields');
 
 function arg(name) {
   const prefix = `--${name}=`;
@@ -26,7 +25,7 @@ function publicBase() {
   return String(process.env.PUBLIC_BASE_URL || process.env.SITE_URL || 'https://www.tademehl.com').replace(/\/$/, '');
 }
 
-async function mintClaim({ domain, email, source, note, lang }) {
+async function mintClaim({ domain, email, source, note, lang, company_id: companyId }) {
   const site = normalizeDomain(domain);
   const parts = emailParts(email);
   if (!site) throw new Error('Invalid domain');
@@ -42,7 +41,21 @@ async function mintClaim({ domain, email, source, note, lang }) {
     note: note || '',
   });
 
-  let company = await db.getByDomain(site);
+  let company = null;
+  if (companyId) {
+    company = await db.getById(companyId);
+    if (!company) throw new Error('Company not found');
+    if (String(company.domain || '').toLowerCase() !== site) {
+      throw new Error('company_id domain mismatch');
+    }
+  } else {
+    company = await db.getByDomain(site);
+  }
+
+  if (company && company.status === 'live') {
+    throw new Error('Factory is already live. Do not mint a new claim link.');
+  }
+
   if (!company) {
     company = await db.insertCompany({
       domain: site,
@@ -56,6 +69,10 @@ async function mintClaim({ domain, email, source, note, lang }) {
       source: sourceValue,
     });
   } else if (company.status === 'pending') {
+    const existingEmail = String(company.contact_email || '').toLowerCase();
+    if (existingEmail && existingEmail !== parts.email) {
+      throw new Error(`Pending factory already bound to ${company.contact_email}.`);
+    }
     company = await db.updateCompany(company.company_id, {
       contact_email: parts.email,
       source: sourceValue,
@@ -67,14 +84,23 @@ async function mintClaim({ domain, email, source, note, lang }) {
 
   try {
     const built = await buildPreview(site, lang === 'en' ? 'en' : 'zh');
-    if (built.ok) {
+    if (built.ok && company.status === 'pending') {
       const draft = companyDraftFromPreview(built);
       if (!draft.goal) {
         draft.goal = lang === 'en'
           ? 'Receive qualified RFQs from Western buyers who find us in ChatGPT.'
           : '让在 ChatGPT 里找到我们的西方采购把合格询盘发到邮箱。';
       }
-      company = await db.updateCompany(company.company_id, fillEmptyCompany(company, draft));
+      const filled = fillEmptyCompany(company, draft);
+      company = await db.updateCompany(company.company_id, {
+        company_name: filled.company_name,
+        company_name_en: filled.company_name_en,
+        city: filled.city,
+        niche: filled.niche,
+        context: filled.context,
+        goal: filled.goal,
+        profile: normalizeProfile(filled.profile),
+      });
     }
   } catch (error) {
     console.error('Scrape draft skipped:', error.message);
@@ -94,6 +120,7 @@ async function mintClaim({ domain, email, source, note, lang }) {
 }
 
 async function main() {
+  require('dotenv').config();
   const domain = arg('domain');
   const email = arg('email');
   const source = arg('source') || 'outreach';

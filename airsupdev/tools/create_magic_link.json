@@ -1,10 +1,11 @@
 {
   "name": "create_magic_link",
   "title": "Create magic link",
-  "description": "Most important ops tool. Prefills the factory from the website, allowlists domain↔email, and returns a one-click claim URL for the supplier to confirm and publish.",
+  "description": "Most important ops tool. Prefills the factory from the website, allowlists domain↔email, and returns a one-click claim URL. Refuses already-live factories. Optional company_id pins the row.",
   "inputSchema": {
     "type": "object",
     "properties": {
+      "company_id": { "type": "string", "description": "Optional: pin to an existing company row" },
       "domain": { "type": "string" },
       "website": { "type": "string" },
       "email": { "type": "string" },

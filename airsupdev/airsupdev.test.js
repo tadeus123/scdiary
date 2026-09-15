@@ -33,6 +33,7 @@ assert.strictEqual(mcp.toolList().tools.length, 12);
 assert.strictEqual(timingSafeEqualString('abc', 'abc'), true);
 assert.strictEqual(timingSafeEqualString('abc', 'abd'), false);
 assert.strictEqual(timingSafeEqualString('abc', 'ab'), false);
+assert.strictEqual(timingSafeEqualString('', 'x'), false);
 
 assert.strictEqual(
   deriveOnboardingStatus({
@@ -92,6 +93,11 @@ assert.strictEqual(
   assert.ok(serverJs.includes("require('../airsupdev/routes')"));
   const vercel = fs.readFileSync(path.join(__dirname, '../vercel.json'), 'utf8');
   assert.ok(vercel.includes('airsupdev/**'));
+  const services = fs.readFileSync(path.join(__dirname, 'services.js'), 'utf8');
+  assert.ok(services.includes('live_locked'));
+  assert.ok(services.includes('confirm_required'));
+  assert.ok(services.includes('allowFuzzy'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'tools/verify_supplier.json'), 'utf8').includes('confirm'));
 
   console.log('airsupdev tests passed');
 })().catch((error) => {

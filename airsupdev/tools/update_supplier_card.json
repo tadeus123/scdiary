@@ -1,12 +1,13 @@
 {
   "name": "update_supplier_card",
   "title": "Update supplier card",
-  "description": "Update capabilities, names, city, niche, context, goal, or contact fields on an Airsup China supplier. Free-mail contacts are rejected. Domain cannot be changed.",
+  "description": "Update capabilities, names, city, niche, context, goal, or contact fields. Live factories are locked unless force:true. Resolve by company_id or exact domain only.",
   "inputSchema": {
     "type": "object",
     "properties": {
       "company_id": { "type": "string" },
       "domain": { "type": "string" },
+      "force": { "type": "boolean", "description": "Required to edit a live factory" },
       "company_name": { "type": "string" },
       "company_name_en": { "type": "string" },
       "website": { "type": "string" },
@@ -23,7 +24,7 @@
   },
   "annotations": {
     "readOnlyHint": false,
-    "destructiveHint": false,
+    "destructiveHint": true,
     "idempotentHint": true,
     "openWorldHint": false
   }

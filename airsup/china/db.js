@@ -76,17 +76,17 @@ async function insertToken(row) {
 
 async function takeToken(tokenHash) {
   const db = requireDb();
-  const { data, error } = await db.from('airsup_china_tokens').select('*').eq('token_hash', tokenHash).maybeSingle();
-  if (error) throw error;
-  if (!data || data.used_at) return null;
-  if (new Date(data.expires_at).getTime() < Date.now()) return null;
-  const { error: usedError } = await db
+  const now = new Date().toISOString();
+  const { data, error } = await db
     .from('airsup_china_tokens')
-    .update({ used_at: new Date().toISOString() })
+    .update({ used_at: now })
     .eq('token_hash', tokenHash)
-    .is('used_at', null);
-  if (usedError) throw usedError;
-  return data;
+    .is('used_at', null)
+    .gt('expires_at', now)
+    .select('*')
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
 }
 
 async function listTokensForCompany(companyId) {
@@ -234,8 +234,8 @@ async function getDomainAllow(domain, email) {
   const { data, error } = await db
     .from('airsup_china_domain_allows')
     .select('*')
-    .ilike('domain', domainValue)
-    .ilike('contact_email', emailValue)
+    .eq('domain', domainValue)
+    .eq('contact_email', emailValue)
     .maybeSingle();
   if (error) throw error;
   return data || null;

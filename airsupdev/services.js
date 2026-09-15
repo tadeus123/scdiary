@@ -62,24 +62,34 @@ function summarizeCompany(company, allow) {
   };
 }
 
-async function resolveCompany(args = {}) {
+async function resolveCompany(args = {}, { allowFuzzy = false } = {}) {
   requireChinaDb();
   const companyId = String(args.company_id || args.supplier_id || '').trim();
   if (companyId) {
     const row = await chinaDb.getById(companyId);
     if (row) return row;
+    return null;
   }
   const domain = normalizeDomain(args.domain || args.website || '');
   if (domain) {
     const row = await chinaDb.getByDomain(domain);
     if (row) return row;
+    if (!allowFuzzy) return null;
   }
   const email = String(args.email || args.contact_email || '').trim().toLowerCase();
-  if (email) {
+  if (email && !allowFuzzy) {
     const all = await chinaDb.listCompanies();
-    const hit = all.find((row) => String(row.contact_email || '').toLowerCase() === email);
-    if (hit) return hit;
+    const hits = all.filter((row) => String(row.contact_email || '').toLowerCase() === email);
+    if (hits.length === 1) return hits[0];
+    if (hits.length > 1) {
+      const error = new Error('ambiguous_email');
+      error.code = 'ambiguous';
+      error.matches = hits.map((row) => ({ company_id: row.company_id, domain: row.domain, status: row.status }));
+      throw error;
+    }
+    return null;
   }
+  if (!allowFuzzy) return null;
   const name = String(args.name || args.company_name || args.query || '').trim().toLowerCase();
   if (name && name.length >= 2) {
     const all = await chinaDb.listCompanies();
@@ -91,6 +101,17 @@ async function resolveCompany(args = {}) {
     if (hit) return hit;
   }
   return null;
+}
+
+async function resolveCompanyExact(args = {}) {
+  try {
+    return await resolveCompany(args, { allowFuzzy: false });
+  } catch (error) {
+    if (error && error.code === 'ambiguous') {
+      return { __ambiguous: true, matches: error.matches };
+    }
+    throw error;
+  }
 }
 
 function deriveOnboardingStatus({ company, allow, tokens }) {
@@ -225,12 +246,18 @@ async function createSupplierDraft(args = {}) {
       source: String(args.source || 'outreach').slice(0, 40),
     });
   } else if (company.status === 'pending') {
+    const existingEmail = String(company.contact_email || '').toLowerCase();
+    if (email && existingEmail && existingEmail !== email) {
+      return { ok: false, error: 'domain_taken_other_email', contact_email: company.contact_email };
+    }
     company = await chinaDb.updateCompany(company.company_id, {
       website: company.website || `https://${domain}`,
       contact_email: email || company.contact_email,
       contact_name: String(args.contact_name || company.contact_name || '').trim(),
       locale: lang,
     });
+  } else if (company.status !== 'pending') {
+    return { ok: false, error: 'not_pending', status: company.status };
   }
 
   const built = await buildPreview(domain, lang);
@@ -260,7 +287,7 @@ async function createSupplierDraft(args = {}) {
 }
 
 async function getSupplierCard(args = {}) {
-  const company = await resolveCompany(args);
+  const company = await resolveCompany(args, { allowFuzzy: true });
   if (!company) return { ok: false, error: 'supplier_not_found' };
   return {
     ok: true,
@@ -274,8 +301,14 @@ async function getSupplierCard(args = {}) {
 
 async function updateSupplierCard(args = {}) {
   requireChinaDb();
-  const company = await resolveCompany(args);
-  if (!company) return { ok: false, error: 'supplier_not_found' };
+  const company = await resolveCompanyExact(args);
+  if (company && company.__ambiguous) {
+    return { ok: false, error: 'ambiguous', matches: company.matches };
+  }
+  if (!company) return { ok: false, error: 'supplier_not_found', hint: 'Pass company_id or exact domain' };
+  if (company.status === 'live' && args.force !== true) {
+    return { ok: false, error: 'live_locked', hint: 'Pass force:true to edit a live factory card' };
+  }
 
   const patch = {};
   if (args.company_name != null) patch.company_name = String(args.company_name).slice(0, 120);
@@ -331,6 +364,7 @@ async function createMagicLink(args = {}) {
       source,
       note: String(args.note || '').slice(0, 500),
       lang: args.lang === 'en' ? 'en' : 'zh',
+      company_id: String(args.company_id || '').trim() || undefined,
     });
     return { ok: true, ...result };
   } catch (error) {
@@ -339,7 +373,7 @@ async function createMagicLink(args = {}) {
 }
 
 async function getOnboardingStatus(args = {}) {
-  const company = await resolveCompany(args);
+  const company = await resolveCompany(args, { allowFuzzy: true });
   if (!company) return { ok: false, state: 'blocked', reason: 'supplier_not_found' };
   const allow = await chinaDb.getDomainAllow(company.domain, company.contact_email).catch(() => null);
   const tokens = await chinaDb.listTokensForCompany(company.company_id).catch(() => []);
@@ -367,19 +401,27 @@ async function verifySupplier(args = {}) {
   }
   requireChinaDb();
 
-  const company = await resolveCompany(args);
-  if (!company) return { ok: false, error: 'supplier_not_found' };
+  const company = await resolveCompanyExact(args);
+  if (company && company.__ambiguous) {
+    return { ok: false, error: 'ambiguous', matches: company.matches };
+  }
+  if (!company) return { ok: false, error: 'supplier_not_found', hint: 'Pass company_id or exact domain' };
   const email = String(args.email || company.contact_email || '').trim().toLowerCase();
   const parts = emailParts(email);
   if (!parts) return { ok: false, error: 'invalid_email' };
   if (isFreeMail(parts.domain)) return { ok: false, error: 'free_mail' };
 
   if (method === 'manual') {
+    const note = String(args.note || '').trim();
+    if (!note) return { ok: false, error: 'note_required', hint: 'Manual verify requires a note for audit' };
+    if (args.confirm !== true) {
+      return { ok: false, error: 'confirm_required', hint: 'Pass confirm:true for manual verification' };
+    }
     await chinaDb.upsertDomainAllow({
       domain: company.domain,
       contact_email: parts.email,
       source: 'manual',
-      note: String(args.note || 'ops manual verify').slice(0, 500),
+      note: note.slice(0, 500),
     });
     let next = company;
     if (company.status === 'pending') {
@@ -388,8 +430,15 @@ async function verifySupplier(args = {}) {
         status: 'verified',
         verified_at: company.verified_at || new Date().toISOString(),
       });
-    } else if (parts.email !== String(company.contact_email || '').toLowerCase() && company.status === 'pending') {
-      next = await chinaDb.updateCompany(company.company_id, { contact_email: parts.email });
+    } else if (company.status === 'live') {
+      return { ok: false, error: 'already_live' };
+    } else {
+      return {
+        ok: true,
+        method: 'manual',
+        already_verified: true,
+        supplier: summarizeCompany(company, await chinaDb.getDomainAllow(company.domain, company.contact_email)),
+      };
     }
     return {
       ok: true,
@@ -415,10 +464,19 @@ async function verifySupplier(args = {}) {
       source: 'site',
       note: 'email listed on website',
     });
-    return { ok: true, method: 'site_listed', reason: allowed.reason, siteEmails };
+    let next = company;
+    if (company.status === 'pending') {
+      next = await chinaDb.updateCompany(company.company_id, {
+        contact_email: parts.email,
+        status: 'verified',
+        verified_at: company.verified_at || new Date().toISOString(),
+      });
+    }
+    return { ok: true, method: 'site_listed', reason: allowed.reason, siteEmails, supplier: summarizeCompany(next, null) };
   }
 
-  // email_link
+  // email_link — do not return raw verify URL (complete via inbox)
+  if (company.status === 'live') return { ok: false, error: 'already_live' };
   if (company.status !== 'pending' && parts.email !== String(company.contact_email || '').toLowerCase()) {
     return { ok: false, error: 'contact_email_locked' };
   }
@@ -432,13 +490,16 @@ async function verifySupplier(args = {}) {
     contactName: company.contact_name,
   });
   await chinaDb.updateCompany(company.company_id, { last_email_at: new Date().toISOString() });
-  return { ok: true, method: 'email_link', email: parts.email, link };
+  return { ok: true, method: 'email_link', email: parts.email, emailed: true };
 }
 
 async function publishSupplier(args = {}) {
   requireChinaDb();
-  const company = await resolveCompany(args);
-  if (!company) return { ok: false, error: 'supplier_not_found' };
+  const company = await resolveCompanyExact(args);
+  if (company && company.__ambiguous) {
+    return { ok: false, error: 'ambiguous', matches: company.matches };
+  }
+  if (!company) return { ok: false, error: 'supplier_not_found', hint: 'Pass company_id or exact domain' };
   if (!canPublish(company)) {
     return { ok: false, error: 'cannot_publish', status: deriveOnboardingStatus({ company, allow: null, tokens: [] }) };
   }
@@ -450,7 +511,7 @@ async function publishSupplier(args = {}) {
   }
   const next = await chinaDb.updateCompany(company.company_id, {
     status: 'live',
-    live_at: company.live_at || new Date().toISOString(),
+    live_at: new Date().toISOString(),
     verified_at: company.verified_at || new Date().toISOString(),
   });
   await chinaDb.touchDomainAllow(next.domain, next.contact_email, {
@@ -461,7 +522,7 @@ async function publishSupplier(args = {}) {
 
 async function testSupplierDiscovery(args = {}) {
   requireChinaDb();
-  const company = await resolveCompany(args);
+  const company = await resolveCompany(args, { allowFuzzy: true });
   if (!company) return { ok: false, error: 'supplier_not_found' };
   const query = String(args.query || args.buyer_query || '').trim();
   if (!query) return { ok: false, error: 'missing_query' };
@@ -488,7 +549,7 @@ async function testSupplierDiscovery(args = {}) {
 }
 
 async function generateDemo(args = {}) {
-  const company = await resolveCompany(args);
+  const company = await resolveCompany(args, { allowFuzzy: true });
   if (!company) return { ok: false, error: 'supplier_not_found' };
   const origin = publicOriginFromEnv();
   return {
@@ -538,7 +599,7 @@ async function getGrowthFunnel() {
 
 async function getSupplierEvents(args = {}) {
   requireChinaDb();
-  const company = await resolveCompany(args);
+  const company = await resolveCompany(args, { allowFuzzy: true });
   if (!company) return { ok: false, error: 'supplier_not_found' };
   const allow = await chinaDb.getDomainAllow(company.domain, company.contact_email).catch(() => null);
   const inquiries = await chinaDb.listInquiriesForCompany(company.company_id).catch(() => []);
@@ -602,9 +663,8 @@ async function callTool(name, args) {
 }
 
 function timingSafeEqualString(a, b) {
-  const left = Buffer.from(String(a || ''), 'utf8');
-  const right = Buffer.from(String(b || ''), 'utf8');
-  if (left.length !== right.length) return false;
+  const left = crypto.createHash('sha256').update(String(a || ''), 'utf8').digest();
+  const right = crypto.createHash('sha256').update(String(b || ''), 'utf8').digest();
   return crypto.timingSafeEqual(left, right);
 }
 
