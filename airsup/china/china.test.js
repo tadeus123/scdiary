@@ -37,6 +37,17 @@ assert.deepStrictEqual(
   extractSiteEmails('Contact <a href="mailto:Info@Factory-CN.com">mail</a>', 'Also sales@partner-export.com and junk@gmail.com'),
   ['info@factory-cn.com', 'sales@partner-export.com']
 );
+assert.ok(fs.readFileSync(path.join(__dirname, 'sql/schema.sql'), 'utf8').includes('airsup_china_domain_allows'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'sql/schema.sql'), 'utf8').includes("'claim'"));
+assert.ok(fs.readFileSync(path.join(__dirname, 'sql/domain-allows.sql'), 'utf8').includes('airsup_china_domain_allows'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/claim.ejs'), 'utf8').includes('claim_publish'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.get('/claim'"));
+assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.post('/claim/confirm'"));
+assert.ok(fs.readFileSync(path.join(__dirname, 'mint-claim.js'), 'utf8').includes('mintClaim'));
+assert.strictEqual(typeof require('./mint-claim').mintClaim, 'function');
+assert.ok(fs.readFileSync(path.join(__dirname, 'approve-claim.js'), 'utf8').includes("source: 'manual'"));
+assert.ok(fs.readFileSync(path.join(__dirname, 'funnel-status.js'), 'utf8').includes('allows_claim_opened'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8').includes('listDomainAllows'));
 
 const empty = proofLines({ started: 0, verified: 0, live: 0 });
 assert.ok(empty.en.includes('first export factories'));

@@ -191,6 +191,88 @@ async function listMessages(conversationId) {
   return data || [];
 }
 
+async function getToken(tokenHash) {
+  const db = requireDb();
+  const { data, error } = await db.from('airsup_china_tokens').select('*').eq('token_hash', tokenHash).maybeSingle();
+  if (error) throw error;
+  if (!data || data.used_at) return null;
+  if (new Date(data.expires_at).getTime() < Date.now()) return null;
+  return data;
+}
+
+async function getDomainAllow(domain, email) {
+  const db = requireDb();
+  const domainValue = String(domain || '').trim().toLowerCase();
+  const emailValue = String(email || '').trim().toLowerCase();
+  if (!domainValue || !emailValue) return null;
+  const { data, error } = await db
+    .from('airsup_china_domain_allows')
+    .select('*')
+    .ilike('domain', domainValue)
+    .ilike('contact_email', emailValue)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+async function upsertDomainAllow({ domain, contact_email, source, note }) {
+  const db = requireDb();
+  const domainValue = String(domain || '').trim().toLowerCase();
+  const emailValue = String(contact_email || '').trim().toLowerCase();
+  const sourceValue = ['outreach', 'manual', 'site'].includes(source) ? source : 'outreach';
+  if (!domainValue || !emailValue) throw new Error('domain and contact_email required');
+  const existing = await getDomainAllow(domainValue, emailValue);
+  if (existing) {
+    const { data, error } = await db
+      .from('airsup_china_domain_allows')
+      .update({
+        source: sourceValue,
+        note: note != null ? String(note) : existing.note,
+      })
+      .eq('allow_id', existing.allow_id)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data;
+  }
+  const { data, error } = await db
+    .from('airsup_china_domain_allows')
+    .insert({
+      domain: domainValue,
+      contact_email: emailValue,
+      source: sourceValue,
+      note: String(note || ''),
+    })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function touchDomainAllow(domain, email, patch) {
+  const row = await getDomainAllow(domain, email);
+  if (!row) return null;
+  const db = requireDb();
+  const { data, error } = await db
+    .from('airsup_china_domain_allows')
+    .update(patch)
+    .eq('allow_id', row.allow_id)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function listDomainAllows() {
+  const db = requireDb();
+  const { data, error } = await db
+    .from('airsup_china_domain_allows')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
 module.exports = {
   isConfigured,
   getByDomain,
@@ -201,6 +283,7 @@ module.exports = {
   updateCompany,
   insertToken,
   takeToken,
+  getToken,
   insertSession,
   getSession,
   deleteSession,
@@ -212,4 +295,8 @@ module.exports = {
   updateThread,
   insertMessage,
   listMessages,
+  getDomainAllow,
+  upsertDomainAllow,
+  touchDomainAllow,
+  listDomainAllows,
 };

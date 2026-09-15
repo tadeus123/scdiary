@@ -9,7 +9,7 @@ const ejs = require('ejs');
 const db = require('./db');
 const session = require('./session');
 const { t, otherLang } = require('./i18n');
-const { domainMatches, emailAllowedForSite } = require('./domain');
+const { domainMatches, emailAllowedForSite, normalizeDomain, emailParts } = require('./domain');
 const { genericDemo } = require('./demo');
 const { buildPreview, companyDraftFromPreview } = require('./site-preview');
 const {
@@ -30,6 +30,7 @@ const {
   buyerTestPrompt,
   endpointRecord,
   listingText,
+  companyTitle,
   fillEmptyCompany,
 } = require('./fields');
 const { proofPayload, industryPeers, formatChartDay, liveRoster } = require('./proof');
@@ -306,10 +307,36 @@ router.post('/start', async (req, res) => {
   } catch (error) {
     console.error('Airsup china site email scrape skipped:', error.message);
   }
-  const matched = emailAllowedForSite({ website, email, siteEmails });
+  let matched = emailAllowedForSite({ website, email, siteEmails });
+  if (!matched.ok && matched.error === 'mismatch' && db.isConfigured()) {
+    try {
+      const site = normalizeDomain(website);
+      const parts = emailParts(email);
+      const allow = parts ? await db.getDomainAllow(site, parts.email) : null;
+      if (allow && parts) {
+        matched = {
+          ok: true,
+          domain: site,
+          website: `https://${site}`,
+          email: parts.email,
+          reason: allow.source || 'outreach',
+        };
+      }
+    } catch (error) {
+      console.error('Airsup china allowlist check skipped:', error.message);
+    }
+  }
   if (!matched.ok) return fail(`err_${matched.error}`);
   if (!db.isConfigured()) return fail('err_db');
   try {
+    if (matched.reason === 'site_contact' || matched.reason === 'outreach' || matched.reason === 'manual') {
+      await db.upsertDomainAllow({
+        domain: matched.domain,
+        contact_email: matched.email,
+        source: matched.reason === 'site_contact' ? 'site' : matched.reason,
+        note: matched.reason === 'site_contact' ? 'email listed on website' : '',
+      }).catch((error) => console.error('Airsup china allow upsert skipped:', error.message));
+    }
     let company = await db.getByDomain(matched.domain);
     if (company && tooSoon(company)) return fail('err_rate');
     if (!company) {
@@ -362,6 +389,91 @@ router.get('/check', async (req, res) => {
   });
 });
 
+function claimCapabilities(company) {
+  const profile = normalizeProfile(company && company.profile);
+  const parts = [];
+  if (profile.processes.length) {
+    parts.push(profile.processes.join(', '));
+  }
+  if (company && company.context) parts.push(String(company.context).slice(0, 160));
+  return parts.filter(Boolean).join(' · ');
+}
+
+router.get('/claim', async (req, res) => {
+  const lang = langFrom(req, res);
+  const token = String(req.query.token || '');
+  const fail = async (errorKey) => render(req, res, 'home.ejs', {
+    proof: await proof(),
+    form: formFromCompany(null),
+    error: t(lang, errorKey),
+    cities: CITIES,
+  });
+  if (!token || !db.isConfigured()) return fail('err_claim');
+  try {
+    const row = await db.getToken(session.sha256(token));
+    if (!row || row.purpose !== 'claim') return fail('err_claim');
+    let company = await db.getById(row.company_id);
+    if (!company) return fail('err_claim');
+    company = await applySiteDraft(company, company.website || company.domain, lang) || company;
+    try {
+      await db.touchDomainAllow(company.domain, row.email || company.contact_email, {
+        claim_opened_at: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Airsup china claim open touch skipped:', error.message);
+    }
+    return render(req, res, 'claim.ejs', {
+      proof: await proof(),
+      company,
+      companyTitle: companyTitle(company, lang),
+      capabilities: claimCapabilities(company),
+      listingPreview: listingText(company),
+      token,
+      error: null,
+    });
+  } catch (error) {
+    console.error('Airsup china claim error:', error);
+    return fail('err_db');
+  }
+});
+
+router.post('/claim/confirm', async (req, res) => {
+  const lang = langFrom(req, res);
+  const token = String((req.body && req.body.token) || '');
+  const fail = async (errorKey) => render(req, res, 'home.ejs', {
+    proof: await proof(),
+    form: formFromCompany(null),
+    error: t(lang, errorKey),
+    cities: CITIES,
+  });
+  if (!peopleAuth.allowedOrigin(req)) return fail('err_origin');
+  if (!token || !db.isConfigured()) return fail('err_claim');
+  try {
+    const row = await db.takeToken(session.sha256(token));
+    if (!row || row.purpose !== 'claim') return fail('err_claim');
+    let company = await db.getById(row.company_id);
+    if (!company) return fail('err_claim');
+    const email = String(row.email || company.contact_email || '').toLowerCase();
+    company = await db.updateCompany(company.company_id, {
+      contact_email: email,
+    });
+    company = await applySiteDraft(company, company.website || company.domain, lang) || company;
+    const verifyToken = await session.createToken(company.company_id, email, 'verify');
+    const link = `${publicOrigin(req)}/airsup/china/verify?token=${verifyToken}`;
+    await sendVerifyEmail({
+      lang,
+      to: email,
+      link,
+      contactName: company.contact_name,
+    });
+    await db.updateCompany(company.company_id, { last_email_at: new Date().toISOString() });
+    return res.redirect(`/airsup/china/check?email=${encodeURIComponent(email)}`);
+  } catch (error) {
+    console.error('Airsup china claim confirm error:', error);
+    return fail(error.code === 'mail' ? 'err_mail' : 'err_db');
+  }
+});
+
 router.get('/verify', async (req, res) => {
   const lang = langFrom(req, res);
   const token = String(req.query.token || '');
@@ -401,8 +513,24 @@ router.get('/verify', async (req, res) => {
     }
     await db.updateCompany(company.company_id, patch);
     await session.createSession(req, res, company.company_id);
-    const fresh = await db.getById(company.company_id);
-    await applySiteDraft(fresh || company, company.website || company.domain, lang);
+    let fresh = await db.getById(company.company_id);
+    fresh = await applySiteDraft(fresh || company, company.website || company.domain, lang) || fresh;
+    const claimSources = new Set(['outreach', 'manual', 'claim']);
+    if (fresh && claimSources.has(String(fresh.source || '')) && canPublish(fresh) && fresh.status !== 'live') {
+      fresh = await db.updateCompany(fresh.company_id, {
+        status: 'live',
+        live_at: fresh.live_at || new Date().toISOString(),
+        verified_at: fresh.verified_at || new Date().toISOString(),
+      });
+      try {
+        await db.touchDomainAllow(fresh.domain, fresh.contact_email, {
+          published_at: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error('Airsup china allow publish touch skipped:', error.message);
+      }
+      return res.redirect('/airsup/china/setup?ok=live');
+    }
     return res.redirect('/airsup/china/setup');
   } catch (error) {
     console.error('Airsup china verify error:', error);
@@ -534,6 +662,13 @@ router.post('/publish', async (req, res) => {
       live_at: company.live_at || new Date().toISOString(),
       verified_at: company.verified_at || new Date().toISOString(),
     });
+    try {
+      await db.touchDomainAllow(company.domain, next.contact_email || company.contact_email, {
+        published_at: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Airsup china allow publish touch skipped:', error.message);
+    }
     return res.redirect('/airsup/china/setup?ok=live');
   } catch (error) {
     console.error('Airsup china publish error:', error);

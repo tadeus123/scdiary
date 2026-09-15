@@ -5,4 +5,5 @@ drop table if exists public.airsup_china_threads;
 drop table if exists public.airsup_china_inquiries;
 drop table if exists public.airsup_china_sessions;
 drop table if exists public.airsup_china_tokens;
+drop table if exists public.airsup_china_domain_allows;
 drop table if exists public.airsup_china_companies;

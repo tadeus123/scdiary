@@ -41,7 +41,7 @@ create table if not exists public.airsup_china_tokens (
   expires_at timestamptz not null,
   used_at timestamptz,
   created_at timestamptz not null default now(),
-  constraint airsup_china_tokens_purpose_chk check (purpose in ('verify', 'login'))
+  constraint airsup_china_tokens_purpose_chk check (purpose in ('verify', 'login', 'claim'))
 );
 
 create table if not exists public.airsup_china_sessions (
@@ -62,6 +62,24 @@ create table if not exists public.airsup_china_inquiries (
 
 create index if not exists airsup_china_inquiries_company_idx
   on public.airsup_china_inquiries (company_id, created_at desc);
+
+create table if not exists public.airsup_china_domain_allows (
+  allow_id uuid primary key default gen_random_uuid(),
+  domain text not null,
+  contact_email text not null,
+  source text not null default 'outreach',
+  note text not null default '',
+  claim_opened_at timestamptz,
+  published_at timestamptz,
+  created_at timestamptz not null default now(),
+  constraint airsup_china_domain_allows_source_chk check (source in ('outreach', 'manual', 'site'))
+);
+
+create unique index if not exists airsup_china_domain_allows_pair_idx
+  on public.airsup_china_domain_allows (lower(domain), lower(contact_email));
+
+create index if not exists airsup_china_domain_allows_domain_idx
+  on public.airsup_china_domain_allows (lower(domain));
 
 alter table public.airsup_china_inquiries
   add column if not exists conversation_id uuid;
@@ -104,6 +122,7 @@ alter table public.airsup_china_sessions enable row level security;
 alter table public.airsup_china_inquiries enable row level security;
 alter table public.airsup_china_threads enable row level security;
 alter table public.airsup_china_messages enable row level security;
+alter table public.airsup_china_domain_allows enable row level security;
 
 revoke all on table public.airsup_china_companies from anon, authenticated, public;
 revoke all on table public.airsup_china_tokens from anon, authenticated, public;
@@ -111,6 +130,7 @@ revoke all on table public.airsup_china_sessions from anon, authenticated, publi
 revoke all on table public.airsup_china_inquiries from anon, authenticated, public;
 revoke all on table public.airsup_china_threads from anon, authenticated, public;
 revoke all on table public.airsup_china_messages from anon, authenticated, public;
+revoke all on table public.airsup_china_domain_allows from anon, authenticated, public;
 
 grant all on table public.airsup_china_companies to service_role;
 grant all on table public.airsup_china_tokens to service_role;
@@ -118,3 +138,4 @@ grant all on table public.airsup_china_sessions to service_role;
 grant all on table public.airsup_china_inquiries to service_role;
 grant all on table public.airsup_china_threads to service_role;
 grant all on table public.airsup_china_messages to service_role;
+grant all on table public.airsup_china_domain_allows to service_role;
