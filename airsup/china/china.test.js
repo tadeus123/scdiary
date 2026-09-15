@@ -150,6 +150,32 @@ const filled = fillEmptyCompany(
 assert.strictEqual(filled.company_name, '深圳某某');
 assert.ok(filled.profile.processes.includes('5axis'));
 assert.ok(filled.profile.site_notes.includes('scraped'));
+const keepMachines = fillEmptyCompany(
+  {
+    company_name: 'Acme',
+    city: 'dongguan',
+    profile: {
+      machines: 'DMG 5-axis',
+      contacts: [{ name: 'Li', wechat: 'wxid_li' }],
+      enrichment: { filled_at: '2020-01-01', sources: [{ field: 'machines', url: 'https://a.com', quote: 'old' }] },
+    },
+  },
+  {
+    profile: {
+      machines: 'should not overwrite',
+      contacts: [{ name: 'Other', wechat: 'other' }],
+      enrichment: { filled_at: '2026-01-01', sources: [{ field: 'certifications', url: 'https://a.com/q', quote: 'ISO 9001' }] },
+    },
+  }
+);
+assert.strictEqual(keepMachines.profile.machines, 'DMG 5-axis');
+assert.strictEqual(listedContacts(keepMachines.profile.contacts)[0].wechat, 'wxid_li');
+assert.ok(keepMachines.profile.enrichment.sources.some((row) => row.field === 'machines'));
+assert.ok(keepMachines.profile.enrichment.sources.some((row) => row.field === 'certifications'));
+assert.ok(!JSON.stringify(require('./fields').endpointRecord(keepMachines)).includes('enrichment'));
+const gapsEmpty = require('./fields').enrichmentGaps({ profile: {} });
+assert.ok(gapsEmpty.some((gap) => gap.field === 'wechat'));
+assert.ok(require('./fields').countFilledBuyerFields({ company_name: 'A', city: 'dongguan', profile: { machines: 'x' } }) >= 3);
 const firstCity = fillEmptyCompany(
   { city: 'shenzhen', niche: 'cnc', profile: {} },
   { city: 'dongguan', niche: 'injection', profile: { site_notes: 'x', processes: ['injection'] } }
@@ -176,8 +202,30 @@ assert.ok(mail.html.includes('张工'));
 
 const { COPY, t } = require('./i18n');
 const { genericDemo, personalizedDemo, guessNiche } = require('./demo');
-const { isBlockedHost, isPrivateIp, stripHtml, extraPathsFromHtml, companyDraftFromPreview } = require('./site-preview');
 const emoji = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
+const { isBlockedHost, isPrivateIp, stripHtml, extraPathsFromHtml, companyDraftFromPreview, heuristicHintsFromText, PAGE_BUDGET } = require('./site-preview');
+assert.ok(PAGE_BUDGET >= 8);
+const hints = heuristicHintsFromText('ISO 9001 certified 5-axis CNC aluminum machining 注塑');
+assert.ok(hints.processes.includes('5axis'));
+assert.ok(hints.processes.includes('injection'));
+assert.ok(hints.materials.includes('alu'));
+assert.ok(hints.certifications.includes('iso9001'));
+assert.ok(extraPathsFromHtml('<a href="/equipment">x</a><a href="/quality/certificate">y</a><a href="https://evil.com/quality">z</a>', 'acme.com').length >= 2);
+assert.ok(!extraPathsFromHtml('<a href="https://evil.com/quality">z</a>', 'acme.com').length);
+const { confirmChecklist, gapEmailBody } = require('./enrich');
+const checklist = confirmChecklist({
+  profile: {
+    enrichment: { sources: [{ field: 'machines', url: 'https://acme.com/eq', quote: '5-axis' }] },
+  },
+});
+assert.ok(checklist.need.length >= 1);
+assert.ok(!emoji.test(gapEmailBody({ domain: 'acme.com', company_name_en: 'Acme' })));
+assert.ok(fs.existsSync(path.join(__dirname, 'enrich-company.js')));
+assert.ok(fs.readFileSync(path.join(__dirname, 'enrich.js'), 'utf8').includes('fillEmptyCompany'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('enrich_gaps_title'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('enrich_gaps_title'));
+assert.ok(COPY.zh.enrich_gaps_title);
+assert.ok(COPY.en.enrich_gaps_title);
 for (const lang of Object.keys(COPY)) {
   for (const [key, value] of Object.entries(COPY[lang])) {
     assert.ok(!emoji.test(String(value)), `emoji in ${lang}.${key}`);

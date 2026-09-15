@@ -25,6 +25,18 @@
       <pre class="cn-live-listing-text"><%= listingPreview %></pre>
     </section>
 
+    <% if (typeof enrichmentGaps !== 'undefined' && enrichmentGaps && enrichmentGaps.length) { %>
+      <section class="cn-live-test" aria-labelledby="enrich-gaps-title">
+        <h2 id="enrich-gaps-title" class="cn-live-h2"><%= t('enrich_gaps_title') %></h2>
+        <p class="cn-muted"><%= t('enrich_gaps_lead') %></p>
+        <ul class="cn-muted">
+          <% enrichmentGaps.slice(0, 6).forEach(function (gap) { %>
+            <li><%= t('enrich_need_prefix') %> <%= gap.why %></li>
+          <% }) %>
+        </ul>
+      </section>
+    <% } %>
+
     <table class="cn-spec">
       <tbody>
         <tr><th><%= lang === 'en' ? 'Domain' : '域名' %></th><td><%= company.domain %></td></tr>

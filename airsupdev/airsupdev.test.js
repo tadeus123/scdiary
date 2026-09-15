@@ -17,6 +17,8 @@ const TOOL_NAMES = [
   'verify_supplier',
   'publish_supplier',
   'test_supplier_discovery',
+  'enrich_supplier',
+  'get_enrichment_gaps',
   'generate_demo',
   'get_growth_funnel',
   'get_supplier_events',
@@ -31,7 +33,7 @@ for (const name of TOOL_NAMES) {
 
 const mcp = createMcp();
 assert.deepStrictEqual(mcp.TOOL_FILES, TOOL_NAMES);
-assert.strictEqual(mcp.toolList().tools.length, 12);
+assert.strictEqual(mcp.toolList().tools.length, 14);
 
 assert.strictEqual(timingSafeEqualString('abc', 'abc'), true);
 assert.strictEqual(timingSafeEqualString('abc', 'abd'), false);

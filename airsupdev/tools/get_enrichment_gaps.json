@@ -1,0 +1,19 @@
+{
+  "name": "get_enrichment_gaps",
+  "title": "Get enrichment gaps",
+  "description": "Return a short confirm checklist of what site enrichment found vs what buyer-facing fields are still blank (WeChat, MOQ, lead time, machines, certs). Private evidence stays in profile.enrichment.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}

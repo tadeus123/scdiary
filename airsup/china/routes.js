@@ -32,7 +32,9 @@ const {
   listingText,
   companyTitle,
   fillEmptyCompany,
+  enrichmentGaps,
 } = require('./fields');
+const { confirmChecklist } = require('./enrich');
 const { proofPayload, industryPeers, formatChartDay, liveRoster } = require('./proof');
 const { sendVerifyEmail } = require('./mail');
 const peopleAuth = require('../auth');
@@ -642,6 +644,7 @@ function readSetup(body, company) {
 }
 
 async function showSetup(req, res, { company, error, saved, paused }) {
+  const checklist = confirmChecklist(company);
   return render(req, res, 'setup.ejs', {
     proof: await proof(),
     company,
@@ -651,6 +654,8 @@ async function showSetup(req, res, { company, error, saved, paused }) {
     error: error || null,
     saved: Boolean(saved),
     paused: Boolean(paused),
+    enrichmentGaps: enrichmentGaps(company),
+    confirmChecklist: checklist,
   });
 }
 
@@ -659,12 +664,15 @@ router.get('/setup', async (req, res) => {
   if (!company) return;
   if (req.query.ok === 'live') {
     const record = endpointRecord(company);
+    const checklist = confirmChecklist(company);
     return render(req, res, 'live.ejs', {
       proof: await proof(),
       company,
       listingPreview: listingText(company),
       buyerPrompt: buyerTestPrompt(company),
       endpointPreview: record,
+      enrichmentGaps: enrichmentGaps(company),
+      confirmChecklist: checklist,
     });
   }
   return showSetup(req, res, {

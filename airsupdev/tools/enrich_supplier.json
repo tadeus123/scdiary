@@ -1,0 +1,25 @@
+{
+  "name": "enrich_supplier",
+  "title": "Enrich supplier from website",
+  "description": "Re-crawl the supplier's own domain and empty-only fill missing China listing fields. Never overwrites supplier-edited values or changes status/live. Stores private evidence in profile.enrichment.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "lang": { "type": "string", "description": "zh or en" },
+      "run_discovery": {
+        "type": "boolean",
+        "description": "If true and supplier is live, run a niche discovery test and store last_discovery score"
+      },
+      "discovery_query": { "type": "string", "description": "Optional buyer query for discovery score" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": true
+  }
+}

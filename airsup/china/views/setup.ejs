@@ -32,6 +32,25 @@
     <% if (saved) { %>
       <p class="cn-ok"><%= t('saved') %></p>
     <% } %>
+    <% if (typeof enrichmentGaps !== 'undefined' && enrichmentGaps && enrichmentGaps.length) { %>
+      <section class="cn-found" aria-labelledby="enrich-gaps-title">
+        <h2 id="enrich-gaps-title" class="cn-live-h2"><%= t('enrich_gaps_title') %></h2>
+        <p class="cn-note"><%= t('enrich_gaps_lead') %></p>
+        <ul class="cn-note">
+          <% enrichmentGaps.slice(0, 6).forEach(function (gap) { %>
+            <li><%= t('enrich_need_prefix') %> <%= gap.why %></li>
+          <% }) %>
+        </ul>
+        <% if (typeof confirmChecklist !== 'undefined' && confirmChecklist && confirmChecklist.kept && confirmChecklist.kept.length) { %>
+          <p class="cn-meta"><%= t('enrich_kept_title') %></p>
+          <ul class="cn-note">
+            <% confirmChecklist.kept.slice(0, 4).forEach(function (row) { %>
+              <li><%= row.note %></li>
+            <% }) %>
+          </ul>
+        <% } %>
+      </section>
+    <% } %>
     <form class="cn-form cn-setup" method="post" action="/airsup/china/setup">
       <fieldset class="cn-found">
         <legend><%= t('found_title') %></legend>

@@ -10,12 +10,21 @@ const {
   buyerTestPrompt,
   fillEmptyCompany,
   normalizeProfile,
+  normalizeEnrichment,
   normalizeNiche,
   normalizeActions,
+  countFilledBuyerFields,
+  enrichmentGaps,
   DEFAULT_ACTIONS,
   NICHES,
   CITIES,
 } = require('../airsup/china/fields');
+const {
+  enrichCompany,
+  confirmChecklist,
+  gapEmailBody,
+  storeDiscoveryScore,
+} = require('../airsup/china/enrich');
 const {
   normalizeDomain,
   emailParts,
@@ -537,7 +546,7 @@ async function testSupplierDiscovery(args = {}) {
   }
   const matches = await findForPlugin({ query, limit: Number(args.limit) || 10 });
   const hit = matches.find((row) => row.person_id === company.company_id);
-  return {
+  const result = {
     ok: true,
     surfaced: Boolean(hit),
     query,
@@ -545,6 +554,72 @@ async function testSupplierDiscovery(args = {}) {
     match: hit || null,
     card: endpointRecord(company),
     other_matches: matches.filter((row) => row.person_id !== company.company_id).slice(0, 5),
+  };
+  if (args.store_score !== false) {
+    try {
+      await storeDiscoveryScore(company, result);
+    } catch (_) {
+      // discovery score is best-effort private metadata
+    }
+  }
+  return result;
+}
+
+async function enrichSupplier(args = {}) {
+  requireChinaDb();
+  const company = await resolveCompanyExact(args);
+  if (company && company.__ambiguous) {
+    return { ok: false, error: 'ambiguous', matches: company.matches };
+  }
+  if (!company) return { ok: false, error: 'supplier_not_found', hint: 'Pass company_id or exact domain' };
+  const result = await enrichCompany(company, { lang: args.lang === 'en' ? 'en' : 'zh' });
+  if (!result.ok) return result;
+  let discovery = null;
+  if (args.run_discovery && result.company && result.company.status === 'live') {
+    const query = String(args.discovery_query || '').trim() || buyerTestPrompt(result.company);
+    discovery = await testSupplierDiscovery({
+      company_id: result.company_id,
+      query,
+      store_score: true,
+    });
+  }
+  return {
+    ok: true,
+    company_id: result.company_id,
+    domain: result.domain,
+    status: result.status,
+    before_fields: result.before_fields,
+    after_fields: result.after_fields,
+    filled_delta: result.filled_delta,
+    crawl_pages: result.crawl_pages,
+    gaps: result.gaps,
+    checklist: result.checklist,
+    discovery,
+    card: endpointRecord(result.company),
+  };
+}
+
+async function getEnrichmentGaps(args = {}) {
+  requireChinaDb();
+  const company = await resolveCompany(args, { allowFuzzy: true });
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  const gaps = enrichmentGaps(company);
+  const checklist = confirmChecklist(company);
+  const enrichment = normalizeEnrichment(company.profile && company.profile.enrichment);
+  return {
+    ok: true,
+    company_id: company.company_id,
+    domain: company.domain,
+    status: company.status,
+    filled_fields: countFilledBuyerFields(company),
+    gaps,
+    checklist,
+    last_discovery: enrichment.last_discovery,
+    gap_email_draft: {
+      to: company.contact_email || '',
+      subject: 'Add a few details so ChatGPT can answer buyers faster',
+      body: gapEmailBody(company),
+    },
   };
 }
 
@@ -578,14 +653,34 @@ async function getGrowthFunnel() {
     acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {});
+  const enriched = live.map((row) => {
+    const profile = normalizeProfile(row.profile);
+    return {
+      domain: row.domain,
+      filled_fields: countFilledBuyerFields(row),
+      gaps: enrichmentGaps(row).length,
+      discovery_score: profile.enrichment && profile.enrichment.last_discovery
+        ? profile.enrichment.last_discovery.score
+        : null,
+      enriched_at: profile.enrichment && profile.enrichment.filled_at
+        ? profile.enrichment.filled_at
+        : null,
+    };
+  });
+  const avgFilled = enriched.length
+    ? enriched.reduce((sum, row) => sum + row.filled_fields, 0) / enriched.length
+    : 0;
   return {
     ok: true,
-    metric: 'outreach → clicked claim → published → live → first inquiry',
+    metric: 'outreach → clicked claim → published → live → enriched_fields → discovery_score → first inquiry',
     live: live.length,
     companies_by_status: byStatus,
     allows_total: allows.length,
     allows_claim_opened: allows.filter((row) => row.claim_opened_at).length,
     allows_published: allows.filter((row) => row.published_at).length,
+    live_avg_filled_fields: Math.round(avgFilled * 10) / 10,
+    live_with_enrichment: enriched.filter((row) => row.enriched_at).length,
+    live_enrichment: enriched.slice(0, 40),
     allows: allows.slice(0, 100).map((row) => ({
       domain: row.domain,
       email: row.contact_email,
@@ -648,6 +743,10 @@ async function callTool(name, args) {
       return publishSupplier(args);
     case 'test_supplier_discovery':
       return testSupplierDiscovery(args);
+    case 'enrich_supplier':
+      return enrichSupplier(args);
+    case 'get_enrichment_gaps':
+      return getEnrichmentGaps(args);
     case 'generate_demo':
       return generateDemo(args);
     case 'get_growth_funnel':

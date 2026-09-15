@@ -134,6 +134,36 @@ function cityLabel(id, lang) {
   return lang === 'en' ? row.en : row.zh;
 }
 
+function normalizeEnrichment(raw) {
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const sources = (Array.isArray(source.sources) ? source.sources : [])
+    .slice(0, 80)
+    .map((row) => {
+      if (!row || typeof row !== 'object') return null;
+      const field = String(row.field || '').trim().slice(0, 60);
+      const url = String(row.url || '').trim().slice(0, 400);
+      const quote = String(row.quote || '').trim().slice(0, 240);
+      if (!field) return null;
+      return { field, url, quote };
+    })
+    .filter(Boolean);
+  const discovery = source.last_discovery && typeof source.last_discovery === 'object'
+    ? {
+        query: String(source.last_discovery.query || '').trim().slice(0, 200),
+        score: Number(source.last_discovery.score) || 0,
+        surfaced: Boolean(source.last_discovery.surfaced),
+        at: String(source.last_discovery.at || '').trim(),
+      }
+    : null;
+  return {
+    filled_at: String(source.filled_at || '').trim(),
+    crawl_pages: Number(source.crawl_pages) || 0,
+    model: String(source.model || '').trim().slice(0, 80),
+    sources,
+    last_discovery: discovery && discovery.query ? discovery : null,
+  };
+}
+
 function normalizeProfile(raw) {
   const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
   return {
@@ -158,6 +188,7 @@ function normalizeProfile(raw) {
     contacts: normalizeContacts(source.contacts),
     site_notes: String(source.site_notes || '').trim().slice(0, 8000),
     claim_ready: Boolean(source.claim_ready),
+    enrichment: normalizeEnrichment(source.enrichment),
   };
 }
 
@@ -304,15 +335,71 @@ function fillEmptyCompany(company, draft) {
   next.profile = {
     ...prevProfile,
     ...Object.fromEntries(Object.entries(draftProfile).filter(([key, value]) => {
-      if (key === 'contacts' || key === 'flexibility') return false;
+      if (key === 'contacts' || key === 'flexibility' || key === 'enrichment' || key === 'claim_ready') return false;
       if (Array.isArray(value)) return value.length && !(Array.isArray(prevProfile[key]) && prevProfile[key].length);
       return Boolean(String(value || '').trim()) && !String(prevProfile[key] || '').trim();
     })),
     contacts: listedContacts(prevProfile.contacts).length ? prevProfile.contacts : draftProfile.contacts,
     flexibility: prevProfile.flexibility || draftProfile.flexibility,
     site_notes: prevProfile.site_notes || draftProfile.site_notes,
+    claim_ready: prevProfile.claim_ready || draftProfile.claim_ready,
+    enrichment: mergeEnrichment(prevProfile.enrichment, draftProfile.enrichment),
   };
   return next;
+}
+
+function mergeEnrichment(prev, incoming) {
+  const a = normalizeEnrichment(prev);
+  const b = normalizeEnrichment(incoming);
+  const seen = new Set(a.sources.map((row) => `${row.field}|${row.url}|${row.quote}`));
+  const sources = a.sources.slice();
+  for (const row of b.sources) {
+    const key = `${row.field}|${row.url}|${row.quote}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    sources.push(row);
+    if (sources.length >= 80) break;
+  }
+  return normalizeEnrichment({
+    filled_at: b.filled_at || a.filled_at,
+    crawl_pages: Math.max(a.crawl_pages, b.crawl_pages),
+    model: b.model || a.model,
+    sources,
+    last_discovery: b.last_discovery || a.last_discovery,
+  });
+}
+
+function countFilledBuyerFields(company) {
+  const profile = normalizeProfile(company && company.profile);
+  let n = 0;
+  if (String((company && (company.company_name || company.company_name_en)) || '').trim()) n += 1;
+  if (String((company && company.city) || '').trim()) n += 1;
+  if (String((company && company.context) || '').trim()) n += 1;
+  if (profile.processes.length) n += 1;
+  if (profile.materials.length) n += 1;
+  if (profile.finishing.length) n += 1;
+  if (profile.certifications.length) n += 1;
+  if (profile.machines) n += 1;
+  if (profile.tolerance) n += 1;
+  if (profile.moq) n += 1;
+  if (profile.lead_time) n += 1;
+  if (profile.export_markets) n += 1;
+  if (profile.sample_lead) n += 1;
+  if (listedContacts(profile.contacts).length) n += 1;
+  return n;
+}
+
+function enrichmentGaps(company) {
+  const profile = normalizeProfile(company && company.profile);
+  const gaps = [];
+  if (!profile.processes.length && !profile.materials.length) gaps.push({ field: 'capabilities', why: 'No processes or materials listed' });
+  if (!profile.machines) gaps.push({ field: 'machines', why: 'No machines listed for ChatGPT answers' });
+  if (!profile.certifications.length) gaps.push({ field: 'certifications', why: 'No certifications listed' });
+  if (!profile.moq) gaps.push({ field: 'moq', why: 'No MOQ listed' });
+  if (!profile.lead_time && !profile.sample_lead) gaps.push({ field: 'lead_time', why: 'No lead time or sample lead listed' });
+  if (!listedContacts(profile.contacts).length) gaps.push({ field: 'wechat', why: 'No WeChat contact for sales follow-up' });
+  if (!profile.export_markets) gaps.push({ field: 'export_markets', why: 'No export markets listed' });
+  return gaps;
 }
 
 module.exports = {
@@ -327,6 +414,7 @@ module.exports = {
   FLEX,
   CONTACT_SLOTS,
   normalizeProfile,
+  normalizeEnrichment,
   normalizeActions,
   normalizeNiche,
   normalizeContacts,
@@ -334,6 +422,9 @@ module.exports = {
   listedContacts,
   mapCityId,
   fillEmptyCompany,
+  mergeEnrichment,
+  countFilledBuyerFields,
+  enrichmentGaps,
   cityLabel,
   displayCity,
   companyTitle,
