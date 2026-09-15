@@ -228,6 +228,19 @@ function canPublish(company) {
   return Boolean(name && city && hasCapability && goal);
 }
 
+function buyerTestPrompt(company) {
+  const profile = normalizeProfile(company && company.profile);
+  const city = displayCity(company, 'en') || 'China';
+  const niche = labelsFor([company && company.niche], NICHES, 'en')[0]
+    || labelsFor(profile.processes.slice(0, 1), PROCESSES, 'en')[0]
+    || 'manufacturing';
+  const process = labelsFor(profile.processes.slice(0, 1), PROCESSES, 'en')[0];
+  const capability = process && process.toLowerCase() !== String(niche).toLowerCase()
+    ? `${niche} (${process})`
+    : niche;
+  return `Find me a ${capability} supplier in ${city} for a Western buyer RFQ. Prefer a real factory domain ChatGPT can ask.`;
+}
+
 function publicRecord(company) {
   if (!company) return null;
   const profile = normalizeProfile(company.profile);
@@ -325,6 +338,7 @@ module.exports = {
   companyTitle,
   listingText,
   canPublish,
+  buyerTestPrompt,
   publicRecord,
   endpointRecord,
 };

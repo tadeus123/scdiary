@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { domainMatches, normalizeDomain } = require('./domain');
 const { proofLines, proofPayload, industryPeers, liveSeries, formatChartDay, chartFromSeries, liveRoster, liveCompanies } = require('./proof');
-const { canPublish, normalizeProfile, mapCityId, fillEmptyCompany, listedContacts } = require('./fields');
+const { canPublish, normalizeProfile, mapCityId, fillEmptyCompany, listedContacts, buyerTestPrompt } = require('./fields');
 const { verifyMail } = require('./mail');
 
 assert.strictEqual(normalizeDomain('https://www.WayKenRM.com/cnc'), 'waykenrm.com');
@@ -91,6 +91,13 @@ assert.strictEqual(canPublish({
   goal: 'answer RFQs',
 }), true);
 assert.strictEqual(canPublish({ company_name: 'x', city: 'shenzhen', profile: {}, goal: '' }), false);
+assert.ok(buyerTestPrompt({
+  niche: 'injection',
+  city: 'dongguan',
+  profile: normalizeProfile({ processes: ['injection'] }),
+}).includes('Dongguan'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('live-buyer-prompt'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('listingPreview'));
 
 assert.strictEqual(mapCityId('Dongguan, China'), 'dongguan');
 assert.strictEqual(mapCityId('深圳市南山区'), 'shenzhen');

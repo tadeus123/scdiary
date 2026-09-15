@@ -11,6 +11,20 @@
     <h1><%= t('live_title') %></h1>
     <p class="cn-lead"><%= t('live_lead') %></p>
     <p class="cn-proof"><%= proofLine %></p>
+
+    <section class="cn-live-test" aria-labelledby="live-test-title">
+      <h2 id="live-test-title" class="cn-live-h2"><%= t('live_test_title') %></h2>
+      <p class="cn-muted"><%= t('live_test_lead') %></p>
+      <pre class="cn-live-prompt" id="live-buyer-prompt"><%= buyerPrompt %></pre>
+      <button type="button" class="cn-btn-ghost" id="live-copy-prompt"><%= t('live_test_copy') %></button>
+    </section>
+
+    <section class="cn-live-listing" aria-labelledby="live-listing-title">
+      <h2 id="live-listing-title" class="cn-live-h2"><%= t('live_listing_title') %></h2>
+      <p class="cn-muted"><%= t('live_listing_lead') %></p>
+      <pre class="cn-live-listing-text"><%= listingPreview %></pre>
+    </section>
+
     <table class="cn-spec">
       <tbody>
         <tr><th><%= lang === 'en' ? 'Domain' : '域名' %></th><td><%= company.domain %></td></tr>
@@ -21,5 +35,20 @@
     <p><a class="cn-text-link" href="/airsup/china/setup"><%= t('live_edit') %></a></p>
   </main>
   <%- include('partials/footer') %>
+  <script>
+    (function () {
+      var btn = document.getElementById('live-copy-prompt');
+      var pre = document.getElementById('live-buyer-prompt');
+      if (!btn || !pre) return;
+      btn.addEventListener('click', function () {
+        var text = pre.textContent || '';
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () {
+            btn.textContent = <%= JSON.stringify(t('live_test_copied')) %>;
+          }).catch(function () {});
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

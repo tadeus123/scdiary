@@ -27,6 +27,9 @@ const {
   normalizeActions,
   normalizeNiche,
   canPublish,
+  buyerTestPrompt,
+  endpointRecord,
+  listingText,
   fillEmptyCompany,
 } = require('./fields');
 const { proofPayload, industryPeers, formatChartDay, liveRoster } = require('./proof');
@@ -473,9 +476,13 @@ router.get('/setup', async (req, res) => {
   const company = await requireCompany(req, res);
   if (!company) return;
   if (req.query.ok === 'live') {
+    const record = endpointRecord(company);
     return render(req, res, 'live.ejs', {
       proof: await proof(),
       company,
+      listingPreview: listingText(company),
+      buyerPrompt: buyerTestPrompt(company),
+      endpointPreview: record,
     });
   }
   return showSetup(req, res, {
