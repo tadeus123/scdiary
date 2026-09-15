@@ -9,7 +9,7 @@ const ejs = require('ejs');
 const db = require('./db');
 const session = require('./session');
 const { t, otherLang } = require('./i18n');
-const { domainMatches, emailAllowedForSite, normalizeDomain, emailParts } = require('./domain');
+const { emailAllowedForSite, normalizeDomain, emailParts } = require('./domain');
 const { genericDemo } = require('./demo');
 const { buildPreview, companyDraftFromPreview } = require('./site-preview');
 const {
