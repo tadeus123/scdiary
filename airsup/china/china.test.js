@@ -222,8 +222,10 @@ assert.ok(checklist.need.length >= 1);
 assert.ok(!emoji.test(gapEmailBody({ domain: 'acme.com', company_name_en: 'Acme' })));
 assert.ok(fs.existsSync(path.join(__dirname, 'enrich-company.js')));
 assert.ok(fs.readFileSync(path.join(__dirname, 'enrich.js'), 'utf8').includes('fillEmptyCompany'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('enrich_gaps_title'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('enrich_gaps_title'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('live_gaps_summary'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('enrich_gaps_lead'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('live_gaps_summary'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('enrich_gaps_lead'));
 assert.ok(COPY.zh.enrich_gaps_title);
 assert.ok(COPY.en.enrich_gaps_title);
 for (const lang of Object.keys(COPY)) {
@@ -300,7 +302,28 @@ assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includ
 assert.ok(fs.existsSync(path.join(__dirname, 'public/buyer-plugin.mp4')));
 assert.ok(fs.existsSync(path.join(__dirname, 'public/buyer-plugin.jpg')));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('cn-more-stay'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('cn-more-stay" open'));
+assert.ok(!fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('cn-more-stay" open'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('setup_primary_title'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('setup_site_summary'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes("t('wechat_ph')"));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('live_boss_title'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('operatorSummary'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('live_gaps_summary'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('live_status_value'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('showLive'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("edit === '1'"));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes("partials/demo"));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('proofLine'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/preview.ejs'), 'utf8').includes("partials/demo"));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/partials/header.ejs'), 'utf8').includes('header_live'));
+assert.ok(COPY.zh.live_boss_title);
+assert.ok(COPY.en.live_boss_title);
+assert.ok(COPY.zh.wechat_ph.includes('微信'));
+const { gapWhy, operatorListingSummary, formatLiveAt } = require('./fields');
+assert.ok(gapWhy({ why_zh: '还没有销售微信', why_en: 'No WeChat' }, 'zh').includes('微信'));
+assert.ok(gapWhy({ why_zh: '还没有销售微信', why_en: 'No WeChat' }, 'en').includes('WeChat'));
+assert.ok(operatorListingSummary({ company_name: '深圳某某', city: 'shenzhen', profile: { processes: ['5axis'] } }, 'zh').includes('深圳'));
+assert.ok(formatLiveAt('2026-09-15T12:00:00.000Z', 'zh').includes('2026'));
 
 const crypto = require('crypto');
 const {

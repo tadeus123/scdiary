@@ -34,6 +34,9 @@
       domain: preview.domain,
       capabilities: (preview.capabilities && preview.capabilities.length) ? preview.capabilities : (preview.demo && preview.demo.suppliers && preview.demo.suppliers[0] && preview.demo.suppliers[0].lines) || []
     }) %>
+    <% if (preview.demo) { %>
+      <%- include('partials/demo', { demo: preview.demo }) %>
+    <% } %>
     <form class="cn-form cn-signup" method="post" action="/airsup/china/start">
       <h2><%= t('activate') %></h2>
       <% if (error) { %>

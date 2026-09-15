@@ -42,6 +42,8 @@ function confirmChecklist(company) {
       field: row.field,
       keep: true,
       note: `Found on site${row.url ? ` (${row.url})` : ''}: ${row.quote || 'see source'}`.slice(0, 200),
+      note_zh: `网站上找到${row.url ? `（${row.url}）` : ''}：${row.quote || '见来源'}`.slice(0, 200),
+      note_en: `Found on site${row.url ? ` (${row.url})` : ''}: ${row.quote || 'see source'}`.slice(0, 200),
     }));
   const need = gaps.slice(0, 8).map((gap) => ({
     field: gap.field,

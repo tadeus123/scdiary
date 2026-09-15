@@ -33,6 +33,9 @@ const {
   companyTitle,
   fillEmptyCompany,
   enrichmentGaps,
+  gapWhy,
+  operatorListingSummary,
+  formatLiveAt,
 } = require('./fields');
 const { confirmChecklist } = require('./enrich');
 const { proofPayload, industryPeers, formatChartDay, liveRoster } = require('./proof');
@@ -643,12 +646,34 @@ function readSetup(body, company) {
   };
 }
 
+async function showLive(req, res, company) {
+  const lang = langFrom(req, res);
+  const record = endpointRecord(company);
+  return render(req, res, 'live.ejs', {
+    proof: await proof(),
+    company,
+    companyTitle: companyTitle(company, lang),
+    operatorSummary: operatorListingSummary(company, lang),
+    liveAtLabel: formatLiveAt(company.live_at, lang),
+    listingPreview: listingText(company),
+    buyerPrompt: buyerTestPrompt(company),
+    endpointPreview: record,
+    enrichmentGaps: enrichmentGaps(company),
+    gapWhy: (gap) => gapWhy(gap, lang),
+    headerLive: true,
+  });
+}
+
 async function showSetup(req, res, { company, error, saved, paused }) {
+  const lang = langFrom(req, res);
   const checklist = confirmChecklist(company);
+  const profile = normalizeProfile(company.profile);
+  const siteOpen = !canPublish(company)
+    || (!profile.processes.length && !profile.materials.length && !String(company.context || '').trim());
   return render(req, res, 'setup.ejs', {
     proof: await proof(),
     company,
-    profile: normalizeProfile(company.profile),
+    profile,
     actions: normalizeActions(company.actions),
     catalogs: { NICHES, CITIES, PROCESSES, MATERIALS, FINISHES, CERTS, ACTIONS, FLEX, CONTACT_SLOTS },
     error: error || null,
@@ -656,24 +681,21 @@ async function showSetup(req, res, { company, error, saved, paused }) {
     paused: Boolean(paused),
     enrichmentGaps: enrichmentGaps(company),
     confirmChecklist: checklist,
+    gapWhy: (gap) => gapWhy(gap, lang),
+    siteOpen,
+    headerLive: company.status === 'live',
   });
 }
 
 router.get('/setup', async (req, res) => {
   const company = await requireCompany(req, res);
   if (!company) return;
-  if (req.query.ok === 'live') {
-    const record = endpointRecord(company);
-    const checklist = confirmChecklist(company);
-    return render(req, res, 'live.ejs', {
-      proof: await proof(),
-      company,
-      listingPreview: listingText(company),
-      buyerPrompt: buyerTestPrompt(company),
-      endpointPreview: record,
-      enrichmentGaps: enrichmentGaps(company),
-      confirmChecklist: checklist,
-    });
+  const wantEdit = req.query.edit === '1' || req.query.error === 'publish' || req.query.saved === '1' || req.query.paused === '1';
+  if (company.status === 'live' && !wantEdit) {
+    return showLive(req, res, company);
+  }
+  if (req.query.ok === 'live' && company.status === 'live') {
+    return showLive(req, res, company);
   }
   return showSetup(req, res, {
     company,
@@ -692,6 +714,9 @@ router.post('/setup', async (req, res) => {
   const next = { ...company, ...patch };
   try {
     await db.updateCompany(company.company_id, patch);
+    if (company.status === 'live') {
+      return res.redirect('/airsup/china/setup?edit=1&saved=1');
+    }
     return res.redirect('/airsup/china/setup?saved=1');
   } catch (error) {
     console.error('Airsup china setup error:', error);

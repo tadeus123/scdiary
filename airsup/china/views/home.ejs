@@ -14,6 +14,9 @@
           <h1><%= t('hero_before') %><span class="cn-gpt-word">ChatGPT</span><%= t('hero_after') %></h1>
           <p class="cn-lead"><%= t('lead') %></p>
           <p class="cn-price"><%= t('price') %></p>
+          <% if (typeof proofLine !== 'undefined' && proofLine) { %>
+            <p class="cn-proof"><%= proofLine %></p>
+          <% } %>
           <div class="cn-hero-cta">
             <a class="cn-btn" href="#activate"><%= t('cta_activate') %> →</a>
             <a class="cn-btn-ghost" href="#how"><%= t('cta_how') %> →</a>
@@ -23,6 +26,13 @@
         <%- include('partials/diagram') %>
       </div>
     </section>
+
+    <% if (typeof genericDemo !== 'undefined' && genericDemo) { %>
+    <section class="cn-wrap" id="demo-sim" aria-labelledby="demo-sim-title">
+      <h2 id="demo-sim-title"><%= t('chat_frame') %></h2>
+      <%- include('partials/demo', { demo: genericDemo }) %>
+    </section>
+    <% } %>
 
     <section class="cn-band" id="why">
       <div class="cn-wrap">

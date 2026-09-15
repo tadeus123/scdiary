@@ -15,7 +15,11 @@
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M1.5 7h11M7 1.5c2 2.2 2 8.8 0 11M7 1.5c-2 2.2-2 8.8 0 11" stroke="currentColor" stroke-width="1.2"/></svg>
       <%= t('other_lang') %>
     </a>
-      <a class="cn-btn cn-btn-nav" href="/airsup/china#activate"><%= t('cta_activate') %></a>
+      <% if (typeof headerLive !== 'undefined' && headerLive) { %>
+        <a class="cn-btn cn-btn-nav" href="/airsup/china/setup"><%= t('header_live') %></a>
+      <% } else { %>
+        <a class="cn-btn cn-btn-nav" href="/airsup/china#activate"><%= t('cta_activate') %></a>
+      <% } %>
       <% if (typeof landing !== 'undefined' && landing) { %>
         <button class="cn-burger" type="button" id="cn-burger" aria-expanded="false" aria-controls="cn-nav" aria-label="<%= t('menu') %>"><span></span><span></span><span></span></button>
       <% } %>

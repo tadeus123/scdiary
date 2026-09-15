@@ -12,9 +12,41 @@
     <p class="cn-lead"><%= t('live_lead') %></p>
     <p class="cn-proof"><%= proofLine %></p>
 
+    <section class="cn-found" aria-labelledby="live-boss-title">
+      <h2 id="live-boss-title" class="cn-live-h2"><%= t('live_boss_title') %></h2>
+      <p class="cn-lead"><%= t('live_boss_found') %></p>
+      <table class="cn-spec">
+        <tbody>
+          <tr><th><%= lang === 'en' ? 'Company' : '公司' %></th><td><%= companyTitle %></td></tr>
+          <tr><th><%= t('live_boss_domain') %></th><td><%= company.domain %></td></tr>
+          <tr><th><%= t('live_boss_email') %></th><td><%= company.contact_email %></td></tr>
+          <% if (liveAtLabel) { %>
+            <tr><th><%= t('live_boss_since') %></th><td><%= liveAtLabel %></td></tr>
+          <% } %>
+          <tr><th><%= t('live_status_label') %></th><td><%= t('live_status_value') %></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="cn-live-test" aria-labelledby="live-summary-title">
+      <h2 id="live-summary-title" class="cn-live-h2"><%= t('live_summary_title') %></h2>
+      <p class="cn-muted"><%= t('live_summary_lead') %></p>
+      <p class="cn-lead"><%= operatorSummary %></p>
+    </section>
+
+    <section class="cn-live-test" aria-labelledby="live-next-title">
+      <h2 id="live-next-title" class="cn-live-h2"><%= t('live_next_title') %></h2>
+      <ul class="cn-muted">
+        <li><%= t('live_next_1') %></li>
+        <li><%= t('live_next_2') %></li>
+        <li><%= t('live_next_3') %></li>
+      </ul>
+    </section>
+
     <section class="cn-live-test" aria-labelledby="live-test-title">
       <h2 id="live-test-title" class="cn-live-h2"><%= t('live_test_title') %></h2>
       <p class="cn-muted"><%= t('live_test_lead') %></p>
+      <p class="cn-note"><%= t('live_en_prompt_note') %></p>
       <pre class="cn-live-prompt" id="live-buyer-prompt"><%= buyerPrompt %></pre>
       <button type="button" class="cn-btn-ghost" id="live-copy-prompt"><%= t('live_test_copy') %></button>
     </section>
@@ -22,29 +54,24 @@
     <section class="cn-live-listing" aria-labelledby="live-listing-title">
       <h2 id="live-listing-title" class="cn-live-h2"><%= t('live_listing_title') %></h2>
       <p class="cn-muted"><%= t('live_listing_lead') %></p>
+      <p class="cn-note"><%= t('live_en_listing_note') %></p>
       <pre class="cn-live-listing-text"><%= listingPreview %></pre>
     </section>
 
     <% if (typeof enrichmentGaps !== 'undefined' && enrichmentGaps && enrichmentGaps.length) { %>
-      <section class="cn-live-test" aria-labelledby="enrich-gaps-title">
-        <h2 id="enrich-gaps-title" class="cn-live-h2"><%= t('enrich_gaps_title') %></h2>
+      <details class="cn-more">
+        <summary><%= t('live_gaps_summary') %></summary>
         <p class="cn-muted"><%= t('enrich_gaps_lead') %></p>
         <ul class="cn-muted">
           <% enrichmentGaps.slice(0, 6).forEach(function (gap) { %>
-            <li><%= t('enrich_need_prefix') %> <%= gap.why %></li>
+            <li><%= t('enrich_need_prefix') %> <%= gapWhy(gap) %></li>
           <% }) %>
         </ul>
-      </section>
+        <p><a class="cn-text-link" href="/airsup/china/setup?edit=1"><%= t('live_edit') %></a></p>
+      </details>
     <% } %>
 
-    <table class="cn-spec">
-      <tbody>
-        <tr><th><%= lang === 'en' ? 'Domain' : '域名' %></th><td><%= company.domain %></td></tr>
-        <tr><th><%= lang === 'en' ? 'Email' : '邮箱' %></th><td><%= company.contact_email %></td></tr>
-        <tr><th><%= lang === 'en' ? 'Status' : '状态' %></th><td>live</td></tr>
-      </tbody>
-    </table>
-    <p><a class="cn-text-link" href="/airsup/china/setup"><%= t('live_edit') %></a></p>
+    <p><a class="cn-text-link" href="/airsup/china/setup?edit=1"><%= t('live_edit') %></a></p>
   </main>
   <%- include('partials/footer') %>
   <script>

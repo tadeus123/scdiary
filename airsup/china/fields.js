@@ -392,14 +392,115 @@ function countFilledBuyerFields(company) {
 function enrichmentGaps(company) {
   const profile = normalizeProfile(company && company.profile);
   const gaps = [];
-  if (!profile.processes.length && !profile.materials.length) gaps.push({ field: 'capabilities', why: 'No processes or materials listed' });
-  if (!profile.machines) gaps.push({ field: 'machines', why: 'No machines listed for ChatGPT answers' });
-  if (!profile.certifications.length) gaps.push({ field: 'certifications', why: 'No certifications listed' });
-  if (!profile.moq) gaps.push({ field: 'moq', why: 'No MOQ listed' });
-  if (!profile.lead_time && !profile.sample_lead) gaps.push({ field: 'lead_time', why: 'No lead time or sample lead listed' });
-  if (!listedContacts(profile.contacts).length) gaps.push({ field: 'wechat', why: 'No WeChat contact for sales follow-up' });
-  if (!profile.export_markets) gaps.push({ field: 'export_markets', why: 'No export markets listed' });
+  if (!profile.processes.length && !profile.materials.length) {
+    gaps.push({
+      field: 'capabilities',
+      why: 'No processes or materials listed',
+      why_zh: '还没有工艺或材料，采购问起来不好答',
+      why_en: 'No processes or materials listed',
+    });
+  }
+  if (!profile.machines) {
+    gaps.push({
+      field: 'machines',
+      why: 'No machines listed for ChatGPT answers',
+      why_zh: '还没有设备清单，ChatGPT 不好说清产能',
+      why_en: 'No machines listed for ChatGPT answers',
+    });
+  }
+  if (!profile.certifications.length) {
+    gaps.push({
+      field: 'certifications',
+      why: 'No certifications listed',
+      why_zh: '还没有认证信息',
+      why_en: 'No certifications listed',
+    });
+  }
+  if (!profile.moq) {
+    gaps.push({
+      field: 'moq',
+      why: 'No MOQ listed',
+      why_zh: '还没有起订量',
+      why_en: 'No MOQ listed',
+    });
+  }
+  if (!profile.lead_time && !profile.sample_lead) {
+    gaps.push({
+      field: 'lead_time',
+      why: 'No lead time or sample lead listed',
+      why_zh: '还没有交期或最快样品周期',
+      why_en: 'No lead time or sample lead listed',
+    });
+  }
+  if (!listedContacts(profile.contacts).length) {
+    gaps.push({
+      field: 'wechat',
+      why: 'No WeChat contact for sales follow-up',
+      why_zh: '还没有销售微信，跟进采购会慢',
+      why_en: 'No WeChat contact for sales follow-up',
+    });
+  }
+  if (!profile.export_markets) {
+    gaps.push({
+      field: 'export_markets',
+      why: 'No export markets listed',
+      why_zh: '还没有出口市场',
+      why_en: 'No export markets listed',
+    });
+  }
   return gaps;
+}
+
+function gapWhy(gap, lang) {
+  if (!gap) return '';
+  if (lang === 'en') return String(gap.why_en || gap.why || '');
+  return String(gap.why_zh || gap.why || '');
+}
+
+function operatorListingSummary(company, lang) {
+  const profile = normalizeProfile(company && company.profile);
+  const city = displayCity(company, lang === 'en' ? 'en' : 'zh');
+  const name = companyTitle(company, lang === 'en' ? 'en' : 'zh');
+  const niche = labelsFor([company && company.niche], NICHES, lang === 'en' ? 'en' : 'zh')[0] || '';
+  const processes = labelsFor(profile.processes.slice(0, 4), PROCESSES, lang === 'en' ? 'en' : 'zh');
+  const certs = labelsFor(profile.certifications.slice(0, 3), CERTS, lang === 'en' ? 'en' : 'zh');
+  const wechat = listedContacts(profile.contacts).length;
+  if (lang === 'en') {
+    const bits = [
+      name,
+      city ? `in ${city}` : '',
+      niche ? `(${niche})` : '',
+      processes.length ? `Processes: ${processes.join(', ')}.` : '',
+      certs.length ? `Certs: ${certs.join(', ')}.` : '',
+      profile.moq ? `MOQ: ${profile.moq}.` : '',
+      wechat ? 'WeChat contacts published.' : 'WeChat not published yet.',
+      'Qualified inquiries go to your verified company email.',
+    ];
+    return bits.filter(Boolean).join(' ');
+  }
+  const bits = [
+    name,
+    city ? `· ${city}` : '',
+    niche ? `· ${niche}` : '',
+    processes.length ? `工艺：${processes.join('、')}。` : '',
+    certs.length ? `认证：${certs.join('、')}。` : '',
+    profile.moq ? `起订量：${profile.moq}。` : '',
+    wechat ? '已发布销售微信。' : '尚未发布微信。',
+    '合格询盘会发到你们已验证的企业邮箱。',
+  ];
+  return bits.filter(Boolean).join(' ');
+}
+
+function formatLiveAt(iso, lang) {
+  const raw = String(iso || '').trim();
+  if (!raw) return '';
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return raw.slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  if (lang === 'en') return `${y}-${m}-${day}`;
+  return `${y}年${m}月${day}日`;
 }
 
 module.exports = {
@@ -425,6 +526,9 @@ module.exports = {
   mergeEnrichment,
   countFilledBuyerFields,
   enrichmentGaps,
+  gapWhy,
+  operatorListingSummary,
+  formatLiveAt,
   cityLabel,
   displayCity,
   companyTitle,
