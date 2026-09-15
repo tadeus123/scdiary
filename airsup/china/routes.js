@@ -224,8 +224,18 @@ router.get(['/', ''], async (req, res) => {
     error: null,
     cities: CITIES,
     source: String(req.query.ref || 'web').slice(0, 40),
-    genericDemo: genericDemo(langFrom(req, res)),
-    showWechatQr: fs.existsSync(path.join(__dirname, 'public', 'wechat-ops.png')),
+  });
+});
+
+router.get('/privacy', async (req, res) => {
+  setSeo(req, res, {
+    title: t(langFrom(req, res), 'privacy_page_title'),
+    description: t(langFrom(req, res), 'privacy_who_d'),
+    noindex: false,
+  });
+  render(req, res, 'privacy.ejs', {
+    proof: await proof(),
+    landing: false,
   });
 });
 
@@ -248,7 +258,6 @@ async function renderPreview(req, res, { website, form, error, source }) {
       error: t(lang, built.error || 'err_website'),
       cities: CITIES,
       source: source || 'web',
-      genericDemo: genericDemo(lang),
     });
   }
   const nextForm = form || { website: built.website, email: '', contact: '', city: built.cityId || 'shenzhen' };

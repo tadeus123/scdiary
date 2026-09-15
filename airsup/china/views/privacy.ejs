@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="<%= lang === 'en' ? 'en' : 'zh-CN' %>">
+<head>
+  <meta charset="UTF-8">
+  <%- include('partials/head') %>
+</head>
+<body class="cn-body">
+  <%- include('partials/header') %>
+  <main class="cn-wrap cn-inner">
+    <p><a class="cn-text-link" href="/airsup/china"><%= t('preview_back') %></a></p>
+    <h1><%= t('privacy_page_title') %></h1>
+    <p class="cn-meta"><%= t('privacy_updated') %></p>
+    <h2><%= t('privacy_who_t') %></h2>
+    <p class="cn-note"><%= t('privacy_who_d') %></p>
+    <h2><%= t('privacy_read_t') %></h2>
+    <p class="cn-note"><%= t('privacy_read_d') %></p>
+    <h2><%= t('privacy_publish_t') %></h2>
+    <p class="cn-note"><%= t('privacy_publish_d') %></p>
+    <h2><%= t('privacy_inquiry_t') %></h2>
+    <p class="cn-note"><%= t('privacy_inquiry_d') %></p>
+    <h2><%= t('privacy_store_t') %></h2>
+    <p class="cn-note"><%= t('privacy_store_d') %></p>
+    <h2><%= t('privacy_train_t') %></h2>
+    <p class="cn-note"><%= t('privacy_train_d') %></p>
+    <h2><%= t('privacy_rights_t') %></h2>
+    <p class="cn-note"><%= t('privacy_rights_d') %></p>
+    <p class="cn-note"><a href="mailto:hello@tademehl.com">hello@tademehl.com</a></p>
+  </main>
+  <%- include('partials/footer') %>
+</body>
+</html>

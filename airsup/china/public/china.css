@@ -103,6 +103,51 @@ h3 {
   color: #3b2a24;
 }
 
+.cn-factory-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.85rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.cn-factory-card {
+  padding: 0.9rem 1rem;
+  border: 1px solid #e6dccb;
+  border-radius: 10px;
+  background: #faf6ef;
+}
+
+.cn-factory-card strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #3b2a24;
+}
+
+.cn-factory-card p {
+  margin: 0.2rem 0;
+  font-size: 0.92rem;
+}
+
+.cn-hero-form {
+  margin: 0.85rem 0 0.35rem;
+  max-width: 28rem;
+}
+
+.cn-what-list {
+  margin: 0.75rem 0 1rem;
+  padding-left: 1.1rem;
+}
+
+.cn-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 800px) {
+  .cn-three {
+    grid-template-columns: 1fr;
+  }
+}
+
 .cn-price {
   margin: 0 0 1.15rem;
   color: #7a1e2b;
