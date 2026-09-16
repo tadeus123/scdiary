@@ -1,6 +1,9 @@
 const { listingText, scorePerson, matchDescription } = require('./listing');
 const { publicDisplayName } = require('./directory');
 
+const MATCHES_NOTE =
+  'matches is a relevance-ranked search sample capped by maximum_results, not a complete directory. For factory totals, use live_factories_total.';
+
 function personView(row) {
   if (!row) return null;
   const listing = row.listing && typeof row.listing === 'object' ? row.listing : {};
@@ -23,10 +26,27 @@ function personView(row) {
   };
 }
 
+async function liveFactoriesTotal() {
+  try {
+    const chinaFind = require('./china/find');
+    return await chinaFind.countLive();
+  } catch (error) {
+    console.error('Airsup china live count skipped:', error.message);
+    return 0;
+  }
+}
+
 async function findPeople(store, { callerPersonId, query, maximumResults }) {
   const q = String(query || '').trim();
   const limit = Math.min(Math.max(Number(maximumResults) || 5, 1), 50);
-  if (!q) return { matches: [] };
+  const total = await liveFactoriesTotal();
+  if (!q) {
+    return {
+      matches: [],
+      live_factories_total: total,
+      matches_note: MATCHES_NOTE,
+    };
+  }
   const rows = (await store.listPeople())
     .map(personView)
     .filter((person) => person.person_id !== callerPersonId && String(person.email || '').trim() && person.contactable);
@@ -57,12 +77,20 @@ async function findPeople(store, { callerPersonId, query, maximumResults }) {
       name: row.name,
       ...(row.description ? { description: row.description } : {}),
     }));
-    return { matches: mergeMatches(matches, companies, limit) };
+    return {
+      matches: mergeMatches(matches, companies, limit),
+      live_factories_total: total,
+      matches_note: MATCHES_NOTE,
+    };
   } catch (error) {
     console.error('Airsup china find skipped:', error.message);
   }
   // AIRSUP-CHINA-END
-  return { matches };
+  return {
+    matches,
+    live_factories_total: total,
+    matches_note: MATCHES_NOTE,
+  };
 }
 
 function mergeMatches(peopleMatches, companyMatches, limit) {
@@ -80,4 +108,5 @@ module.exports = {
   findPeople,
   personView,
   mergeMatches,
+  MATCHES_NOTE,
 };

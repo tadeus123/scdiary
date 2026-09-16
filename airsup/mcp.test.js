@@ -49,6 +49,10 @@ const { wakeBody, wakeSubject } = require('./mail');
   });
   const found = await mcp.callTool('find_people', tade, { query: 'Anna' });
   assert.strictEqual(found.matches[0].person_id, anna.person_id);
+  assert.ok(Number.isInteger(found.live_factories_total));
+  assert.ok(String(found.matches_note || '').includes('live_factories_total'));
+  assert.ok(toolList().tools[0].description.includes('live_factories_total'));
+  assert.ok(toolList().tools[0].outputSchema.required.includes('live_factories_total'));
 
   const body = wakeBody({
     conversationId: 'conv-1',

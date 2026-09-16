@@ -33,6 +33,10 @@ const { toolList } = require('./mcp');
   assert.strictEqual(named.matches.length, 1);
   assert.strictEqual(named.matches[0].person_id, anna.person_id);
   assert.strictEqual(named.matches[0].name, 'Anna Schmidt');
+  assert.ok(Number.isInteger(named.live_factories_total));
+  assert.ok(String(named.matches_note || '').includes('live_factories_total'));
+  assert.ok(toolList().tools[0].outputSchema.required.includes('live_factories_total'));
+  assert.ok(toolList().tools[0].description.includes('live_factories_total'));
 
   await store.upsertPerson({
     googleId: 'g-anna',

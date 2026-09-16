@@ -8,10 +8,15 @@ function tokens(value) {
     .filter((word) => word.length > 1);
 }
 
+function isBroadFactoryQuery(query) {
+  return /\b(factor(?:y|ies)?|supplier|manufactur|cnc|pcba|smt|mold|injection|machin|sheet\s*metal|谁|厂家|工厂|制造商|供应商|注塑|模具)\b/i.test(
+    String(query || '')
+  );
+}
+
 function scoreCompany(company, query) {
   const hay = listingText(company).toLowerCase();
   const needles = tokens(query);
-  if (!needles.length) return 0;
   let hits = 0;
   for (const word of needles) {
     if (hay.includes(word)) hits += 1;
@@ -20,6 +25,8 @@ function scoreCompany(company, query) {
   for (const word of extra) {
     if (String(query || '').toLowerCase().includes(word) && hay.includes(word)) hits += 1;
   }
+  // Broad “who can I talk to / factories” queries should still surface live endpoints.
+  if (!hits && isBroadFactoryQuery(query)) hits = 1;
   return hits;
 }
 
@@ -41,6 +48,17 @@ function matchView(company, query) {
   };
 }
 
+async function countLive() {
+  if (!db.isConfigured()) return 0;
+  try {
+    const rows = await db.listLive();
+    return Array.isArray(rows) ? rows.length : 0;
+  } catch (error) {
+    console.error('Airsup china live count skipped:', error.message);
+    return 0;
+  }
+}
+
 async function findForPlugin({ query, limit, excludeIds }) {
   if (!db.isConfigured()) return [];
   const q = String(query || '').trim();
@@ -58,5 +76,7 @@ async function findForPlugin({ query, limit, excludeIds }) {
 module.exports = {
   tokens,
   scoreCompany,
+  isBroadFactoryQuery,
+  countLive,
   findForPlugin,
 };

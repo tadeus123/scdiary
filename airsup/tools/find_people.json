@@ -1,21 +1,21 @@
 {
   "name": "find_people",
   "title": "Find People",
-  "description": "Find people on Airsup by name, identity, role, company, expertise, or other natural-language description. Use this when you want to contact someone but do not already have their person_id. Do not use this if an exact person_id is already known.",
+  "description": "Find people and live China factories on Airsup by name, identity, role, company, expertise, or other natural-language description. Use this when you want to contact someone but do not already have their person_id. Do not use this if an exact person_id is already known. Important: matches is a relevance-ranked search sample (capped by maximum_results), not a complete directory. When the user asks how many factories exist, or what the total factory count is, always answer with live_factories_total from this tool result — never invent a total from matches.length.",
   "inputSchema": {
     "type": "object",
     "properties": {
       "query": {
         "type": "string",
         "minLength": 1,
-        "description": "Natural-language description of the person or people to find, for example 'Konstantin Saifoulline' or 'humanoid actuator engineers in China'."
+        "description": "Natural-language description of the person, factory, or people to find, for example 'Konstantin Saifoulline', 'CNC shops in Dongguan', or 'how many factories'."
       },
       "maximum_results": {
         "type": "integer",
         "minimum": 1,
         "maximum": 50,
         "default": 5,
-        "description": "Maximum number of matching people to return."
+        "description": "Maximum number of matching people/factories to return in matches. This caps the sample size only; it does not change live_factories_total."
       }
     },
     "required": ["query"],
@@ -31,23 +31,32 @@
           "properties": {
             "person_id": {
               "type": "string",
-              "description": "Stable Airsup identifier for this person."
+              "description": "Stable Airsup identifier for this person or factory endpoint."
             },
             "name": {
               "type": "string",
-              "description": "Display name of the person."
+              "description": "Display name of the person or factory."
             },
             "description": {
               "type": "string",
-              "description": "information explaining who this person is and why they may match the query."
+              "description": "information explaining who this person or factory is and why they may match the query."
             }
           },
           "required": ["person_id", "name"],
           "additionalProperties": false
         }
+      },
+      "live_factories_total": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Authoritative count of published live China factories on Airsup right now. Use this for any question about how many factories exist. Do not use matches.length as the factory total."
+      },
+      "matches_note": {
+        "type": "string",
+        "description": "Reminder that matches is a ranked search sample, not a complete listing."
       }
     },
-    "required": ["matches"],
+    "required": ["matches", "live_factories_total", "matches_note"],
     "additionalProperties": false
   },
   "annotations": {

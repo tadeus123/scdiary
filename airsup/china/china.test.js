@@ -6,6 +6,12 @@ const { proofLines, proofPayload, industryPeers, liveSeries, formatChartDay, cha
 const { canPublish, normalizeProfile, mapCityId, fillEmptyCompany, listedContacts, buyerTestPrompt } = require('./fields');
 const { extractSiteEmails } = require('./site-preview');
 const { verifyMail } = require('./mail');
+const { isBroadFactoryQuery, scoreCompany } = require('./find');
+
+assert.ok(isBroadFactoryQuery('how many factories'));
+assert.ok(isBroadFactoryQuery('CNC shops in Dongguan'));
+assert.ok(!isBroadFactoryQuery('Anna Schmidt tango'));
+assert.ok(scoreCompany({ company_name: 'Acme', domain: 'acme.com', niche: 'cnc', profile: {} }, 'factories') > 0);
 
 assert.strictEqual(normalizeDomain('https://www.WayKenRM.com/cnc'), 'waykenrm.com');
 assert.strictEqual(domainMatches('https://www.waykenrm.com', 'sales@waykenrm.com').ok, true);
