@@ -114,9 +114,9 @@
                 <text class="cn-chart-x" x="<%= label.x %>" y="<%= proof.chart.height - 12 %>" text-anchor="<%= label.last ? 'end' : 'middle' %>"><%= formatChartDay(label.day) %></text>
               <% } %>
             <% }) %>
-            <g class="cn-chart-focus" hidden>
-              <line class="cn-chart-guide" y1="<%= proof.chart.top %>" y2="<%= proof.chart.baseline %>"></line>
-              <circle class="cn-chart-dot" r="4.5"></circle>
+            <g class="cn-chart-focus">
+              <line class="cn-chart-guide" x1="0" x2="0" y1="<%= proof.chart.top %>" y2="<%= proof.chart.baseline %>"></line>
+              <circle class="cn-chart-dot" cx="0" cy="0" r="4.5"></circle>
             </g>
             <rect class="cn-chart-hit" x="<%= proof.chart.left %>" y="<%= proof.chart.top %>" width="<%= proof.chart.innerW %>" height="<%= proof.chart.innerH %>" fill="transparent"></rect>
           </svg>
@@ -151,7 +151,7 @@
           return best;
         }
         function show(point, clientX) {
-          focus.removeAttribute('hidden');
+          focus.classList.add('is-on');
           tip.hidden = false;
           guide.setAttribute('x1', point.x);
           guide.setAttribute('x2', point.x);
@@ -165,7 +165,7 @@
           tip.style.top = Math.max(8, ((point.y / svg.viewBox.baseVal.height) * stage.height) - 36) + 'px';
         }
         function hide() {
-          focus.setAttribute('hidden', '');
+          focus.classList.remove('is-on');
           tip.hidden = true;
         }
         hit.addEventListener('mousemove', function (event) { show(nearest(event.clientX), event.clientX); });

@@ -1341,6 +1341,15 @@ h3 {
   cursor: crosshair;
 }
 
+.cn-chart-focus {
+  display: none;
+  pointer-events: none;
+}
+
+.cn-chart-focus.is-on {
+  display: block;
+}
+
 .cn-chart-guide {
   stroke: #7a1e2b;
   stroke-width: 1;
