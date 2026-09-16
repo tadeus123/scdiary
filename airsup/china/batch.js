@@ -1,20 +1,20 @@
 const { maybeHandle, isCompanyId } = require('./talk');
 const { companyTitle } = require('./fields');
-const { MAX_TARGETS, stripPrefix } = require('./targets');
+const { MAX_TARGETS, parseTarget, stripPrefix } = require('./targets');
 
 const MAX_BATCH = MAX_TARGETS;
 const CONCURRENCY = 32;
 const PEOPLE_FAIL_REPLY =
   'Multi-target send_message is for live factory endpoints and conversation continues only. Use a single send_message for people.';
 
-function normalizeIds(personIds) {
+function normalizeIds(list) {
   const seen = new Set();
   const ids = [];
-  for (const raw of Array.isArray(personIds) ? personIds : []) {
-    const id = stripPrefix(raw);
-    if (!id || seen.has(id)) continue;
-    seen.add(id);
-    ids.push(id);
+  for (const raw of Array.isArray(list) ? list : []) {
+    const row = parseTarget(raw);
+    if (!row || !row.id || seen.has(row.id)) continue;
+    seen.add(row.id);
+    ids.push(row);
   }
   return ids;
 }
@@ -36,8 +36,9 @@ async function mapPool(items, concurrency, worker) {
 }
 
 function slotFailed(target, reply) {
+  const id = typeof target === 'object' && target ? target.id : target;
   return {
-    to: target,
+    to: String(id || ''),
     person_id: '',
     name: '',
     conversation_id: '',
@@ -47,6 +48,7 @@ function slotFailed(target, reply) {
 }
 
 function slotFromHandle(target, handled, company) {
+  const id = typeof target === 'object' && target ? target.id : target;
   const name = company
     ? (companyTitle(company, 'en') || company.domain || '')
     : ((handled && handled._panel && handled._panel.other && handled._panel.other.name) || '');
@@ -55,7 +57,7 @@ function slotFromHandle(target, handled, company) {
     ? company.company_id
     : ((handled && handled._panel && handled._panel.other && handled._panel.other.person_id) || '');
   return {
-    to: target,
+    to: String(id || ''),
     person_id: String(personId || ''),
     name: String(name || ''),
     conversation_id: conversationId,
@@ -64,15 +66,12 @@ function slotFromHandle(target, handled, company) {
   };
 }
 
-function looksLikeConversationId(id) {
-  return String(id || '').trim().startsWith('cn_');
-}
-
 async function runOneTarget(caller, target, message, deps) {
-  const id = stripPrefix(target);
-  if (!id) return slotFailed(target, null);
+  const row = parseTarget(target);
+  if (!row || !row.id) return slotFailed(target, null);
+  const { id, mode } = row;
 
-  if (looksLikeConversationId(id)) {
+  if (mode === 'conversation' || id.startsWith('cn_')) {
     const handled = await maybeHandle(caller, { conversation_id: id, message }, deps);
     if (!handled) {
       return slotFailed(id, 'Unknown or inaccessible conversation.');
@@ -80,22 +79,30 @@ async function runOneTarget(caller, target, message, deps) {
     return slotFromHandle(id, handled, null);
   }
 
+  if (mode === 'person') {
+    return slotFailed(id, PEOPLE_FAIL_REPLY);
+  }
+
   const company = await isCompanyId(id, deps);
   if (!company) {
     return slotFailed(id, PEOPLE_FAIL_REPLY);
   }
-  const handled = await maybeHandle(caller, { person_id: id, message }, deps);
-  if (!handled) {
-    return slotFailed(id, PEOPLE_FAIL_REPLY);
+  if (mode === 'factory' || mode === 'auto') {
+    const handled = await maybeHandle(caller, { person_id: id, message }, deps);
+    if (!handled) {
+      return slotFailed(id, PEOPLE_FAIL_REPLY);
+    }
+    let companyRow = null;
+    try {
+      const store = (deps && deps.db) || require('./db');
+      companyRow = await store.getById(id);
+    } catch {
+      companyRow = null;
+    }
+    return slotFromHandle(id, handled, companyRow);
   }
-  let companyRow = null;
-  try {
-    const store = (deps && deps.db) || require('./db');
-    companyRow = await store.getById(id);
-  } catch {
-    companyRow = null;
-  }
-  return slotFromHandle(id, handled, companyRow);
+
+  return slotFailed(id, null);
 }
 
 async function sendToMany(caller, { targets, message }, deps) {
@@ -147,4 +154,5 @@ module.exports = {
   sendBatch,
   sendToMany,
   PEOPLE_FAIL_REPLY,
+  stripPrefix,
 };

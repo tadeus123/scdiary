@@ -1,23 +1,46 @@
 const MAX_TARGETS = 1000;
 
-function stripPrefix(raw) {
+function parseTarget(raw) {
+  if (raw && typeof raw === 'object' && raw.id) {
+    const id = String(raw.id || '').trim();
+    if (!id) return null;
+    let mode = ['conversation', 'factory', 'person', 'auto'].includes(raw.mode) ? raw.mode : 'auto';
+    if (id.startsWith('cn_')) mode = 'conversation';
+    return { id, mode };
+  }
   const s = String(raw || '').trim();
-  if (!s) return '';
+  if (!s) return null;
   const lower = s.toLowerCase();
-  if (lower.startsWith('conversation:')) return s.slice('conversation:'.length).trim();
-  if (lower.startsWith('factory:')) return s.slice('factory:'.length).trim();
-  if (lower.startsWith('person:')) return s.slice('person:'.length).trim();
-  return s;
+  if (lower.startsWith('conversation:')) {
+    const id = s.slice('conversation:'.length).trim();
+    return id ? { id, mode: 'conversation' } : null;
+  }
+  if (lower.startsWith('factory:')) {
+    const id = s.slice('factory:'.length).trim();
+    return id ? { id, mode: 'factory' } : null;
+  }
+  if (lower.startsWith('person:')) {
+    const id = s.slice('person:'.length).trim();
+    return id ? { id, mode: 'person' } : null;
+  }
+  if (s.startsWith('cn_')) return { id: s, mode: 'conversation' };
+  return { id: s, mode: 'auto' };
+}
+
+/** @deprecated use parseTarget */
+function stripPrefix(raw) {
+  const row = parseTarget(raw);
+  return row ? row.id : '';
 }
 
 function dedupeTargets(list) {
   const seen = new Set();
   const out = [];
-  for (const raw of list) {
-    const id = stripPrefix(raw);
-    if (!id || seen.has(id)) continue;
-    seen.add(id);
-    out.push(id);
+  for (const raw of Array.isArray(list) ? list : []) {
+    const row = parseTarget(raw);
+    if (!row || !row.id || seen.has(row.id)) continue;
+    seen.add(row.id);
+    out.push(row);
   }
   return out;
 }
@@ -31,7 +54,7 @@ function hasLegacyAddress(args) {
 }
 
 /**
- * Normalize send_message args into { targets, message, error? }.
+ * Normalize send_message args into { targets: [{id, mode}], message, error? }.
  * Prefer `to`; legacy person_id / person_ids / conversation_id remain aliases.
  */
 function normalizeSendArgs(args) {
@@ -63,7 +86,7 @@ function normalizeSendArgs(args) {
     const conversationId = String((args && args.conversation_id) || '').trim();
     const personId = String((args && args.person_id) || '').trim();
     // conversation_id wins when both legacy singles are set
-    if (conversationId) targets = dedupeTargets([conversationId]);
+    if (conversationId) targets = [{ id: conversationId, mode: 'conversation' }];
     else if (personId) targets = dedupeTargets([personId]);
   }
 
@@ -83,13 +106,14 @@ function normalizeSendArgs(args) {
   return { targets, message };
 }
 
-function isConversationTarget(id) {
-  const raw = String(id || '').trim();
-  return raw.startsWith('cn_') || raw.toLowerCase().startsWith('conversation:');
+function isConversationTarget(idOrRow) {
+  const row = parseTarget(idOrRow);
+  return Boolean(row && (row.mode === 'conversation' || String(row.id).startsWith('cn_')));
 }
 
 module.exports = {
   MAX_TARGETS,
+  parseTarget,
   stripPrefix,
   dedupeTargets,
   normalizeSendArgs,

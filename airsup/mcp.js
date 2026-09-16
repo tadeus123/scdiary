@@ -155,15 +155,19 @@ function createMcp({ store, mailer, sleep } = {}) {
         });
       }
       const target = normalized.targets[0];
+      const targetId = target && target.id ? target.id : String(target || '');
+      const mode = target && target.mode ? target.mode : (targetId.startsWith('cn_') ? 'conversation' : 'auto');
       let singleArgs = { message: normalized.message };
-      if (String(target).startsWith('cn_')) {
-        singleArgs.conversation_id = target;
+      if (mode === 'conversation' || targetId.startsWith('cn_')) {
+        singleArgs.conversation_id = targetId;
+      } else if (mode === 'person' || mode === 'factory') {
+        singleArgs.person_id = targetId;
       } else {
-        singleArgs.person_id = target;
+        singleArgs.person_id = targetId;
         try {
-          const existing = await backing.getConversation(target);
+          const existing = await backing.getConversation(targetId);
           if (existing) {
-            singleArgs = { conversation_id: target, message: normalized.message };
+            singleArgs = { conversation_id: targetId, message: normalized.message };
           }
         } catch {
           // not a people conversation id

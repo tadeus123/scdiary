@@ -1062,13 +1062,29 @@ function memoryChina(companies) {
   assert.ok(mixedFollow.results[2].conversation_id.startsWith(CONV_PREFIX));
 
   const singleNorm = normalizeSendArgs({ to: [factory.company_id], message: 'hi' });
-  assert.deepStrictEqual(singleNorm.targets, [factory.company_id]);
+  assert.strictEqual(singleNorm.targets.length, 1);
+  assert.strictEqual(singleNorm.targets[0].id, factory.company_id);
+  assert.strictEqual(singleNorm.targets[0].mode, 'auto');
   const legacyConvWins = normalizeSendArgs({
     person_id: factory.company_id,
     conversation_id: 'cn_abc',
     message: 'x',
   });
-  assert.deepStrictEqual(legacyConvWins.targets, ['cn_abc']);
+  assert.strictEqual(legacyConvWins.targets[0].id, 'cn_abc');
+  assert.strictEqual(legacyConvWins.targets[0].mode, 'conversation');
+  const prefixed = normalizeSendArgs({
+    to: [`conversation:${cnA}`, `factory:${f3.company_id}`],
+    message: 'prefixed follow-up',
+  });
+  assert.strictEqual(prefixed.targets[0].mode, 'conversation');
+  assert.strictEqual(prefixed.targets[0].id, cnA);
+  assert.strictEqual(prefixed.targets[1].mode, 'factory');
+  const prefixedSend = await sendToMany(caller, {
+    targets: prefixed.targets,
+    message: 'prefixed follow-up',
+  }, batchDeps);
+  assert.strictEqual(prefixedSend.completed, 2);
+  assert.strictEqual(prefixedSend.results[0].conversation_id, cnA);
   const mixErr = normalizeSendArgs({
     to: [factory.company_id],
     person_id: f2.company_id,
