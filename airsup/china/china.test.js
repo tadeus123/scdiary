@@ -998,7 +998,8 @@ function memoryChina(companies) {
   assert.deepStrictEqual(failThread.notify_reasons || [], []);
   assert.ok(!failThread.emailed_at);
 
-  const { sendBatch, MAX_BATCH, mapPool, PEOPLE_FAIL_REPLY } = require('./batch');
+  const { sendBatch, sendToMany, MAX_BATCH, mapPool, PEOPLE_FAIL_REPLY } = require('./batch');
+  const { normalizeSendArgs } = require('./targets');
   const f2 = {
     ...factory,
     company_id: '22222222-2222-2222-2222-222222222222',
@@ -1041,6 +1042,40 @@ function memoryChina(companies) {
   assert.strictEqual(batch.results[1].person_id, f2.company_id);
   assert.strictEqual(batch.results[2].person_id, f3.company_id);
 
+  const viaTo = await sendToMany(caller, {
+    targets: [factory.company_id, f2.company_id],
+    message: 'via to field',
+  }, batchDeps);
+  assert.strictEqual(viaTo.completed, 2);
+  assert.ok(viaTo.results.every((row) => row.to && row.status === 'replied'));
+
+  const cnA = viaTo.results[0].conversation_id;
+  const cnB = viaTo.results[1].conversation_id;
+  const mixedFollow = await sendToMany(caller, {
+    targets: [cnA, cnB, f3.company_id],
+    message: 'follow-up on MOQ',
+  }, batchDeps);
+  assert.strictEqual(mixedFollow.results.length, 3);
+  assert.strictEqual(mixedFollow.completed, 3);
+  assert.strictEqual(mixedFollow.results[0].conversation_id, cnA);
+  assert.strictEqual(mixedFollow.results[1].conversation_id, cnB);
+  assert.ok(mixedFollow.results[2].conversation_id.startsWith(CONV_PREFIX));
+
+  const singleNorm = normalizeSendArgs({ to: [factory.company_id], message: 'hi' });
+  assert.deepStrictEqual(singleNorm.targets, [factory.company_id]);
+  const legacyConvWins = normalizeSendArgs({
+    person_id: factory.company_id,
+    conversation_id: 'cn_abc',
+    message: 'x',
+  });
+  assert.deepStrictEqual(legacyConvWins.targets, ['cn_abc']);
+  const mixErr = normalizeSendArgs({
+    to: [factory.company_id],
+    person_id: f2.company_id,
+    message: 'x',
+  });
+  assert.ok(mixErr.error);
+
   const mixedBatch = await sendBatch(caller, {
     person_ids: [factory.company_id, 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'],
     message: 'quote please',
@@ -1049,7 +1084,7 @@ function memoryChina(companies) {
   assert.strictEqual(mixedBatch.completed, 1);
   assert.strictEqual(mixedBatch.failed, 1);
   assert.strictEqual(mixedBatch.results[1].status, 'failed');
-  assert.ok(String(mixedBatch.results[1].reply || '').includes('factories only') || mixedBatch.results[1].reply === PEOPLE_FAIL_REPLY);
+  assert.ok(String(mixedBatch.results[1].reply || '').includes('factory') || mixedBatch.results[1].reply === PEOPLE_FAIL_REPLY);
 
   const tooMany = await sendBatch(caller, {
     person_ids: Array.from({ length: MAX_BATCH + 1 }, (_, i) => `id-${i}`),
@@ -1068,13 +1103,14 @@ function memoryChina(companies) {
   assert.deepStrictEqual(order.sort((a, b) => a - b), [1, 2, 3, 4, 5]);
 
   const { toolList } = require('../mcp');
+  assert.ok(toolList().tools[1].inputSchema.properties.to);
   assert.ok(toolList().tools[1].inputSchema.properties.person_ids);
-  assert.strictEqual(toolList().tools[1].inputSchema.properties.person_ids.maxItems, 1000);
-  assert.ok(toolList().tools[1].description.includes('person_ids'));
+  assert.strictEqual(toolList().tools[1].inputSchema.properties.to.maxItems, 1000);
+  assert.ok(toolList().tools[1].description.includes('Prefer `to`') || toolList().tools[1].description.includes('to'));
   const narrated = formatToolResult({
     results: [
-      { person_id: 'a', name: 'A', conversation_id: 'cn_1', status: 'replied', reply: 'ok' },
-      { person_id: 'b', name: 'B', conversation_id: '', status: 'failed', reply: null },
+      { to: 'a', person_id: 'a', name: 'A', conversation_id: 'cn_1', status: 'replied', reply: 'ok' },
+      { to: 'b', person_id: 'b', name: 'B', conversation_id: '', status: 'failed', reply: null },
     ],
     completed: 1,
     failed: 1,

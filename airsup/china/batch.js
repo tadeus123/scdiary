@@ -1,16 +1,17 @@
 const { maybeHandle, isCompanyId } = require('./talk');
 const { companyTitle } = require('./fields');
+const { MAX_TARGETS, stripPrefix } = require('./targets');
 
-const MAX_BATCH = 1000;
+const MAX_BATCH = MAX_TARGETS;
 const CONCURRENCY = 32;
 const PEOPLE_FAIL_REPLY =
-  'Batch send_message is for live factory endpoints only. Use a single send_message with person_id for people.';
+  'Multi-target send_message is for live factory endpoints and conversation continues only. Use a single send_message for people.';
 
 function normalizeIds(personIds) {
   const seen = new Set();
   const ids = [];
   for (const raw of Array.isArray(personIds) ? personIds : []) {
-    const id = String(raw || '').trim();
+    const id = stripPrefix(raw);
     if (!id || seen.has(id)) continue;
     seen.add(id);
     ids.push(id);
@@ -34,9 +35,10 @@ async function mapPool(items, concurrency, worker) {
   return out;
 }
 
-function slotFailed(personId, reply) {
+function slotFailed(target, reply) {
   return {
-    person_id: personId,
+    to: target,
+    person_id: '',
     name: '',
     conversation_id: '',
     status: 'failed',
@@ -44,30 +46,69 @@ function slotFailed(personId, reply) {
   };
 }
 
-function slotFromHandle(personId, handled, company) {
+function slotFromHandle(target, handled, company) {
   const name = company
     ? (companyTitle(company, 'en') || company.domain || '')
     : ((handled && handled._panel && handled._panel.other && handled._panel.other.name) || '');
+  const conversationId = String((handled && handled.conversation_id) || '');
+  const personId = company && company.company_id
+    ? company.company_id
+    : ((handled && handled._panel && handled._panel.other && handled._panel.other.person_id) || '');
   return {
-    person_id: personId,
+    to: target,
+    person_id: String(personId || ''),
     name: String(name || ''),
-    conversation_id: String((handled && handled.conversation_id) || ''),
+    conversation_id: conversationId,
     status: String((handled && handled.status) || 'failed'),
     reply: handled && handled.reply != null ? handled.reply : null,
   };
 }
 
-async function sendBatch(caller, { person_ids, message }, deps) {
-  const ids = normalizeIds(person_ids);
+function looksLikeConversationId(id) {
+  return String(id || '').trim().startsWith('cn_');
+}
+
+async function runOneTarget(caller, target, message, deps) {
+  const id = stripPrefix(target);
+  if (!id) return slotFailed(target, null);
+
+  if (looksLikeConversationId(id)) {
+    const handled = await maybeHandle(caller, { conversation_id: id, message }, deps);
+    if (!handled) {
+      return slotFailed(id, 'Unknown or inaccessible conversation.');
+    }
+    return slotFromHandle(id, handled, null);
+  }
+
+  const company = await isCompanyId(id, deps);
+  if (!company) {
+    return slotFailed(id, PEOPLE_FAIL_REPLY);
+  }
+  const handled = await maybeHandle(caller, { person_id: id, message }, deps);
+  if (!handled) {
+    return slotFailed(id, PEOPLE_FAIL_REPLY);
+  }
+  let companyRow = null;
+  try {
+    const store = (deps && deps.db) || require('./db');
+    companyRow = await store.getById(id);
+  } catch {
+    companyRow = null;
+  }
+  return slotFromHandle(id, handled, companyRow);
+}
+
+async function sendToMany(caller, { targets, message }, deps) {
+  const ids = normalizeIds(targets);
   if (!ids.length) {
-    return { results: [], completed: 0, failed: 0, error: 'person_ids required' };
+    return { results: [], completed: 0, failed: 0, error: 'to required' };
   }
   if (ids.length > MAX_BATCH) {
     return {
       results: [],
       completed: 0,
       failed: 0,
-      error: `person_ids exceeds maximum of ${MAX_BATCH}`,
+      error: `to exceeds maximum of ${MAX_BATCH}`,
     };
   }
   const text = String(message || '').trim();
@@ -75,27 +116,12 @@ async function sendBatch(caller, { person_ids, message }, deps) {
     return { results: [], completed: 0, failed: ids.length, error: 'message required' };
   }
 
-  const results = await mapPool(ids, CONCURRENCY, async (personId) => {
+  const results = await mapPool(ids, CONCURRENCY, async (target) => {
     try {
-      const company = await isCompanyId(personId, deps);
-      if (!company) {
-        return slotFailed(personId, PEOPLE_FAIL_REPLY);
-      }
-      const handled = await maybeHandle(caller, { person_id: personId, message: text }, deps);
-      if (!handled) {
-        return slotFailed(personId, PEOPLE_FAIL_REPLY);
-      }
-      let companyRow = null;
-      try {
-        const store = (deps && deps.db) || require('./db');
-        companyRow = await store.getById(personId);
-      } catch {
-        companyRow = null;
-      }
-      return slotFromHandle(personId, handled, companyRow);
+      return await runOneTarget(caller, target, text, deps);
     } catch (error) {
       console.error('Airsup china batch slot failed:', error.message);
-      return slotFailed(personId, null);
+      return slotFailed(target, null);
     }
   });
 
@@ -108,11 +134,17 @@ async function sendBatch(caller, { person_ids, message }, deps) {
   return { results, completed, failed };
 }
 
+/** @deprecated Prefer sendToMany; kept for callers using person_ids. */
+async function sendBatch(caller, { person_ids, message }, deps) {
+  return sendToMany(caller, { targets: person_ids, message }, deps);
+}
+
 module.exports = {
   MAX_BATCH,
   CONCURRENCY,
   normalizeIds,
   mapPool,
   sendBatch,
+  sendToMany,
   PEOPLE_FAIL_REPLY,
 };

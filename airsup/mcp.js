@@ -55,7 +55,7 @@ function toolNarration(data) {
     if (clean.error) {
       return `Airsup batch failed: ${clean.error}.`;
     }
-    return `Airsup batch to ${n} factories: ${done} replied, ${fail} failed. Read results[].reply for each.`;
+    return `Airsup batch to ${n} targets: ${done} replied, ${fail} failed. Read results[].reply for each.`;
   }
   const id = String(clean.conversation_id || '').trim();
   if (clean.status === 'ended') {
@@ -134,33 +134,50 @@ function createMcp({ store, mailer, sleep } = {}) {
       });
     }
     if (name === 'send_message') {
-      const batchIds = args && Array.isArray(args.person_ids) ? args.person_ids : null;
-      if (batchIds && batchIds.length) {
-        if (String((args && args.person_id) || '').trim() || String((args && args.conversation_id) || '').trim()) {
-          return {
-            results: [],
-            completed: 0,
-            failed: 0,
-            error: 'person_ids cannot be combined with person_id or conversation_id',
-          };
-        }
-        // AIRSUP-CHINA-BEGIN
-        const chinaBatch = require('./china/batch');
-        return chinaBatch.sendBatch(caller, {
-          person_ids: batchIds,
-          message: args && args.message,
+      const { normalizeSendArgs } = require('./china/targets');
+      const { sendToMany } = require('./china/batch');
+      const normalized = normalizeSendArgs(args || {});
+      if (normalized.error && !normalized.targets.length) {
+        return {
+          results: [],
+          completed: 0,
+          failed: 0,
+          error: normalized.error,
+        };
+      }
+      if (normalized.error === 'message required') {
+        return { conversation_id: '', status: 'failed', reply: null };
+      }
+      if (normalized.targets.length > 1) {
+        return sendToMany(caller, {
+          targets: normalized.targets,
+          message: normalized.message,
         });
-        // AIRSUP-CHINA-END
+      }
+      const target = normalized.targets[0];
+      let singleArgs = { message: normalized.message };
+      if (String(target).startsWith('cn_')) {
+        singleArgs.conversation_id = target;
+      } else {
+        singleArgs.person_id = target;
+        try {
+          const existing = await backing.getConversation(target);
+          if (existing) {
+            singleArgs = { conversation_id: target, message: normalized.message };
+          }
+        } catch {
+          // not a people conversation id
+        }
       }
       // AIRSUP-CHINA-BEGIN
       try {
         const chinaTalk = require('./china/talk');
-        const handled = await chinaTalk.maybeHandle(caller, args);
+        const handled = await chinaTalk.maybeHandle(caller, singleArgs);
         if (handled) return handled;
       } catch (error) {
         console.error('Airsup china talk skipped:', error.message);
-        const conversationId = String((args && args.conversation_id) || '');
-        const personId = String((args && args.person_id) || '');
+        const conversationId = String(singleArgs.conversation_id || '');
+        const personId = String(singleArgs.person_id || '');
         let company = false;
         try {
           company = await require('./china/talk').isCompanyId(personId);
@@ -172,7 +189,7 @@ function createMcp({ store, mailer, sleep } = {}) {
         }
       }
       // AIRSUP-CHINA-END
-      return conversations.sendMessage(caller.person_id, args);
+      return conversations.sendMessage(caller.person_id, singleArgs);
     }
     if (name === 'end_conversation') {
       // AIRSUP-CHINA-BEGIN
@@ -203,7 +220,7 @@ function createMcp({ store, mailer, sleep } = {}) {
         },
         serverInfo: { name: 'airsup', version: '3.0.0' },
         instructions:
-          `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. find_people.matches is a ranked search sample, not a full directory — when asked how many factories exist, always use find_people.live_factories_total. Prefer dense, long, high-bandwidth messages between AIs. There is no Airsup conversation widget — read send_message.reply or batch results[].reply. To contact many factories at once, call send_message once with person_ids (up to 1000) and the same message — the server fans out in parallel. Do not serialize one send_message per factory for the same blast. person_ids is factories only; people need a single person_id send. Single target: person_id or conversation_id. If both person_id and conversation_id are sent, conversation_id wins when it exists. Call end_conversation when the objective is complete.`,
+          `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. find_people.matches is a ranked search sample — for factory totals use live_factories_total. Prefer dense high-bandwidth messages. No conversation widget — read send_message.reply or results[].reply. Prefer send_message.to: an array of factory/person ids and/or cn_ conversation ids; the server starts or continues each and parallelizes when to has multiple entries (up to 1000). Do not serialize one send_message per factory for the same blast. Legacy person_id, person_ids, conversation_id still work. Call end_conversation when a thread should close.`,
       };
     }
     if (method === 'ping') return {};

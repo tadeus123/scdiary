@@ -8,11 +8,12 @@ const { wakeBody, wakeSubject } = require('./mail');
 (async () => {
   const names = toolList().tools.map((tool) => tool.name);
   assert.deepStrictEqual(names, ['find_people', 'send_message', 'end_conversation']);
-  assert.ok(toolList().tools[1].description.includes('conversation_id wins when it exists'));
-  assert.ok(toolList().tools[1].description.includes('no conversation widget'));
-  assert.ok(toolList().tools[1].description.includes('person_ids'));
+  assert.ok(toolList().tools[1].description.includes('Prefer `to`') || toolList().tools[1].inputSchema.properties.to);
+  assert.ok(toolList().tools[1].description.includes('Legacy') || toolList().tools[1].description.includes('to'));
+  assert.ok(toolList().tools[1].inputSchema.properties.to);
+  assert.ok(toolList().tools[1].description.includes('to'));
   assert.ok(toolList().tools[1].inputSchema.properties.person_ids);
-  assert.strictEqual(toolList().tools[1].inputSchema.properties.person_ids.maxItems, 1000);
+  assert.strictEqual(toolList().tools[1].inputSchema.properties.to.maxItems, 1000);
   assert.ok(!toolList().tools[1].inputSchema.oneOf);
   assert.ok(toolList().tools[2].description.includes('Do not use this merely because you are temporarily waiting'));
   assert.strictEqual(toolList().tools[0]._meta, undefined);

@@ -1,14 +1,24 @@
 {
   "name": "send_message",
   "title": "Send Message",
-  "description": "Send a high-bandwidth message to another Airsup AI. For one recipient: use person_id (new) or conversation_id (continue). For many live factories at once: use person_ids (1–1000) with the same message — one tool call fans out in parallel on the server; do not loop sequential send_message for the same blast. Factory endpoints reply in this same result. People (non-factory) must use a single person_id, not person_ids. Prefer dense, long messages with full specs and context. There is no conversation widget. Addressing modes are mutually exclusive: person_id, conversation_id, or person_ids. If both person_id and conversation_id are sent, conversation_id wins when it exists. Call end_conversation when the objective is complete.",
+  "description": "Send a high-bandwidth message to one or more Airsup targets. Prefer `to`: an array of factory/person ids and/or conversation ids (cn_…). The server starts or continues each thread and, when to has multiple ids, fans out in parallel (up to 1000). Same message for all targets. Read reply (single) or results[].reply (batch). Optional prefixes conversation:/factory:/person: are accepted. Legacy person_id, person_ids, and conversation_id still work as aliases. Do not mix to with legacy address fields. Do not loop sequential sends for the same blast. Call end_conversation when a thread should close.",
   "inputSchema": {
     "type": "object",
     "properties": {
+      "to": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 1000,
+        "items": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": "Preferred. Targets to message: factory/person ids to start, or conversation ids (cn_…) to continue. Multiple targets run in parallel."
+      },
       "person_id": {
         "type": "string",
         "minLength": 1,
-        "description": "Single person or factory to contact. Use only when starting one conversation. Not with person_ids."
+        "description": "Legacy alias: start one conversation. Prefer to: [person_id]."
       },
       "person_ids": {
         "type": "array",
@@ -18,12 +28,12 @@
           "type": "string",
           "minLength": 1
         },
-        "description": "Batch of live factory person_ids (company endpoints). Same message is sent to all in parallel. Max 1000. Do not include people accounts."
+        "description": "Legacy alias: batch start many factories. Prefer to: […] ."
       },
       "conversation_id": {
         "type": "string",
         "minLength": 1,
-        "description": "Existing Airsup conversation to continue. Not with person_ids."
+        "description": "Legacy alias: continue one conversation. Prefer to: [conversation_id]."
       },
       "message": {
         "type": "string",
@@ -54,13 +64,14 @@
             "items": {
               "type": "object",
               "properties": {
+                "to": { "type": "string" },
                 "person_id": { "type": "string" },
                 "name": { "type": "string" },
                 "conversation_id": { "type": "string" },
                 "status": { "type": "string", "enum": ["replied", "ended", "failed"] },
                 "reply": { "type": ["string", "null"] }
               },
-              "required": ["person_id", "conversation_id", "status", "reply"],
+              "required": ["to", "conversation_id", "status", "reply"],
               "additionalProperties": false
             }
           },
