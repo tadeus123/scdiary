@@ -62,6 +62,22 @@
     <section class="cn-wrap" id="factories" aria-labelledby="factories-title">
       <h2 id="factories-title"><%= t('factories_title_before') %><%= (proof && proof.live) || 0 %><%= t('factories_title_after') %></h2>
       <p class="cn-note"><%= t('peers_lead') %></p>
+      <% if (proof && proof.chart && proof.live > 0) { %>
+      <figure class="cn-chart">
+        <figcaption><%= t('growth_chart') %></figcaption>
+        <svg viewBox="0 0 <%= proof.chart.width %> <%= proof.chart.height %>" role="img" aria-label="<%= t('growth_chart') %>">
+          <polygon class="cn-chart-fill" points="<%= proof.chart.area %>"></polygon>
+          <polyline class="cn-chart-line" fill="none" points="<%= proof.chart.line %>"></polyline>
+          <% proof.chart.yTicks.forEach((tick) => { %>
+            <text class="cn-chart-y" x="<%= proof.chart.left - 8 %>" y="<%= tick.y + 4 %>" text-anchor="end"><%= tick.label %></text>
+          <% }) %>
+          <% proof.chart.labels.forEach((label) => { %>
+            <text class="cn-chart-x" x="<%= label.x %>" y="<%= proof.chart.height - 12 %>" text-anchor="<%= label.first ? 'start' : (label.last ? 'end' : 'middle') %>"><%= label.first ? t('growth_launch') : formatChartDay(label.day) %></text>
+          <% }) %>
+        </svg>
+        <p class="cn-chart-axes"><span><%= t('growth_axis_y') %></span><span><%= t('growth_axis_x') %></span></p>
+      </figure>
+      <% } %>
       <% if (proof && proof.recent && proof.recent.length) { %>
         <% var cards = proof.recent.slice(0, 6); %>
         <div class="cn-factory-cards">
