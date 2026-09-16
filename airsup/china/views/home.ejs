@@ -97,8 +97,9 @@
         </details>
       <% } %>
       <% if (proof && proof.chart && proof.live > 0) { %>
-      <figure class="cn-chart" id="cn-growth-chart" data-lang="<%= lang %>" data-tip-live="<%= t('growth_tip_live') %>" data-points="<%= JSON.stringify(proof.chart.points).replace(/"/g, '&quot;') %>">
+      <figure class="cn-chart" id="cn-growth-chart" data-lang="<%= lang %>" data-tip-day="<%= t('growth_tip_day') %>" data-tip-live="<%= t('growth_tip_live') %>" data-points='<%= JSON.stringify(proof.chart.points).replace(/'/g, "&#39;") %>'>
         <figcaption><%= t('growth_chart') %></figcaption>
+        <p class="cn-chart-hint"><%= t('growth_tip_hint') %></p>
         <div class="cn-chart-stage">
           <svg viewBox="0 0 <%= proof.chart.width %> <%= proof.chart.height %>" role="img" aria-label="<%= t('growth_chart') %>">
             <polygon class="cn-chart-fill" points="<%= proof.chart.area %>"></polygon>
@@ -116,11 +117,14 @@
             <% }) %>
             <g class="cn-chart-focus">
               <line class="cn-chart-guide" x1="0" x2="0" y1="<%= proof.chart.top %>" y2="<%= proof.chart.baseline %>"></line>
-              <circle class="cn-chart-dot" cx="0" cy="0" r="4.5"></circle>
+              <circle class="cn-chart-dot" cx="0" cy="0" r="5"></circle>
             </g>
-            <rect class="cn-chart-hit" x="<%= proof.chart.left %>" y="<%= proof.chart.top %>" width="<%= proof.chart.innerW %>" height="<%= proof.chart.innerH %>" fill="transparent"></rect>
           </svg>
-          <div class="cn-chart-tip" hidden></div>
+          <button type="button" class="cn-chart-hit" aria-label="<%= t('growth_tip_hint') %>"></button>
+          <div class="cn-chart-tip" hidden>
+            <strong class="cn-chart-tip-day"></strong>
+            <span class="cn-chart-tip-count"></span>
+          </div>
         </div>
         <p class="cn-chart-axes"><span><%= t('growth_axis_y') %></span><span><%= t('growth_axis_x') %></span></p>
       </figure>
@@ -137,11 +141,23 @@
         var guide = root.querySelector('.cn-chart-guide');
         var dot = root.querySelector('.cn-chart-dot');
         var tip = root.querySelector('.cn-chart-tip');
+        var tipDay = root.querySelector('.cn-chart-tip-day');
+        var tipCount = root.querySelector('.cn-chart-tip-count');
+        var stage = root.querySelector('.cn-chart-stage');
         var lang = root.getAttribute('data-lang') === 'en' ? 'en' : 'zh';
         var tipLive = root.getAttribute('data-tip-live') || '';
-        function nearest(clientX) {
+        var tipDayLabel = root.getAttribute('data-tip-day') || '';
+        var active = false;
+        var vb = svg.viewBox.baseVal;
+
+        function svgXFromClient(clientX) {
           var rect = svg.getBoundingClientRect();
-          var x = ((clientX - rect.left) / rect.width) * svg.viewBox.baseVal.width;
+          if (!rect.width) return points[0].x;
+          return ((clientX - rect.left) / rect.width) * vb.width;
+        }
+
+        function nearest(clientX) {
+          var x = svgXFromClient(clientX);
           var best = points[0];
           var bestDist = Math.abs(best.x - x);
           for (var i = 1; i < points.length; i++) {
@@ -150,30 +166,69 @@
           }
           return best;
         }
-        function show(point, clientX) {
-          focus.classList.add('is-on');
+
+        function placeTip(point) {
+          var rect = svg.getBoundingClientRect();
+          var stageRect = stage.getBoundingClientRect();
+          var px = (point.x / vb.width) * rect.width;
+          var py = (point.y / vb.height) * rect.height;
           tip.hidden = false;
+          tip.style.left = Math.max(8, Math.min(stageRect.width - tip.offsetWidth - 8, px - tip.offsetWidth / 2)) + 'px';
+          tip.style.top = Math.max(8, py - tip.offsetHeight - 14) + 'px';
+        }
+
+        function show(point) {
+          active = true;
+          root.classList.add('is-scrubbing');
+          focus.classList.add('is-on');
           guide.setAttribute('x1', point.x);
           guide.setAttribute('x2', point.x);
           dot.setAttribute('cx', point.x);
           dot.setAttribute('cy', point.y);
-          var label = lang === 'en' ? point.label_en : point.label_zh;
-          tip.textContent = label + ' · ' + point.count + ' ' + tipLive;
-          var stage = root.querySelector('.cn-chart-stage').getBoundingClientRect();
-          var left = clientX - stage.left;
-          tip.style.left = Math.max(8, Math.min(stage.width - tip.offsetWidth - 8, left - tip.offsetWidth / 2)) + 'px';
-          tip.style.top = Math.max(8, ((point.y / svg.viewBox.baseVal.height) * stage.height) - 36) + 'px';
+          var day = lang === 'en' ? point.label_en : point.label_zh;
+          tipDay.textContent = (tipDayLabel ? tipDayLabel + ' ' : '') + day;
+          tipCount.textContent = point.count + ' ' + tipLive;
+          placeTip(point);
         }
+
         function hide() {
+          active = false;
+          root.classList.remove('is-scrubbing');
           focus.classList.remove('is-on');
           tip.hidden = true;
         }
-        hit.addEventListener('mousemove', function (event) { show(nearest(event.clientX), event.clientX); });
-        hit.addEventListener('mouseleave', hide);
-        hit.addEventListener('touchstart', function (event) {
-          if (!event.touches || !event.touches[0]) return;
-          show(nearest(event.touches[0].clientX), event.touches[0].clientX);
-        }, { passive: true });
+
+        function fromEvent(event) {
+          var clientX = event.clientX;
+          if ((clientX == null || clientX === 0) && event.touches && event.touches[0]) {
+            clientX = event.touches[0].clientX;
+          }
+          if ((clientX == null) && event.changedTouches && event.changedTouches[0]) {
+            clientX = event.changedTouches[0].clientX;
+          }
+          return nearest(clientX);
+        }
+
+        hit.addEventListener('pointerdown', function (event) {
+          event.preventDefault();
+          hit.setPointerCapture(event.pointerId);
+          show(fromEvent(event));
+        });
+        hit.addEventListener('pointermove', function (event) {
+          if (!active) return;
+          show(fromEvent(event));
+        });
+        hit.addEventListener('pointerup', function () { /* keep bubble visible while scrubbing */ });
+        hit.addEventListener('keydown', function (event) {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          show(points[Math.floor(points.length / 2)]);
+        });
+        document.addEventListener('pointerdown', function (event) {
+          if (!active) return;
+          if (root.contains(event.target)) return;
+          hide();
+        });
       })();
       </script>
       <% } %>
