@@ -277,6 +277,8 @@ assert.ok(COPY.en.peers_industry.toLowerCase().includes('industry'));
 assert.ok(COPY.zh.peers_col_name.includes('公司'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes("t('growth_chart')"));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('cn-chart'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('cn-chart-tip'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('growth_launch'));
 assert.ok(!fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes("partials/demo"));
 assert.ok(!fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('ops_wechat_title'));
 assert.ok(!fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('加微信'));
