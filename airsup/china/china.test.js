@@ -614,24 +614,25 @@ function memoryChina(companies) {
   assert.deepStrictEqual(seenHistory, []);
 
   const { formatToolResult, formatWidgetResult } = require('../mcp');
-  const { WIDGET_URI } = require('../widget');
   const publicFirst = formatToolResult(first);
   assert.deepStrictEqual(Object.keys(publicFirst.structuredContent).sort(), ['conversation_id', 'reply', 'status']);
   assert.ok(!Object.prototype.hasOwnProperty.call(publicFirst.structuredContent, '_panel'));
   const widgeted = await formatWidgetResult(null, caller, first, { args: { person_id: factory.company_id } });
-  assert.strictEqual(widgeted._meta.ui.panel.messages.length, 2);
   assert.ok(!widgeted.structuredContent._panel);
   assert.ok(widgeted.content[0].text.includes(first.conversation_id));
   assert.ok(!widgeted.content[0].text.includes(first.reply));
+  assert.ok(!widgeted.content[0].text.includes('widget'));
   assert.ok(!widgeted.content[0].text.startsWith('{'));
-  assert.strictEqual(widgeted._meta['openai/outputTemplate'], WIDGET_URI);
-  assert.strictEqual(widgeted._meta['openai/resultCanProduceWidget'], true);
+  assert.strictEqual(widgeted._meta['openai/outputTemplate'], undefined);
+  assert.strictEqual(widgeted._meta['openai/resultCanProduceWidget'], false);
+  assert.ok(!widgeted._meta.ui);
   const replyOnly = await formatWidgetResult(null, caller, {
     conversation_id: first.conversation_id,
     status: 'replied',
     reply: first.reply,
   });
-  assert.ok(replyOnly._meta.ui.panel.messages.some((row) => row.from === 'them' && row.body === first.reply));
+  assert.strictEqual(replyOnly._meta['openai/resultCanProduceWidget'], false);
+  assert.ok(!replyOnly._meta.ui);
 
   const second = await maybeHandle(caller, { conversation_id: first.conversation_id, message: 'Also anodize them.' }, deps);
   assert.strictEqual(second.conversation_id, first.conversation_id);
@@ -642,6 +643,7 @@ function memoryChina(companies) {
   const continued = await formatWidgetResult(null, caller, second, { args: { conversation_id: first.conversation_id } });
   assert.strictEqual(continued._meta['openai/resultCanProduceWidget'], false);
   assert.strictEqual(continued._meta['openai/outputTemplate'], undefined);
+  assert.ok(!continued._meta.ui);
 
   const panel = await conversationPanel(caller, first.conversation_id, deps);
   assert.strictEqual(panel.other.name, 'Acme CNC');
@@ -684,7 +686,9 @@ function memoryChina(companies) {
   assert.ok(Array.isArray(paused._panel && paused._panel.messages));
   assert.ok(paused._panel.messages.some((row) => row.from === 'them'));
   const pausedWidget = await formatWidgetResult(null, caller, paused);
-  assert.ok(pausedWidget._meta.ui.panel.messages.some((row) => row.from === 'them' && row.body === paused.reply));
+  assert.strictEqual(pausedWidget._meta['openai/resultCanProduceWidget'], false);
+  assert.ok(!pausedWidget._meta.ui);
+  assert.ok(pausedWidget.structuredContent.reply === paused.reply);
 
   const ai = await completeReply({
     company: factory,

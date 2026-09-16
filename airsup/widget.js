@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const WIDGET_URI = 'ui://widget/airsup-conversation-v18.html';
+// Legacy URI kept for any stale host cache lookups; Airsup no longer mounts a conversation widget.
+const WIDGET_URI = 'ui://widget/airsup-conversation-v19.html';
 const WIDGET_MIME = 'text/html;profile=mcp-app';
 const WIDGET_DOMAIN = 'https://www-tademehl-com.oaiusercontent.com';
 
@@ -10,15 +11,15 @@ let cachedHtml = '';
 function widgetMeta() {
   return {
     ui: {
-      prefersBorder: true,
+      prefersBorder: false,
       domain: WIDGET_DOMAIN,
       csp: {
         connectDomains: [],
         resourceDomains: [],
       },
     },
-    'openai/widgetDescription': 'Airsup conversation status: progress states and End conversation. Message bodies stay in the tool result for the model.',
-    'openai/widgetPrefersBorder': true,
+    'openai/widgetDescription': 'Unused. Airsup conversations have no visual widget.',
+    'openai/widgetPrefersBorder': false,
     'openai/widgetDomain': WIDGET_DOMAIN,
     'openai/widgetCSP': {
       connect_domains: [],
@@ -37,7 +38,7 @@ function widgetResource() {
     uri: WIDGET_URI,
     name: 'Airsup conversation',
     title: 'Airsup conversation',
-    description: 'Airsup conversation status progress and End conversation control.',
+    description: 'Unused. Airsup does not mount a conversation UI.',
     mimeType: WIDGET_MIME,
     _meta: widgetMeta(),
   };
@@ -58,27 +59,19 @@ function widgetContents(uri) {
   };
 }
 
-function withConversationWidget(tool, opts) {
-  const meta = {
-    ui: { visibility: ['model', 'app'] },
-    'openai/widgetAccessible': true,
-    'openai/toolInvocation/invoking': 'Sending',
-    'openai/toolInvocation/invoked': 'Airsup',
+/** Tool meta for native ChatGPT status lines only — never mounts an MCP App widget. */
+function withConversationWidget(tool) {
+  return {
+    ...tool,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Talking on Airsup',
+      'openai/toolInvocation/invoked': 'Airsup',
+    },
   };
-  if (opts && opts.template) {
-    meta.ui.resourceUri = WIDGET_URI;
-    meta['openai/outputTemplate'] = WIDGET_URI;
-  }
-  return { ...tool, _meta: meta };
 }
 
-function shouldMountConversationWidget(opts) {
-  const args = (opts && opts.args) || {};
-  const meta = (opts && opts.requestMeta) || {};
-  if (meta['openai/widgetSessionId']) return false;
-  const conversationId = String(args.conversation_id || '').trim();
-  const personId = String(args.person_id || '').trim();
-  return Boolean(personId) && !conversationId;
+function shouldMountConversationWidget() {
+  return false;
 }
 
 module.exports = {

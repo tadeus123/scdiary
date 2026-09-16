@@ -6,9 +6,8 @@ const { createConversations } = require('./conversations');
 const { createMailer } = require('./mail');
 const db = require('./db');
 const { sha256 } = require('./store-memory');
-const { widgetResource, widgetContents, withConversationWidget, WIDGET_URI, shouldMountConversationWidget } = require('./widget');
+const { widgetContents, withConversationWidget } = require('./widget');
 const {
-  conversationPanel,
   conversationResourceContents,
   isPublicResource,
 } = require('./panel');
@@ -21,7 +20,7 @@ function toolList() {
   return {
     tools: [
       findPeopleTool,
-      withConversationWidget(sendMessageTool, { template: true }),
+      withConversationWidget(sendMessageTool),
       withConversationWidget(endConversationTool),
     ],
   };
@@ -58,8 +57,8 @@ function toolNarration(data) {
       ? `Airsup could not complete that message. conversation_id ${id}.`
       : 'Airsup could not complete that message.';
   }
-  if (id) return `Airsup replied in the conversation widget. conversation_id ${id}. Use that id for the next send_message.`;
-  return 'Airsup replied in the conversation widget.';
+  if (id) return `Airsup replied. conversation_id ${id}. Use that id for the next send_message. Full reply is in structuredContent.reply.`;
+  return 'Airsup replied. Full reply is in structuredContent.reply.';
 }
 
 function formatToolResult(data) {
@@ -73,63 +72,13 @@ function formatToolResult(data) {
   };
 }
 
-function withReply(panel, data, caller) {
-  const next = panel && typeof panel === 'object'
-    ? { ...panel, messages: Array.isArray(panel.messages) ? panel.messages.slice() : [] }
-    : {
-      conversation_id: (data && data.conversation_id) || '',
-      status: (data && data.status) || '',
-      you: { person_id: (caller && caller.person_id) || '', name: (caller && (caller.display_name || caller.email)) || 'You' },
-      other: { person_id: '', name: 'Airsup' },
-      messages: [],
-      threads: [],
-    };
-  if (data && data.conversation_id) next.conversation_id = data.conversation_id;
-  if (data && data.status) next.status = data.status;
-  const reply = data && data.reply != null ? String(data.reply) : '';
-  if (reply && !next.messages.some((row) => row.from === 'them' && row.body === reply)) {
-    next.messages.push({
-      from: 'them',
-      name: (next.other && next.other.name) || 'Airsup',
-      body: reply,
-    });
-  }
-  return next;
-}
-
 async function formatWidgetResult(store, caller, data, opts) {
+  void store;
+  void caller;
+  void opts;
   const result = formatToolResult(data);
-  if (!caller || !data) return result;
-  const conversationId = String(data.conversation_id || '');
-  const hasReply = data.reply != null && String(data.reply).trim();
-  if (!conversationId && !hasReply && data.status !== 'ended' && data.status !== 'failed') return result;
-  let panel = data._panel || null;
-  if (!panel && conversationId.startsWith('cn_')) {
-    try {
-      const chinaTalk = require('./china/talk');
-      panel = await chinaTalk.conversationPanel(caller, conversationId);
-    } catch (error) {
-      console.error('Airsup china panel skipped:', error.message);
-    }
-  }
-  if (!panel && conversationId && !conversationId.startsWith('cn_')) {
-    panel = await conversationPanel(store, caller.person_id, conversationId, { includeThreads: false });
-    try {
-      const chinaTalk = require('./china/talk');
-      panel = await chinaTalk.mergePanel(caller, conversationId, panel);
-    } catch (error) {
-      console.error('Airsup china panel skipped:', error.message);
-    }
-  }
-  result._meta = { ui: { panel: withReply(panel, data, caller) } };
-  if (shouldMountConversationWidget(opts)) {
-    result._meta.ui.resourceUri = WIDGET_URI;
-    result._meta['openai/outputTemplate'] = WIDGET_URI;
-    result._meta['openai/widgetAccessible'] = true;
-    result._meta['openai/resultCanProduceWidget'] = true;
-  } else {
-    result._meta['openai/resultCanProduceWidget'] = false;
-  }
+  // Never mount an MCP App widget — ChatGPT should show only native tool status text.
+  result._meta = { 'openai/resultCanProduceWidget': false };
   return result;
 }
 
@@ -227,13 +176,13 @@ function createMcp({ store, mailer, sleep } = {}) {
         },
         serverInfo: { name: 'airsup', version: '3.0.0' },
         instructions:
-          `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. find_people.matches is a ranked search sample, not a full directory — when asked how many factories exist, always use find_people.live_factories_total. send_message.person_id is the recipient. Prefer dense, long, high-bandwidth messages between AIs (full specs and context); do not compress for a human chat UI. The Airsup widget shows status progress only, not message bubbles — the full reply is in send_message.reply. People: wait for the other person's Airsup AI. Companies: the factory AI replies in the same send_message result. Call send_message with person_id once — the Airsup widget opens while that send is in flight. After that, if the user continues, reuse conversation_id. If ChatGPT sends both ids, conversation_id wins when it exists. The widget has End conversation; call end_conversation when the user clicks it or the objective is complete.`,
+          `Airsup ${MCP_URL}. Identity is the plugin OAuth session. find_people, send_message, end_conversation only. find_people.matches is a ranked search sample, not a full directory — when asked how many factories exist, always use find_people.live_factories_total. send_message.person_id is the recipient. Prefer dense, long, high-bandwidth messages between AIs (full specs and context); do not compress for a human chat UI. There is no Airsup conversation widget — use send_message.reply from the tool result. People: wait for the other person's Airsup AI. Companies: the factory AI replies in the same send_message result. After the first send_message, reuse conversation_id. If ChatGPT sends both ids, conversation_id wins when it exists. Call end_conversation when the objective is complete.`,
       };
     }
     if (method === 'ping') return {};
     if (method === 'tools/list') return toolList();
     if (method === 'resources/list') {
-      return { resources: [widgetResource()] };
+      return { resources: [] };
     }
     if (method === 'resources/read') {
       if (isPublicResource(params.uri)) return widgetContents(params.uri);
