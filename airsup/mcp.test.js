@@ -72,7 +72,7 @@ const { wakeBody, wakeSubject } = require('./mail');
   });
   assert.strictEqual(both.status, 'failed');
   assert.deepStrictEqual(Object.keys(both).sort(), ['conversation_id', 'reply', 'status']);
-  assert.ok(WIDGET_URI.includes('airsup-conversation-v16.html'));
+  assert.ok(WIDGET_URI.includes('airsup-conversation-v17.html'));
   assert.strictEqual(widgetResource().uri, WIDGET_URI);
   assert.strictEqual(widgetResource()._meta['openai/widgetDomain'], 'https://www-tademehl-com.oaiusercontent.com');
   assert.strictEqual(widgetContents(WIDGET_URI).contents[0]._meta['openai/widgetDomain'], 'https://www-tademehl-com.oaiusercontent.com');
@@ -119,7 +119,7 @@ const { wakeBody, wakeSubject } = require('./mail');
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('tool-input-partial'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('airsup-dot'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('takeInput'));
-  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes("version: '16'"));
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes("version: '17'"));
   assert.deepStrictEqual(widgetContents('ui://other').contents, []);
 
   function fakeReq(body, token) {

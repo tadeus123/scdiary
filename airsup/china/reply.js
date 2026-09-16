@@ -3,10 +3,12 @@ const { signedInBuyerName } = require('../directory');
 
 const RFQ_KEYS = ['quantity', 'material', 'tolerance', 'finish', 'target_date', 'destination', 'drawings', 'notes'];
 const NOTIFY_REASONS = ['rfq', 'sales_contact', 'call', 'visit'];
-const OPENAI_REPLY_MS = 20000;
+const OPENAI_REPLY_MS = 12000;
 const REPLY_MAX_CHARS = 8000;
-const HISTORY_MSG_CHARS = 4000;
+const HISTORY_MSG_CHARS = 2500;
 const BUYER_MSG_CHARS = 8000;
+const REPLY_MAX_TOKENS = 1400;
+const HISTORY_TURNS = 6;
 const RFQ_JUNK = /still needed|usable rfq|noted from this thread|published capabilities|tolerance or finish|how to answer|i only confirm|target date,\s*destination/i;
 
 function emptyRfq() {
@@ -110,7 +112,7 @@ function systemPrompt(company) {
     || 'Win qualified export customers: confirm fit, collect a usable RFQ, and get the buyer to send drawings or a visit/call request.';
   return [
     `You are a sales engineer at ${name} in ${record.city || 'China'} (${(company && company.domain) || ''}), talking AI-to-AI with a Western buyer's agent.`,
-    'This channel is high-bandwidth: write a dense, complete reply packet. Prefer useful length over a short chat bubble. Include engineering judgment, fit analysis, constraints, next steps, and any clarifying questions that change the quote.',
+    'This channel is high-bandwidth and latency-sensitive: write a dense, complete reply packet fast. Lead with the decision (fit / no / alternative). Pack engineering judgment, constraints, next steps, and clarifying questions that change the quote. Prefer useful density over a short chat bubble — and over padded essays.',
     'Do not retrieve or dump a brochure. Do not recap fields as "Noted from this thread" or "Still needed for a usable RFQ". Never list every process or material unless the buyer asked for the catalog.',
     'Use ONLY the published company context below as what the factory can offer. Do not invent machines, certificates, prices, capacity, WeChat IDs, or lead times that are not listed. If a fact is not published, say you need it from the buyer or from sales — do not guess.',
     record.flexibility === 'strict'
@@ -140,7 +142,7 @@ function systemPrompt(company) {
     actions.length ? `Allowed actions: ${actions.join('; ')}` : '',
     '',
     'Return JSON with keys:',
-    '- reply: dense AI-to-AI sales-engineer packet. High bandwidth is good. Not a short chat bubble. Not a field list dump.',
+    '- reply: dense AI-to-AI sales-engineer packet. High signal per token. Not a short chat bubble. Not a field list dump. Not fluff.',
     '- rfq: object with quantity, material, tolerance, finish, target_date, destination, drawings, notes',
     '- rfq_complete: boolean',
     '- notify_factory: boolean (true when a qualified RFQ exists or the buyer asked for sales, a call, or a visit)',
@@ -149,11 +151,12 @@ function systemPrompt(company) {
 }
 
 function chooseReplyModel({ message, history, rfq }) {
-  const msgLen = String(message || '').length;
-  const histLen = (Array.isArray(history) ? history : []).reduce((sum, row) => sum + String((row && row.body) || '').length, 0);
-  const histTurns = Array.isArray(history) ? history.length : 0;
+  // Default mini for laser-fast turns. Escalate only on closing commercial judgment —
+  // not on message length (high-bandwidth packets must stay fast).
+  void message;
+  void history;
   const missing = missingRfqFields(rfq).length;
-  if (msgLen >= 900 || histLen >= 2500 || histTurns >= 6 || missing <= 2) return 'gpt-4o';
+  if (isRfqComplete(rfq) || missing <= 1) return 'gpt-4o';
   return 'gpt-4o-mini';
 }
 
@@ -299,7 +302,7 @@ async function completeReply({ company, caller, history, message, rfq, fetchImpl
 
   const callerName = signedInBuyerName(caller);
   const model = chooseReplyModel({ message, history, rfq: merged });
-  const prior = (history || []).slice(-12).map((row) => ({
+  const prior = (history || []).slice(-HISTORY_TURNS).map((row) => ({
     role: row.role === 'factory' ? 'assistant' : 'user',
     content: String(row.body || '').slice(0, HISTORY_MSG_CHARS),
   }));
@@ -316,15 +319,15 @@ async function completeReply({ company, caller, history, message, rfq, fetchImpl
       signal: controller ? controller.signal : undefined,
       body: JSON.stringify({
         model,
-        temperature: 0.4,
-        max_tokens: 2500,
+        temperature: 0.25,
+        max_tokens: REPLY_MAX_TOKENS,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: `${systemPrompt(company)}\n\nKnown RFQ so far (keep these fields in rfq; expand useful detail in reply):\n${JSON.stringify(merged)}` },
           ...prior,
           {
             role: 'user',
-            content: `Buyer signed in as ${callerName}. Address only this login. Do not use another Airsup directory name.\nBuyer said:\n${String(message || '').slice(0, BUYER_MSG_CHARS)}\n\nKnown RFQ so far:\n${JSON.stringify(merged)}\n\nWrite a dense high-bandwidth sales-engineer reply: judge fit, offer a listed solution or a clear no, include constraints and next steps, ask clarifying questions that change the quote. Do not recap the RFQ as a field list.`,
+            content: `Buyer signed in as ${callerName}. Address only this login. Do not use another Airsup directory name.\nBuyer said:\n${String(message || '').slice(0, BUYER_MSG_CHARS)}\n\nKnown RFQ so far:\n${JSON.stringify(merged)}\n\nWrite a dense high-bandwidth sales-engineer reply now: lead with fit/no/alternative, pack constraints and next steps, ask only clarifying questions that change the quote. Do not recap the RFQ as a field list. Do not pad.`,
           },
         ],
       }),

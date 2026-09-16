@@ -455,7 +455,17 @@ assert.strictEqual(chooseReplyModel({ message: 'hi', history: [], rfq: {} }), 'g
 assert.strictEqual(chooseReplyModel({
   message: 'x'.repeat(950),
   history: [],
+  rfq: {},
+}), 'gpt-4o-mini');
+assert.strictEqual(chooseReplyModel({
+  message: 'ready to quote',
+  history: [],
   rfq: { quantity: '100', material: 'AL6061', tolerance: '0.05', finish: 'anodize', target_date: 'May', destination: 'DE', drawings: 'STEP', notes: '' },
+}), 'gpt-4o');
+assert.strictEqual(chooseReplyModel({
+  message: 'almost there',
+  history: [],
+  rfq: { quantity: '100', material: 'AL6061', tolerance: '0.05', finish: '', target_date: 'May', destination: 'DE', drawings: 'STEP', notes: '' },
 }), 'gpt-4o');
 assert.ok(systemPrompt({
   ...factory,
@@ -676,7 +686,7 @@ function memoryChina(companies) {
     fetchImpl: async (_url, opts) => {
       const body = JSON.parse(opts.body);
       assert.strictEqual(body.model, 'gpt-4o-mini');
-      assert.strictEqual(body.max_tokens, 2500);
+      assert.strictEqual(body.max_tokens, 1400);
       assert.ok(body.messages[0].content.includes('Acme CNC'));
       assert.ok(body.messages[0].content.includes('high-bandwidth'));
       assert.strictEqual(body.messages[1].role, 'user');
@@ -707,12 +717,21 @@ function memoryChina(companies) {
     company: factory,
     caller,
     history: [],
-    message: 'x'.repeat(950),
-    rfq: {},
+    message: 'Need 200 pcs aluminum 6061 ±0.05 anodized to Germany by May, STEP attached, ready for quote.',
+    rfq: {
+      quantity: '200 pcs',
+      material: 'aluminum 6061',
+      tolerance: '±0.05',
+      finish: 'anodized',
+      target_date: 'May',
+      destination: 'Germany',
+      drawings: 'STEP',
+      notes: '',
+    },
     fetchImpl: async (_url, opts) => {
       const body = JSON.parse(opts.body);
       assert.strictEqual(body.model, 'gpt-4o');
-      assert.strictEqual(body.max_tokens, 2500);
+      assert.strictEqual(body.max_tokens, 1400);
       return {
         ok: true,
         async json() {
@@ -721,6 +740,45 @@ function memoryChina(companies) {
               message: {
                 content: JSON.stringify({
                   reply: 'Long packet acknowledged with fit analysis and next steps.',
+                  rfq: {
+                    quantity: '200 pcs',
+                    material: 'aluminum 6061',
+                    tolerance: '±0.05',
+                    finish: 'anodized',
+                    target_date: 'May',
+                    destination: 'Germany',
+                    drawings: 'STEP',
+                  },
+                  rfq_complete: true,
+                  notify_factory: true,
+                  notify_reason: 'rfq',
+                }),
+              },
+            }],
+          };
+        },
+      };
+    },
+  });
+  assert.ok(escalated.reply.includes('fit analysis'));
+
+  const longStayFast = await completeReply({
+    company: factory,
+    caller,
+    history: [],
+    message: 'x'.repeat(950),
+    rfq: {},
+    fetchImpl: async (_url, opts) => {
+      const body = JSON.parse(opts.body);
+      assert.strictEqual(body.model, 'gpt-4o-mini');
+      return {
+        ok: true,
+        async json() {
+          return {
+            choices: [{
+              message: {
+                content: JSON.stringify({
+                  reply: 'Fast mini reply on a long buyer packet.',
                   rfq: {},
                   rfq_complete: false,
                   notify_factory: false,
@@ -733,7 +791,7 @@ function memoryChina(companies) {
       };
     },
   });
-  assert.ok(escalated.reply.includes('fit analysis'));
+  assert.ok(longStayFast.reply.includes('Fast mini'));
 
   const mixed = await completeReply({
     company: factory,

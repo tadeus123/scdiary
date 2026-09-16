@@ -332,7 +332,7 @@
     }
     async function callTool(name, args) {
       const companyChat = String((args && args.conversation_id) || '').indexOf('cn_') === 0;
-      const timeoutMs = companyChat ? 45000 : 280000;
+      const timeoutMs = companyChat ? 22000 : 280000;
       if (window.openai && typeof window.openai.callTool === 'function') {
         return Promise.race([
           window.openai.callTool(name, args),
@@ -446,7 +446,7 @@
         phaseTick += 1;
       };
       paint();
-      phaseTimer = setInterval(paint, 1400);
+      phaseTimer = setInterval(paint, 850);
     }
     function statusPhase(status, waiting, otherName, turns) {
       if (status === 'ended') return 'Ended';
@@ -571,7 +571,7 @@
           id: message.id,
           result: {
             protocolVersion: '2026-01-26',
-            appInfo: { name: 'airsup', version: '16' },
+            appInfo: { name: 'airsup', version: '17' },
             appCapabilities: { availableDisplayModes: ['inline', 'fullscreen', 'pip'] },
           },
         }, '*');
