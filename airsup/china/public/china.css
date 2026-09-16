@@ -199,13 +199,19 @@ h3 {
   align-items: center;
   min-height: 44px;
   padding: 0.45rem 0.2rem;
-  color: #1a1512;
+  color: #7a1e2b;
   background: none;
   border: 0;
   border-bottom: 1px solid #7a1e2b;
   text-decoration: none;
   font: inherit;
   cursor: pointer;
+}
+
+.cn-note a,
+.cn-note a:link,
+.cn-note a:visited {
+  color: #7a1e2b;
 }
 
 .cn-btn-nav {
