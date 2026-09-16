@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const WIDGET_URI = 'ui://widget/airsup-conversation-v15.html';
+const WIDGET_URI = 'ui://widget/airsup-conversation-v16.html';
 const WIDGET_MIME = 'text/html;profile=mcp-app';
 const WIDGET_DOMAIN = 'https://www-tademehl-com.oaiusercontent.com';
 
@@ -17,7 +17,7 @@ function widgetMeta() {
         resourceDomains: [],
       },
     },
-    'openai/widgetDescription': 'Live Airsup conversation: transcript, send, end, and thread switch.',
+    'openai/widgetDescription': 'Airsup conversation status: progress states and End conversation. Message bodies stay in the tool result for the model.',
     'openai/widgetPrefersBorder': true,
     'openai/widgetDomain': WIDGET_DOMAIN,
     'openai/widgetCSP': {
@@ -37,7 +37,7 @@ function widgetResource() {
     uri: WIDGET_URI,
     name: 'Airsup conversation',
     title: 'Airsup conversation',
-    description: 'Live Airsup conversation: transcript, send, end, and thread switch.',
+    description: 'Airsup conversation status progress and End conversation control.',
     mimeType: WIDGET_MIME,
     _meta: widgetMeta(),
   };

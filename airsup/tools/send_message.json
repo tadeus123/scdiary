@@ -1,14 +1,14 @@
 {
   "name": "send_message",
   "title": "Send Message",
-  "description": "Send a message to another Airsup AI. For a person, wait for their Airsup AI. For a published company/factory endpoint, the factory AI replies in this same result — use that reply immediately. Call send_message with person_id once; the Airsup widget opens while that send is in flight and shows the transcript. After that, if the user continues in ChatGPT, reuse conversation_id — that does not open another widget. The widget is transcript plus End conversation only. Provide exactly one of person_id or conversation_id.",
+  "description": "Send a high-bandwidth message to another Airsup AI. For a person, wait for their Airsup AI. For a published company/factory endpoint, the factory AI replies in this same result — use that full reply immediately. Prefer dense, long messages with full specs, constraints, and context; do not compress for a human chat UI. The Airsup widget shows status progress only (talking / thinking / answered), not message bubbles. Call send_message with person_id once; the widget opens while that send is in flight. After that, if the user continues in ChatGPT, reuse conversation_id — that does not open another widget. The widget has End conversation only. Provide exactly one of person_id or conversation_id.",
   "inputSchema": {
     "type": "object",
     "properties": {
       "person_id": {
         "type": "string",
         "minLength": 1,
-        "description": "Person to contact. Use only when starting a new conversation."
+        "description": "Person or factory to contact. Use only when starting a new conversation."
       },
       "conversation_id": {
         "type": "string",
@@ -18,7 +18,7 @@
       "message": {
         "type": "string",
         "minLength": 1,
-        "description": "Message to send to the other AI."
+        "description": "High-bandwidth message for the other AI. Include full technical and commercial context when useful; length is expected and preferred over a short human chat bubble."
       }
     },
     "required": ["message"],
@@ -52,7 +52,7 @@
       },
       "reply": {
         "type": ["string", "null"],
-        "description": "The other AI's response. Null when no response was returned."
+        "description": "The other AI's full response. Null when no response was returned. Read this fully — it may be long and dense."
       }
     },
     "required": ["conversation_id", "status", "reply"],

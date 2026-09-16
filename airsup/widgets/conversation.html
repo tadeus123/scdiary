@@ -11,24 +11,14 @@
       --faint: var(--color-text-tertiary, color-mix(in srgb, CanvasText 38%, Canvas));
       --line: var(--color-border-primary, color-mix(in srgb, CanvasText 10%, Canvas));
       --fill: var(--color-background-secondary, color-mix(in srgb, CanvasText 7%, Canvas));
-      --you: #3d6ea8;
-      --you-text: #f4f7fb;
       --accent: #7e9bb4;
       --glow: color-mix(in srgb, #7e9bb4 16%, transparent);
     }
     @media (prefers-color-scheme: dark) {
-      :root {
-        --you: #3e6f9e;
-        --you-text: #eef3f8;
-        --accent: #8eabc0;
-      }
+      :root { --accent: #8eabc0; }
     }
     @media (prefers-color-scheme: light) {
-      :root {
-        --you: #3a6ea5;
-        --you-text: #f7f9fc;
-        --accent: #4d7394;
-      }
+      :root { --accent: #4d7394; }
     }
     * { box-sizing: border-box; }
     html, body {
@@ -43,10 +33,11 @@
       position: relative;
       display: flex;
       flex-direction: column;
+      gap: 10px;
       min-height: 0;
       width: 100%;
       height: auto;
-      padding: 14px 18px 12px;
+      padding: 14px 18px 14px;
       font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
       color: var(--text);
       -webkit-font-smoothing: antialiased;
@@ -81,6 +72,9 @@
       background: var(--accent);
       flex: 0 0 auto;
     }
+    .mark.pulse {
+      animation: airsup-pulse 1.1s ease-in-out infinite;
+    }
     h1 {
       margin: 0;
       font-size: 16px;
@@ -96,12 +90,6 @@
       justify-content: flex-end;
       gap: 8px;
       flex: 0 0 auto;
-    }
-    .state {
-      font-size: 12px;
-      letter-spacing: 0.01em;
-      color: var(--muted);
-      white-space: nowrap;
     }
     .end {
       border: 1px solid var(--line);
@@ -121,81 +109,38 @@
       opacity: 0.45;
       cursor: default;
     }
-    .threads {
+    .status-card {
       position: relative;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 12px;
-    }
-    .thread {
-      border: 1px solid var(--line);
-      background: transparent;
-      color: var(--muted);
-      font: 12px inherit;
-      border-radius: 999px;
-      padding: 4px 10px;
-      cursor: pointer;
-    }
-    .thread.on {
-      color: var(--text);
-      border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
-    }
-    .transcript {
-      position: relative;
-      margin-top: 14px;
-      flex: 0 0 auto;
-      min-height: 0;
       display: flex;
       flex-direction: column;
       gap: 8px;
-      overflow: visible;
-      padding: 2px 8px 4px;
-    }
-    .transcript::-webkit-scrollbar { display: none; }
-    .msg {
-      display: flex;
-      flex-direction: column;
-      width: fit-content;
-      max-width: 74%;
-    }
-    .msg.you { align-self: flex-end; align-items: flex-end; margin-left: 26%; }
-    .msg.them { align-self: flex-start; align-items: flex-start; margin-right: 26%; }
-    .lbl {
-      font-size: 11px;
-      color: var(--faint);
-      margin: 0 12px 4px;
-    }
-    .bubble {
-      margin: 0;
-      padding: 10px 15px;
-      border-radius: 18px;
-      overflow-wrap: anywhere;
-      white-space: pre-wrap;
-    }
-    .msg.them .bubble {
-      background: var(--fill);
+      padding: 12px 14px;
       border: 1px solid var(--line);
-      border-bottom-left-radius: 6px;
+      border-radius: 14px;
+      background: var(--fill);
     }
-    .msg.you .bubble {
-      background: var(--you);
-      color: var(--you-text);
-      border-bottom-right-radius: 6px;
+    .phase {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 590;
+      letter-spacing: -0.01em;
     }
-    .bubble.pending {
-      min-width: 52px;
-      min-height: 1.45em;
-      display: inline-flex;
+    .meta {
+      display: flex;
       align-items: center;
-      justify-content: center;
-      opacity: 0.85;
+      gap: 10px;
+      min-height: 18px;
+    }
+    .turn {
+      font-size: 12px;
+      color: var(--faint);
     }
     .dots {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 4px;
     }
+    .dots.hidden { display: none; }
     .dots i {
       width: 6px;
       height: 6px;
@@ -210,7 +155,11 @@
       0%, 80%, 100% { opacity: 0.28; transform: translateY(0); }
       40% { opacity: 1; transform: translateY(-2px); }
     }
-    .err { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+    @keyframes airsup-pulse {
+      0%, 100% { opacity: 0.45; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.35); }
+    }
+    .err { margin: 0; font-size: 12px; color: var(--muted); }
     .hidden { display: none !important; }
     html.superseded,
     html.superseded body,
@@ -233,12 +182,16 @@
         <h1 id="title">Airsup</h1>
       </div>
       <div class="corner">
-        <span id="state" class="state hidden">Ended</span>
         <button id="end" class="end hidden" type="button">End conversation</button>
       </div>
     </div>
-    <div id="threads" class="threads hidden"></div>
-    <div id="transcript" class="transcript hidden"></div>
+    <div class="status-card" id="status-card">
+      <p id="phase" class="phase">Connecting</p>
+      <div class="meta">
+        <span id="dots" class="dots hidden" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span id="turn" class="turn"></span>
+      </div>
+    </div>
     <p id="err" class="err hidden"></p>
   </div>
   <script>
@@ -250,12 +203,21 @@
     let busy = false;
     let ending = false;
     let lastHeight = 0;
+    let phaseTick = 0;
+    let phaseTimer = null;
     const cache = new Map();
     const born = Date.now() + Math.random();
     const peers = {};
     let lastPublished = '';
     let superseded = false;
     const channel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('airsup-conversation') : null;
+    const WAIT_PHASES = [
+      'Talking to {name}',
+      'Sending high-bandwidth packet',
+      'Waiting for reply',
+      'Thinking',
+      'Analyzing response',
+    ];
 
     function parseToolData(raw) {
       if (!raw || typeof raw !== 'object') return {};
@@ -346,33 +308,17 @@
       }
       return inputFrom(window.openai && window.openai.toolInput) || {};
     }
-    function withOutgoing(messages) {
-      const rows = (messages || []).slice();
-      const outgoing = String(currentInput().message || '').trim();
-      if (!outgoing) return rows;
-      if (rows.some(function (row) { return row.from === 'you' && row.body === outgoing; })) return rows;
-      rows.push({ from: 'you', name: 'You', body: outgoing });
-      return rows;
-    }
-    function liveMessages(waitingNow) {
-      const otherName = (panel && panel.other && panel.other.name) || 'Supplier';
-      const rows = withOutgoing((panel && panel.messages) || []);
-      const reply = String(structured.reply || '').trim();
-      if (reply) {
-        const already = rows.some(function (row) { return row.from === 'them' && row.body === reply; });
-        if (!already) rows.push({ from: 'them', name: otherName, body: reply });
-      }
-      if (waitingNow) {
-        const last = rows[rows.length - 1];
-        if (!last || last.from === 'you') {
-          rows.push({ from: 'them', name: otherName, body: '', pending: true });
-        }
-      }
-      return rows;
+    function turnCount(messages) {
+      const rows = messages || [];
+      let n = 0;
+      rows.forEach(function (row) {
+        if (row && row.from === 'you' && String(row.body || '').trim()) n += 1;
+      });
+      return n;
     }
     function rpc(method, params, timeoutMs) {
       const id = nextId++;
-      window.parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
+      window.parent.postMessage({ jsonrpc: '2.0', id: id, method: method, params: params }, '*');
       return new Promise(function (resolve, reject) {
         const timer = setTimeout(function () {
           pending.delete(id);
@@ -386,7 +332,7 @@
     }
     async function callTool(name, args) {
       const companyChat = String((args && args.conversation_id) || '').indexOf('cn_') === 0;
-      const timeoutMs = companyChat ? 20000 : 280000;
+      const timeoutMs = companyChat ? 45000 : 280000;
       if (window.openai && typeof window.openai.callTool === 'function') {
         return Promise.race([
           window.openai.callTool(name, args),
@@ -396,11 +342,6 @@
         ]);
       }
       return rpc('tools/call', { name: name, arguments: args }, timeoutMs);
-    }
-    async function readResource(uri) {
-      const result = await rpc('resources/read', { uri: uri }, 1500);
-      const text = result && result.contents && result.contents[0] && result.contents[0].text;
-      return text ? JSON.parse(text) : null;
     }
     function tellModel(text) {
       window.parent.postMessage({
@@ -447,9 +388,7 @@
     function publish(force) {
       const conversationId = conversationKey();
       if (!channel || !conversationId) return;
-      const messages = uniqueMessages(((panel && panel.messages) || []).concat(
-        liveMessages(false).filter(function (row) { return !row.pending; })
-      ));
+      const messages = uniqueMessages((panel && panel.messages) || []);
       const payload = {
         type: 'airsup-sync',
         conversationId: conversationId,
@@ -492,72 +431,30 @@
       err.textContent = text || '';
       err.classList.toggle('hidden', !err.textContent);
     }
-    function statusCopy(status, waiting, otherName) {
+    function stopPhaseCycle() {
+      if (phaseTimer) {
+        clearInterval(phaseTimer);
+        phaseTimer = null;
+      }
+    }
+    function startPhaseCycle(otherName) {
+      stopPhaseCycle();
+      phaseTick = 0;
+      const paint = function () {
+        const label = WAIT_PHASES[phaseTick % WAIT_PHASES.length].replace('{name}', otherName || 'Airsup');
+        document.getElementById('phase').textContent = label;
+        phaseTick += 1;
+      };
+      paint();
+      phaseTimer = setInterval(paint, 1400);
+    }
+    function statusPhase(status, waiting, otherName, turns) {
       if (status === 'ended') return 'Ended';
       if (status === 'failed') return 'Could not complete';
-      if (otherName) return waiting ? 'Live' : 'Live';
-      return 'Live';
-    }
-    function renderMessages(messages, otherName) {
-      const root = document.getElementById('transcript');
-      root.replaceChildren();
-      const rows = messages || [];
-      if (!rows.length) {
-        root.replaceChildren();
-        root.classList.add('hidden');
-        return;
-      }
-      rows.forEach(function (item) {
-        const wrap = document.createElement('div');
-        wrap.className = 'msg ' + (item.from === 'you' ? 'you' : 'them');
-        if (item.from === 'you') {
-          const lbl = document.createElement('div');
-          lbl.className = 'lbl';
-          lbl.textContent = 'You';
-          wrap.appendChild(lbl);
-        } else {
-          const lbl = document.createElement('div');
-          lbl.className = 'lbl';
-          lbl.textContent = item.name || otherName || 'Airsup';
-          wrap.appendChild(lbl);
-        }
-        const bubble = document.createElement('p');
-        bubble.className = 'bubble' + (item.pending ? ' pending' : '');
-        if (item.pending) {
-          const dots = document.createElement('span');
-          dots.className = 'dots';
-          dots.appendChild(document.createElement('i'));
-          dots.appendChild(document.createElement('i'));
-          dots.appendChild(document.createElement('i'));
-          bubble.appendChild(dots);
-        } else {
-          bubble.textContent = item.body || '';
-        }
-        wrap.appendChild(bubble);
-        root.appendChild(wrap);
-      });
-      root.classList.remove('hidden');
-      root.scrollTop = root.scrollHeight;
-    }
-    function renderThreads(threads, conversationId) {
-      const root = document.getElementById('threads');
-      root.replaceChildren();
-      const rows = threads || [];
-      if (rows.length < 2) {
-        root.classList.add('hidden');
-        return;
-      }
-      rows.forEach(function (thread) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'thread' + (thread.conversation_id === conversationId ? ' on' : '');
-        button.textContent = thread.other && thread.other.name ? thread.other.name : 'Conversation';
-        button.addEventListener('click', function () {
-          switchThread(thread.conversation_id);
-        });
-        root.appendChild(button);
-      });
-      root.classList.remove('hidden');
+      if (waiting) return WAIT_PHASES[0].replace('{name}', otherName || 'Airsup');
+      if (String(structured.reply || '').trim()) return 'Answer received';
+      if (turns > 0) return 'Ready for next turn';
+      return otherName ? ('Talking to ' + otherName) : 'Connecting';
     }
     function render(nextStructured, nextPanel, waiting) {
       structured = pick(nextStructured);
@@ -571,28 +468,33 @@
         if (panel) panel.status = 'ended';
         structured.status = 'ended';
       }
-      const otherName = panel && panel.other && panel.other.name;
+      const otherName = (panel && panel.other && panel.other.name) || '';
       const waitingNow = Boolean(waiting) && status !== 'ended' && status !== 'failed' && !String(structured.reply || '').trim();
+      const turns = turnCount(panel && panel.messages);
       document.getElementById('title').textContent = otherName || 'Airsup';
-      document.getElementById('state').textContent = statusCopy(status, waitingNow, otherName);
-      document.getElementById('state').classList.toggle('hidden', status !== 'ended' && status !== 'failed');
-      const rows = liveMessages(waitingNow);
-      renderMessages(rows, otherName);
-      renderThreads(panel && panel.threads, conversationId);
+      document.getElementById('mark').classList.toggle('pulse', waitingNow);
+      document.getElementById('dots').classList.toggle('hidden', !waitingNow);
+      document.getElementById('turn').textContent = turns ? ('Turn ' + turns) : '';
+      if (waitingNow) startPhaseCycle(otherName);
+      else {
+        stopPhaseCycle();
+        document.getElementById('phase').textContent = statusPhase(status, false, otherName, turns);
+      }
       const showEnd = Boolean(conversationId) && status !== 'ended' && status !== 'failed';
       document.getElementById('end').classList.toggle('hidden', !showEnd);
       document.getElementById('end').textContent = ending ? 'Ending' : 'End conversation';
       document.getElementById('end').disabled = busy || ending;
-      setErr(document.getElementById('err').textContent);
       const snapshot = JSON.stringify({
         conversation_id: conversationId,
-        messages: rows.filter(function (row) { return !row.pending; }),
+        status: status,
+        turns: turns,
       });
       if (window.openai && typeof window.openai.setWidgetState === 'function' && snapshot !== lastSaved) {
         lastSaved = snapshot;
         window.openai.setWidgetState({
           conversation_id: conversationId,
-          messages: rows.filter(function (row) { return !row.pending; }),
+          status: status,
+          turns: turns,
         });
       }
       if (panel && panel.conversation_id) cache.set(panel.conversation_id, panel);
@@ -649,34 +551,6 @@
       setBusy(false);
       render(structured, panel, false);
     }
-    async function switchThread(conversationId) {
-      if (!conversationId || busy) return;
-      setBusy(true);
-      setErr('');
-      try {
-        let next = null;
-        try { next = await readResource('airsup://conversations/' + conversationId); }
-        catch (error) { next = cache.get(conversationId) || null; }
-        if (!next) {
-          const thread = ((panel && panel.threads) || []).find(function (row) {
-            return row.conversation_id === conversationId;
-          });
-          next = {
-            conversation_id: conversationId,
-            status: thread ? thread.status : '',
-            you: panel && panel.you,
-            other: thread && thread.other,
-            messages: [],
-            threads: panel && panel.threads,
-          };
-        }
-        tellModel('User is viewing Airsup conversation ' + conversationId + '. Use that conversation_id for later send_message calls.');
-        render({ conversation_id: conversationId, status: next.status, reply: null }, next, false);
-      } catch (error) {
-        setErr(error.message || 'Could not open that conversation.');
-      }
-      setBusy(false);
-    }
 
     document.getElementById('end').addEventListener('click', endConversation);
 
@@ -697,7 +571,7 @@
           id: message.id,
           result: {
             protocolVersion: '2026-01-26',
-            appInfo: { name: 'airsup', version: '15' },
+            appInfo: { name: 'airsup', version: '16' },
             appCapabilities: { availableDisplayModes: ['inline', 'fullscreen', 'pip'] },
           },
         }, '*');
@@ -761,12 +635,9 @@
         };
         const mine = conversationKey();
         if (mine && mine !== conversationId) return;
-        const before = ((panel && panel.messages) || []).length;
         absorbPeers(conversationId);
         elect(conversationId);
-        if (!superseded && panel && ((panel.messages || []).length > before)) {
-          render(structured, panel, false);
-        }
+        if (!superseded) render(structured, panel, false);
       });
     }
     function connectHost() {
@@ -774,11 +645,11 @@
     }
     latestInput = inputFrom(window.openai && window.openai.toolInput);
     const saved = window.openai && window.openai.widgetState;
-    if (saved && Array.isArray(saved.messages) && saved.messages.length) {
+    if (saved && saved.conversation_id) {
       panel = {
         conversation_id: saved.conversation_id || '',
-        status: 'open',
-        messages: saved.messages,
+        status: saved.status || 'open',
+        messages: [],
         threads: [],
       };
     }

@@ -377,6 +377,7 @@ const {
   normalizeOutcome,
   completeReply,
   systemPrompt,
+  chooseReplyModel,
   isGarbageRfqValue,
 } = require('./reply');
 const { factoryNoticeMail } = require('./mail');
@@ -447,6 +448,15 @@ assert.ok(systemPrompt(factory).includes('sales engineer'));
 assert.ok(systemPrompt(factory).includes('5-axis aluminum brackets'));
 assert.ok(systemPrompt(factory).includes('Keep every RFQ field'));
 assert.ok(systemPrompt(factory).includes('brochure'));
+assert.ok(systemPrompt(factory).includes('high-bandwidth'));
+assert.ok(systemPrompt(factory).includes('dense AI-to-AI'));
+assert.ok(!systemPrompt(factory).includes('short buyer-facing chat bubble'));
+assert.strictEqual(chooseReplyModel({ message: 'hi', history: [], rfq: {} }), 'gpt-4o-mini');
+assert.strictEqual(chooseReplyModel({
+  message: 'x'.repeat(950),
+  history: [],
+  rfq: { quantity: '100', material: 'AL6061', tolerance: '0.05', finish: 'anodize', target_date: 'May', destination: 'DE', drawings: 'STEP', notes: '' },
+}), 'gpt-4o');
 assert.ok(systemPrompt({
   ...factory,
   profile: { ...factory.profile, contacts: [{ name: 'Li', wechat: 'wxid_li' }], sample_lead: 'samples in 7 days', flexibility: 'creative' },
@@ -666,7 +676,9 @@ function memoryChina(companies) {
     fetchImpl: async (_url, opts) => {
       const body = JSON.parse(opts.body);
       assert.strictEqual(body.model, 'gpt-4o-mini');
+      assert.strictEqual(body.max_tokens, 2500);
       assert.ok(body.messages[0].content.includes('Acme CNC'));
+      assert.ok(body.messages[0].content.includes('high-bandwidth'));
       assert.strictEqual(body.messages[1].role, 'user');
       assert.strictEqual(body.messages[2].role, 'assistant');
       return {
@@ -690,6 +702,38 @@ function memoryChina(companies) {
     },
   });
   assert.ok(ai.reply.includes('200 aluminum'));
+
+  const escalated = await completeReply({
+    company: factory,
+    caller,
+    history: [],
+    message: 'x'.repeat(950),
+    rfq: {},
+    fetchImpl: async (_url, opts) => {
+      const body = JSON.parse(opts.body);
+      assert.strictEqual(body.model, 'gpt-4o');
+      assert.strictEqual(body.max_tokens, 2500);
+      return {
+        ok: true,
+        async json() {
+          return {
+            choices: [{
+              message: {
+                content: JSON.stringify({
+                  reply: 'Long packet acknowledged with fit analysis and next steps.',
+                  rfq: {},
+                  rfq_complete: false,
+                  notify_factory: false,
+                  notify_reason: 'none',
+                }),
+              },
+            }],
+          };
+        },
+      };
+    },
+  });
+  assert.ok(escalated.reply.includes('fit analysis'));
 
   const mixed = await completeReply({
     company: factory,
