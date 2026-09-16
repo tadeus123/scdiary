@@ -158,11 +158,11 @@ async function maybeEnd(caller, conversationId, deps) {
   if (!id) return null;
   const store = storeFrom(deps);
   const publicId = CONV_PREFIX + id;
-  if (!store.isConfigured()) return { conversation_id: publicId, status: 'ended' };
+  if (!store.isConfigured()) return { conversation_id: publicId, status: 'ended', reply: null };
   const thread = await store.getThread(id);
-  if (!thread) return { conversation_id: publicId, status: 'ended' };
+  if (!thread) return { conversation_id: publicId, status: 'ended', reply: null };
   if (thread.caller_person_id && caller && caller.person_id !== thread.caller_person_id) {
-    return { conversation_id: publicConvId(thread), status: 'ended' };
+    return { conversation_id: publicConvId(thread), status: 'failed', reply: null };
   }
   if (thread.status !== 'ended') {
     await store.updateThread(id, {
@@ -170,7 +170,7 @@ async function maybeEnd(caller, conversationId, deps) {
       ended_at: new Date().toISOString(),
     });
   }
-  return { conversation_id: publicConvId(thread), status: 'ended' };
+  return { conversation_id: publicConvId(thread), status: 'ended', reply: null };
 }
 
 async function notifyIfNeeded(store, { thread, company, caller, message, reply, outcome, deps }) {
@@ -178,22 +178,24 @@ async function notifyIfNeeded(store, { thread, company, caller, message, reply, 
   if (!outcome.notify_factory || !reason || reason === 'none') return thread;
   const reasons = notifyList(thread);
   if (reasons.includes(reason)) return thread;
-  const next = await store.updateThread(thread.conversation_id, {
+  try {
+    await mailFn(deps)({
+      company,
+      callerName: signedInBuyerName(caller),
+      message,
+      reply,
+      rfq: outcome.rfq,
+      reason,
+    });
+  } catch (error) {
+    console.error('Airsup china factory notice failed:', error.message);
+    return thread;
+  }
+  return store.updateThread(thread.conversation_id, {
     notify_reasons: [...reasons, reason],
     emailed_at: new Date().toISOString(),
     rfq: outcome.rfq,
   });
-  Promise.resolve(mailFn(deps)({
-    company,
-    callerName: signedInBuyerName(caller),
-    message,
-    reply,
-    rfq: outcome.rfq,
-    reason,
-  })).catch((error) => {
-    console.error('Airsup china factory notice failed:', error.message);
-  });
-  return next;
 }
 
 function livePanel({ caller, company, thread, history, message, reply }) {
@@ -220,16 +222,16 @@ function livePanel({ caller, company, thread, history, message, reply }) {
 
 async function turn(store, { thread, company, caller, message, deps }) {
   if (thread.status === 'ended') return failed(publicConvId(thread));
+  const history = await store.listMessages(thread.conversation_id);
   if (company.status !== 'live') {
     const reply = `${companyTitle(company, 'en')} paused. ChatGPT cannot find this factory right now. It is not answering new buyer messages.`;
     return {
       conversation_id: publicConvId(thread),
       status: 'replied',
       reply,
-      _panel: livePanel({ caller, company, thread, history: [], message, reply }),
+      _panel: livePanel({ caller, company, thread, history, message, reply }),
     };
   }
-  const history = await store.listMessages(thread.conversation_id);
   const outcome = await replyFn(deps)({
     company,
     caller,

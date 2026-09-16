@@ -379,6 +379,10 @@ const {
   systemPrompt,
   chooseReplyModel,
   isGarbageRfqValue,
+  allowedNotify,
+  notifyReasonFromMessage,
+  OPENAI_REPLY_MS_MINI,
+  OPENAI_REPLY_MS_4O,
 } = require('./reply');
 const { factoryNoticeMail } = require('./mail');
 
@@ -467,6 +471,11 @@ assert.strictEqual(chooseReplyModel({
   history: [],
   rfq: { quantity: '100', material: 'AL6061', tolerance: '0.05', finish: '', target_date: 'May', destination: 'DE', drawings: 'STEP', notes: '' },
 }), 'gpt-4o');
+assert.strictEqual(OPENAI_REPLY_MS_MINI, 12000);
+assert.strictEqual(OPENAI_REPLY_MS_4O, 20000);
+assert.strictEqual(allowedNotify(factory.actions, 'visit'), true);
+assert.strictEqual(allowedNotify(factory.actions, 'call'), true);
+assert.strictEqual(notifyReasonFromMessage('please schedule a factory visit', {}), 'visit');
 assert.ok(systemPrompt({
   ...factory,
   profile: { ...factory.profile, contacts: [{ name: 'Li', wechat: 'wxid_li' }], sample_lead: 'samples in 7 days', flexibility: 'creative' },
@@ -860,6 +869,130 @@ function memoryChina(companies) {
   }, { reply: 'fallback', rfq: {}, actions: factory.actions });
   assert.strictEqual(outcome.notify_reason, 'rfq');
   assert.strictEqual(outcome.rfq_complete, true);
+
+  const incompleteForced = normalizeOutcome({
+    reply: 'Not enough yet.',
+    rfq: { quantity: '10', material: 'alu' },
+    rfq_complete: false,
+    notify_factory: true,
+    notify_reason: 'rfq',
+  }, { reply: 'fallback', rfq: {}, actions: factory.actions });
+  assert.strictEqual(incompleteForced.notify_reason, 'none');
+  assert.strictEqual(incompleteForced.notify_factory, false);
+
+  const visitFromMessage = normalizeOutcome({
+    reply: 'I will email sales about a visit.',
+    rfq: {},
+    rfq_complete: false,
+    notify_factory: false,
+    notify_reason: 'none',
+  }, { reply: 'fallback', rfq: {}, actions: factory.actions }, 'visit');
+  assert.strictEqual(visitFromMessage.notify_reason, 'visit');
+  assert.strictEqual(visitFromMessage.notify_factory, true);
+
+  const visitAi = await completeReply({
+    company: factory,
+    caller,
+    history: [],
+    message: 'Can we schedule a factory visit next month?',
+    rfq: {},
+    fetchImpl: async (_url, opts) => {
+      const body = JSON.parse(opts.body);
+      assert.ok(!String(body.messages[body.messages.length - 1].content).includes('Known RFQ so far'));
+      assert.strictEqual(body.model, 'gpt-4o-mini');
+      return {
+        ok: true,
+        async json() {
+          return {
+            choices: [{
+              message: {
+                content: JSON.stringify({
+                  reply: 'Yes, I can email sales about a visit.',
+                  rfq: {},
+                  rfq_complete: false,
+                  notify_factory: false,
+                  notify_reason: 'none',
+                }),
+              },
+            }],
+          };
+        },
+      };
+    },
+  });
+  assert.strictEqual(visitAi.notify_reason, 'visit');
+  assert.strictEqual(visitAi.notify_factory, true);
+
+  const ownerStore = memoryChina([{ ...factory }]);
+  const ownerDeps = {
+    db: ownerStore,
+    completeReply: async () => ({
+      reply: 'ok',
+      rfq: {},
+      rfq_complete: false,
+      notify_factory: false,
+      notify_reason: 'none',
+    }),
+    sendFactoryNotice: async () => {},
+  };
+  const owned = await maybeHandle(caller, { person_id: factory.company_id, message: 'ping' }, ownerDeps);
+  const wrongEnd = await maybeEnd({ person_id: 'intruder' }, owned.conversation_id, ownerDeps);
+  assert.strictEqual(wrongEnd.status, 'failed');
+  const stillOpen = await conversationPanel(caller, owned.conversation_id, ownerDeps);
+  assert.strictEqual(stillOpen.status, 'open');
+
+  const liveThenPause = memoryChina([{ ...factory }]);
+  const pauseDeps = {
+    db: liveThenPause,
+    completeReply: async () => ({
+      reply: 'live reply',
+      rfq: {},
+      rfq_complete: false,
+      notify_factory: false,
+      notify_reason: 'none',
+    }),
+    sendFactoryNotice: async () => {},
+  };
+  const beforePause = await maybeHandle(caller, { person_id: factory.company_id, message: 'first live turn' }, pauseDeps);
+  assert.strictEqual(beforePause.status, 'replied');
+  const companyRow = await liveThenPause.getById(factory.company_id);
+  companyRow.status = 'verified';
+  const midPause = await maybeHandle(caller, { conversation_id: beforePause.conversation_id, message: 'still there?' }, pauseDeps);
+  assert.ok(midPause.reply.toLowerCase().includes('paused'));
+  assert.ok(midPause._panel.messages.length >= 3);
+  assert.ok(midPause._panel.messages.some((row) => String(row.body || '').includes('first live')));
+
+  const failMailStore = memoryChina([{ ...factory }]);
+  const failNotices = [];
+  const failDeps = {
+    db: failMailStore,
+    completeReply: async () => ({
+      reply: 'Ready to quote.',
+      rfq: {
+        quantity: '500 pcs',
+        material: 'aluminum',
+        tolerance: '±0.02 mm',
+        target_date: '2026-11-01',
+        destination: 'Germany',
+        drawings: 'STEP',
+        notes: '',
+      },
+      rfq_complete: true,
+      notify_factory: true,
+      notify_reason: 'rfq',
+    }),
+    sendFactoryNotice: async () => {
+      failNotices.push(1);
+      throw new Error('smtp down');
+    },
+  };
+  const failMail = await maybeHandle(caller, { person_id: factory.company_id, message: 'full rfq please quote' }, failDeps);
+  assert.strictEqual(failMail.status, 'replied');
+  assert.strictEqual(failNotices.length, 1);
+  const failThreadId = failMail.conversation_id.slice(CONV_PREFIX.length);
+  const failThread = await failMailStore.getThread(failThreadId);
+  assert.deepStrictEqual(failThread.notify_reasons || [], []);
+  assert.ok(!failThread.emailed_at);
 
   console.log('airsup china tests passed');
 })().catch((error) => {

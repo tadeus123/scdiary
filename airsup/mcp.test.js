@@ -8,7 +8,8 @@ const { wakeBody, wakeSubject } = require('./mail');
 (async () => {
   const names = toolList().tools.map((tool) => tool.name);
   assert.deepStrictEqual(names, ['find_people', 'send_message', 'end_conversation']);
-  assert.ok(toolList().tools[1].description.includes('Provide exactly one of person_id or conversation_id'));
+  assert.ok(toolList().tools[1].description.includes('conversation_id wins when it exists'));
+  assert.ok(!toolList().tools[1].inputSchema.oneOf);
   assert.ok(toolList().tools[2].description.includes('Do not use this merely because you are temporarily waiting'));
   assert.strictEqual(toolList().tools[0]._meta, undefined);
   assert.strictEqual(toolList().tools[1]._meta['openai/outputTemplate'], WIDGET_URI);
@@ -72,7 +73,7 @@ const { wakeBody, wakeSubject } = require('./mail');
   });
   assert.strictEqual(both.status, 'failed');
   assert.deepStrictEqual(Object.keys(both).sort(), ['conversation_id', 'reply', 'status']);
-  assert.ok(WIDGET_URI.includes('airsup-conversation-v17.html'));
+  assert.ok(WIDGET_URI.includes('airsup-conversation-v18.html'));
   assert.strictEqual(widgetResource().uri, WIDGET_URI);
   assert.strictEqual(widgetResource()._meta['openai/widgetDomain'], 'https://www-tademehl-com.oaiusercontent.com');
   assert.strictEqual(widgetContents(WIDGET_URI).contents[0]._meta['openai/widgetDomain'], 'https://www-tademehl-com.oaiusercontent.com');
@@ -119,7 +120,9 @@ const { wakeBody, wakeSubject } = require('./mail');
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('tool-input-partial'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('airsup-dot'));
   assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('takeInput'));
-  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes("version: '17'"));
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes("version: '18'"));
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('Clear stale reply latch'));
+  assert.ok(widgetContents(WIDGET_URI).contents[0].text.includes('waiting flag is authoritative'));
   assert.deepStrictEqual(widgetContents('ui://other').contents, []);
 
   function fakeReq(body, token) {

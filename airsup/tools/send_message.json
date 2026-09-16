@@ -1,19 +1,19 @@
 {
   "name": "send_message",
   "title": "Send Message",
-  "description": "Send a high-bandwidth message to another Airsup AI. For a person, wait for their Airsup AI. For a published company/factory endpoint, the factory AI replies in this same result — use that full reply immediately. Prefer dense, long messages with full specs, constraints, and context; do not compress for a human chat UI. Factory endpoints answer as fast as possible; keep sending rich packets, not short chat bubbles. The Airsup widget shows status progress only (talking / thinking / answered), not message bubbles. Call send_message with person_id once; the widget opens while that send is in flight. After that, if the user continues in ChatGPT, reuse conversation_id — that does not open another widget. The widget has End conversation only. Provide exactly one of person_id or conversation_id.",
+  "description": "Send a high-bandwidth message to another Airsup AI. For a person, wait for their Airsup AI. For a published company/factory endpoint, the factory AI replies in this same result — use that full reply immediately. Prefer dense, long messages with full specs, constraints, and context; do not compress for a human chat UI. Factory endpoints answer as fast as possible; keep sending rich packets, not short chat bubbles. The Airsup widget shows status progress only (talking / thinking / answered), not message bubbles. Call send_message with person_id once; the widget opens while that send is in flight. After that, if the user continues in ChatGPT, reuse conversation_id — that does not open another widget. Prefer exactly one of person_id or conversation_id; if both are sent, conversation_id wins when it exists. The widget has End conversation only.",
   "inputSchema": {
     "type": "object",
     "properties": {
       "person_id": {
         "type": "string",
         "minLength": 1,
-        "description": "Person or factory to contact. Use only when starting a new conversation."
+        "description": "Person or factory to contact. Use only when starting a new conversation. If conversation_id is also set and exists, conversation_id wins."
       },
       "conversation_id": {
         "type": "string",
         "minLength": 1,
-        "description": "Existing Airsup conversation to continue."
+        "description": "Existing Airsup conversation to continue. Wins over person_id when both are sent and the conversation exists."
       },
       "message": {
         "type": "string",
@@ -22,20 +22,6 @@
       }
     },
     "required": ["message"],
-    "oneOf": [
-      {
-        "required": ["person_id"],
-        "not": {
-          "required": ["conversation_id"]
-        }
-      },
-      {
-        "required": ["conversation_id"],
-        "not": {
-          "required": ["person_id"]
-        }
-      }
-    ],
     "additionalProperties": false
   },
   "outputSchema": {

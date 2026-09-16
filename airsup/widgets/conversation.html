@@ -469,7 +469,8 @@
         structured.status = 'ended';
       }
       const otherName = (panel && panel.other && panel.other.name) || '';
-      const waitingNow = Boolean(waiting) && status !== 'ended' && status !== 'failed' && !String(structured.reply || '').trim();
+      // waiting flag is authoritative; do not latch on a prior structured.reply
+      const waitingNow = Boolean(waiting) && status !== 'ended' && status !== 'failed';
       const turns = turnCount(panel && panel.messages);
       document.getElementById('title').textContent = otherName || 'Airsup';
       document.getElementById('mark').classList.toggle('pulse', waitingNow);
@@ -524,6 +525,15 @@
         render(structured, panel, false);
         return;
       }
+      if (outgoing) {
+        // Clear stale reply latch so continuations re-enter Talking / Thinking phases
+        structured = Object.assign({}, structured, { reply: null });
+        if (structured.status !== 'ended' && structured.status !== 'failed') {
+          structured.status = 'open';
+        }
+        render(structured, panel, true);
+        return;
+      }
       render(structured, panel, !hasThemReply(structured, panel));
     }
     async function endConversation() {
@@ -571,7 +581,7 @@
           id: message.id,
           result: {
             protocolVersion: '2026-01-26',
-            appInfo: { name: 'airsup', version: '17' },
+            appInfo: { name: 'airsup', version: '18' },
             appCapabilities: { availableDisplayModes: ['inline', 'fullscreen', 'pip'] },
           },
         }, '*');

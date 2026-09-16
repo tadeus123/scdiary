@@ -3,7 +3,8 @@ const { signedInBuyerName } = require('../directory');
 
 const RFQ_KEYS = ['quantity', 'material', 'tolerance', 'finish', 'target_date', 'destination', 'drawings', 'notes'];
 const NOTIFY_REASONS = ['rfq', 'sales_contact', 'call', 'visit'];
-const OPENAI_REPLY_MS = 12000;
+const OPENAI_REPLY_MS_MINI = 12000;
+const OPENAI_REPLY_MS_4O = 20000;
 const REPLY_MAX_CHARS = 8000;
 const HISTORY_MSG_CHARS = 2500;
 const BUYER_MSG_CHARS = 8000;
@@ -71,7 +72,9 @@ function allowedNotify(actions, reason) {
   const list = Array.isArray(actions) ? actions : [];
   if (reason === 'rfq') return list.includes('forward_sales') || list.includes('collect_rfq');
   if (reason === 'sales_contact') return list.includes('contact_sales') || list.includes('forward_sales');
-  if (reason === 'call' || reason === 'visit') return list.includes('book_visit') || list.includes('contact_sales');
+  if (reason === 'call' || reason === 'visit') {
+    return list.includes('book_visit') || list.includes('contact_sales') || list.includes('forward_sales');
+  }
   return false;
 }
 
@@ -257,15 +260,21 @@ function notifyReasonFromMessage(message, rfq) {
   return 'none';
 }
 
-function normalizeOutcome(parsed, base) {
+function normalizeOutcome(parsed, base, messageReason) {
   const rfq = mergeRfq(base.rfq, parsed && parsed.rfq);
   const complete = isRfqComplete(rfq);
+  const fromMessage = String(messageReason || '').trim();
   let reason = String((parsed && parsed.notify_reason) || '').trim();
   if (!NOTIFY_REASONS.includes(reason)) reason = 'none';
+  // Prefer explicit buyer ask for visit/call/sales over a silent model "none".
+  if (['visit', 'call', 'sales_contact'].includes(fromMessage)) {
+    reason = fromMessage;
+  }
   const modelWants = parsed && parsed.notify_factory === true;
-  if (reason === 'none' && (modelWants || (parsed && parsed.rfq_complete === true) || complete)) {
+  if (reason === 'none' && (modelWants || (parsed && parsed.rfq_complete === true) || complete || fromMessage === 'rfq')) {
     reason = complete ? 'rfq' : 'none';
   }
+  if (reason === 'rfq' && !complete) reason = 'none';
   if (!allowedNotify(base.actions, reason)) reason = 'none';
   const reply = String((parsed && parsed.reply) || base.reply || '').trim().slice(0, REPLY_MAX_CHARS);
   return {
@@ -297,17 +306,18 @@ async function completeReply({ company, caller, history, message, rfq, fetchImpl
       rfq_complete: fallback.rfq_complete,
       notify_factory: reason !== 'none',
       notify_reason: reason,
-    }, fallback);
+    }, fallback, reason);
   }
 
   const callerName = signedInBuyerName(caller);
   const model = chooseReplyModel({ message, history, rfq: merged });
+  const abortMs = model === 'gpt-4o' ? OPENAI_REPLY_MS_4O : OPENAI_REPLY_MS_MINI;
   const prior = (history || []).slice(-HISTORY_TURNS).map((row) => ({
     role: row.role === 'factory' ? 'assistant' : 'user',
     content: String(row.body || '').slice(0, HISTORY_MSG_CHARS),
   }));
   const controller = typeof AbortController === 'function' ? new AbortController() : null;
-  const timer = controller ? setTimeout(() => controller.abort(), OPENAI_REPLY_MS) : null;
+  const timer = controller ? setTimeout(() => controller.abort(), abortMs) : null;
   try {
     const fetchFn = fetchImpl || fetch;
     const res = await fetchFn('https://api.openai.com/v1/chat/completions', {
@@ -327,7 +337,7 @@ async function completeReply({ company, caller, history, message, rfq, fetchImpl
           ...prior,
           {
             role: 'user',
-            content: `Buyer signed in as ${callerName}. Address only this login. Do not use another Airsup directory name.\nBuyer said:\n${String(message || '').slice(0, BUYER_MSG_CHARS)}\n\nKnown RFQ so far:\n${JSON.stringify(merged)}\n\nWrite a dense high-bandwidth sales-engineer reply now: lead with fit/no/alternative, pack constraints and next steps, ask only clarifying questions that change the quote. Do not recap the RFQ as a field list. Do not pad.`,
+            content: `Buyer signed in as ${callerName}. Address only this login. Do not use another Airsup directory name.\nBuyer said:\n${String(message || '').slice(0, BUYER_MSG_CHARS)}\n\nWrite a dense high-bandwidth sales-engineer reply now: lead with fit/no/alternative, pack constraints and next steps, ask only clarifying questions that change the quote. Do not recap the RFQ as a field list. Do not pad.`,
           },
         ],
       }),
@@ -338,20 +348,20 @@ async function completeReply({ company, caller, history, message, rfq, fetchImpl
         rfq: merged,
         notify_factory: reason !== 'none',
         notify_reason: reason,
-      }, fallback);
+      }, fallback, reason);
     }
     const data = await res.json();
     const parsed = JSON.parse(String(
       data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '{}',
     ));
-    return normalizeOutcome(parsed, fallback);
+    return normalizeOutcome(parsed, fallback, reason);
   } catch {
     return normalizeOutcome({
       reply: fallback.reply,
       rfq: merged,
       notify_factory: reason !== 'none',
       notify_reason: reason,
-    }, fallback);
+    }, fallback, reason);
   } finally {
     if (timer) clearTimeout(timer);
   }
@@ -372,4 +382,7 @@ module.exports = {
   fallbackReply,
   normalizeOutcome,
   completeReply,
+  notifyReasonFromMessage,
+  OPENAI_REPLY_MS_MINI,
+  OPENAI_REPLY_MS_4O,
 };
