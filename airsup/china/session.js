@@ -85,6 +85,7 @@ module.exports = {
   randomToken,
   readLang,
   setLang,
+  readSid,
   readCompany,
   createSession,
   clearSession,

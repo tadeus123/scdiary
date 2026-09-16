@@ -287,6 +287,10 @@ assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includ
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('faq_openai_q'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('hero_openai_note'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('buyer-plugin.mp4'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('preload="none"'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('listCompaniesProof'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("maxAge: '7d'"));
+assert.ok(fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8').includes('listCompaniesProof'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('rfq_title'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('manual_email_cta'));
 assert.ok(COPY.en.growth_launch.toLowerCase().includes('launch'));

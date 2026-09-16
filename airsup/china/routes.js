@@ -47,17 +47,29 @@ const router = express.Router();
 const VIEWS = path.join(__dirname, 'views');
 const SITE_VIEWS = path.join(__dirname, '../../views');
 const CHINA_CSS_PATH = path.join(__dirname, 'public/china.css');
+let chinaCssCache = null;
 
 function readChinaCss() {
+  if (chinaCssCache !== null) return chinaCssCache;
   try {
-    return fs.readFileSync(CHINA_CSS_PATH, 'utf8');
+    chinaCssCache = fs.readFileSync(CHINA_CSS_PATH, 'utf8');
+    return chinaCssCache;
   } catch (error) {
     console.error('Airsup china css missing:', error.message);
     return '';
   }
 }
 
-router.use(express.static(path.join(__dirname, 'public'), { index: false, redirect: false }));
+router.use(express.static(path.join(__dirname, 'public'), {
+  index: false,
+  redirect: false,
+  maxAge: '7d',
+  setHeaders(res, filePath) {
+    if (/\.(mp4|webm|jpe?g|png|gif|css)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    }
+  },
+}));
 
 function publicOrigin(req) {
   return peopleAuth.getPublicOrigin(req);
@@ -81,11 +93,11 @@ let proofCache = { at: 0, data: proofPayload([]) };
 
 async function proof() {
   const now = Date.now();
-  if (now - proofCache.at < 15 * 1000) return proofCache.data;
+  if (now - proofCache.at < 60 * 1000) return proofCache.data;
   if (!db.isConfigured()) return proofCache.data;
   try {
     const data = await Promise.race([
-      db.listCompanies().then(proofPayload),
+      db.listCompaniesProof().then(proofPayload),
       new Promise((_, reject) => setTimeout(() => reject(new Error('proof timeout')), 1800)),
     ]);
     proofCache = { at: now, data };
@@ -214,7 +226,9 @@ function tooSoon(company) {
 }
 
 router.get(['/', ''], async (req, res) => {
-  const company = await session.readCompany(req).catch(() => null);
+  const company = session.readSid(req)
+    ? await session.readCompany(req).catch(() => null)
+    : null;
   if (company && (company.status === 'verified' || company.status === 'live')) {
     return res.redirect('/airsup/china/setup');
   }

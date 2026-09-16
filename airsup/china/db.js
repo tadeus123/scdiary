@@ -38,6 +38,17 @@ async function listCompanies() {
   return data || [];
 }
 
+/** Lean columns for landing proof counts / live roster (avoid pulling full profiles). */
+async function listCompaniesProof() {
+  const db = requireDb();
+  const { data, error } = await db
+    .from('airsup_china_companies')
+    .select('company_name,company_name_en,domain,website,niche,city,status,verified_at,live_at,created_at')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
 async function listLive() {
   const db = requireDb();
   const { data, error } = await db
@@ -304,6 +315,7 @@ module.exports = {
   getByDomain,
   getById,
   listCompanies,
+  listCompaniesProof,
   listLive,
   insertCompany,
   updateCompany,
