@@ -4131,12 +4131,28 @@ body.selfie-crop-open {
   font-variant-numeric: tabular-nums;
 }
 
+.liquidity-tooltip-sum {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-top: 0.15rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border-color);
+  font-size: 0.82rem;
+  opacity: 0.72;
+  font-variant-numeric: tabular-nums;
+}
+
+.liquidity-tooltip-sum-label {
+  opacity: 0.85;
+}
+
 .liquidity-tooltip-balance {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  margin-top: 0.25rem;
-  padding-top: 0.35rem;
-  border-top: 1px solid var(--border-color);
+  margin-top: 0.15rem;
+  padding-top: 0.3rem;
   color: var(--text-color);
 }
 

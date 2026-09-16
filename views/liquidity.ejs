@@ -6,7 +6,7 @@
   <%- include('partials/seo-head') %>
   <link rel="alternate" type="application/json" href="/api/liquidity">
   <link rel="alternate" type="text/plain" href="/liquidity.txt">
-  <link rel="stylesheet" href="/css/style.css?v=lq-ledger">
+  <link rel="stylesheet" href="/css/style.css?v=lq-day-sum">
 </head>
 <body class="liquidity-page">
   <nav class="bookshelf-header liquidity-header">
@@ -47,6 +47,6 @@
   <script type="application/json" id="liquidity-data"><%- typeof liquidityJson !== 'undefined' ? liquidityJson : '{"success":true,"series":null,"recurring":[],"runway":null}' %></script>
 
   <script src="/js/main.js"></script>
-  <script src="/js/liquidity.js?v=lq-bank-cash"></script>
+  <script src="/js/liquidity.js?v=lq-day-sum"></script>
 </body>
 </html>

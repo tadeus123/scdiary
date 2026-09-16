@@ -400,7 +400,10 @@ function renderChart(series) {
     if (!group.length) return;
     const last = group[group.length - 1];
     const daily = dailyPoints.find((point) => point.dayKey === dayKey) || last;
-    const logs = group.filter((point) => point.kind !== 'start').map((point) => {
+    const dayLogs = group.filter((point) => point.kind !== 'start');
+    const daySum = dayLogs.reduce((sum, point) => sum + (Number(point.delta) || 0), 0);
+    const sumClass = daySum < 0 ? ' liquidity-tooltip-out' : '';
+    const logs = dayLogs.map((point) => {
       const delta = Number(point.delta);
       const deltaClass = delta < 0 ? ' liquidity-tooltip-out' : '';
       const note = point.note
@@ -413,9 +416,16 @@ function renderChart(series) {
         </div>
       `;
     }).join('');
+    const sumRow = dayLogs.length
+      ? `<div class="liquidity-tooltip-sum">
+          <span class="liquidity-tooltip-sum-label">sum</span>
+          <span class="liquidity-tooltip-delta${sumClass}">${escapeXml(formatSignedEur(daySum))}</span>
+        </div>`
+      : '';
     tooltip.innerHTML = `
       <span class="liquidity-tooltip-when">${escapeXml(formatTooltipWhen(last.at))}</span>
       ${logs}
+      ${sumRow}
       <span class="liquidity-tooltip-balance">${escapeXml(formatEur(last.balance))}</span>
     `;
     tooltip.classList.remove('hidden');
