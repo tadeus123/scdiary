@@ -250,6 +250,7 @@ router.get('/privacy', async (req, res) => {
   render(req, res, 'privacy.ejs', {
     proof: await proof(),
     landing: false,
+    quietChrome: true,
   });
 });
 

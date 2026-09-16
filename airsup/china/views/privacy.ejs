@@ -4,27 +4,46 @@
   <meta charset="UTF-8">
   <%- include('partials/head') %>
 </head>
-<body class="cn-body">
+<body class="cn-body cn-privacy">
   <%- include('partials/header') %>
-  <main class="cn-wrap cn-inner">
-    <p><a class="cn-text-link" href="/airsup/china"><%= t('preview_back') %></a></p>
-    <h1><%= t('privacy_page_title') %></h1>
-    <p class="cn-meta"><%= t('privacy_updated') %></p>
-    <h2><%= t('privacy_who_t') %></h2>
-    <p class="cn-note"><%= t('privacy_who_d') %></p>
-    <h2><%= t('privacy_read_t') %></h2>
-    <p class="cn-note"><%= t('privacy_read_d') %></p>
-    <h2><%= t('privacy_publish_t') %></h2>
-    <p class="cn-note"><%= t('privacy_publish_d') %></p>
-    <h2><%= t('privacy_inquiry_t') %></h2>
-    <p class="cn-note"><%= t('privacy_inquiry_d') %></p>
-    <h2><%= t('privacy_store_t') %></h2>
-    <p class="cn-note"><%= t('privacy_store_d') %></p>
-    <h2><%= t('privacy_train_t') %></h2>
-    <p class="cn-note"><%= t('privacy_train_d') %></p>
-    <h2><%= t('privacy_rights_t') %></h2>
-    <p class="cn-note"><%= t('privacy_rights_d') %></p>
-    <p class="cn-note"><a href="mailto:tademehl@gmail.com">tademehl@gmail.com</a></p>
+  <main class="cn-wrap cn-inner cn-privacy-main">
+    <p class="cn-privacy-back"><a class="cn-text-link" href="/airsup/china"><%= t('preview_back') %></a></p>
+    <header class="cn-privacy-intro">
+      <h1><%= t('privacy_page_title') %></h1>
+      <p class="cn-lead"><%= t('privacy_lead') %></p>
+      <p class="cn-meta"><%= t('privacy_updated') %></p>
+    </header>
+    <div class="cn-privacy-sections">
+      <section>
+        <h2><%= t('privacy_who_t') %></h2>
+        <p><%= t('privacy_who_d') %></p>
+      </section>
+      <section>
+        <h2><%= t('privacy_read_t') %></h2>
+        <p><%= t('privacy_read_d') %></p>
+      </section>
+      <section>
+        <h2><%= t('privacy_publish_t') %></h2>
+        <p><%= t('privacy_publish_d') %></p>
+      </section>
+      <section>
+        <h2><%= t('privacy_inquiry_t') %></h2>
+        <p><%= t('privacy_inquiry_d') %></p>
+      </section>
+      <section>
+        <h2><%= t('privacy_store_t') %></h2>
+        <p><%= t('privacy_store_d') %></p>
+      </section>
+      <section>
+        <h2><%= t('privacy_train_t') %></h2>
+        <p><%= t('privacy_train_d') %></p>
+      </section>
+      <section>
+        <h2><%= t('privacy_rights_t') %></h2>
+        <p><%= t('privacy_rights_d') %></p>
+        <p class="cn-privacy-mail"><a href="mailto:tademehl@gmail.com">tademehl@gmail.com</a></p>
+      </section>
+    </div>
   </main>
   <%- include('partials/footer') %>
 </body>
