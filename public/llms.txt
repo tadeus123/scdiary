@@ -8,6 +8,9 @@ Personal site of Tade Mehl, plus Airsup: infrastructure so Western buyers can fi
 - Live factories (JSON array): https://www.tademehl.com/airsup/live-companies.json
 - Live factories (wrapped JSON): https://www.tademehl.com/airsup/china/live.json
 - Plain text summary: https://www.tademehl.com/airsup/china.txt
+- Liquidity (live HTML): https://www.tademehl.com/liquidity
+- Liquidity (plain text): https://www.tademehl.com/liquidity.txt
+- Liquidity (JSON): https://www.tademehl.com/api/liquidity
 - Sitemap: https://www.tademehl.com/sitemap.xml
 
 ## Airsup China — what it is

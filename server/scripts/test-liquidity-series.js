@@ -152,4 +152,36 @@ assert(fetchView.monthlyTotal === '−€800.00', `monthly total ${fetchView.mon
 assert(fetchView.points[0].note === 'starting bank', `graph note ${fetchView.points[0].note}`);
 assert(fetchView.now === '−€604.64', `fetch now ${fetchView.now}`);
 
+const { toPlainText, isOpenAiFetcher } = require('../utils/liquidity-fetch');
+assert(isOpenAiFetcher({ get: () => 'ChatGPT-User' }), 'chatgpt user agent');
+assert(isOpenAiFetcher({ get: () => 'Mozilla/5.0 GPTBot/1.0' }), 'gptbot user agent');
+assert(!isOpenAiFetcher({ get: () => 'Mozilla/5.0' }), 'browser user agent');
+
+const withTx = buildLiquidityFetchView({
+  series: {
+    current: -604.64,
+    bank: -14.34,
+    cash: 19.7,
+    open: 610,
+    points: []
+  },
+  recurring: [
+    { name: 'rent', day_of_month: 1, direction: 'out', amount_usd: -800, amount: 800 }
+  ],
+  runway: { label: 'cash runway: 2 months', expenses_usd: 800 },
+  entries: [{
+    timestamp: start,
+    amount: 25,
+    direction: 'out',
+    note: 'Coffee',
+    amount_usd: -25,
+    account: 'bank'
+  }]
+});
+const plain = toPlainText(withTx);
+assert(plain.includes('transactions'), 'plain has transactions heading');
+assert(plain.includes('Coffee'), 'plain has coffee');
+assert(plain.includes('rent'), 'plain has monthly rent');
+assert(plain.includes('now:'), 'plain has now');
+
 console.log('liquidity series ok');

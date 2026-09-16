@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <%- include('partials/seo-head') %>
+  <link rel="alternate" type="application/json" href="/api/liquidity">
+  <link rel="alternate" type="text/plain" href="/liquidity.txt">
+</head>
+<body>
+  <article>
+    <%- include('partials/liquidity-fetch', { fetchView: typeof liquidityFetch !== 'undefined' ? liquidityFetch : null }) %>
+  </article>
+</body>
+</html>

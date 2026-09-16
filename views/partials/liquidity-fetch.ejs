@@ -1,10 +1,11 @@
-<h2>liquidity</h2>
+<h1>liquidity</h1>
 <% if (fetchView) { %>
   <p>now: <%= fetchView.now %></p>
   <p>bank: <%= fetchView.bank %></p>
   <p>cash: <%= fetchView.cash %></p>
   <p>open: <%= fetchView.open %></p>
-  <h3>monthly</h3>
+  <p><%= fetchView.runway %></p>
+  <h2>monthly</h2>
   <% if (!fetchView.monthly.length) { %>
     <p>no monthly expenses yet</p>
   <% } else { %>
@@ -15,14 +16,29 @@
     </ul>
   <% } %>
   <p>total monthly lost money: <%= fetchView.monthlyTotal %></p>
-  <p><%= fetchView.runway %></p>
-  <h3>graph</h3>
-  <% if (!fetchView.points.length) { %>
-    <p>no graph points yet</p>
+  <h2>transactions</h2>
+  <% if (!fetchView.transactions.length) { %>
+    <p>no transactions yet</p>
   <% } else { %>
     <ul>
-      <% fetchView.points.forEach((point) => { %>
-        <li><%= point.day %><% if (point.note) { %> <%= point.note %><% } %> <%= point.delta %> — now <%= point.balance %> (bank <%= point.bank %>, cash <%= point.cash %>, open <%= point.open %>)</li>
+      <% fetchView.transactions.forEach((row) => { %>
+        <li><%= row.day %> <%= row.amount %><% if (row.note) { %> <%= row.note %><% } %><% if (row.account === 'cash') { %> cash<% } %></li>
+      <% }) %>
+    </ul>
+  <% } %>
+  <% if (fetchView.pending.length) { %>
+    <h2>pending</h2>
+    <ul>
+      <% fetchView.pending.forEach((row) => { %>
+        <li><%= row.day %> <%= row.amount %><% if (row.note) { %> <%= row.note %><% } %></li>
+      <% }) %>
+    </ul>
+  <% } %>
+  <% if (fetchView.liabilities.length) { %>
+    <h2>open liabilities</h2>
+    <ul>
+      <% fetchView.liabilities.forEach((row) => { %>
+        <li><%= row.day %> <%= row.amount %> <%= row.note %></li>
       <% }) %>
     </ul>
   <% } %>

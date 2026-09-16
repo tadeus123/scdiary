@@ -30,7 +30,14 @@ const {
   isConfigured
 } = require('../db/supabase');
 const { loadLiquidityGraph } = require('../utils/liquidity-graph');
-const { buildLiquidityFetchView, emptyPayload, jsonForPage } = require('../utils/liquidity-fetch');
+const {
+  buildLiquidityFetchView,
+  emptyPayload,
+  jsonForPage,
+  isOpenAiFetcher,
+  prefersPlainText,
+  toPlainText
+} = require('../utils/liquidity-fetch');
 const { parseYouTubeUrl } = require('../utils/youtube');
 const { sortedEpisodes, getEpisode, episodeLinks, episodeSeo } = require('../utils/edu-episodes');
 const {
@@ -83,26 +90,56 @@ router.get('/bookshelf', (req, res) => {
   res.render('bookshelf');
 });
 
-router.get('/liquidity', async (req, res) => {
+function liquidityNoStore(res) {
   res.set({
     'Cache-Control': 'no-store, no-cache, must-revalidate, private',
     'Pragma': 'no-cache',
     'Expires': '0'
   });
+}
+
+async function liquidityPageData() {
   try {
-    const { series, recurring, runway } = await loadLiquidityGraph();
-    const payload = { success: true, series, recurring, runway };
-    res.render('liquidity', {
+    const graph = await loadLiquidityGraph();
+    const payload = {
+      success: true,
+      series: graph.series,
+      recurring: graph.recurring,
+      runway: graph.runway,
+      entries: graph.entries,
+      pending: graph.pending,
+      openLiabilities: graph.openLiabilities
+    };
+    return {
       liquidityFetch: buildLiquidityFetchView(payload),
       liquidityJson: jsonForPage(payload)
-    });
+    };
   } catch (error) {
     console.error('Error loading liquidity page:', error);
-    res.render('liquidity', {
-      liquidityFetch: buildLiquidityFetchView(emptyPayload()),
-      liquidityJson: jsonForPage(emptyPayload())
-    });
+    const payload = emptyPayload();
+    return {
+      liquidityFetch: buildLiquidityFetchView(payload),
+      liquidityJson: jsonForPage(payload)
+    };
   }
+}
+
+router.get('/liquidity.txt', async (req, res) => {
+  liquidityNoStore(res);
+  const { liquidityFetch } = await liquidityPageData();
+  res.type('text/plain; charset=utf-8').send(toPlainText(liquidityFetch));
+});
+
+router.get('/liquidity', async (req, res) => {
+  liquidityNoStore(res);
+  const data = await liquidityPageData();
+  if (prefersPlainText(req)) {
+    return res.type('text/plain; charset=utf-8').send(toPlainText(data.liquidityFetch));
+  }
+  if (isOpenAiFetcher(req)) {
+    return res.render('liquidity-bot', { liquidityFetch: data.liquidityFetch });
+  }
+  res.render('liquidity', data);
 });
 
 // Company Education page
