@@ -298,6 +298,7 @@ assert.ok(COPY.zh.growth_launch.includes('开通'));
 assert.ok(COPY.en.cta_activate.toLowerCase().includes('prefilled'));
 assert.ok(!COPY.en.cta_activate.toLowerCase().includes('endpoint'));
 assert.ok(COPY.en.footer.toLowerCase().includes('huge production'));
+assert.ok(COPY.en.footer_credit.toLowerCase().includes('tade mehl production'));
 assert.ok(COPY.en.footer_ops.toLowerCase().includes('huge production'));
 assert.ok(COPY.zh.footer_ops.includes('HUGE Production GmbH'));
 assert.ok(COPY.en.footer_contact.includes('tademehl@gmail.com'));
