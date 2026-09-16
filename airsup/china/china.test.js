@@ -998,6 +998,90 @@ function memoryChina(companies) {
   assert.deepStrictEqual(failThread.notify_reasons || [], []);
   assert.ok(!failThread.emailed_at);
 
+  const { sendBatch, MAX_BATCH, mapPool, PEOPLE_FAIL_REPLY } = require('./batch');
+  const f2 = {
+    ...factory,
+    company_id: '22222222-2222-2222-2222-222222222222',
+    company_name_en: 'Beta CNC',
+    domain: 'beta-cnc.com',
+  };
+  const f3 = {
+    ...factory,
+    company_id: '33333333-3333-3333-3333-333333333333',
+    company_name_en: 'Gamma CNC',
+    domain: 'gamma-cnc.com',
+  };
+  const batchStore = memoryChina([factory, f2, f3]);
+  let batchCalls = 0;
+  const batchDeps = {
+    db: batchStore,
+    completeReply: async ({ company }) => {
+      batchCalls += 1;
+      return {
+        reply: `Hello from ${company.company_name_en || company.domain}`,
+        rfq: {},
+        rfq_complete: false,
+        notify_factory: false,
+        notify_reason: 'none',
+      };
+    },
+    sendFactoryNotice: async () => {},
+  };
+  const batch = await sendBatch(caller, {
+    person_ids: [factory.company_id, f2.company_id, f3.company_id, factory.company_id],
+    message: 'Need 100 aluminum brackets, STEP attached.',
+  }, batchDeps);
+  assert.strictEqual(batch.results.length, 3);
+  assert.strictEqual(batch.completed, 3);
+  assert.strictEqual(batch.failed, 0);
+  assert.strictEqual(batchCalls, 3);
+  assert.ok(batch.results.every((row) => row.status === 'replied' && row.conversation_id.startsWith(CONV_PREFIX)));
+  assert.notStrictEqual(batch.results[0].conversation_id, batch.results[1].conversation_id);
+  assert.strictEqual(batch.results[0].person_id, factory.company_id);
+  assert.strictEqual(batch.results[1].person_id, f2.company_id);
+  assert.strictEqual(batch.results[2].person_id, f3.company_id);
+
+  const mixedBatch = await sendBatch(caller, {
+    person_ids: [factory.company_id, 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'],
+    message: 'quote please',
+  }, batchDeps);
+  assert.strictEqual(mixedBatch.results.length, 2);
+  assert.strictEqual(mixedBatch.completed, 1);
+  assert.strictEqual(mixedBatch.failed, 1);
+  assert.strictEqual(mixedBatch.results[1].status, 'failed');
+  assert.ok(String(mixedBatch.results[1].reply || '').includes('factories only') || mixedBatch.results[1].reply === PEOPLE_FAIL_REPLY);
+
+  const tooMany = await sendBatch(caller, {
+    person_ids: Array.from({ length: MAX_BATCH + 1 }, (_, i) => `id-${i}`),
+    message: 'x',
+  }, batchDeps);
+  assert.strictEqual(tooMany.results.length, 0);
+  assert.ok(String(tooMany.error || '').includes('1000'));
+
+  const order = [];
+  const mapped = await mapPool([1, 2, 3, 4, 5], 2, async (n) => {
+    await new Promise((r) => setTimeout(r, 5));
+    order.push(n);
+    return n * 10;
+  });
+  assert.deepStrictEqual(mapped, [10, 20, 30, 40, 50]);
+  assert.deepStrictEqual(order.sort((a, b) => a - b), [1, 2, 3, 4, 5]);
+
+  const { toolList } = require('../mcp');
+  assert.ok(toolList().tools[1].inputSchema.properties.person_ids);
+  assert.strictEqual(toolList().tools[1].inputSchema.properties.person_ids.maxItems, 1000);
+  assert.ok(toolList().tools[1].description.includes('person_ids'));
+  const narrated = formatToolResult({
+    results: [
+      { person_id: 'a', name: 'A', conversation_id: 'cn_1', status: 'replied', reply: 'ok' },
+      { person_id: 'b', name: 'B', conversation_id: '', status: 'failed', reply: null },
+    ],
+    completed: 1,
+    failed: 1,
+  });
+  assert.ok(narrated.content[0].text.includes('batch'));
+  assert.ok(narrated.content[0].text.includes('1 replied'));
+
   console.log('airsup china tests passed');
 })().catch((error) => {
   console.error(error);
