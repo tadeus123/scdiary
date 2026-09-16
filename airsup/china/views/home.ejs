@@ -97,20 +97,85 @@
         </details>
       <% } %>
       <% if (proof && proof.chart && proof.live > 0) { %>
-      <figure class="cn-chart">
+      <figure class="cn-chart" id="cn-growth-chart" data-lang="<%= lang %>" data-tip-live="<%= t('growth_tip_live') %>" data-points="<%= JSON.stringify(proof.chart.points).replace(/"/g, '&quot;') %>">
         <figcaption><%= t('growth_chart') %></figcaption>
-        <svg viewBox="0 0 <%= proof.chart.width %> <%= proof.chart.height %>" role="img" aria-label="<%= t('growth_chart') %>">
-          <polygon class="cn-chart-fill" points="<%= proof.chart.area %>"></polygon>
-          <polyline class="cn-chart-line" fill="none" points="<%= proof.chart.line %>"></polyline>
-          <% proof.chart.yTicks.forEach((tick) => { %>
-            <text class="cn-chart-y" x="<%= proof.chart.left - 8 %>" y="<%= tick.y + 4 %>" text-anchor="end"><%= tick.label %></text>
-          <% }) %>
-          <% proof.chart.labels.forEach((label) => { %>
-            <text class="cn-chart-x" x="<%= label.x %>" y="<%= proof.chart.height - 12 %>" text-anchor="<%= label.first ? 'start' : (label.last ? 'end' : 'middle') %>"><%= label.first ? t('growth_launch') : formatChartDay(label.day) %></text>
-          <% }) %>
-        </svg>
+        <div class="cn-chart-stage">
+          <svg viewBox="0 0 <%= proof.chart.width %> <%= proof.chart.height %>" role="img" aria-label="<%= t('growth_chart') %>">
+            <polygon class="cn-chart-fill" points="<%= proof.chart.area %>"></polygon>
+            <polyline class="cn-chart-line" fill="none" points="<%= proof.chart.line %>"></polyline>
+            <% proof.chart.yTicks.forEach((tick) => { %>
+              <text class="cn-chart-y" x="<%= proof.chart.left - 8 %>" y="<%= tick.y + 4 %>" text-anchor="end"><%= tick.label %></text>
+            <% }) %>
+            <% proof.chart.labels.forEach((label) => { %>
+              <% if (label.first) { %>
+                <text class="cn-chart-x" x="<%= label.x %>" y="<%= proof.chart.height - 26 %>" text-anchor="start"><%= t('growth_launch') %></text>
+                <text class="cn-chart-x" x="<%= label.x %>" y="<%= proof.chart.height - 10 %>" text-anchor="start"><%= formatChartDay(label.day) %></text>
+              <% } else { %>
+                <text class="cn-chart-x" x="<%= label.x %>" y="<%= proof.chart.height - 12 %>" text-anchor="<%= label.last ? 'end' : 'middle' %>"><%= formatChartDay(label.day) %></text>
+              <% } %>
+            <% }) %>
+            <g class="cn-chart-focus" hidden>
+              <line class="cn-chart-guide" y1="<%= proof.chart.top %>" y2="<%= proof.chart.baseline %>"></line>
+              <circle class="cn-chart-dot" r="4.5"></circle>
+            </g>
+            <rect class="cn-chart-hit" x="<%= proof.chart.left %>" y="<%= proof.chart.top %>" width="<%= proof.chart.innerW %>" height="<%= proof.chart.innerH %>" fill="transparent"></rect>
+          </svg>
+          <div class="cn-chart-tip" hidden></div>
+        </div>
         <p class="cn-chart-axes"><span><%= t('growth_axis_y') %></span><span><%= t('growth_axis_x') %></span></p>
       </figure>
+      <script>
+      (function () {
+        var root = document.getElementById('cn-growth-chart');
+        if (!root) return;
+        var points;
+        try { points = JSON.parse(root.getAttribute('data-points') || '[]'); } catch (e) { return; }
+        if (!points.length) return;
+        var svg = root.querySelector('svg');
+        var hit = root.querySelector('.cn-chart-hit');
+        var focus = root.querySelector('.cn-chart-focus');
+        var guide = root.querySelector('.cn-chart-guide');
+        var dot = root.querySelector('.cn-chart-dot');
+        var tip = root.querySelector('.cn-chart-tip');
+        var lang = root.getAttribute('data-lang') === 'en' ? 'en' : 'zh';
+        var tipLive = root.getAttribute('data-tip-live') || '';
+        function nearest(clientX) {
+          var rect = svg.getBoundingClientRect();
+          var x = ((clientX - rect.left) / rect.width) * svg.viewBox.baseVal.width;
+          var best = points[0];
+          var bestDist = Math.abs(best.x - x);
+          for (var i = 1; i < points.length; i++) {
+            var d = Math.abs(points[i].x - x);
+            if (d < bestDist) { best = points[i]; bestDist = d; }
+          }
+          return best;
+        }
+        function show(point, clientX) {
+          focus.removeAttribute('hidden');
+          tip.hidden = false;
+          guide.setAttribute('x1', point.x);
+          guide.setAttribute('x2', point.x);
+          dot.setAttribute('cx', point.x);
+          dot.setAttribute('cy', point.y);
+          var label = lang === 'en' ? point.label_en : point.label_zh;
+          tip.textContent = label + ' · ' + point.count + ' ' + tipLive;
+          var stage = root.querySelector('.cn-chart-stage').getBoundingClientRect();
+          var left = clientX - stage.left;
+          tip.style.left = Math.max(8, Math.min(stage.width - tip.offsetWidth - 8, left - tip.offsetWidth / 2)) + 'px';
+          tip.style.top = Math.max(8, ((point.y / svg.viewBox.baseVal.height) * stage.height) - 36) + 'px';
+        }
+        function hide() {
+          focus.setAttribute('hidden', '');
+          tip.hidden = true;
+        }
+        hit.addEventListener('mousemove', function (event) { show(nearest(event.clientX), event.clientX); });
+        hit.addEventListener('mouseleave', hide);
+        hit.addEventListener('touchstart', function (event) {
+          if (!event.touches || !event.touches[0]) return;
+          show(nearest(event.touches[0].clientX), event.touches[0].clientX);
+        }, { passive: true });
+      })();
+      </script>
       <% } %>
     </section>
 

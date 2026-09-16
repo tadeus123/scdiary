@@ -120,11 +120,11 @@ function chartFromSeries(series) {
   const rows = Array.isArray(series) ? series.filter((row) => row && row.day) : [];
   if (!rows.length) return null;
   const width = 640;
-  const height = 220;
+  const height = 236;
   const left = 44;
   const right = 16;
   const top = 18;
-  const bottom = 42;
+  const bottom = 56;
   const innerW = width - left - right;
   const innerH = height - top - bottom;
   const max = Math.max(1, ...rows.map((row) => Number(row.count) || 0));
@@ -135,7 +135,14 @@ function chartFromSeries(series) {
   const points = plot.map((row, index) => {
     const x = left + (index / Math.max(plot.length - 1, 1)) * innerW;
     const y = top + innerH - ((Number(row.count) || 0) / max) * innerH;
-    return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, day: row.day, count: row.count };
+    return {
+      x: Math.round(x * 10) / 10,
+      y: Math.round(y * 10) / 10,
+      day: row.day,
+      count: Number(row.count) || 0,
+      label_zh: formatChartDay(row.day, 'zh'),
+      label_en: formatChartDay(row.day, 'en'),
+    };
   });
   const line = points.map((row) => `${row.x},${row.y}`).join(' ');
   const last = points[points.length - 1];
@@ -170,6 +177,12 @@ function chartFromSeries(series) {
     area,
     baseline: top + innerH,
     left,
+    top,
+    right,
+    bottom,
+    innerW,
+    innerH,
+    points,
     labels,
     yTicks: [
       { y: top + innerH, label: '0' },

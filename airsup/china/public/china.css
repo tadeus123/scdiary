@@ -1236,6 +1236,10 @@ h3 {
   margin: 1.1rem 0 1.6rem;
 }
 
+.cn-chart-stage {
+  position: relative;
+}
+
 .cn-chart figcaption {
   margin: 0 0 0.55rem;
   font-size: 0.92rem;
@@ -1261,6 +1265,37 @@ h3 {
   stroke-width: 2.4;
   stroke-linejoin: round;
   stroke-linecap: round;
+}
+
+.cn-chart-hit {
+  cursor: crosshair;
+}
+
+.cn-chart-guide {
+  stroke: #7a1e2b;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.55;
+}
+
+.cn-chart-dot {
+  fill: #7a1e2b;
+  stroke: #faf6ef;
+  stroke-width: 2;
+}
+
+.cn-chart-tip {
+  position: absolute;
+  z-index: 2;
+  padding: 0.35rem 0.55rem;
+  border-radius: 6px;
+  background: #3b2a24;
+  color: #faf6ef;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(59, 42, 36, 0.18);
 }
 
 .cn-chart-y,
