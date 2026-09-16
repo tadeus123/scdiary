@@ -283,7 +283,8 @@ assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includ
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('proof_title'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('what_title'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('cn-factory-cards'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('step_a_t'));
+assert.ok(!fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('step_a_t'));
+assert.ok(!fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('cn-activate-steps'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('trust_title'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('faq_openai_q'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('hero_openai_note'));
