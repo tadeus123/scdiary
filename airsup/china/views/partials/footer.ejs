@@ -1,26 +1,26 @@
 <footer class="cn-foot<%= typeof quietChrome !== 'undefined' && quietChrome ? ' cn-foot-quiet' : '' %>">
   <div class="cn-foot-mountains" aria-hidden="true">
-    <svg viewBox="0 0 1200 160" preserveAspectRatio="none">
-      <path fill="#5c1520" d="M0 160 L0 88 L90 70 L170 96 L260 48 L340 92 L430 36 L520 86 L610 42 L720 94 L810 50 L900 88 L990 40 L1080 86 L1200 58 L1200 160 Z"></path>
-      <path fill="#4a1019" d="M0 160 L0 110 L80 96 L160 124 L250 86 L360 120 L470 78 L580 118 L690 84 L800 122 L910 80 L1020 118 L1200 90 L1200 160 Z"></path>
+    <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
+      <path fill="#5c1520" d="M0 120 L0 72 L90 58 L170 78 L260 40 L340 74 L430 30 L520 70 L610 36 L720 76 L810 42 L900 72 L990 34 L1080 70 L1200 48 L1200 120 Z"></path>
+      <path fill="#4a1019" d="M0 120 L0 88 L80 78 L160 98 L250 70 L360 94 L470 64 L580 94 L690 68 L800 96 L910 66 L1020 94 L1200 74 L1200 120 Z"></path>
     </svg>
   </div>
   <% if (typeof quietChrome === 'undefined' || !quietChrome) { %>
-  <p class="cn-foot-line"><%= t('foot_line') %></p>
-  <p class="cn-foot-price"><%= t('price') %></p>
-  <p><a class="cn-btn" href="/airsup/china#activate"><%= t('cta_activate') %> →</a></p>
+  <div class="cn-foot-cta">
+    <p class="cn-foot-line"><%= t('foot_line') %></p>
+    <p class="cn-foot-price"><%= t('price') %></p>
+    <p class="cn-foot-action"><a class="cn-btn" href="/airsup/china#activate"><%= t('cta_activate') %> →</a></p>
+  </div>
   <% } %>
-  <p class="cn-foot-meta"><%= t('footer_ops') %></p>
-  <p class="cn-foot-meta"><%= t('footer_founder') %></p>
-  <p class="cn-foot-meta"><a href="mailto:tademehl@gmail.com"><%= t('footer_contact') %></a></p>
-  <p class="cn-foot-meta">
-    <a href="/airsup/china/privacy"><%= t('footer_privacy') %></a>
-    ·
-    <a href="/airsup20/privacy"><%= lang === 'en' ? 'Airsup privacy (EN)' : 'Airsup 隐私（英文）' %></a>
-  </p>
-  <p class="cn-foot-meta"><%= t('footer') %></p>
-  <p class="cn-foot-meta cn-foot-credit"><%= t('footer_credit') %></p>
-  <% if (typeof quietChrome === 'undefined' || !quietChrome) { %>
-  <p class="cn-note"><%= t('footer_note') %></p>
-  <% } %>
+  <div class="cn-foot-legal">
+    <p><%= t('footer_ops_short') %></p>
+    <p>
+      <%= t('footer_founder_short') %>
+      <span class="cn-foot-sep" aria-hidden="true">·</span>
+      <a href="mailto:tademehl@gmail.com"><%= t('footer_mail_short') %></a>
+      <span class="cn-foot-sep" aria-hidden="true">·</span>
+      <a href="/airsup/china/privacy"><%= t('footer_privacy') %></a>
+    </p>
+    <p class="cn-foot-credit"><%= t('footer_credit') %></p>
+  </div>
 </footer>

@@ -976,8 +976,8 @@ h3 {
 
 .cn-foot {
   position: relative;
-  padding: 3.2rem 1.2rem 1.6rem;
-  padding-bottom: calc(1.6rem + env(safe-area-inset-bottom));
+  padding: 2.8rem 1.2rem 1.8rem;
+  padding-bottom: calc(1.8rem + env(safe-area-inset-bottom));
   background: #6f1b27;
   color: #f3e6d6;
   text-align: center;
@@ -989,8 +989,8 @@ h3 {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 140px;
-  opacity: 0.55;
+  height: 96px;
+  opacity: 0.28;
   pointer-events: none;
 }
 
@@ -1000,11 +1000,18 @@ h3 {
   height: 100%;
 }
 
+.cn-foot-cta {
+  position: relative;
+  max-width: 36rem;
+  margin: 0 auto 1.8rem;
+}
+
 .cn-foot-line {
   position: relative;
-  margin: 0.4rem 0 0.45rem;
+  margin: 0 0 0.45rem;
   font-family: "Songti SC", "STSong", "SimSun", Georgia, serif;
-  font-size: clamp(1.2rem, 3vw, 1.7rem);
+  font-size: clamp(1.15rem, 2.8vw, 1.55rem);
+  line-height: 1.35;
 }
 
 .cn-foot-price,
@@ -1016,13 +1023,53 @@ h3 {
 
 .cn-foot-price {
   margin: 0 0 1rem;
-  opacity: 0.85;
+  opacity: 0.82;
+  font-size: 0.95rem;
+}
+
+.cn-foot-action {
+  margin: 0;
 }
 
 .cn-foot .cn-btn {
   background: #f4eee4;
   color: #7a1e2b;
   box-shadow: none;
+}
+
+.cn-foot-legal {
+  position: relative;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding-top: 1.15rem;
+  border-top: 1px solid rgba(243, 230, 214, 0.18);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: rgba(243, 230, 214, 0.72);
+}
+
+.cn-foot-legal p {
+  margin: 0.2rem 0;
+}
+
+.cn-foot-sep {
+  margin: 0 0.35rem;
+  opacity: 0.55;
+}
+
+.cn-foot-quiet {
+  padding-top: 2rem;
+}
+
+.cn-foot-quiet .cn-foot-legal {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.cn-foot-meta {
+  margin: 1.3rem 0 0;
+  font-size: 0.8rem;
+  opacity: 0.7;
 }
 
 .cn-scribble-foot,
@@ -1039,16 +1086,6 @@ h3 {
 .cn-scribble-foot2 {
   transform: rotate(5deg);
   margin-top: 1.4rem;
-}
-
-.cn-foot-quiet {
-  padding-top: 2.2rem;
-}
-
-.cn-foot-meta {
-  margin: 1.3rem 0 0;
-  font-size: 0.8rem;
-  opacity: 0.7;
 }
 
 .cn-privacy-main {
@@ -1131,8 +1168,11 @@ h3 {
 }
 
 .cn-foot-credit {
-  opacity: 0.55;
-  font-style: italic;
+  margin-top: 0.55rem !important;
+  opacity: 0.5;
+  font-style: normal;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
 }
 
 .cn-foot .cn-note {
