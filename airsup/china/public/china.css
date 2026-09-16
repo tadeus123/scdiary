@@ -105,7 +105,7 @@ h3 {
 
 .cn-factory-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.85rem;
   margin: 1rem 0 1.25rem;
 }
@@ -1052,7 +1052,8 @@ h3 {
   .cn-control-grid,
   .cn-flow-row,
   .cn-four,
-  .cn-ex-grid {
+  .cn-ex-grid,
+  .cn-factory-cards {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -1108,6 +1109,7 @@ h3 {
   .cn-flow-row,
   .cn-four,
   .cn-ex-grid,
+  .cn-factory-cards,
   .cn-grid {
     grid-template-columns: 1fr;
   }
