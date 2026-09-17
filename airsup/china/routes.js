@@ -38,10 +38,12 @@ const {
   gapWhy,
   operatorListingSummary,
   formatLiveAt,
+  isDemoCompany,
 } = require('./fields');
 const { confirmChecklist } = require('./enrich');
 const { proofPayload, industryPeers, formatChartDay, liveRoster } = require('./proof');
 const { sendVerifyEmail } = require('./mail');
+const { ensureDemoCompany, DEMO_DOMAIN } = require('./demo-company');
 const peopleAuth = require('../auth');
 const handleLiveCompanies = require('./live-companies');
 
@@ -676,6 +678,7 @@ function readSetup(body, company) {
     enrichment: prev.enrichment,
     quotation_knowledge: prev.quotation_knowledge,
     claim_ready: prev.claim_ready,
+    is_demo: prev.is_demo,
   });
   return {
     company_name: String(body.company_name || '').trim(),
@@ -705,6 +708,7 @@ async function showLive(req, res, company) {
     enrichmentGaps: enrichmentGaps(company),
     gapWhy: (gap) => gapWhy(gap, lang),
     quotationMeta: quotations.listMeta(company),
+    isDemo: isDemoCompany(company),
     headerLive: true,
   });
 }
@@ -728,6 +732,7 @@ async function showSetup(req, res, { company, error, saved, paused }) {
     confirmChecklist: checklist,
     gapWhy: (gap) => gapWhy(gap, lang),
     quotationMeta: quotations.listMeta(company),
+    isDemo: isDemoCompany(company),
     siteOpen,
     headerLive: company.status === 'live',
   });
@@ -749,6 +754,43 @@ router.get('/setup', async (req, res) => {
     saved: req.query.saved === '1',
     paused: req.query.paused === '1',
   });
+});
+
+router.get('/demo', async (req, res) => {
+  if (!db.isConfigured()) {
+    return res.status(503).send('Airsup China storage is not configured.');
+  }
+  try {
+    const company = await ensureDemoCompany();
+    await session.createSession(req, res, company.company_id);
+    if (req.query.edit === '1') {
+      return res.redirect('/airsup/china/setup?edit=1');
+    }
+    return res.redirect('/airsup/china/setup');
+  } catch (error) {
+    console.error('Airsup china demo open error:', error);
+    return res.status(500).send('Could not open demo company.');
+  }
+});
+
+router.get('/api/demo', async (req, res) => {
+  if (!db.isConfigured()) return res.status(503).json({ error: 'unavailable' });
+  try {
+    const company = await ensureDemoCompany();
+    return res.json({
+      demo: true,
+      domain: DEMO_DOMAIN,
+      company_id: company.company_id,
+      name: company.company_name_en,
+      status: company.status,
+      dashboard: '/airsup/china/demo',
+      edit: '/airsup/china/demo?edit=1',
+      note: 'Hidden from public live roster. Findable in ChatGPT MCP as Demo company (Tade / Airsup).',
+    });
+  } catch (error) {
+    console.error('Airsup china demo api error:', error);
+    return res.status(500).json({ error: 'unavailable' });
+  }
 });
 
 router.post('/setup', async (req, res) => {
@@ -860,7 +902,7 @@ router.get('/api/registry', async (req, res) => {
   if (!db.isConfigured()) return res.json({ suppliers: [], proof: proofPayload([]) });
   try {
     const { publicRecord } = require('./fields');
-    const rows = await db.listLive();
+    const rows = (await db.listLive()).filter((row) => !isDemoCompany(row));
     res.json({
       region: 'Shenzhen / Dongguan',
       suppliers: rows.map(publicRecord),

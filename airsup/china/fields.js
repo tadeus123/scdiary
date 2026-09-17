@@ -275,9 +275,17 @@ function normalizeProfile(raw) {
     contacts: normalizeContacts(source.contacts),
     site_notes: String(source.site_notes || '').trim().slice(0, 8000),
     claim_ready: Boolean(source.claim_ready),
+    is_demo: Boolean(source.is_demo),
     enrichment: normalizeEnrichment(source.enrichment),
     quotation_knowledge: normalizeQuotationKnowledge(source.quotation_knowledge),
   };
+}
+
+function isDemoCompany(company) {
+  if (!company || typeof company !== 'object') return false;
+  if (String(company.source || '').trim().toLowerCase() === 'demo') return true;
+  const profile = company.profile && typeof company.profile === 'object' ? company.profile : {};
+  return Boolean(profile.is_demo);
 }
 
 function normalizeActions(raw) {
@@ -312,7 +320,11 @@ function companyTitle(company, lang) {
 function listingText(company) {
   const profile = normalizeProfile(company && company.profile);
   const city = displayCity(company, 'en');
+  const demo = isDemoCompany(company);
   const lines = [
+    demo
+      ? 'DEMO COMPANY (Tade / Airsup): This is an internal Airsup test endpoint operated by Tade Mehl / HUGE Production. It is not a real manufacturing supplier. Use it only to exercise find_people and send_message.'
+      : '',
     `Company: ${companyTitle(company, 'en')}`,
     company && company.company_name ? `Name ZH: ${company.company_name}` : '',
     company && company.domain ? `Domain: ${company.domain}` : '',
@@ -424,7 +436,7 @@ function fillEmptyCompany(company, draft) {
   next.profile = {
     ...prevProfile,
     ...Object.fromEntries(Object.entries(draftProfile).filter(([key, value]) => {
-      if (key === 'contacts' || key === 'flexibility' || key === 'enrichment' || key === 'quotation_knowledge' || key === 'claim_ready') return false;
+      if (key === 'contacts' || key === 'flexibility' || key === 'enrichment' || key === 'quotation_knowledge' || key === 'claim_ready' || key === 'is_demo') return false;
       if (Array.isArray(value)) return value.length && !(Array.isArray(prevProfile[key]) && prevProfile[key].length);
       return Boolean(String(value || '').trim()) && !String(prevProfile[key] || '').trim();
     })),
@@ -432,6 +444,7 @@ function fillEmptyCompany(company, draft) {
     flexibility: prevProfile.flexibility || draftProfile.flexibility,
     site_notes: prevProfile.site_notes || draftProfile.site_notes,
     claim_ready: prevProfile.claim_ready || draftProfile.claim_ready,
+    is_demo: prevProfile.is_demo || draftProfile.is_demo,
     enrichment: mergeEnrichment(prevProfile.enrichment, draftProfile.enrichment),
     quotation_knowledge: prevProfile.quotation_knowledge && prevProfile.quotation_knowledge.documents
       && prevProfile.quotation_knowledge.documents.length
@@ -612,6 +625,7 @@ module.exports = {
   normalizeQuotationKnowledge,
   normalizeExtracted,
   quotationInsightsText,
+  isDemoCompany,
   normalizeActions,
   normalizeNiche,
   normalizeContacts,

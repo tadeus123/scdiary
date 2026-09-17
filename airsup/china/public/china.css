@@ -1662,3 +1662,13 @@ h3 {
 .cn-quote-approve {
   margin-top: 0.75rem;
 }
+
+.cn-demo-stamp {
+  color: #7a3b12;
+  font-weight: 650;
+}
+
+.cn-demo-banner {
+  margin: 0.35rem 0 1rem;
+  max-width: 42rem;
+}

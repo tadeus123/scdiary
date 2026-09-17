@@ -1,5 +1,6 @@
 const db = require('./db');
-const { listingText, endpointRecord } = require('./fields');
+const { listingText, endpointRecord, isDemoCompany } = require('./fields');
+const { ensureDemoCompany } = require('./demo-company');
 
 function tokens(value) {
   return String(value || '')
@@ -9,7 +10,7 @@ function tokens(value) {
 }
 
 function isBroadFactoryQuery(query) {
-  return /\b(factor(?:y|ies)?|supplier|manufactur|cnc|pcba|smt|mold|injection|machin|sheet\s*metal|3d|printing|additive|谁|厂家|工厂|制造商|供应商|注塑|模具|增材|3d打印)\b/i.test(
+  return /\b(factor(?:y|ies)?|supplier|manufactur|cnc|pcba|smt|mold|injection|machin|sheet\s*metal|3d|printing|additive|demo|谁|厂家|工厂|制造商|供应商|注塑|模具|增材|3d打印|演示)\b/i.test(
     String(query || '')
   );
 }
@@ -23,14 +24,14 @@ function scoreCompany(company, query) {
   }
   const extra = [
     'cnc', 'shenzhen', 'dongguan', 'supplier', 'machining', 'machin', 'mold', 'injection', 'pcba', 'smt',
-    '3d', 'printing', 'additive', 'sla', 'sls', 'fdm', 'mjf',
-    '深圳', '东莞', '厂家', '注塑', '模具', '增材', '打印',
+    '3d', 'printing', 'additive', 'sla', 'sls', 'fdm', 'mjf', 'demo',
+    '深圳', '东莞', '厂家', '注塑', '模具', '增材', '打印', '演示',
   ];
   for (const word of extra) {
     if (String(query || '').toLowerCase().includes(word) && hay.includes(word)) hits += 1;
   }
-  // Broad “who can I talk to / factories” queries should still surface live endpoints.
   if (!hits && isBroadFactoryQuery(query)) hits = 1;
+  if (isDemoCompany(company) && /\bdemo\b|演示|tade|airsup/i.test(String(query || ''))) hits += 3;
   return hits;
 }
 
@@ -42,13 +43,20 @@ function matchView(company, query) {
   const description = idx >= 0
     ? hay.slice(Math.max(0, idx - 40), idx + 180).trim()
     : hay.slice(0, 180);
+  const demo = isDemoCompany(company);
+  const name = demo
+    ? (record.company_name_en || record.company_name || 'Demo company (Tade / Airsup)')
+    : (record.company_name_en || record.company_name || company.domain);
   return {
     person_id: company.company_id,
-    name: record.company_name_en || record.company_name || company.domain,
-    description: description
-      ? `A factory ChatGPT can ask (replies in this send_message). ${description}`
-      : 'A factory ChatGPT can ask. Replies in this send_message.',
+    name,
+    description: demo
+      ? `DEMO company operated by Tade / Airsup for testing (not a real factory). ChatGPT can ask it like a live supplier. ${description}`
+      : (description
+        ? `A factory ChatGPT can ask (replies in this send_message). ${description}`
+        : 'A factory ChatGPT can ask. Replies in this send_message.'),
     score: scoreCompany(company, query),
+    demo: demo || undefined,
   };
 }
 
@@ -56,7 +64,7 @@ async function countLive() {
   if (!db.isConfigured()) return 0;
   try {
     const rows = await db.listLive();
-    return Array.isArray(rows) ? rows.length : 0;
+    return Array.isArray(rows) ? rows.filter((row) => !isDemoCompany(row)).length : 0;
   } catch (error) {
     console.error('Airsup china live count skipped:', error.message);
     return 0;
@@ -67,6 +75,11 @@ async function findForPlugin({ query, limit, excludeIds }) {
   if (!db.isConfigured()) return [];
   const q = String(query || '').trim();
   if (!q) return [];
+  try {
+    await ensureDemoCompany();
+  } catch (error) {
+    console.error('Airsup china demo ensure skipped:', error.message);
+  }
   const skip = new Set((excludeIds || []).filter(Boolean));
   const rows = await db.listLive();
   return rows
@@ -83,4 +96,5 @@ module.exports = {
   isBroadFactoryQuery,
   countLive,
   findForPlugin,
+  matchView,
 };

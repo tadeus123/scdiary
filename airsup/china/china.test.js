@@ -1261,6 +1261,59 @@ function memoryChina(companies) {
   assert.ok(COPY.zh.quote_title.includes('报价'));
   assert.ok(COPY.en.quote_title.toLowerCase().includes('quotation'));
 
+  const {
+    isDemoCompany,
+    listingText: listingForDemo,
+  } = require('./fields');
+  const { demoSpec, DEMO_DOMAIN, DEMO_NAME_EN } = require('./demo-company');
+  const { matchView } = require('./find');
+  const { systemPrompt } = require('./reply');
+  const demoRow = {
+    ...demoSpec(),
+    company_id: 'demo-id',
+    live_at: '2026-09-18T00:00:00.000Z',
+  };
+  assert.ok(isDemoCompany(demoRow));
+  assert.ok(isDemoCompany({ source: 'demo', domain: DEMO_DOMAIN }));
+  assert.ok(!isDemoCompany({ source: 'web', domain: 'acme.com', profile: {} }));
+  const hidden = liveCompanies([
+    {
+      status: 'live',
+      live_at: '2026-09-18T00:00:00.000Z',
+      domain: 'real-factory.com',
+      company_name_en: 'Real Factory',
+      niche: 'cnc',
+      source: 'web',
+    },
+    demoRow,
+  ]);
+  assert.strictEqual(hidden.length, 1);
+  assert.strictEqual(hidden[0].domain, 'real-factory.com');
+  const roster = liveRoster([demoRow, {
+    status: 'live',
+    live_at: '2026-09-18T00:00:00.000Z',
+    domain: 'peer.com',
+    company_name_en: 'Peer',
+    niche: '3d_printing',
+  }]);
+  assert.ok(!roster.factories.some((row) => row.domain === DEMO_DOMAIN));
+  const demoListing = listingForDemo(demoRow);
+  assert.ok(demoListing.includes('DEMO COMPANY'));
+  assert.ok(demoListing.includes('Tade'));
+  const found = matchView(demoRow, 'demo 3D printing Shenzhen');
+  assert.ok(found.name.includes('Demo') || found.name.includes('Tade'));
+  assert.ok(found.description.includes('DEMO'));
+  assert.ok(found.demo);
+  assert.ok(scoreCompany(demoRow, 'Airsup demo company') > scoreCompany(demoRow, 'zzz'));
+  const prompt = systemPrompt(demoRow);
+  assert.ok(prompt.includes('DEMO'));
+  assert.ok(prompt.includes('NOT a real factory'));
+  assert.ok(fs.existsSync(path.join(__dirname, 'demo-company.js')));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.get('/demo'"));
+  assert.ok(COPY.zh.demo_banner.includes('演示'));
+  assert.ok(COPY.en.demo_banner.toLowerCase().includes('demo'));
+  assert.strictEqual(DEMO_NAME_EN.includes('Demo'), true);
+
   console.log('airsup china tests passed');
 })().catch((error) => {
   console.error(error);

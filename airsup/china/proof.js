@@ -1,9 +1,13 @@
-const { NICHES } = require('./fields');
+const { NICHES, isDemoCompany } = require('./fields');
 
 const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+function withoutDemo(rows) {
+  return (Array.isArray(rows) ? rows : []).filter((row) => !isDemoCompany(row));
+}
+
 function countsFromRows(rows) {
-  const list = Array.isArray(rows) ? rows : [];
+  const list = withoutDemo(rows);
   return {
     started: list.length,
     verified: list.filter((row) => row.verified_at || row.status === 'verified' || row.status === 'live').length,
@@ -72,7 +76,7 @@ function nicheCopy(id) {
 }
 
 function liveRows(rows) {
-  return (Array.isArray(rows) ? rows : [])
+  return withoutDemo(rows)
     .filter((row) => row.status === 'live' && row.live_at && row.domain)
     .sort((a, b) => new Date(b.live_at).getTime() - new Date(a.live_at).getTime())
     .map((row) => {
@@ -90,7 +94,7 @@ function liveRows(rows) {
 }
 
 function liveSeries(rows, now) {
-  const lives = (Array.isArray(rows) ? rows : [])
+  const lives = withoutDemo(rows)
     .filter((row) => row.status === 'live' && row.live_at)
     .map((row) => shanghaiDay(row.live_at))
     .filter(Boolean)
