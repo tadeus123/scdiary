@@ -1265,9 +1265,10 @@ function memoryChina(companies) {
     isDemoCompany,
     listingText: listingForDemo,
   } = require('./fields');
-  const { demoSpec, DEMO_DOMAIN, DEMO_NAME_EN } = require('./demo-company');
+  const { demoSpec, DEMO_DOMAIN, DEMO_NAME_EN, DEMO_EMAIL, onboardingResetPatch, isDemoDomain, syntheticDemoPreview } = require('./demo-company');
   const { matchView } = require('./find');
   const { systemPrompt } = require('./reply');
+  const { buildPreview } = require('./site-preview');
   const demoRow = {
     ...demoSpec(),
     company_id: 'demo-id',
@@ -1276,6 +1277,25 @@ function memoryChina(companies) {
   assert.ok(isDemoCompany(demoRow));
   assert.ok(isDemoCompany({ source: 'demo', domain: DEMO_DOMAIN }));
   assert.ok(!isDemoCompany({ source: 'web', domain: 'acme.com', profile: {} }));
+  assert.ok(isDemoDomain(DEMO_DOMAIN));
+  assert.ok(isDemoDomain(`https://www.${DEMO_DOMAIN}/about`));
+  assert.ok(!isDemoDomain('acme.com'));
+  assert.ok(DEMO_DOMAIN.includes('demo'));
+  assert.ok(DEMO_EMAIL.endsWith(`@${DEMO_DOMAIN}`));
+  const resetPatch = onboardingResetPatch();
+  assert.strictEqual(resetPatch.status, 'pending');
+  assert.strictEqual(resetPatch.live_at, null);
+  assert.strictEqual(resetPatch.verified_at, null);
+  assert.ok(resetPatch.profile.is_demo);
+  assert.strictEqual(resetPatch.company_name_en, '');
+  const synth = syntheticDemoPreview('en');
+  assert.ok(synth.ok);
+  assert.strictEqual(synth.domain, DEMO_DOMAIN);
+  assert.ok(synth.siteEmails.includes(DEMO_EMAIL));
+  assert.strictEqual(synth.niche, '3d_printing');
+  const builtDemo = await buildPreview(DEMO_DOMAIN, 'en');
+  assert.ok(builtDemo.ok);
+  assert.strictEqual(builtDemo.domain, DEMO_DOMAIN);
   const hidden = liveCompanies([
     {
       status: 'live',
@@ -1310,8 +1330,11 @@ function memoryChina(companies) {
   assert.ok(prompt.includes('NOT a real factory'));
   assert.ok(fs.existsSync(path.join(__dirname, 'demo-company.js')));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.get('/demo'"));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.get('/demo/onboarding'"));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'views/check.ejs'), 'utf8').includes('demo_check_cta'));
   assert.ok(COPY.zh.demo_banner.includes('演示'));
   assert.ok(COPY.en.demo_banner.toLowerCase().includes('demo'));
+  assert.ok(COPY.en.demo_restart_onboarding.toLowerCase().includes('onboarding'));
   assert.strictEqual(DEMO_NAME_EN.includes('Demo'), true);
 
   console.log('airsup china tests passed');

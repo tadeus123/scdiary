@@ -10,6 +10,11 @@
     <% if (typeof isDemo !== 'undefined' && isDemo) { %>
       <p class="cn-stamp cn-demo-stamp"><%= t('demo_stamp') %></p>
       <p class="cn-note cn-demo-banner"><%= t('demo_banner') %></p>
+      <p class="cn-note">
+        <a class="cn-text-link" href="/airsup/china/demo/onboarding"><%= t('demo_restart_onboarding') %></a>
+        ·
+        <a class="cn-text-link" href="/airsup/china/demo"><%= t('demo_open_live') %></a>
+      </p>
     <% } %>
     <p class="cn-stamp"><%= t('live_stamp') %></p>
     <h1><%= t('live_title') %></h1>

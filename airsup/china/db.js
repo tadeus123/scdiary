@@ -146,6 +146,13 @@ async function deleteSession(sessionHash) {
   await db.from('airsup_china_sessions').delete().eq('session_hash', sessionHash);
 }
 
+async function deleteSessionsForCompany(companyId) {
+  const db = requireDb();
+  const id = String(companyId || '').trim();
+  if (!id) return;
+  await db.from('airsup_china_sessions').delete().eq('company_id', id);
+}
+
 async function insertInquiry(row) {
   const db = requireDb();
   const { data, error } = await db.from('airsup_china_inquiries').insert(row).select('*').single();
@@ -328,6 +335,7 @@ module.exports = {
   insertSession,
   getSession,
   deleteSession,
+  deleteSessionsForCompany,
   insertInquiry,
   insertThread,
   getThread,

@@ -43,7 +43,7 @@ const {
 const { confirmChecklist } = require('./enrich');
 const { proofPayload, industryPeers, formatChartDay, liveRoster } = require('./proof');
 const { sendVerifyEmail } = require('./mail');
-const { ensureDemoCompany, DEMO_DOMAIN } = require('./demo-company');
+const { ensureDemoCompany, DEMO_DOMAIN, DEMO_EMAIL, resetDemoForOnboarding, isDemoDomain, ensureDemoAllowlist } = require('./demo-company');
 const peopleAuth = require('../auth');
 const handleLiveCompanies = require('./live-companies');
 
@@ -313,7 +313,11 @@ router.get('/preview', async (req, res) => {
   const website = String(req.query.w || req.query.website || '');
   if (!website) return res.redirect('/airsup/china');
   const source = String(req.query.ref || 'web').slice(0, 40);
-  return renderPreview(req, res, { website, source });
+  const email = String(req.query.email || '').trim();
+  const form = email
+    ? { website, email, contact: '', city: 'shenzhen' }
+    : undefined;
+  return renderPreview(req, res, { website, source, form });
 });
 
 router.post('/start', async (req, res) => {
@@ -373,7 +377,9 @@ router.post('/start', async (req, res) => {
       }).catch((error) => console.error('Airsup china allow upsert skipped:', error.message));
     }
     let company = await db.getByDomain(matched.domain);
-    if (company && tooSoon(company)) return fail('err_rate');
+    if (company && tooSoon(company) && !isDemoCompany(company) && !isDemoDomain(matched.domain)) {
+      return fail('err_rate');
+    }
     if (!company) {
       company = await db.insertCompany({
         domain: matched.domain,
@@ -382,9 +388,9 @@ router.post('/start', async (req, res) => {
         contact_name: contact,
         city: CITIES.some((item) => item.id === city) ? city : 'shenzhen',
         locale: lang,
-        niche: 'cnc',
+        niche: isDemoDomain(matched.domain) ? '3d_printing' : 'cnc',
         status: 'pending',
-        source,
+        source: isDemoDomain(matched.domain) ? 'demo' : source,
       });
     } else if (company.status === 'pending') {
       const existingEmail = String(company.contact_email || '').toLowerCase();
@@ -397,6 +403,7 @@ router.post('/start', async (req, res) => {
         contact_name: contact || company.contact_name,
         city: CITIES.some((item) => item.id === city) ? city : company.city,
         locale: lang,
+        source: isDemoCompany(company) ? 'demo' : company.source,
       });
     } else if (matched.email !== String(company.contact_email || '').toLowerCase()) {
       return fail('err_taken');
@@ -407,14 +414,24 @@ router.post('/start', async (req, res) => {
     const purpose = company.status === 'pending' ? 'verify' : 'login';
     const token = await session.createToken(company.company_id, matched.email, purpose);
     const link = `${publicOrigin(req)}/airsup/china/verify?token=${token}`;
-    await sendVerifyEmail({
-      lang,
-      to: matched.email,
-      link,
-      contactName: contact || company.contact_name,
-    });
+    const demoFlow = isDemoDomain(matched.domain) || isDemoCompany(company);
+    try {
+      await sendVerifyEmail({
+        lang,
+        to: matched.email,
+        link,
+        contactName: contact || company.contact_name,
+      });
+    } catch (error) {
+      if (!demoFlow) throw error;
+      console.error('Airsup china demo verify mail skipped:', error.message);
+    }
     await db.updateCompany(company.company_id, { last_email_at: new Date().toISOString() });
-    return res.redirect(`/airsup/china/check?email=${encodeURIComponent(matched.email)}`);
+    const checkQs = new URLSearchParams({ email: matched.email });
+    if (demoFlow) {
+      checkQs.set('demo_token', token);
+    }
+    return res.redirect(`/airsup/china/check?${checkQs.toString()}`);
   } catch (error) {
     console.error('Airsup china start error:', error);
     return fail(error.code === 'mail' ? 'err_mail' : 'err_db');
@@ -422,9 +439,14 @@ router.post('/start', async (req, res) => {
 });
 
 router.get('/check', async (req, res) => {
+  const demoToken = String(req.query.demo_token || '').trim();
+  const demoLink = demoToken
+    ? `${publicOrigin(req)}/airsup/china/verify?token=${encodeURIComponent(demoToken)}`
+    : '';
   render(req, res, 'check.ejs', {
     proof: await proof(),
     email: String(req.query.email || ''),
+    demoLink,
   });
 });
 
@@ -761,7 +783,8 @@ router.get('/demo', async (req, res) => {
     return res.status(503).send('Airsup China storage is not configured.');
   }
   try {
-    const company = await ensureDemoCompany();
+    await ensureDemoAllowlist();
+    const company = await ensureDemoCompany({ forceLive: true });
     await session.createSession(req, res, company.company_id);
     if (req.query.edit === '1') {
       return res.redirect('/airsup/china/setup?edit=1');
@@ -773,6 +796,25 @@ router.get('/demo', async (req, res) => {
   }
 });
 
+router.get('/demo/onboarding', async (req, res) => {
+  if (!db.isConfigured()) {
+    return res.status(503).send('Airsup China storage is not configured.');
+  }
+  try {
+    await session.clearSession(req, res);
+    await resetDemoForOnboarding();
+    const qs = new URLSearchParams({
+      w: DEMO_DOMAIN,
+      ref: 'demo',
+      email: DEMO_EMAIL,
+    });
+    return res.redirect(`/airsup/china/preview?${qs.toString()}`);
+  } catch (error) {
+    console.error('Airsup china demo onboarding reset error:', error);
+    return res.status(500).send('Could not reset demo onboarding.');
+  }
+});
+
 router.get('/api/demo', async (req, res) => {
   if (!db.isConfigured()) return res.status(503).json({ error: 'unavailable' });
   try {
@@ -780,12 +822,14 @@ router.get('/api/demo', async (req, res) => {
     return res.json({
       demo: true,
       domain: DEMO_DOMAIN,
+      email: DEMO_EMAIL,
       company_id: company.company_id,
-      name: company.company_name_en,
+      name: company.company_name_en || DEMO_DOMAIN,
       status: company.status,
       dashboard: '/airsup/china/demo',
       edit: '/airsup/china/demo?edit=1',
-      note: 'Hidden from public live roster. Findable in ChatGPT MCP as Demo company (Tade / Airsup).',
+      onboarding: '/airsup/china/demo/onboarding',
+      note: 'Hidden from public live roster. /demo = live dashboard. /demo/onboarding = reset and replay preview→verify→setup→publish on the same demo company.',
     });
   } catch (error) {
     console.error('Airsup china demo api error:', error);
