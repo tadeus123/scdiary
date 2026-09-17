@@ -9,7 +9,7 @@ function tokens(value) {
 }
 
 function isBroadFactoryQuery(query) {
-  return /\b(factor(?:y|ies)?|supplier|manufactur|cnc|pcba|smt|mold|injection|machin|sheet\s*metal|谁|厂家|工厂|制造商|供应商|注塑|模具)\b/i.test(
+  return /\b(factor(?:y|ies)?|supplier|manufactur|cnc|pcba|smt|mold|injection|machin|sheet\s*metal|3d|printing|additive|谁|厂家|工厂|制造商|供应商|注塑|模具|增材|3d打印)\b/i.test(
     String(query || '')
   );
 }
@@ -21,7 +21,11 @@ function scoreCompany(company, query) {
   for (const word of needles) {
     if (hay.includes(word)) hits += 1;
   }
-  const extra = ['cnc', 'shenzhen', 'dongguan', 'supplier', 'machining', 'machin', 'mold', 'injection', 'pcba', 'smt', '深圳', '东莞', '厂家', '注塑', '模具'];
+  const extra = [
+    'cnc', 'shenzhen', 'dongguan', 'supplier', 'machining', 'machin', 'mold', 'injection', 'pcba', 'smt',
+    '3d', 'printing', 'additive', 'sla', 'sls', 'fdm', 'mjf',
+    '深圳', '东莞', '厂家', '注塑', '模具', '增材', '打印',
+  ];
   for (const word of extra) {
     if (String(query || '').toLowerCase().includes(word) && hay.includes(word)) hits += 1;
   }

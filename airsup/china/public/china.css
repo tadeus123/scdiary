@@ -1617,3 +1617,48 @@ h3 {
 .cn-more-stay > summary::-webkit-details-marker {
   display: none;
 }
+
+.cn-quotes {
+  margin: 1.75rem 0 1.25rem;
+  padding-top: 0.5rem;
+}
+
+.cn-quote-drop {
+  border: 1px dashed rgba(0, 0, 0, 0.22);
+  padding: 1rem;
+  margin: 0.75rem 0;
+}
+
+.cn-quote-drop.is-drag {
+  border-color: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.cn-quote-file-label {
+  display: inline-block;
+  margin-top: 0.5rem;
+  cursor: pointer;
+}
+
+.cn-quote-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0;
+}
+
+.cn-quote-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.cn-quote-item strong {
+  display: block;
+}
+
+.cn-quote-approve {
+  margin-top: 0.75rem;
+}

@@ -199,6 +199,10 @@ function obviousMismatch(record, message) {
   if (/\b(pcba|smt|pcb)\b/.test(msg) && !/\b(pcba|smt)\b/.test(procs)) return 'PCB assembly';
   if (/\b(injection|molding|mould|注塑)\b/.test(msg) && !/\b(injection|mold)\b/.test(procs)) return 'injection molding';
   if (/\b(die[- ]?cast|casting)\b/.test(msg) && !/\bcast/.test(procs)) return 'casting';
+  if (/\b(3d\s*print|additive|sla|sls|fdm|mjf|增材|3d打印)\b/.test(msg)
+    && !/\b(sla|sls|fdm|mjf|3d|additive|resin|print)\b/.test(procs)) {
+    return '3D printing / additive';
+  }
   return '';
 }
 

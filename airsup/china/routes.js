@@ -6,12 +6,14 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const ejs = require('ejs');
+const multer = require('multer');
 const db = require('./db');
 const session = require('./session');
 const { t, otherLang } = require('./i18n');
 const { emailAllowedForSite, normalizeDomain, emailParts } = require('./domain');
 const { genericDemo } = require('./demo');
 const { buildPreview, companyDraftFromPreview } = require('./site-preview');
+const quotations = require('./quotations');
 const {
   NICHES,
   CITIES,
@@ -629,6 +631,20 @@ async function requireCompany(req, res) {
   return company;
 }
 
+async function requireCompanyApi(req, res) {
+  const company = await session.readCompany(req);
+  if (!company) {
+    res.status(401).json({ error: 'auth_required' });
+    return null;
+  }
+  return company;
+}
+
+const quoteUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: quotations.MAX_BYTES, files: 1 },
+});
+
 function readSetup(body, company) {
   const prev = normalizeProfile(company && company.profile);
   const contacts = [0, 1, 2, 3].map((index) => ({
@@ -657,6 +673,9 @@ function readSetup(body, company) {
     flexibility: body.flexibility,
     contacts,
     site_notes: prev.site_notes,
+    enrichment: prev.enrichment,
+    quotation_knowledge: prev.quotation_knowledge,
+    claim_ready: prev.claim_ready,
   });
   return {
     company_name: String(body.company_name || '').trim(),
@@ -685,6 +704,7 @@ async function showLive(req, res, company) {
     endpointPreview: record,
     enrichmentGaps: enrichmentGaps(company),
     gapWhy: (gap) => gapWhy(gap, lang),
+    quotationMeta: quotations.listMeta(company),
     headerLive: true,
   });
 }
@@ -707,6 +727,7 @@ async function showSetup(req, res, { company, error, saved, paused }) {
     enrichmentGaps: enrichmentGaps(company),
     confirmChecklist: checklist,
     gapWhy: (gap) => gapWhy(gap, lang),
+    quotationMeta: quotations.listMeta(company),
     siteOpen,
     headerLive: company.status === 'live',
   });
@@ -861,6 +882,63 @@ router.get('/api/endpoint/:id', async (req, res) => {
   } catch (error) {
     console.error('Airsup china endpoint error:', error);
     res.status(500).json({ error: 'unavailable' });
+  }
+});
+
+router.get('/api/quotations', async (req, res) => {
+  const company = await requireCompanyApi(req, res);
+  if (!company) return;
+  return res.json(quotations.listMeta(company));
+});
+
+router.post('/api/quotations', (req, res) => {
+  quoteUpload.single('file')(req, res, async (multerErr) => {
+    if (multerErr) {
+      return res.status(400).json({ error: 'upload_failed', detail: multerErr.message });
+    }
+    if (!peopleAuth.allowedOrigin(req)) return res.status(403).json({ error: 'forbidden' });
+    const company = await requireCompanyApi(req, res);
+    if (!company) return;
+    if (!req.file) return res.status(400).json({ error: 'file_required' });
+    try {
+      const result = await quotations.uploadAndExtract(company, req.file);
+      return res.json(result.meta);
+    } catch (error) {
+      const code = error && error.code;
+      if (code === 'unsupported_file' || code === 'too_many_files') {
+        return res.status(400).json({ error: code });
+      }
+      console.error('Airsup china quotation upload error:', error);
+      return res.status(500).json({ error: 'unavailable' });
+    }
+  });
+});
+
+router.delete('/api/quotations/:docId', async (req, res) => {
+  if (!peopleAuth.allowedOrigin(req)) return res.status(403).json({ error: 'forbidden' });
+  const company = await requireCompanyApi(req, res);
+  if (!company) return;
+  try {
+    const result = await quotations.deleteDocument(company, req.params.docId);
+    return res.json(result.meta);
+  } catch (error) {
+    if (error && error.code === 'not_found') return res.status(404).json({ error: 'not_found' });
+    console.error('Airsup china quotation delete error:', error);
+    return res.status(500).json({ error: 'unavailable' });
+  }
+});
+
+router.post('/api/quotations/approve', express.json(), async (req, res) => {
+  if (!peopleAuth.allowedOrigin(req)) return res.status(403).json({ error: 'forbidden' });
+  const company = await requireCompanyApi(req, res);
+  if (!company) return;
+  try {
+    const enabled = Boolean(req.body && (req.body.endpoint_use === true || req.body.endpoint_use === 'true' || req.body.endpoint_use === 1));
+    const result = await quotations.setEndpointUse(company, enabled);
+    return res.json(result.meta);
+  } catch (error) {
+    console.error('Airsup china quotation approve error:', error);
+    return res.status(500).json({ error: 'unavailable' });
   }
 });
 

@@ -2,6 +2,7 @@ const NICHES = [
   { id: 'cnc', zh: 'CNC 机加工', en: 'CNC machining' },
   { id: 'injection', zh: '注塑 / 模具', en: 'Injection molding / molds' },
   { id: 'pcba', zh: 'PCBA / SMT', en: 'PCBA / SMT' },
+  { id: '3d_printing', zh: '3D 打印 / 增材', en: '3D printing / additive' },
   { id: 'other', zh: '其他出口制造', en: 'Other export manufacturing' },
 ];
 
@@ -23,6 +24,10 @@ const PROCESSES = [
   { id: 'injection', zh: '注塑', en: 'Injection molding' },
   { id: 'mold', zh: '模具', en: 'Mold making' },
   { id: 'pcba', zh: 'PCBA / SMT', en: 'PCBA / SMT' },
+  { id: 'sla', zh: 'SLA 光固化', en: 'SLA resin printing' },
+  { id: 'sls', zh: 'SLS 尼龙烧结', en: 'SLS nylon sintering' },
+  { id: 'fdm', zh: 'FDM / FFF', en: 'FDM / FFF' },
+  { id: 'mjf', zh: 'HP MJF', en: 'HP Multi Jet Fusion' },
 ];
 
 const MATERIALS = [
@@ -32,6 +37,9 @@ const MATERIALS = [
   { id: 'titanium', zh: '钛合金', en: 'Titanium' },
   { id: 'copper', zh: '铜 / 黄铜', en: 'Copper / brass' },
   { id: 'plastic', zh: '工程塑料（POM / PEEK 等）', en: 'Engineering plastics' },
+  { id: 'resin', zh: '光敏树脂', en: 'Photopolymer resin' },
+  { id: 'pa12', zh: '尼龙 PA12', en: 'Nylon PA12' },
+  { id: 'tpu', zh: 'TPU 弹性体', en: 'TPU elastomer' },
 ];
 
 const FINISHES = [
@@ -164,6 +172,85 @@ function normalizeEnrichment(raw) {
   };
 }
 
+function normalizeExtracted(raw) {
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const list = (key, max) => (Array.isArray(source[key]) ? source[key] : [])
+    .map((item) => String(item || '').trim().slice(0, 200))
+    .filter(Boolean)
+    .slice(0, max);
+  return {
+    processes: pickIds(source.processes, PROCESSES),
+    materials: pickIds(source.materials, MATERIALS),
+    typical_quantities: list('typical_quantities', 12),
+    lead_time_phrases: list('lead_time_phrases', 12),
+    tolerances: list('tolerances', 12),
+    buyer_questions: list('buyer_questions', 16),
+    dfm_notes: list('dfm_notes', 16),
+    moq: String(source.moq || '').trim().slice(0, 120),
+    lead_time: String(source.lead_time || '').trim().slice(0, 120),
+    summary: String(source.summary || '').trim().slice(0, 1200),
+    insights_for_endpoint: String(source.insights_for_endpoint || '').trim().slice(0, 1600),
+  };
+}
+
+function normalizeQuotationKnowledge(raw) {
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const documents = (Array.isArray(source.documents) ? source.documents : [])
+    .slice(0, 10)
+    .map((row) => {
+      if (!row || typeof row !== 'object') return null;
+      const id = String(row.id || '').trim().slice(0, 80);
+      if (!id) return null;
+      return {
+        id,
+        name: String(row.name || '').trim().slice(0, 200),
+        mime: String(row.mime || '').trim().slice(0, 120),
+        size: Number(row.size) || 0,
+        storage_path: String(row.storage_path || '').trim().slice(0, 400),
+        uploaded_at: String(row.uploaded_at || '').trim(),
+        extracted_at: String(row.extracted_at || '').trim(),
+        status: String(row.status || 'pending').trim().slice(0, 40),
+        error: String(row.error || '').trim().slice(0, 240),
+      };
+    })
+    .filter(Boolean);
+  return {
+    documents,
+    extracted: normalizeExtracted(source.extracted),
+    endpoint_use: Boolean(source.endpoint_use),
+    updated_at: String(source.updated_at || '').trim(),
+  };
+}
+
+function quotationInsightsText(company) {
+  const knowledge = normalizeQuotationKnowledge(
+    company && company.profile && company.profile.quotation_knowledge
+  );
+  if (!knowledge.endpoint_use) return '';
+  const extracted = knowledge.extracted || {};
+  const lines = [];
+  if (extracted.insights_for_endpoint) lines.push(extracted.insights_for_endpoint);
+  if (extracted.summary) lines.push(extracted.summary);
+  if (extracted.typical_quantities.length) {
+    lines.push(`Typical quantities seen in past quotes: ${extracted.typical_quantities.join('; ')}`);
+  }
+  if (extracted.lead_time_phrases.length) {
+    lines.push(`Lead-time patterns: ${extracted.lead_time_phrases.join('; ')}`);
+  }
+  if (extracted.tolerances.length) {
+    lines.push(`Tolerance patterns: ${extracted.tolerances.join('; ')}`);
+  }
+  if (extracted.buyer_questions.length) {
+    lines.push(`Recurring buyer questions: ${extracted.buyer_questions.slice(0, 6).join('; ')}`);
+  }
+  if (extracted.dfm_notes.length) {
+    lines.push(`DFM notes: ${extracted.dfm_notes.slice(0, 6).join('; ')}`);
+  }
+  const body = lines.filter(Boolean).join('\n').trim();
+  if (!body) return '';
+  return `Quotation-learned (factory-approved, no customer names):\n${body}`;
+}
+
 function normalizeProfile(raw) {
   const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
   return {
@@ -189,6 +276,7 @@ function normalizeProfile(raw) {
     site_notes: String(source.site_notes || '').trim().slice(0, 8000),
     claim_ready: Boolean(source.claim_ready),
     enrichment: normalizeEnrichment(source.enrichment),
+    quotation_knowledge: normalizeQuotationKnowledge(source.quotation_knowledge),
   };
 }
 
@@ -247,6 +335,7 @@ function listingText(company) {
       : '',
     company && company.context ? `Context: ${company.context}` : '',
     company && company.goal ? `Goal: ${company.goal}` : '',
+    quotationInsightsText(company),
   ];
   return lines.filter(Boolean).join('\n');
 }
@@ -335,7 +424,7 @@ function fillEmptyCompany(company, draft) {
   next.profile = {
     ...prevProfile,
     ...Object.fromEntries(Object.entries(draftProfile).filter(([key, value]) => {
-      if (key === 'contacts' || key === 'flexibility' || key === 'enrichment' || key === 'claim_ready') return false;
+      if (key === 'contacts' || key === 'flexibility' || key === 'enrichment' || key === 'quotation_knowledge' || key === 'claim_ready') return false;
       if (Array.isArray(value)) return value.length && !(Array.isArray(prevProfile[key]) && prevProfile[key].length);
       return Boolean(String(value || '').trim()) && !String(prevProfile[key] || '').trim();
     })),
@@ -344,6 +433,10 @@ function fillEmptyCompany(company, draft) {
     site_notes: prevProfile.site_notes || draftProfile.site_notes,
     claim_ready: prevProfile.claim_ready || draftProfile.claim_ready,
     enrichment: mergeEnrichment(prevProfile.enrichment, draftProfile.enrichment),
+    quotation_knowledge: prevProfile.quotation_knowledge && prevProfile.quotation_knowledge.documents
+      && prevProfile.quotation_knowledge.documents.length
+      ? prevProfile.quotation_knowledge
+      : draftProfile.quotation_knowledge,
   };
   return next;
 }
@@ -516,6 +609,9 @@ module.exports = {
   CONTACT_SLOTS,
   normalizeProfile,
   normalizeEnrichment,
+  normalizeQuotationKnowledge,
+  normalizeExtracted,
+  quotationInsightsText,
   normalizeActions,
   normalizeNiche,
   normalizeContacts,

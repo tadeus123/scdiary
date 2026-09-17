@@ -312,6 +312,7 @@ async function listDomainAllows() {
 
 module.exports = {
   isConfigured,
+  requireDb,
   getByDomain,
   getById,
   listCompanies,

@@ -1,0 +1,226 @@
+<section class="cn-quotes" id="cn-quotes" aria-labelledby="cn-quotes-title"
+  data-endpoint-use="<%= quotationMeta && quotationMeta.endpoint_use ? '1' : '0' %>">
+  <h2 id="cn-quotes-title" class="cn-live-h2"><%= t('quote_title') %></h2>
+  <p class="cn-lead"><%= t('quote_lead') %></p>
+  <p class="cn-note"><%= t('quote_private') %> <%= t('quote_shareable') %>
+    <a class="cn-text-link" href="/airsup/china/privacy"><%= t('quote_privacy_link') %></a>
+  </p>
+  <div class="cn-quote-drop" id="cn-quote-drop">
+    <p class="cn-muted"><%= t('quote_drop') %></p>
+    <label class="cn-btn-ghost cn-quote-file-label">
+      <span><%= t('quote_upload') %></span>
+      <input type="file" id="cn-quote-file" accept=".pdf,.xlsx,.xls,.zip,.csv,.txt,application/pdf,application/zip,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+    </label>
+    <p class="cn-error" id="cn-quote-error" hidden></p>
+    <p class="cn-ok" id="cn-quote-busy" hidden><%= t('quote_uploading') %></p>
+  </div>
+  <ul class="cn-quote-list" id="cn-quote-list">
+    <% var docs = (quotationMeta && quotationMeta.documents) || []; %>
+    <% if (!docs.length) { %>
+      <li class="cn-muted cn-quote-empty"><%= t('quote_empty') %></li>
+    <% } %>
+    <% docs.forEach(function (doc) {
+      var statusKey = 'quote_status_' + (doc.status || 'pending');
+      var statusLabel = t(statusKey);
+      if (statusLabel === statusKey) statusLabel = doc.status || '';
+    %>
+      <li class="cn-quote-item" data-id="<%= doc.id %>">
+        <div>
+          <strong><%= doc.name %></strong>
+          <span class="cn-muted"><%= statusLabel %><% if (doc.error) { %> · <%= doc.error %><% } %></span>
+        </div>
+        <button type="button" class="cn-text-btn cn-quote-delete" data-id="<%= doc.id %>"><%= t('quote_delete') %></button>
+      </li>
+    <% }) %>
+  </ul>
+  <label class="cn-check cn-quote-approve">
+    <input type="checkbox" id="cn-quote-approve" <%= quotationMeta && quotationMeta.endpoint_use ? 'checked' : '' %>>
+    <span><%= t('quote_approve') %></span>
+  </label>
+</section>
+<script>
+(function () {
+  var root = document.getElementById('cn-quotes');
+  if (!root) return;
+  var fileInput = document.getElementById('cn-quote-file');
+  var list = document.getElementById('cn-quote-list');
+  var errEl = document.getElementById('cn-quote-error');
+  var busyEl = document.getElementById('cn-quote-busy');
+  var approve = document.getElementById('cn-quote-approve');
+  var drop = document.getElementById('cn-quote-drop');
+  var copy = {
+    empty: <%= JSON.stringify(t('quote_empty')) %>,
+    ready: <%= JSON.stringify(t('quote_status_ready')) %>,
+    processing: <%= JSON.stringify(t('quote_status_processing')) %>,
+    failed: <%= JSON.stringify(t('quote_status_failed')) %>,
+    pending: <%= JSON.stringify(t('quote_status_pending')) %>,
+    del: <%= JSON.stringify(t('quote_delete')) %>,
+    badFile: <%= JSON.stringify(t('quote_error_file')) %>,
+    tooMany: <%= JSON.stringify(t('quote_error_many')) %>,
+    generic: <%= JSON.stringify(t('quote_error_generic')) %>
+  };
+
+  function statusLabel(status) {
+    if (status === 'ready') return copy.ready;
+    if (status === 'processing') return copy.processing;
+    if (status === 'failed') return copy.failed;
+    return copy.pending;
+  }
+
+  function showError(msg) {
+    if (!errEl) return;
+    if (!msg) {
+      errEl.hidden = true;
+      errEl.textContent = '';
+      return;
+    }
+    errEl.hidden = false;
+    errEl.textContent = msg;
+  }
+
+  function setBusy(on) {
+    if (busyEl) busyEl.hidden = !on;
+    if (fileInput) fileInput.disabled = !!on;
+  }
+
+  function renderMeta(meta) {
+    if (!meta || !list) return;
+    list.innerHTML = '';
+    var docs = meta.documents || [];
+    if (!docs.length) {
+      var empty = document.createElement('li');
+      empty.className = 'cn-muted cn-quote-empty';
+      empty.textContent = copy.empty;
+      list.appendChild(empty);
+    } else {
+      docs.forEach(function (doc) {
+        var li = document.createElement('li');
+        li.className = 'cn-quote-item';
+        li.setAttribute('data-id', doc.id);
+        var left = document.createElement('div');
+        var strong = document.createElement('strong');
+        strong.textContent = doc.name || '';
+        var span = document.createElement('span');
+        span.className = 'cn-muted';
+        span.textContent = statusLabel(doc.status) + (doc.error ? (' · ' + doc.error) : '');
+        left.appendChild(strong);
+        left.appendChild(document.createTextNode(' '));
+        left.appendChild(span);
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cn-text-btn cn-quote-delete';
+        btn.setAttribute('data-id', doc.id);
+        btn.textContent = copy.del;
+        li.appendChild(left);
+        li.appendChild(btn);
+        list.appendChild(li);
+      });
+    }
+    if (approve) approve.checked = !!meta.endpoint_use;
+  }
+
+  async function uploadFile(file) {
+    if (!file) return;
+    showError('');
+    setBusy(true);
+    try {
+      var body = new FormData();
+      body.append('file', file);
+      var res = await fetch('/airsup/china/api/quotations', {
+        method: 'POST',
+        body: body,
+        credentials: 'same-origin'
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok) {
+        if (data.error === 'unsupported_file') showError(copy.badFile);
+        else if (data.error === 'too_many_files') showError(copy.tooMany);
+        else showError(copy.generic);
+        return;
+      }
+      renderMeta(data);
+    } catch (e) {
+      showError(copy.generic);
+    } finally {
+      setBusy(false);
+      if (fileInput) fileInput.value = '';
+    }
+  }
+
+  if (fileInput) {
+    fileInput.addEventListener('change', function () {
+      if (fileInput.files && fileInput.files[0]) uploadFile(fileInput.files[0]);
+    });
+  }
+
+  if (drop) {
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      drop.addEventListener(ev, function (e) {
+        e.preventDefault();
+        drop.classList.add('is-drag');
+      });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+      drop.addEventListener(ev, function (e) {
+        e.preventDefault();
+        drop.classList.remove('is-drag');
+      });
+    });
+    drop.addEventListener('drop', function (e) {
+      var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file) uploadFile(file);
+    });
+  }
+
+  if (list) {
+    list.addEventListener('click', async function (e) {
+      var btn = e.target.closest('.cn-quote-delete');
+      if (!btn) return;
+      var id = btn.getAttribute('data-id');
+      if (!id) return;
+      showError('');
+      setBusy(true);
+      try {
+        var res = await fetch('/airsup/china/api/quotations/' + encodeURIComponent(id), {
+          method: 'DELETE',
+          credentials: 'same-origin'
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok) {
+          showError(copy.generic);
+          return;
+        }
+        renderMeta(data);
+      } catch (err) {
+        showError(copy.generic);
+      } finally {
+        setBusy(false);
+      }
+    });
+  }
+
+  if (approve) {
+    approve.addEventListener('change', async function () {
+      showError('');
+      try {
+        var res = await fetch('/airsup/china/api/quotations/approve', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint_use: !!approve.checked })
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok) {
+          approve.checked = !approve.checked;
+          showError(copy.generic);
+          return;
+        }
+        renderMeta(data);
+      } catch (err) {
+        approve.checked = !approve.checked;
+        showError(copy.generic);
+      }
+    });
+  }
+})();
+</script>

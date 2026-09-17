@@ -71,6 +71,8 @@
       </details>
     <% } %>
 
+    <%- include('partials/quotations', { quotationMeta: typeof quotationMeta !== 'undefined' ? quotationMeta : { documents: [], endpoint_use: false } }) %>
+
     <p><a class="cn-text-link" href="/airsup/china/setup?edit=1"><%= t('live_edit') %></a></p>
   </main>
   <%- include('partials/footer') %>

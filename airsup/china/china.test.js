@@ -1134,6 +1134,133 @@ function memoryChina(companies) {
   assert.ok(narrated.content[0].text.includes('batch'));
   assert.ok(narrated.content[0].text.includes('1 replied'));
 
+  const {
+    normalizeNiche,
+    normalizeQuotationKnowledge,
+    quotationInsightsText,
+    listingText: listingTextFn,
+    endpointRecord: endpointRecordFn,
+    NICHES,
+    PROCESSES,
+  } = require('./fields');
+  const { scoreCompany, isBroadFactoryQuery } = require('./find');
+  const {
+    isAllowedFile,
+    redactText,
+    heuristicExtract,
+    extractPdfText,
+  } = require('./quotations');
+
+  assert.ok(NICHES.some((row) => row.id === '3d_printing'));
+  assert.ok(PROCESSES.some((row) => row.id === 'sla'));
+  assert.ok(PROCESSES.some((row) => row.id === 'mjf'));
+  assert.strictEqual(normalizeNiche('3d_printing'), '3d_printing');
+  assert.strictEqual(guessNiche('Shenzhen SLA SLS additive 增材 3D printing'), '3d_printing');
+  assert.strictEqual(guessNiche('FDM MJF resin prototypes'), '3d_printing');
+  const demo3d = personalizedDemo('en', {
+    domain: 'china-3dprinting.com',
+    companyName: 'Vivian 3D',
+    city: 'Shenzhen',
+    niche: '3d_printing',
+  });
+  assert.ok(demo3d.chatgptBuyer.toLowerCase().includes('3d') || demo3d.chatgptBuyer.toLowerCase().includes('sla'));
+  assert.ok(isBroadFactoryQuery('3D printing supplier Shenzhen'));
+  const live3d = {
+    company_id: 'c-3d',
+    domain: 'china-3dprinting.com',
+    company_name_en: 'Vivian 3D',
+    city: 'shenzhen',
+    niche: '3d_printing',
+    status: 'live',
+    profile: { processes: ['sla', 'sls'], materials: ['resin', 'pa12'] },
+  };
+  assert.ok(scoreCompany(live3d, '3D printing Shenzhen SLA') > 0);
+  const hints3d = heuristicHintsFromText('SLA SLS FDM MJF resin PA12 TPU 增材');
+  assert.ok(hints3d.processes.includes('sla'));
+  assert.ok(hints3d.processes.includes('mjf'));
+  assert.ok(hints3d.materials.includes('resin'));
+  assert.ok(hints3d.materials.includes('pa12'));
+
+  const quoteCompany = {
+    company_id: 'c-quote',
+    domain: 'quote-factory.com',
+    company_name_en: 'Quote Factory',
+    city: 'shenzhen',
+    niche: '3d_printing',
+    status: 'live',
+    context: 'SLA prototypes',
+    goal: 'Win RFQs',
+    profile: {
+      processes: ['sla'],
+      materials: ['resin'],
+      quotation_knowledge: {
+        endpoint_use: false,
+        documents: [{
+          id: 'doc1',
+          name: 'secret-quote.pdf',
+          mime: 'application/pdf',
+          storage_path: 'c-quote/doc1/secret-quote.pdf',
+          uploaded_at: '2026-09-18T00:00:00.000Z',
+          status: 'ready',
+        }],
+        extracted: {
+          summary: 'Often quotes 20–50 SLA resin pcs',
+          insights_for_endpoint: 'Typical lot 20-50 pcs SLA resin; ask for STEP before lead time',
+          typical_quantities: ['20 pcs', '50 pcs'],
+          buyer_questions: ['Need drawing before quote?'],
+        },
+      },
+    },
+  };
+  const endpointOff = endpointRecordFn(quoteCompany);
+  assert.ok(!JSON.stringify(endpointOff).includes('quotation_knowledge'));
+  assert.ok(!JSON.stringify(endpointOff).includes('secret-quote'));
+  assert.ok(!JSON.stringify(endpointOff).includes('storage_path'));
+  assert.ok(!listingTextFn(quoteCompany).includes('Quotation-learned'));
+  assert.strictEqual(quotationInsightsText(quoteCompany), '');
+
+  const quoteOn = {
+    ...quoteCompany,
+    profile: {
+      ...quoteCompany.profile,
+      quotation_knowledge: {
+        ...quoteCompany.profile.quotation_knowledge,
+        endpoint_use: true,
+      },
+    },
+  };
+  const listingOn = listingTextFn(quoteOn);
+  assert.ok(listingOn.includes('Quotation-learned'));
+  assert.ok(listingOn.includes('Typical lot 20-50'));
+  assert.ok(!listingOn.includes('secret-quote'));
+  assert.ok(!JSON.stringify(endpointRecordFn(quoteOn)).includes('quotation_knowledge'));
+
+  assert.ok(isAllowedFile({
+    originalname: 'a.pdf',
+    mimetype: 'application/pdf',
+    size: 100,
+    buffer: Buffer.from('%PDF-1.4 (Hello SLA resin) Tj'),
+  }));
+  assert.ok(!isAllowedFile({
+    originalname: 'a.exe',
+    mimetype: 'application/octet-stream',
+    size: 100,
+    buffer: Buffer.alloc(100),
+  }));
+  assert.ok(redactText('Email buyer@acme.com please').includes('[email]'));
+  assert.ok(!redactText('Email buyer@acme.com please').includes('buyer@acme.com'));
+  const heur = heuristicExtract('SLA resin 20 pcs lead time 5 days FDM PA12');
+  assert.ok(heur.processes.includes('sla') || heur.processes.includes('fdm'));
+  assert.ok(heur.typical_quantities.some((row) => /20/.test(row)));
+  assert.ok(extractPdfText(Buffer.from('%PDF-1.4 (SLA resin quote) Tj')).toLowerCase().includes('sla'));
+  assert.strictEqual(normalizeQuotationKnowledge({ endpoint_use: 1, documents: [] }).endpoint_use, true);
+  assert.ok(fs.existsSync(path.join(__dirname, 'quotations.js')));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('partials/quotations'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('partials/quotations'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('/api/quotations'));
+  assert.ok(COPY.zh.quote_title.includes('报价'));
+  assert.ok(COPY.en.quote_title.toLowerCase().includes('quotation'));
+
   console.log('airsup china tests passed');
 })().catch((error) => {
   console.error(error);

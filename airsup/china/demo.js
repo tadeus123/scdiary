@@ -11,6 +11,7 @@ function nameFromDomain(domain) {
 function guessNiche(text) {
   const hay = String(text || '').toLowerCase();
   if (/pcba|smt|pcb|电路|贴片/.test(hay)) return 'pcba';
+  if (/3d\s*print|additive|sla|sls|fdm|mjf|增材|3d打印|三维打印/.test(hay)) return '3d_printing';
   if (/injection|mold|mould|注塑|模具|pa66|abs|housing/.test(hay)) return 'injection';
   if (/cnc|machin|铣|车削|五轴|精密/.test(hay)) return 'cnc';
   return 'cnc';
@@ -118,9 +119,34 @@ function personalizedDemo(lang, preview) {
           ],
       resultLead: zh ? '我找到一家已验证厂家，看起来可以谈。' : 'I found a verified supplier that appears to fit.',
     },
+    '3d_printing': {
+      chatgptBuyer: zh
+        ? `帮我找深圳的 3D 打印厂家，做 SLA 树脂样件，先 20 件，要表面抛光。`
+        : 'find me a 3D printing supplier in Shenzhen for SLA resin prototypes. First 20 pcs, polished finish.',
+      agents: zh
+        ? [
+            { from: 'buyer', text: '能否做 SLA 树脂样件约 20 件？' },
+            { from: 'factory', text: '可以按我们已公开的增材工艺来谈。请发 STEP 和材料要求。' },
+            { from: 'buyer', text: '标准树脂，要抛光。' },
+            { from: 'factory', text: '把公差和交期目标一并发来。确认后可以把询盘交给销售。' },
+          ]
+        : [
+            { from: 'buyer', text: 'Can you print about 20 SLA resin prototypes?' },
+            { from: 'factory', text: 'We can discuss against our published additive process. Please send STEP and material needs.' },
+            { from: 'buyer', text: 'Standard resin, polished.' },
+            { from: 'factory', text: 'Send tolerance and target date. Then this can go to sales as a qualified RFQ.' },
+          ],
+      resultLead: zh ? '我找到一家已验证厂家，看起来可以谈。' : 'I found a verified supplier that appears to fit.',
+    },
   };
 
-  const picked = niche === 'pcba' ? scripts.pcba : niche === 'injection' ? scripts.injection : scripts.cnc;
+  const picked = niche === 'pcba'
+    ? scripts.pcba
+    : niche === 'injection'
+      ? scripts.injection
+      : niche === '3d_printing'
+        ? scripts['3d_printing']
+        : scripts.cnc;
   const agentFactory = (picked.agents || base.agents).map((row) => {
     if (row.from !== 'factory') return row;
     return { ...row, text: row.text };

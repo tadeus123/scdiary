@@ -228,6 +228,8 @@
         </fieldset>
       </details>
 
+      <%- include('partials/quotations', { quotationMeta: typeof quotationMeta !== 'undefined' ? quotationMeta : { documents: [], endpoint_use: false } }) %>
+
       <div class="cn-actions">
         <button type="submit"><%= t('save') %></button>
         <% if (company.status !== 'live') { %>

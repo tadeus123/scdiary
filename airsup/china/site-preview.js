@@ -244,12 +244,19 @@ function heuristicHintsFromText(text) {
   if (/injection|注塑/.test(lower)) processes.push('injection');
   if (/mold|mould|模具/.test(lower)) processes.push('mold');
   if (/pcba|smt|贴片/.test(lower)) processes.push('pcba');
+  if (/\bsla\b|光固化|stereolith/.test(lower)) processes.push('sla');
+  if (/\bsls\b|尼龙烧结|selective laser sinter/.test(lower)) processes.push('sls');
+  if (/\bfdm\b|\bfff\b|fused deposition/.test(lower)) processes.push('fdm');
+  if (/\bmjf\b|multi\s*jet\s*fusion|多射流/.test(lower)) processes.push('mjf');
   if (/6061|7075|aluminum|aluminium|铝/.test(lower)) materials.push('alu');
   if (/stainless|不锈钢/.test(lower)) materials.push('stainless');
   if (/titanium|钛/.test(lower)) materials.push('titanium');
   if (/steel|钢材|碳钢/.test(lower)) materials.push('steel');
   if (/copper|brass|铜|黄铜/.test(lower)) materials.push('copper');
   if (/pom|peek|plastic|塑料/.test(lower)) materials.push('plastic');
+  if (/resin|光敏树脂|光固化树脂/.test(lower)) materials.push('resin');
+  if (/\bpa12\b|nylon\s*12|尼龙\s*pa\s*12|尼龙12/.test(lower)) materials.push('pa12');
+  if (/\btpu\b|弹性体/.test(lower)) materials.push('tpu');
   if (/iso\s*9001|iso9001/.test(lower)) certifications.push('iso9001');
   if (/iso\s*13485|iso13485/.test(lower)) certifications.push('iso13485');
   if (/as9100/.test(lower)) certifications.push('as9100');
@@ -350,7 +357,7 @@ async function inferFromText(domain, page) {
           {
             role: 'system',
             content:
-              'Extract only facts stated on a public manufacturer website. Return JSON with keys: companyNameZh, companyNameEn, city, niche (cnc|injection|pcba|other), processes (ids from 3axis,4axis,5axis,turning,swiss,edm,grinding,sheet,injection,mold,pcba), materials (ids from alu,steel,stainless,titanium,copper,plastic), finishing (ids from anodize,powder,plating,bead,polish,heat), certifications (ids from iso9001,iso13485,as9100,iatf,iso14001), machines, tolerance, max_workpiece, moq, lead_time, shipping, year_founded, employees, address, export_markets, capabilities (string array max 8), summary, evidence (array of {field, quote} max 12). Do not invent machines, certificates, prices or lead times. Unknown = empty string or [].',
+              'Extract only facts stated on a public manufacturer website. Return JSON with keys: companyNameZh, companyNameEn, city, niche (cnc|injection|pcba|3d_printing|other), processes (ids from 3axis,4axis,5axis,turning,swiss,edm,grinding,sheet,injection,mold,pcba,sla,sls,fdm,mjf), materials (ids from alu,steel,stainless,titanium,copper,plastic,resin,pa12,tpu), finishing (ids from anodize,powder,plating,bead,polish,heat), certifications (ids from iso9001,iso13485,as9100,iatf,iso14001), machines, tolerance, max_workpiece, moq, lead_time, shipping, year_founded, employees, address, export_markets, capabilities (string array max 8), summary, evidence (array of {field, quote} max 12). Do not invent machines, certificates, prices or lead times. Unknown = empty string or [].',
           },
           {
             role: 'user',
