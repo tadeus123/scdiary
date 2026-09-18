@@ -16,6 +16,8 @@
   data-logged-in="<%= loggedIn ? '1' : '0' %>"
   data-onboard-step="<%= (onboard && onboard.step) || 'site' %>"
   data-using-memory="<%= usingMemory ? '1' : '0' %>"
+  data-demo="<%= typeof demoMode !== 'undefined' && demoMode ? '1' : '0' %>"
+  data-auto="<%= typeof autoDemo !== 'undefined' && autoDemo ? '1' : '0' %>"
 >
   <header class="cn-test-top">
     <div class="cn-test-brand">
@@ -285,6 +287,9 @@
         return new URLSearchParams(window.location.search).get(name) || '';
       } catch (e) { return ''; }
     }
+    // Prefer SSR flags — browser tooling sometimes strips ?demo before client JS runs.
+    var wantDemo = document.body.getAttribute('data-demo') === '1' || qs('demo') === '1';
+    var wantAuto = document.body.getAttribute('data-auto') === '1' || qs('auto') === '1';
 
     function hideDetails() {
       detailsEl.classList.add('hidden');
@@ -750,7 +755,7 @@
       }
     });
 
-    if (qs('demo') === '1') {
+    if (wantDemo) {
       (async function () {
         setObMsg(en ? 'Starting demo…' : '正在启动演示…');
         setObBusy(true);
@@ -774,18 +779,16 @@
           applyState(out.data.state, { verifyPath: out.data.verifyPath || '', loggedIn: false });
           if (lastPreview) renderPreviewCard(lastPreview, (out.data.state && out.data.state.previewSummary) || '');
           setObMsg('');
-          var auto = qs('auto') === '1';
-          // Strip ?demo=1 so refresh does not reset the company mid-recording.
+          if (wantAuto && out.data.verifyPath) {
+            var next = out.data.verifyPath;
+            next += (next.indexOf('?') >= 0 ? '&' : '?') + 'auto=1';
+            window.location.href = next;
+            return;
+          }
+          // Non-auto: drop ?demo so refresh does not reset mid-session.
           try {
             history.replaceState({}, '', '/airsup/china/test' + (en ? '?lang=en' : ''));
           } catch (e2) {}
-          if (auto && out.data.verifyPath) {
-            try {
-              sessionStorage.setItem('cn_test_auto_onboard', '1');
-            } catch (e3) {}
-            window.location.href = out.data.verifyPath;
-            return;
-          }
         } catch (e) {
           setObMsg(copy.startFail);
         } finally {
@@ -794,13 +797,10 @@
       })();
     }
 
-    // After verify redirect from ?demo=1&auto=1, finish WeChat/sample → publish for a smooth full-funnel demo.
+    // After verify with ?auto=1, finish WeChat/sample → publish for a smooth full-funnel demo.
     (async function runAutoFields() {
-      var flag = '';
-      try { flag = sessionStorage.getItem('cn_test_auto_onboard') || ''; } catch (e) { flag = ''; }
-      if (flag !== '1') return;
+      if (!wantAuto) return;
       if (!state || state.step !== 'fields') return;
-      try { sessionStorage.removeItem('cn_test_auto_onboard'); } catch (e2) {}
       await new Promise(function (r) { setTimeout(r, 700); });
       document.getElementById('cn-ob-wechat').value = state.wechat || 'airsup_demo_tade';
       document.getElementById('cn-ob-sample').value = state.sampleLead || (en ? 'samples in 5 days' : '样品 5 天');

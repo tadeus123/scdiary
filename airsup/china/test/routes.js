@@ -260,6 +260,9 @@ router.get(['/', ''], async (req, res) => {
     }
   }
 
+  const demoMode = String(req.query.demo || '') === '1';
+  const autoDemo = String(req.query.auto || '') === '1';
+
   return render(req, res, 'chat.ejs', {
     lang,
     company,
@@ -271,6 +274,8 @@ router.get(['/', ''], async (req, res) => {
     cities: CITIES,
     initialWeb: initial,
     layoutPositions: layoutPositions(),
+    demoMode,
+    autoDemo,
   });
 });
 
@@ -355,6 +360,7 @@ router.post('/api/onboard/start', express.json(), async (req, res) => {
 router.get('/verify', async (req, res) => {
   const lang = langFrom(req, res);
   const token = String(req.query.token || '').trim();
+  const auto = String(req.query.auto || '') === '1';
   if (!token) {
     return res.redirect('/airsup/china/test?err=token');
   }
@@ -364,7 +370,7 @@ router.get('/verify', async (req, res) => {
       return res.redirect(`/airsup/china/test?err=${encodeURIComponent(result.errorKey || 'err_token')}`);
     }
     await openSession(req, res, result.company.company_id);
-    return res.redirect('/airsup/china/test?ok=verified');
+    return res.redirect('/airsup/china/test?ok=verified' + (auto ? '&auto=1' : ''));
   } catch (error) {
     console.error('Airsup china test verify error:', error);
     return res.redirect(`/airsup/china/test?err=${encodeURIComponent('err_db')}`);
