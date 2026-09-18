@@ -7,10 +7,16 @@
   <% if (typeof testCss === 'string' && testCss) { %>
   <style><%- testCss %></style>
   <% } else { %>
-  <link rel="stylesheet" href="/airsup/china/test/test-chat.css?v=8">
+  <link rel="stylesheet" href="/airsup/china/test/test-chat.css?v=9">
   <% } %>
 </head>
-<body class="cn-body cn-test" data-lang="<%= lang %>" data-logged-in="<%= loggedIn ? '1' : '0' %>">
+<body
+  class="cn-body cn-test"
+  data-lang="<%= lang %>"
+  data-logged-in="<%= loggedIn ? '1' : '0' %>"
+  data-onboard-step="<%= (onboard && onboard.step) || 'site' %>"
+  data-using-memory="<%= usingMemory ? '1' : '0' %>"
+>
   <header class="cn-test-top">
     <div class="cn-test-brand">
       <a href="/airsup/china/test">Airsup</a>
@@ -33,6 +39,63 @@
     <svg class="cn-test-spark" id="cn-test-spark" viewBox="0 0 72 14"></svg>
   </div>
 
+  <aside class="cn-test-onboard" id="cn-test-onboard" aria-label="<%= lang === 'en' ? 'Factory onboarding' : '工厂上线' %>">
+    <div class="cn-test-onboard-card">
+      <p class="cn-test-onboard-kicker" id="cn-ob-kicker"></p>
+      <h1 class="cn-test-onboard-title" id="cn-ob-title"></h1>
+      <p class="cn-test-onboard-lead" id="cn-ob-lead"></p>
+      <div class="cn-test-onboard-msg" id="cn-ob-msg" role="status"></div>
+      <div class="cn-test-onboard-preview" id="cn-ob-preview" hidden></div>
+
+      <div class="cn-ob-step" data-step="site" id="cn-ob-step-site">
+        <label for="cn-ob-website"><%= lang === 'en' ? 'Company website' : '公司网站' %></label>
+        <input type="url" id="cn-ob-website" autocomplete="url" placeholder="https://">
+        <button type="button" class="cn-btn cn-ob-primary" id="cn-ob-continue-site"><%= lang === 'en' ? 'Continue' : '继续' %></button>
+      </div>
+
+      <div class="cn-ob-step" data-step="email" id="cn-ob-step-email" hidden>
+        <label for="cn-ob-email"><%= lang === 'en' ? 'Work email' : '工作邮箱' %></label>
+        <input type="email" id="cn-ob-email" autocomplete="email" placeholder="you@factory.com">
+        <label for="cn-ob-contact"><%= lang === 'en' ? 'Contact name' : '联系人' %></label>
+        <input type="text" id="cn-ob-contact" autocomplete="name" placeholder="<%= lang === 'en' ? 'Name' : '姓名' %>">
+        <label for="cn-ob-city"><%= lang === 'en' ? 'City' : '城市' %></label>
+        <select id="cn-ob-city">
+          <% (typeof cities !== 'undefined' && cities ? cities : [{ id: 'shenzhen', zh: '深圳', en: 'Shenzhen' }, { id: 'dongguan', zh: '东莞', en: 'Dongguan' }, { id: 'other', zh: '其他', en: 'Other' }]).forEach(function (c) { %>
+            <option value="<%= c.id %>" <%= c.id === 'shenzhen' ? 'selected' : '' %>><%= lang === 'en' ? c.en : c.zh %></option>
+          <% }) %>
+        </select>
+        <button type="button" class="cn-btn cn-ob-primary" id="cn-ob-continue-email"><%= lang === 'en' ? 'Send verify link' : '发送验证链接' %></button>
+      </div>
+
+      <div class="cn-ob-step" data-step="verify" id="cn-ob-step-verify" hidden>
+        <p class="cn-ob-check" id="cn-ob-check-copy"></p>
+        <a class="cn-btn cn-ob-primary cn-ob-verify-link" id="cn-ob-verify-now" href="#" hidden>
+          <%= lang === 'en' ? 'Verify now' : '立即验证' %>
+        </a>
+      </div>
+
+      <div class="cn-ob-step" data-step="fields" id="cn-ob-step-fields" hidden>
+        <label for="cn-ob-wechat"><%= lang === 'en' ? 'WeChat ID' : '微信号' %></label>
+        <input type="text" id="cn-ob-wechat" autocomplete="off" placeholder="wechat_id">
+        <label for="cn-ob-sample"><%= lang === 'en' ? 'Sample / fastest lead you stand behind' : '样品 / 你能承诺的最快交期' %></label>
+        <input type="text" id="cn-ob-sample" placeholder="<%= lang === 'en' ? 'e.g. samples in 5 days' : '例如：样品 5 天' %>">
+        <label for="cn-ob-flex"><%= lang === 'en' ? 'Flexibility' : '灵活度' %></label>
+        <select id="cn-ob-flex">
+          <option value="strict"><%= lang === 'en' ? 'Strict' : '严格' %></option>
+          <option value="normal" selected><%= lang === 'en' ? 'Normal' : '正常' %></option>
+          <option value="creative"><%= lang === 'en' ? 'Creative' : '灵活' %></option>
+        </select>
+        <label for="cn-ob-contact-fields"><%= lang === 'en' ? 'Contact name' : '联系人' %></label>
+        <input type="text" id="cn-ob-contact-fields" autocomplete="name">
+        <button type="button" class="cn-btn cn-ob-primary" id="cn-ob-publish"><%= lang === 'en' ? 'Publish' : '上线' %></button>
+      </div>
+
+      <div class="cn-ob-step" data-step="live" id="cn-ob-step-live" hidden>
+        <p class="cn-ob-live" id="cn-ob-live-copy"></p>
+      </div>
+    </div>
+  </aside>
+
   <div id="cn-test-network"></div>
   <div class="cn-test-empty" id="cn-test-empty">
     <p><%= lang === 'en' ? 'Empty web. Drop a quote, site, or scrap — nodes appear and link.' : '空网。丢报价、网站或碎片 — 节点会出现并连上。' %></p>
@@ -47,7 +110,7 @@
 
   <div class="cn-test-toast" id="cn-test-toast" role="status"></div>
 
-  <div class="cn-test-dock">
+  <div class="cn-test-dock" id="cn-test-dock" hidden>
     <div class="cn-test-pending" id="cn-test-pending"></div>
     <form class="cn-test-composer" id="cn-test-form">
       <label class="cn-test-attach" title="<%= lang === 'en' ? 'Attach' : '上传' %>">
@@ -85,16 +148,18 @@
     </div>
   </div>
 
-  <script src="/airsup/china/test/test-network.js?v=1"></script>
+  <script src="/airsup/china/test/test-network.js?v=2"></script>
   <script>
   (function () {
     var lang = document.body.getAttribute('data-lang') || 'zh';
+    var en = lang === 'en';
     var webKey = 'airsup_china_test_web_v6';
     var form = document.getElementById('cn-test-form');
     var input = document.getElementById('cn-test-input');
     var fileInput = document.getElementById('cn-test-files');
     var pendingEl = document.getElementById('cn-test-pending');
     var sendBtn = document.getElementById('cn-test-send');
+    var dockEl = document.getElementById('cn-test-dock');
     var actionsEl = document.getElementById('cn-test-actions');
     var networkEl = document.getElementById('cn-test-network');
     var spark = document.getElementById('cn-test-spark');
@@ -111,12 +176,65 @@
     var detailsKind = document.getElementById('cn-test-details-kind');
     var detailsTitle = document.getElementById('cn-test-details-title');
     var detailsBody = document.getElementById('cn-test-details-body');
+    var onboardEl = document.getElementById('cn-test-onboard');
+    var obMsg = document.getElementById('cn-ob-msg');
+    var obPreview = document.getElementById('cn-ob-preview');
+    var obKicker = document.getElementById('cn-ob-kicker');
+    var obTitle = document.getElementById('cn-ob-title');
+    var obLead = document.getElementById('cn-ob-lead');
+    var obVerifyNow = document.getElementById('cn-ob-verify-now');
     var initialWeb = <%- JSON.stringify(initialWeb) %>;
+    var initialOnboard = <%- JSON.stringify(onboard || { step: 'site' }) %>;
     var pendingFiles = [];
     var busy = false;
+    var obBusy = false;
     var toastTimer = null;
     var authStep = 'email';
     var mounted = false;
+    var draftWebsite = '';
+    var lastPreview = null;
+    var verifyPath = '';
+    var state = initialOnboard || { step: 'site' };
+
+    var copy = en ? {
+      kicker: 'Factory onboarding',
+      siteTitle: 'Start with your site',
+      siteLead: 'We read the public pages and draft your ChatGPT endpoint.',
+      emailTitle: 'Confirm it is you',
+      emailLead: 'Work email on your domain. We send a one-click verify link.',
+      verifyTitle: 'Check your mail',
+      verifyLead: 'Open the link we sent. Demo can verify instantly below.',
+      fieldsTitle: 'Buyer-facing details',
+      fieldsLead: 'WeChat, sample lead, and how flexible you are on RFQs.',
+      liveTitle: 'You are live',
+      liveLead: 'Dump quotes and scraps into the web. Reach stays visible above.',
+      liveBody: 'Published. Grow the endpoint web with real factory material.',
+      checkMail: 'We sent a verify link. After you click it, fill buyer fields and publish.',
+      previewFail: 'Could not read that site.',
+      startFail: 'Could not start signup.',
+      fieldsFail: 'Could not save fields.',
+      publishFail: 'Could not publish yet.',
+      continue: 'Continue'
+    } : {
+      kicker: '工厂上线',
+      siteTitle: '从网站开始',
+      siteLead: '读取公开页面，起草你的 ChatGPT 端点。',
+      emailTitle: '确认是你',
+      emailLead: '公司域名工作邮箱。我们发一键验证链接。',
+      verifyTitle: '查收邮件',
+      verifyLead: '打开邮件里的链接。演示可在下方立刻验证。',
+      fieldsTitle: '给采购看的信息',
+      fieldsLead: '微信、样品交期、询盘灵活度。',
+      liveTitle: '已上线',
+      liveLead: '把报价和碎片丢进网。上方始终显示触达。',
+      liveBody: '已发布。用真实材料把端点网养亮。',
+      checkMail: '验证链接已发送。点开后填写买家字段再发布。',
+      previewFail: '读不了这个网站。',
+      startFail: '无法开始注册。',
+      fieldsFail: '无法保存字段。',
+      publishFail: '还不能发布。',
+      continue: '继续'
+    };
 
     function loadJson(key, fallback) {
       try {
@@ -147,6 +265,11 @@
       toastEl.classList.add('is-on');
       clearTimeout(toastTimer);
       toastTimer = setTimeout(function () { toastEl.classList.remove('is-on'); }, 3200);
+    }
+    function qs(name) {
+      try {
+        return new URLSearchParams(window.location.search).get(name) || '';
+      } catch (e) { return ''; }
     }
 
     function hideDetails() {
@@ -205,6 +328,96 @@
       }
     }
 
+    function applyWeb(next, forceRemount) {
+      if (!next) return;
+      web = next;
+      saveJson(webKey, web);
+      paintNetwork(web, Boolean(forceRemount));
+    }
+
+    function setDockVisible(on) {
+      dockEl.hidden = !on;
+    }
+
+    function showObStep(step) {
+      document.querySelectorAll('.cn-ob-step').forEach(function (el) {
+        el.hidden = el.getAttribute('data-step') !== step;
+      });
+      document.body.setAttribute('data-onboard-step', step || 'site');
+      var map = {
+        site: [copy.siteTitle, copy.siteLead],
+        email: [copy.emailTitle, copy.emailLead],
+        verify: [copy.verifyTitle, copy.verifyLead],
+        fields: [copy.fieldsTitle, copy.fieldsLead],
+        live: [copy.liveTitle, copy.liveLead]
+      };
+      var pair = map[step] || map.site;
+      obKicker.textContent = copy.kicker;
+      obTitle.textContent = pair[0];
+      obLead.textContent = pair[1];
+      document.getElementById('cn-ob-check-copy').textContent = copy.checkMail;
+      document.getElementById('cn-ob-live-copy').textContent = copy.liveBody;
+      var showDock = step === 'live' || (step === 'fields' && state && state.canPublish);
+      setDockVisible(showDock);
+      onboardEl.classList.toggle('is-compact', step === 'live');
+    }
+
+    function renderPreviewCard(preview, summary) {
+      if (!preview && !summary) {
+        obPreview.hidden = true;
+        obPreview.innerHTML = '';
+        return;
+      }
+      var name = (preview && (preview.companyName || preview.companyNameEn)) || '';
+      var bits = [
+        name,
+        preview && preview.domain,
+        preview && preview.city,
+        Array.isArray(preview && preview.capabilities) ? preview.capabilities.slice(0, 3).join(', ') : '',
+        summary || (preview && preview.summary) || ''
+      ].filter(Boolean);
+      obPreview.innerHTML = bits.map(function (b) { return '<span>' + esc(b) + '</span>'; }).join('');
+      obPreview.hidden = bits.length === 0;
+    }
+
+    function applyState(next, extra) {
+      state = next || state || { step: 'site' };
+      var step = state.step || 'site';
+      // After preview, show email form before company exists.
+      if (extra && extra.forceEmail) step = 'email';
+      if (extra && extra.verifyPath) {
+        verifyPath = extra.verifyPath;
+        step = 'verify';
+      }
+      showObStep(step);
+      if (state.previewSummary) renderPreviewCard(lastPreview, state.previewSummary);
+      if (verifyPath) {
+        obVerifyNow.hidden = false;
+        obVerifyNow.setAttribute('href', verifyPath);
+      } else {
+        obVerifyNow.hidden = true;
+      }
+      if (state.email) {
+        document.getElementById('cn-ob-email').value = state.email;
+      }
+      if (state.title) {
+        setLoggedIn(true, state.title);
+      }
+    }
+
+    function setObMsg(text) {
+      obMsg.textContent = text || '';
+    }
+
+    async function apiJson(url, opts) {
+      var res = await fetch(url, Object.assign({
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+      }, opts || {}));
+      var data = await res.json().catch(function () { return {}; });
+      return { res: res, data: data };
+    }
+
     function renderPending() {
       pendingEl.innerHTML = pendingFiles.map(function (f, i) {
         return '<div class="cn-test-file-card" data-i="' + i + '">'
@@ -231,7 +444,7 @@
       authMsg.textContent = '';
       authCodeWrap.hidden = true;
       authCode.value = '';
-      authGo.textContent = lang === 'en' ? 'Send code' : '发送验证码';
+      authGo.textContent = en ? 'Send code' : '发送验证码';
       authEl.classList.add('is-open');
       authEl.setAttribute('aria-hidden', 'false');
       authEmail.focus();
@@ -256,6 +469,7 @@
             });
           } catch (e) {}
           setLoggedIn(false, '');
+          applyState({ step: 'site' });
         });
       }
     }
@@ -267,11 +481,11 @@
       if (on) {
         actionsEl.innerHTML =
           '<span class="cn-test-who" id="cn-test-who" title="' + esc(name || '') + '">' + esc(name || '') + '</span>'
-          + '<button type="button" class="cn-btn-ghost" id="cn-test-logout">' + (lang === 'en' ? 'Log out' : '退出') + '</button>'
+          + '<button type="button" class="cn-btn-ghost" id="cn-test-logout">' + (en ? 'Log out' : '退出') + '</button>'
           + langHtml;
       } else {
         actionsEl.innerHTML =
-          '<button type="button" class="cn-btn" id="cn-test-login">' + (lang === 'en' ? 'Log in' : '登录') + '</button>'
+          '<button type="button" class="cn-btn" id="cn-test-login">' + (en ? 'Log in' : '登录') + '</button>'
           + langHtml;
       }
       bindAuthButtons();
@@ -295,14 +509,10 @@
           credentials: 'same-origin',
         });
         var data = await res.json().catch(function () { return {}; });
-        if (data.web) {
-          web = data.web;
-          saveJson(webKey, web);
-          paintNetwork(web);
-        }
+        if (data.web) applyWeb(data.web);
         if (data.reply) toast(data.reply);
       } catch (err) {
-        toast(lang === 'en' ? 'Network error.' : '网络错误。');
+        toast(en ? 'Network error.' : '网络错误。');
       } finally {
         busy = false;
         sendBtn.disabled = false;
@@ -317,6 +527,147 @@
     }
     paintNetwork(web, true);
     bindAuthButtons();
+    applyState(state);
+
+    if (qs('ok') === 'verified') {
+      toast(en ? 'Email verified.' : '邮箱已验证。');
+      apiJson('/airsup/china/test/api/onboard/state', { method: 'GET', headers: {} }).then(function (out) {
+        if (out.data && out.data.state) applyState(out.data.state);
+        if (out.data && out.data.web) applyWeb(out.data.web, true);
+        if (out.data && out.data.company && out.data.company.name) {
+          setLoggedIn(true, out.data.company.name);
+        }
+      });
+    }
+
+    document.getElementById('cn-ob-continue-site').addEventListener('click', async function () {
+      if (obBusy) return;
+      setObMsg('');
+      var website = String(document.getElementById('cn-ob-website').value || '').trim();
+      if (!website) {
+        setObMsg(copy.previewFail);
+        return;
+      }
+      obBusy = true;
+      try {
+        var out = await apiJson('/airsup/china/test/api/onboard/preview', {
+          method: 'POST',
+          body: JSON.stringify({ website: website }),
+        });
+        if (!out.res.ok || !out.data.ok) {
+          setObMsg((out.data && out.data.error) || copy.previewFail);
+          return;
+        }
+        lastPreview = out.data.preview;
+        draftWebsite = (lastPreview && lastPreview.website) || website;
+        document.getElementById('cn-ob-website').value = draftWebsite;
+        if (lastPreview && lastPreview.cityId) {
+          document.getElementById('cn-ob-city').value = lastPreview.cityId;
+        }
+        renderPreviewCard(lastPreview, '');
+        applyState(state, { forceEmail: true });
+      } catch (e) {
+        setObMsg(copy.previewFail);
+      } finally {
+        obBusy = false;
+      }
+    });
+
+    document.getElementById('cn-ob-continue-email').addEventListener('click', async function () {
+      if (obBusy) return;
+      setObMsg('');
+      obBusy = true;
+      try {
+        var out = await apiJson('/airsup/china/test/api/onboard/start', {
+          method: 'POST',
+          body: JSON.stringify({
+            website: draftWebsite || String(document.getElementById('cn-ob-website').value || '').trim(),
+            email: String(document.getElementById('cn-ob-email').value || '').trim(),
+            contact: String(document.getElementById('cn-ob-contact').value || '').trim(),
+            city: String(document.getElementById('cn-ob-city').value || 'shenzhen'),
+          }),
+        });
+        if (!out.res.ok || !out.data.ok) {
+          setObMsg((out.data && out.data.error) || copy.startFail);
+          return;
+        }
+        if (out.data.web) applyWeb(out.data.web, true);
+        applyState(out.data.state, { verifyPath: out.data.verifyPath || '' });
+        if (out.data.company && out.data.company.name) {
+          // Not logged in until verify, but show name in preview.
+        }
+      } catch (e) {
+        setObMsg(copy.startFail);
+      } finally {
+        obBusy = false;
+      }
+    });
+
+    document.getElementById('cn-ob-publish').addEventListener('click', async function () {
+      if (obBusy) return;
+      setObMsg('');
+      obBusy = true;
+      try {
+        var fieldsOut = await apiJson('/airsup/china/test/api/onboard/fields', {
+          method: 'POST',
+          body: JSON.stringify({
+            wechat: String(document.getElementById('cn-ob-wechat').value || '').trim(),
+            sample_lead: String(document.getElementById('cn-ob-sample').value || '').trim(),
+            flexibility: String(document.getElementById('cn-ob-flex').value || 'normal'),
+            contact_name: String(document.getElementById('cn-ob-contact-fields').value || '').trim(),
+          }),
+        });
+        if (!fieldsOut.res.ok || !fieldsOut.data.ok) {
+          setObMsg((fieldsOut.data && fieldsOut.data.error) || copy.fieldsFail);
+          return;
+        }
+        if (fieldsOut.data.web) applyWeb(fieldsOut.data.web, true);
+        var pubOut = await apiJson('/airsup/china/test/api/onboard/publish', {
+          method: 'POST',
+          body: '{}',
+        });
+        if (!pubOut.res.ok || !pubOut.data.ok) {
+          setObMsg((pubOut.data && pubOut.data.error) || copy.publishFail);
+          applyState(fieldsOut.data.state);
+          return;
+        }
+        if (pubOut.data.web) applyWeb(pubOut.data.web, true);
+        applyState(pubOut.data.state);
+        if (pubOut.data.company && pubOut.data.company.name) {
+          setLoggedIn(true, pubOut.data.company.name);
+        }
+        toast(en ? 'Published.' : '已上线。');
+      } catch (e) {
+        setObMsg(copy.publishFail);
+      } finally {
+        obBusy = false;
+      }
+    });
+
+    if (qs('demo') === '1') {
+      (async function () {
+        setObMsg(en ? 'Starting demo…' : '正在启动演示…');
+        try {
+          var out = await apiJson('/airsup/china/test/api/onboard/demo', {
+            method: 'POST',
+            body: '{}',
+          });
+          if (!out.res.ok || !out.data.ok) {
+            setObMsg((out.data && out.data.error) || copy.startFail);
+            return;
+          }
+          draftWebsite = 'https://demo.com';
+          document.getElementById('cn-ob-website').value = draftWebsite;
+          document.getElementById('cn-ob-email').value = 'tade@demo.com';
+          document.getElementById('cn-ob-contact').value = 'Tade';
+          if (out.data.web) applyWeb(out.data.web, true);
+          applyState(out.data.state, { verifyPath: out.data.verifyPath || '' });
+          setObMsg('');
+        } catch (e) {
+          setObMsg(copy.startFail);
+        }
+      })();
+    }
 
     fileInput.addEventListener('change', function () {
       Array.prototype.slice.call(fileInput.files || []).forEach(function (f) { pendingFiles.push(f); });
@@ -337,6 +688,7 @@
       });
     });
     networkEl.addEventListener('drop', function (e) {
+      if (dockEl.hidden) return;
       var list = e.dataTransfer && e.dataTransfer.files ? Array.prototype.slice.call(e.dataTransfer.files) : [];
       if (!list.length) return;
       sendTurn('', list);
@@ -386,10 +738,10 @@
           if (!res.ok) throw new Error(data.error || 'request');
           authStep = 'code';
           authCodeWrap.hidden = false;
-          authGo.textContent = lang === 'en' ? 'Verify' : '验证';
+          authGo.textContent = en ? 'Verify' : '验证';
           authMsg.textContent = data.devCode
-            ? ((lang === 'en' ? 'Concept code: ' : '概念验证码：') + data.devCode)
-            : (lang === 'en' ? 'Code sent. Check your inbox.' : '验证码已发送，请查收邮箱。');
+            ? ((en ? 'Concept code: ' : '概念验证码：') + data.devCode)
+            : (en ? 'Code sent. Check your inbox.' : '验证码已发送，请查收邮箱。');
           authCode.focus();
         } else {
           var res2 = await fetch('/airsup/china/test/api/login/verify', {
@@ -405,15 +757,13 @@
           if (!res2.ok) throw new Error(data2.error || 'verify');
           closeAuth();
           setLoggedIn(true, (data2.company && data2.company.name) || '');
-          if (data2.web) {
-            web = data2.web;
-            saveJson(webKey, web);
-            paintNetwork(web, true);
-          }
-          toast(lang === 'en' ? 'Signed in.' : '已登录。');
+          if (data2.web) applyWeb(data2.web, true);
+          toast(en ? 'Signed in.' : '已登录。');
+          var st = await apiJson('/airsup/china/test/api/onboard/state', { method: 'GET', headers: {} });
+          if (st.data && st.data.state) applyState(st.data.state);
         }
       } catch (err) {
-        authMsg.textContent = lang === 'en' ? 'Could not continue. Check email / code.' : '无法继续，请检查邮箱或验证码。';
+        authMsg.textContent = en ? 'Could not continue. Check email / code.' : '无法继续，请检查邮箱或验证码。';
       } finally {
         authGo.disabled = false;
       }

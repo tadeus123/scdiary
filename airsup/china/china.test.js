@@ -1359,16 +1359,77 @@ function memoryChina(companies) {
   assert.ok(fs.existsSync(path.join(__dirname, 'test/routes.js')));
   assert.ok(fs.existsSync(path.join(__dirname, 'test/views/chat.ejs')));
   assert.ok(fs.existsSync(path.join(__dirname, 'test/web.js')));
+  assert.ok(fs.existsSync(path.join(__dirname, 'test/REPLACE.md')));
+  assert.ok(fs.existsSync(path.join(__dirname, 'test/memory-store.js')));
+  assert.ok(fs.existsSync(path.join(__dirname, 'test/onboard.js')));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.use('/test'"));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('AIRSUP-CHINA-TEST-BEGIN'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-network'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-dock'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-onboard'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('vis-network@10.1.2'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('login/request'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('api/onboard'));
   assert.ok(fs.existsSync(path.join(__dirname, 'test/public/test-network.js')));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/public/test-network.js'), 'utf8').includes('gravitationalConstant: -5000'));
   assert.ok(!fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-thread'));
   assert.ok(!fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-universe'));
+  const testRoutesSrc = fs.readFileSync(path.join(__dirname, 'test/routes.js'), 'utf8');
+  assert.ok(testRoutesSrc.includes("/api/onboard/preview"));
+  assert.ok(testRoutesSrc.includes("/api/onboard/start"));
+  assert.ok(testRoutesSrc.includes("/api/onboard/fields"));
+  assert.ok(testRoutesSrc.includes("/api/onboard/publish"));
+  assert.ok(testRoutesSrc.includes("/api/onboard/state"));
+  assert.ok(testRoutesSrc.includes("/api/onboard/demo"));
+  assert.ok(testRoutesSrc.includes("router.get('/verify'"));
+  const testOnboard = require('./test/onboard');
+  assert.strictEqual(typeof testOnboard.previewWebsite, 'function');
+  assert.strictEqual(typeof testOnboard.startSignup, 'function');
+  assert.strictEqual(typeof testOnboard.consumeVerifyToken, 'function');
+  assert.strictEqual(typeof testOnboard.saveInteraction, 'function');
+  assert.strictEqual(typeof testOnboard.publishCompany, 'function');
+  assert.strictEqual(typeof testOnboard.onboardingState, 'function');
+  assert.strictEqual(typeof testOnboard.seedWebFromCompany, 'function');
+  assert.strictEqual(typeof testOnboard.readTestCompany, 'function');
+  assert.strictEqual(typeof testOnboard.openSession, 'function');
+  assert.strictEqual(typeof testOnboard.clearTestSession, 'function');
+  assert.strictEqual(typeof testOnboard.usingMemory, 'function');
+  assert.ok(testOnboard.DEMO_DOMAIN);
+  assert.ok(testOnboard.DEMO_EMAIL);
+  const memoryStore = require('./test/memory-store');
+  memoryStore.resetAll();
+  assert.ok(testOnboard.usingMemory());
+  const preview = await testOnboard.previewWebsite('https://demo.com', 'en');
+  assert.ok(preview.ok);
+  assert.strictEqual(preview.domain, 'demo.com');
+  const started = await testOnboard.startSignup({
+    website: 'https://demo.com',
+    email: testOnboard.DEMO_EMAIL,
+    contact: 'Tade',
+    city: 'shenzhen',
+    lang: 'en',
+    source: 'test',
+    publicOrigin: 'http://localhost:3000',
+  });
+  assert.ok(started.ok, started.errorKey);
+  assert.ok(started.token);
+  assert.ok(String(started.verifyPath || '').includes('/airsup/china/test/verify'));
+  assert.strictEqual(started.company.status, 'pending');
+  const verified = await testOnboard.consumeVerifyToken(started.token);
+  assert.ok(verified.ok, verified.errorKey);
+  assert.strictEqual(verified.company.status, 'verified');
+  const saved = await testOnboard.saveInteraction(verified.company, {
+    contact_wechat: 'airsup_demo_tade',
+    sample_lead: 'samples in 3 days',
+    flexibility: 'normal',
+    contact_name: 'Tade',
+    goal: 'Win qualified export RFQs from buyers who find us in ChatGPT.',
+  }, 'en');
+  assert.ok(saved && saved.company_id);
+  const published = await testOnboard.publishCompany(saved);
+  assert.ok(published.ok, published.errorKey);
+  assert.strictEqual(published.company.status, 'live');
+  assert.strictEqual(testOnboard.onboardingState(published.company, 'en').step, 'live');
   const testChat = require('./test/chat');
   const testWeb = require('./test/web');
   assert.strictEqual(testChat.welcomeMessage('zh'), '');

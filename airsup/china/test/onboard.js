@@ -12,6 +12,7 @@
  */
 const db = require('../db');
 const session = require('../session');
+const memoryStore = require('./memory-store');
 const { buildPreview, companyDraftFromPreview } = require('../site-preview');
 const {
   CITIES,
@@ -35,6 +36,69 @@ const { emptyWeb, seedFromCompany, applyDump } = require('./web');
 
 const VERIFY_PATH = '/airsup/china/test/verify';
 
+/** Live Supabase when configured; otherwise test-only memory store (demos / local). */
+function store() {
+  return db.isConfigured() ? db : memoryStore;
+}
+
+function usingMemory() {
+  return !db.isConfigured();
+}
+
+async function mintToken(companyId, email, purpose) {
+  if (!usingMemory()) {
+    return session.createToken(companyId, email, purpose);
+  }
+  const token = session.randomToken();
+  await memoryStore.insertToken({
+    token_hash: session.sha256(token),
+    company_id: companyId,
+    email,
+    purpose: purpose || 'verify',
+    expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+  });
+  return token;
+}
+
+async function openSession(req, res, companyId) {
+  if (!usingMemory()) {
+    return session.createSession(req, res, companyId);
+  }
+  const sid = session.randomToken();
+  await memoryStore.insertSession({
+    session_hash: session.sha256(sid),
+    company_id: companyId,
+    expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+  res.cookie('airsup_china_sid', sid, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/airsup/china',
+    secure: req.secure || req.get('x-forwarded-proto') === 'https',
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+  });
+}
+
+async function readTestCompany(req) {
+  if (!usingMemory()) {
+    return session.readCompany(req).catch(() => null);
+  }
+  const sid = session.readSid(req);
+  if (!sid) return null;
+  const row = await memoryStore.getSession(session.sha256(sid));
+  if (!row) return null;
+  return memoryStore.getById(row.company_id);
+}
+
+async function clearTestSession(req, res) {
+  if (!usingMemory()) {
+    return session.clearSession(req, res);
+  }
+  const sid = session.readSid(req);
+  if (sid) await memoryStore.deleteSession(session.sha256(sid)).catch(() => null);
+  res.clearCookie('airsup_china_sid', { path: '/airsup/china' });
+}
+
 function tooSoon(company) {
   if (!company || !company.last_email_at) return false;
   return Date.now() - new Date(company.last_email_at).getTime() < 2 * 60 * 1000;
@@ -53,7 +117,7 @@ function fail(errorKey) {
 
 /**
  * Same behavior as live routes.js applySiteDraft:
- * skip if live; buildPreview; fillEmptyCompany; default goal; db.updateCompany.
+ * skip if live; buildPreview; fillEmptyCompany; default goal; store().updateCompany.
  */
 async function applySiteDraft(company, website, lang) {
   if (!company || company.status === 'live') return company;
@@ -67,7 +131,7 @@ async function applySiteDraft(company, website, lang) {
         ? 'Win qualified export RFQs from buyers who find us in ChatGPT.'
         : '让欧美采购通过 ChatGPT 找到我们并收到可报价的询盘。';
     }
-    return db.updateCompany(company.company_id, {
+    return store().updateCompany(company.company_id, {
       company_name: next.company_name,
       company_name_en: next.company_name_en,
       city: next.city,
@@ -119,11 +183,11 @@ async function startSignup({
   }
 
   let matched = emailAllowedForSite({ website, email, siteEmails });
-  if (!matched.ok && matched.error === 'mismatch' && db.isConfigured()) {
+  if (!matched.ok && matched.error === 'mismatch') {
     try {
       const site = normalizeDomain(website);
       const parts = emailParts(email);
-      const allow = parts ? await db.getDomainAllow(site, parts.email) : null;
+      const allow = parts ? await store().getDomainAllow(site, parts.email) : null;
       if (allow && parts) {
         matched = {
           ok: true,
@@ -138,12 +202,10 @@ async function startSignup({
     }
   }
   if (!matched.ok) return fail(`err_${matched.error}`);
-  if (!db.isConfigured()) return fail('err_db');
-
   try {
     // Only persist outreach/manual allow rows. Site-contact is re-checked via scrape each time.
     if (matched.reason === 'outreach' || matched.reason === 'manual') {
-      await db.upsertDomainAllow({
+      await store().upsertDomainAllow({
         domain: matched.domain,
         contact_email: matched.email,
         source: matched.reason,
@@ -151,13 +213,13 @@ async function startSignup({
       }).catch((error) => console.error('Airsup china test allow upsert skipped:', error.message));
     }
 
-    let company = await db.getByDomain(matched.domain);
+    let company = await store().getByDomain(matched.domain);
     if (company && tooSoon(company) && !isDemoCompany(company) && !isDemoDomain(matched.domain)) {
       return fail('err_rate');
     }
 
     if (!company) {
-      company = await db.insertCompany({
+      company = await store().insertCompany({
         domain: matched.domain,
         website: matched.website,
         contact_email: matched.email,
@@ -173,7 +235,7 @@ async function startSignup({
       if (existingEmail && existingEmail !== matched.email) {
         return fail('err_taken');
       }
-      company = await db.updateCompany(company.company_id, {
+      company = await store().updateCompany(company.company_id, {
         website: matched.website,
         contact_email: matched.email,
         contact_name: contactName || company.contact_name,
@@ -190,7 +252,7 @@ async function startSignup({
     }
 
     const purpose = company.status === 'pending' ? 'verify' : 'login';
-    const token = await session.createToken(company.company_id, matched.email, purpose);
+    const token = await mintToken(company.company_id, matched.email, purpose);
     const verifyPath = `${VERIFY_PATH}?token=${encodeURIComponent(token)}`;
     const link = origin ? `${origin}${verifyPath}` : verifyPath;
     const demoFlow = isDemoDomain(matched.domain) || isDemoCompany(company);
@@ -207,8 +269,8 @@ async function startSignup({
       console.error('Airsup china test demo verify mail skipped:', error.message);
     }
 
-    await db.updateCompany(company.company_id, { last_email_at: new Date().toISOString() });
-    company = await db.getById(company.company_id);
+    await store().updateCompany(company.company_id, { last_email_at: new Date().toISOString() });
+    company = await store().getById(company.company_id);
 
     return {
       ok: true,
@@ -232,12 +294,12 @@ async function startSignup({
  */
 async function consumeVerifyToken(token) {
   const raw = String(token || '').trim();
-  if (!raw || !db.isConfigured()) {
+  if (!raw) {
     return { ok: false, errorKey: 'err_token', company: null, purpose: null };
   }
 
   try {
-    const peek = await db.getToken(session.sha256(raw));
+    const peek = await store().getToken(session.sha256(raw));
     if (!peek || (peek.purpose !== 'verify' && peek.purpose !== 'login')) {
       return { ok: false, errorKey: 'err_token', company: null, purpose: null };
     }
@@ -246,7 +308,7 @@ async function consumeVerifyToken(token) {
     // Verify tokens stay one-shot.
     let row = peek;
     if (peek.purpose === 'verify') {
-      row = await db.takeToken(session.sha256(raw));
+      row = await store().takeToken(session.sha256(raw));
       if (!row || row.purpose !== 'verify') {
         return { ok: false, errorKey: 'err_token', company: null, purpose: null };
       }
@@ -255,7 +317,7 @@ async function consumeVerifyToken(token) {
       return { ok: false, errorKey: 'err_token', company: null, purpose: null };
     }
 
-    const company = await db.getById(row.company_id);
+    const company = await store().getById(row.company_id);
     if (!company) {
       return { ok: false, errorKey: 'err_token', company: null, purpose: row.purpose };
     }
@@ -272,10 +334,10 @@ async function consumeVerifyToken(token) {
     }
     // Never change contact_email or status for live.
     if (Object.keys(patch).length) {
-      await db.updateCompany(company.company_id, patch);
+      await store().updateCompany(company.company_id, patch);
     }
 
-    let fresh = await db.getById(company.company_id);
+    let fresh = await store().getById(company.company_id);
     if (fresh && (fresh.status === 'pending' || fresh.status === 'verified')) {
       fresh = await applySiteDraft(fresh, company.website || company.domain, lang) || fresh;
     }
@@ -293,14 +355,14 @@ async function consumeVerifyToken(token) {
       && fresh.status === 'verified'
       && !fresh.live_at
     ) {
-      fresh = await db.updateCompany(fresh.company_id, {
+      fresh = await store().updateCompany(fresh.company_id, {
         status: 'live',
         live_at: new Date().toISOString(),
         verified_at: fresh.verified_at || new Date().toISOString(),
         profile: { ...profile, claim_ready: false },
       });
       try {
-        await db.touchDomainAllow(fresh.domain, fresh.contact_email, {
+        await store().touchDomainAllow(fresh.domain, fresh.contact_email, {
           published_at: new Date().toISOString(),
         });
       } catch (error) {
@@ -379,7 +441,7 @@ async function saveInteraction(company, body, lang) {
   // lang reserved for future localized defaults; keep signature stable.
   void lang;
 
-  return db.updateCompany(company.company_id, patch);
+  return store().updateCompany(company.company_id, patch);
 }
 
 /** Publish when canPublish; else { ok:false, errorKey:'err_publish' }. */
@@ -391,13 +453,13 @@ async function publishCompany(company) {
     return { ok: false, errorKey: 'err_publish', company };
   }
   try {
-    const next = await db.updateCompany(company.company_id, {
+    const next = await store().updateCompany(company.company_id, {
       status: 'live',
       live_at: company.live_at || new Date().toISOString(),
       verified_at: company.verified_at || new Date().toISOString(),
     });
     try {
-      await db.touchDomainAllow(next.domain, next.contact_email || company.contact_email, {
+      await store().touchDomainAllow(next.domain, next.contact_email || company.contact_email, {
         published_at: new Date().toISOString(),
       });
     } catch (error) {
@@ -492,6 +554,11 @@ module.exports = {
   publishCompany,
   onboardingState,
   seedWebFromCompany,
+  readTestCompany,
+  openSession,
+  clearTestSession,
+  usingMemory,
+  mintToken,
   // Re-export demo constants helpers may need when wiring test routes.
   DEMO_DOMAIN,
   DEMO_EMAIL,
