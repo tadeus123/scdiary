@@ -10,7 +10,7 @@ const multer = require('multer');
 const session = require('../session');
 const { t, otherLang } = require('../i18n');
 const { companyTitle, CITIES } = require('../fields');
-const { ensureDemoCompany } = require('../demo-company');
+const { ensureDemoCompany, onboardingResetPatch } = require('../demo-company');
 const db = require('../db');
 const peopleAuth = require('../../auth');
 const { welcomeMessage, completeTestTurn, emptyWeb } = require('./chat');
@@ -163,45 +163,37 @@ function parseWeb(raw, lang) {
   }
 }
 
+async function ensureTestDemoAllowlist() {
+  if (usingMemory()) {
+    return memoryStore.upsertDomainAllow({
+      domain: DEMO_DOMAIN,
+      contact_email: DEMO_EMAIL,
+      source: 'manual',
+      note: 'Airsup demo onboarding mailbox (memory)',
+    });
+  }
+  return ensureDemoAllowlist();
+}
+
 async function resetDemoPending(lang) {
-  await ensureDemoAllowlist();
+  await ensureTestDemoAllowlist();
+  const patch = {
+    ...onboardingResetPatch(),
+    locale: lang === 'en' ? 'en' : 'zh',
+  };
   if (usingMemory()) {
     const existing = await memoryStore.getByDomain(DEMO_DOMAIN);
     if (existing) {
-      await memoryStore.updateCompany(existing.company_id, {
-        status: 'pending',
-        live_at: null,
-        verified_at: null,
-        last_email_at: null,
-        contact_email: DEMO_EMAIL,
-        contact_name: '',
-        company_name: '',
-        company_name_en: '',
-        goal: '',
-        context: '',
-        city: 'shenzhen',
-        source: 'demo',
-      });
+      return memoryStore.updateCompany(existing.company_id, patch);
     }
-    return null;
+    return memoryStore.insertCompany({
+      domain: DEMO_DOMAIN,
+      ...patch,
+    });
   }
   try {
     let company = await ensureDemoCompany({ forceLive: true });
-    company = await db.updateCompany(company.company_id, {
-      status: 'pending',
-      live_at: null,
-      verified_at: null,
-      last_email_at: null,
-      contact_email: DEMO_EMAIL,
-      contact_name: '',
-      company_name: '',
-      company_name_en: '',
-      goal: '',
-      context: '',
-      city: 'shenzhen',
-      source: 'demo',
-      locale: lang === 'en' ? 'en' : 'zh',
-    });
+    company = await db.updateCompany(company.company_id, patch);
     return company;
   } catch (error) {
     console.error('Airsup china test demo reset skipped:', error.message);
@@ -463,10 +455,17 @@ router.post('/api/onboard/demo', express.json(), async (req, res) => {
     }
     const state = onboardingState(result.company, lang);
     let web = null;
+    let preview = null;
     try {
       web = seedWebFromCompany(result.company, lang).web;
     } catch {
       web = null;
+    }
+    try {
+      preview = await previewWebsite(`https://${DEMO_DOMAIN}`, lang);
+      if (preview && !preview.ok) preview = null;
+    } catch {
+      preview = null;
     }
     return res.json({
       ok: true,
@@ -476,6 +475,7 @@ router.post('/api/onboard/demo', express.json(), async (req, res) => {
       demo: true,
       token: result.token,
       web,
+      preview,
       error: null,
     });
   } catch (error) {
@@ -492,6 +492,18 @@ router.get('/api/state', async (req, res) => {
   } catch {
     company = null;
   }
+  let web = emptyWeb(lang);
+  if (company) {
+    try {
+      web = seedWebFromCompany(company, lang).web || web;
+    } catch {
+      try {
+        web = seedFromCompany(emptyWeb(lang), company, lang).web;
+      } catch {
+        web = emptyWeb(lang);
+      }
+    }
+  }
   return res.json({
     concept: true,
     lang,
@@ -500,7 +512,7 @@ router.get('/api/state', async (req, res) => {
     company: companySummary(company, lang),
     onboard: onboardingState(company, lang),
     welcome: welcomeMessage(lang),
-    web: emptyWeb(lang),
+    web,
     layout: layoutPositions(),
     note: 'Company web is the main surface; chat feeds it. Client persists web + transcript.',
   });
@@ -563,15 +575,52 @@ router.post('/api/login-demo', express.json(), async (req, res) => {
   if (!peopleAuth.allowedOrigin(req)) {
     return res.status(403).json({ error: 'forbidden' });
   }
-  if (!db.isConfigured()) {
-    return res.status(503).json({ error: 'storage_unavailable' });
-  }
   try {
-    await ensureDemoAllowlist();
-    const company = await ensureDemoCompany({ forceLive: true });
-    await session.createSession(req, res, company.company_id);
+    await ensureTestDemoAllowlist();
+    let company;
+    if (usingMemory()) {
+      const existing = await memoryStore.getByDomain(DEMO_DOMAIN);
+      if (existing && existing.status === 'live') {
+        company = existing;
+      } else {
+        await resetDemoPending(langFrom(req, res));
+        const started = await startSignup({
+          website: `https://${DEMO_DOMAIN}`,
+          email: DEMO_EMAIL,
+          contact: 'Tade',
+          city: 'shenzhen',
+          lang: langFrom(req, res),
+          source: 'demo',
+          publicOrigin: peopleAuth.getPublicOrigin(req),
+        });
+        if (!started.ok) {
+          return res.status(500).json({ error: 'login_failed' });
+        }
+        const verified = await consumeVerifyToken(started.token);
+        if (!verified.ok || !verified.company) {
+          return res.status(500).json({ error: 'login_failed' });
+        }
+        const withFields = await saveInteraction(verified.company, {
+          contact_wechat: 'airsup_demo_tade',
+          sample_lead: 'samples in 3 days',
+          flexibility: 'normal',
+          contact_name: 'Tade',
+        }, langFrom(req, res));
+        const published = await publishCompany(withFields);
+        if (!published.ok) {
+          return res.status(500).json({ error: 'login_failed' });
+        }
+        company = published.company;
+      }
+    } else {
+      if (!db.isConfigured()) {
+        return res.status(503).json({ error: 'storage_unavailable' });
+      }
+      company = await ensureDemoCompany({ forceLive: true });
+    }
+    await openSession(req, res, company.company_id);
     const lang = langFrom(req, res);
-    const seeded = seedFromCompany(emptyWeb(lang), company, lang);
+    const seeded = seedWebFromCompany(company, lang);
     return res.json({
       ok: true,
       company: {
@@ -618,9 +667,6 @@ router.post('/api/login/verify', express.json(), async (req, res) => {
   if (!peopleAuth.allowedOrigin(req)) {
     return res.status(403).json({ error: 'forbidden' });
   }
-  if (!db.isConfigured()) {
-    return res.status(503).json({ error: 'storage_unavailable' });
-  }
   const lang = langFrom(req, res);
   const email = authCodes.normalizeEmail(req.body && req.body.email);
   const code = String((req.body && req.body.code) || '').trim();
@@ -628,19 +674,56 @@ router.post('/api/login/verify', express.json(), async (req, res) => {
     return res.status(401).json({ error: 'bad_code' });
   }
   try {
-    await ensureDemoAllowlist();
+    await ensureTestDemoAllowlist();
     const domain = email.split('@')[1] || '';
     let company = null;
+    const storeApi = usingMemory() ? memoryStore : db;
+    if (!usingMemory() && !db.isConfigured()) {
+      return res.status(503).json({ error: 'storage_unavailable' });
+    }
     try {
-      company = domain ? await db.getByDomain(domain) : null;
+      company = domain ? await storeApi.getByDomain(domain) : null;
     } catch {
       company = null;
     }
     if (!company) {
-      company = await ensureDemoCompany({ forceLive: true });
+      if (usingMemory()) {
+        // Fall back to a published demo company in memory so login is tryable offline.
+        const demoLogin = await (async () => {
+          const existing = await memoryStore.getByDomain(DEMO_DOMAIN);
+          if (existing && existing.status === 'live') return existing;
+          await resetDemoPending(lang);
+          const started = await startSignup({
+            website: `https://${DEMO_DOMAIN}`,
+            email: DEMO_EMAIL,
+            contact: 'Tade',
+            city: 'shenzhen',
+            lang,
+            source: 'demo',
+            publicOrigin: peopleAuth.getPublicOrigin(req),
+          });
+          if (!started.ok) return null;
+          const verified = await consumeVerifyToken(started.token);
+          if (!verified.ok) return null;
+          const withFields = await saveInteraction(verified.company, {
+            contact_wechat: 'airsup_demo_tade',
+            sample_lead: 'samples in 3 days',
+            flexibility: 'normal',
+            contact_name: 'Tade',
+          }, lang);
+          const published = await publishCompany(withFields);
+          return published.ok ? published.company : null;
+        })();
+        company = demoLogin;
+      } else {
+        company = await ensureDemoCompany({ forceLive: true });
+      }
     }
-    await session.createSession(req, res, company.company_id);
-    const seeded = seedFromCompany(emptyWeb(lang), company, lang);
+    if (!company) {
+      return res.status(500).json({ error: 'login_failed' });
+    }
+    await openSession(req, res, company.company_id);
+    const seeded = seedWebFromCompany(company, lang);
     return res.json({
       ok: true,
       company: {

@@ -46,6 +46,7 @@
       <p class="cn-test-onboard-lead" id="cn-ob-lead"></p>
       <div class="cn-test-onboard-msg" id="cn-ob-msg" role="status"></div>
       <div class="cn-test-onboard-preview" id="cn-ob-preview" hidden></div>
+      <ul class="cn-test-onboard-gaps" id="cn-ob-gaps" hidden></ul>
 
       <div class="cn-ob-step" data-step="site" id="cn-ob-step-site">
         <label for="cn-ob-website"><%= lang === 'en' ? 'Company website' : '公司网站' %></label>
@@ -179,12 +180,14 @@
     var onboardEl = document.getElementById('cn-test-onboard');
     var obMsg = document.getElementById('cn-ob-msg');
     var obPreview = document.getElementById('cn-ob-preview');
+    var obGaps = document.getElementById('cn-ob-gaps');
     var obKicker = document.getElementById('cn-ob-kicker');
     var obTitle = document.getElementById('cn-ob-title');
     var obLead = document.getElementById('cn-ob-lead');
     var obVerifyNow = document.getElementById('cn-ob-verify-now');
     var initialWeb = <%- JSON.stringify(initialWeb) %>;
     var initialOnboard = <%- JSON.stringify(onboard || { step: 'site' }) %>;
+    var initialLoggedIn = document.body.getAttribute('data-logged-in') === '1';
     var pendingFiles = [];
     var busy = false;
     var obBusy = false;
@@ -214,6 +217,8 @@
       startFail: 'Could not start signup.',
       fieldsFail: 'Could not save fields.',
       publishFail: 'Could not publish yet.',
+      needQuality: 'Add WeChat and a sample lead you will stand behind before publishing.',
+      gapsTitle: 'Still thin for ChatGPT answers:',
       continue: 'Continue'
     } : {
       kicker: '工厂上线',
@@ -233,6 +238,8 @@
       startFail: '无法开始注册。',
       fieldsFail: '无法保存字段。',
       publishFail: '还不能发布。',
+      needQuality: '上线前请填写微信号和你能承诺的样品交期。',
+      gapsTitle: 'ChatGPT 回答还偏薄：',
       continue: '继续'
     };
 
@@ -339,6 +346,14 @@
       dockEl.hidden = !on;
     }
 
+    function setObBusy(on) {
+      obBusy = Boolean(on);
+      ['cn-ob-continue-site', 'cn-ob-continue-email', 'cn-ob-publish'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.disabled = obBusy;
+      });
+    }
+
     function showObStep(step) {
       document.querySelectorAll('.cn-ob-step').forEach(function (el) {
         el.hidden = el.getAttribute('data-step') !== step;
@@ -357,9 +372,25 @@
       obLead.textContent = pair[1];
       document.getElementById('cn-ob-check-copy').textContent = copy.checkMail;
       document.getElementById('cn-ob-live-copy').textContent = copy.liveBody;
-      var showDock = step === 'live' || (step === 'fields' && state && state.canPublish);
+      var showDock = step === 'live' || (step === 'fields' && state && state.qualityReady);
       setDockVisible(showDock);
       onboardEl.classList.toggle('is-compact', step === 'live');
+    }
+
+    function renderGaps(gaps) {
+      if (!obGaps) return;
+      var list = Array.isArray(gaps) ? gaps : [];
+      if (!list.length || (state && state.step === 'live')) {
+        obGaps.hidden = true;
+        obGaps.innerHTML = '';
+        return;
+      }
+      var whyKey = en ? 'why_en' : 'why_zh';
+      obGaps.innerHTML = '<li class="cn-ob-gaps-title">' + esc(copy.gapsTitle) + '</li>'
+        + list.slice(0, 5).map(function (g) {
+          return '<li>' + esc(g[whyKey] || g.why || g.field || '') + '</li>';
+        }).join('');
+      obGaps.hidden = false;
     }
 
     function renderPreviewCard(preview, summary) {
@@ -380,6 +411,22 @@
       obPreview.hidden = bits.length === 0;
     }
 
+    function fillFieldInputs(next) {
+      if (!next) return;
+      if (next.email) document.getElementById('cn-ob-email').value = next.email;
+      if (next.domain && !document.getElementById('cn-ob-website').value) {
+        document.getElementById('cn-ob-website').value = 'https://' + next.domain;
+        draftWebsite = 'https://' + next.domain;
+      }
+      if (next.wechat) document.getElementById('cn-ob-wechat').value = next.wechat;
+      if (next.sampleLead) document.getElementById('cn-ob-sample').value = next.sampleLead;
+      if (next.flexibility) document.getElementById('cn-ob-flex').value = next.flexibility;
+      if (next.contactName) {
+        document.getElementById('cn-ob-contact').value = next.contactName;
+        document.getElementById('cn-ob-contact-fields').value = next.contactName;
+      }
+    }
+
     function applyState(next, extra) {
       state = next || state || { step: 'site' };
       var step = state.step || 'site';
@@ -391,16 +438,20 @@
       }
       showObStep(step);
       if (state.previewSummary) renderPreviewCard(lastPreview, state.previewSummary);
+      else if (lastPreview) renderPreviewCard(lastPreview, '');
+      renderGaps(state.gaps);
+      fillFieldInputs(state);
       if (verifyPath) {
         obVerifyNow.hidden = false;
         obVerifyNow.setAttribute('href', verifyPath);
       } else {
         obVerifyNow.hidden = true;
       }
-      if (state.email) {
-        document.getElementById('cn-ob-email').value = state.email;
-      }
-      if (state.title) {
+      // Only mark logged-in when the caller says so, or on SSR resume for verified/live.
+      if (extra && typeof extra.loggedIn === 'boolean') {
+        if (extra.loggedIn && state.title) setLoggedIn(true, state.title);
+        else if (!extra.loggedIn) setLoggedIn(false, '');
+      } else if (initialLoggedIn && state.title) {
         setLoggedIn(true, state.title);
       }
     }
@@ -469,7 +520,7 @@
             });
           } catch (e) {}
           setLoggedIn(false, '');
-          applyState({ step: 'site' });
+          applyState({ step: 'site', status: null, title: '', gaps: [] }, { loggedIn: false });
         });
       }
     }
@@ -521,18 +572,30 @@
     }
 
     var web = loadJson(webKey, null);
-    if (!web || !web.nodes || Array.isArray(web.nodes) || web.nodes.core) {
+    var serverSeeded = initialWeb && initialWeb.nodes && Object.keys(initialWeb.nodes).length > 0;
+    var localEmpty = !web || !web.nodes || Array.isArray(web.nodes) || web.nodes.core
+      || !Object.keys(web.nodes || {}).length;
+    // Prefer server seed when logged in / company present so resume is not blanked by stale localStorage.
+    if (localEmpty || (initialLoggedIn && serverSeeded)) {
       web = initialWeb || { nodes: {}, edges: [], reach: 0, reachHistory: [0] };
       saveJson(webKey, web);
     }
     paintNetwork(web, true);
     bindAuthButtons();
-    applyState(state);
+    applyState(state, { loggedIn: initialLoggedIn });
+
+    var errKey = qs('err');
+    if (errKey) {
+      setObMsg(en
+        ? (errKey.indexOf('token') >= 0 ? 'Confirm link invalid or expired. Request a new one.' : 'Something went wrong. Try again.')
+        : (errKey.indexOf('token') >= 0 ? '确认链接无效或已过期。请重新获取。' : '出错了，请重试。'));
+    }
 
     if (qs('ok') === 'verified') {
       toast(en ? 'Email verified.' : '邮箱已验证。');
+      initialLoggedIn = true;
       apiJson('/airsup/china/test/api/onboard/state', { method: 'GET', headers: {} }).then(function (out) {
-        if (out.data && out.data.state) applyState(out.data.state);
+        if (out.data && out.data.state) applyState(out.data.state, { loggedIn: Boolean(out.data.loggedIn) });
         if (out.data && out.data.web) applyWeb(out.data.web, true);
         if (out.data && out.data.company && out.data.company.name) {
           setLoggedIn(true, out.data.company.name);
@@ -548,7 +611,7 @@
         setObMsg(copy.previewFail);
         return;
       }
-      obBusy = true;
+      setObBusy(true);
       try {
         var out = await apiJson('/airsup/china/test/api/onboard/preview', {
           method: 'POST',
@@ -565,18 +628,18 @@
           document.getElementById('cn-ob-city').value = lastPreview.cityId;
         }
         renderPreviewCard(lastPreview, '');
-        applyState(state, { forceEmail: true });
+        applyState(state, { forceEmail: true, loggedIn: false });
       } catch (e) {
         setObMsg(copy.previewFail);
       } finally {
-        obBusy = false;
+        setObBusy(false);
       }
     });
 
     document.getElementById('cn-ob-continue-email').addEventListener('click', async function () {
       if (obBusy) return;
       setObMsg('');
-      obBusy = true;
+      setObBusy(true);
       try {
         var out = await apiJson('/airsup/china/test/api/onboard/start', {
           method: 'POST',
@@ -592,27 +655,34 @@
           return;
         }
         if (out.data.web) applyWeb(out.data.web, true);
-        applyState(out.data.state, { verifyPath: out.data.verifyPath || '' });
-        if (out.data.company && out.data.company.name) {
-          // Not logged in until verify, but show name in preview.
+        applyState(out.data.state, { verifyPath: out.data.verifyPath || '', loggedIn: false });
+        if (out.data.demo && out.data.verifyPath) {
+          obVerifyNow.hidden = false;
+          obVerifyNow.setAttribute('href', out.data.verifyPath);
         }
       } catch (e) {
         setObMsg(copy.startFail);
       } finally {
-        obBusy = false;
+        setObBusy(false);
       }
     });
 
     document.getElementById('cn-ob-publish').addEventListener('click', async function () {
       if (obBusy) return;
       setObMsg('');
-      obBusy = true;
+      var wechatVal = String(document.getElementById('cn-ob-wechat').value || '').trim();
+      var sampleVal = String(document.getElementById('cn-ob-sample').value || '').trim();
+      if (!wechatVal || !sampleVal) {
+        setObMsg(copy.needQuality);
+        return;
+      }
+      setObBusy(true);
       try {
         var fieldsOut = await apiJson('/airsup/china/test/api/onboard/fields', {
           method: 'POST',
           body: JSON.stringify({
-            wechat: String(document.getElementById('cn-ob-wechat').value || '').trim(),
-            sample_lead: String(document.getElementById('cn-ob-sample').value || '').trim(),
+            wechat: wechatVal,
+            sample_lead: sampleVal,
             flexibility: String(document.getElementById('cn-ob-flex').value || 'normal'),
             contact_name: String(document.getElementById('cn-ob-contact-fields').value || '').trim(),
           }),
@@ -622,17 +692,23 @@
           return;
         }
         if (fieldsOut.data.web) applyWeb(fieldsOut.data.web, true);
+        applyState(fieldsOut.data.state, { loggedIn: true });
+        if (!fieldsOut.data.state || !fieldsOut.data.state.qualityReady) {
+          setObMsg(copy.needQuality);
+          renderGaps(fieldsOut.data.state && fieldsOut.data.state.gaps);
+          return;
+        }
         var pubOut = await apiJson('/airsup/china/test/api/onboard/publish', {
           method: 'POST',
           body: '{}',
         });
         if (!pubOut.res.ok || !pubOut.data.ok) {
           setObMsg((pubOut.data && pubOut.data.error) || copy.publishFail);
-          applyState(fieldsOut.data.state);
+          applyState(fieldsOut.data.state, { loggedIn: true });
           return;
         }
         if (pubOut.data.web) applyWeb(pubOut.data.web, true);
-        applyState(pubOut.data.state);
+        applyState(pubOut.data.state, { loggedIn: true });
         if (pubOut.data.company && pubOut.data.company.name) {
           setLoggedIn(true, pubOut.data.company.name);
         }
@@ -640,13 +716,14 @@
       } catch (e) {
         setObMsg(copy.publishFail);
       } finally {
-        obBusy = false;
+        setObBusy(false);
       }
     });
 
     if (qs('demo') === '1') {
       (async function () {
         setObMsg(en ? 'Starting demo…' : '正在启动演示…');
+        setObBusy(true);
         try {
           var out = await apiJson('/airsup/china/test/api/onboard/demo', {
             method: 'POST',
@@ -661,10 +738,20 @@
           document.getElementById('cn-ob-email').value = 'tade@demo.com';
           document.getElementById('cn-ob-contact').value = 'Tade';
           if (out.data.web) applyWeb(out.data.web, true);
-          applyState(out.data.state, { verifyPath: out.data.verifyPath || '' });
+          if (out.data.preview && out.data.preview.ok) {
+            lastPreview = out.data.preview;
+          }
+          applyState(out.data.state, { verifyPath: out.data.verifyPath || '', loggedIn: false });
+          if (lastPreview) renderPreviewCard(lastPreview, (out.data.state && out.data.state.previewSummary) || '');
           setObMsg('');
+          // Strip ?demo=1 so refresh does not reset the company mid-recording.
+          try {
+            history.replaceState({}, '', '/airsup/china/test' + (en ? '?lang=en' : ''));
+          } catch (e2) {}
         } catch (e) {
           setObMsg(copy.startFail);
+        } finally {
+          setObBusy(false);
         }
       })();
     }

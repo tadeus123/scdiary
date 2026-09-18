@@ -22,6 +22,7 @@ The test onboarding core is `airsup/china/test/onboard.js`. It reuses live `db`,
 
 5. **Error keys**
    - Reuse the same i18n keys live uses: `err_mismatch`, `err_taken`, `err_free_mail`, `err_rate`, `err_email`, `err_website`, `err_mail`, `err_db`, `err_token`, `err_publish`.
+   - Test `publishCompany` is stricter than live `canPublish`: it also requires WeChat + `sample_lead` (`qualityReady`) so the endpoint can convert buyers. Keep that gate when swapping live, or live endpoints stay thin.
 
 6. **Cleanup after cutover**
    - Delete obsolete live view partials only after the new UI is the default for `/airsup/china`.
