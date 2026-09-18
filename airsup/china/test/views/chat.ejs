@@ -11,7 +11,7 @@
   <% } %>
 </head>
 <body
-  class="cn-body cn-test<%= typeof boardFirst !== 'undefined' && boardFirst ? ' cn-test-board-first' : '' %><%= typeof board !== 'undefined' && board ? ' cn-test-has-board' : '' %>"
+  class="cn-body cn-test<%= typeof boardFirst !== 'undefined' && boardFirst ? ' cn-test-board-first cn-test-has-board' : (typeof board !== 'undefined' && board ? ' cn-test-has-board' : '') %>"
   data-lang="<%= lang %>"
   data-logged-in="<%= loggedIn ? '1' : '0' %>"
   data-onboard-step="<%= (typeof boardFirst !== 'undefined' && boardFirst) ? 'live' : ((onboard && onboard.step) || 'site') %>"
@@ -224,9 +224,9 @@
     var obLead = document.getElementById('cn-ob-lead');
     var obVerifyNow = document.getElementById('cn-ob-verify-now');
     var initialWeb = <%- JSON.stringify(initialWeb) %>;
-    var initialOnboard = <%- JSON.stringify(onboard || { step: 'site' }) %>;
+    var initialOnboard = <%- JSON.stringify(onboard || { step: 'live' }) %>;
     var initialBoard = <%- JSON.stringify(typeof board !== 'undefined' ? board : { conversationRate: 0, interactions: 0, customers: 0, revenue: 0 }) %>;
-    var boardFirst = true;
+    var boardFirst = document.body.getAttribute('data-board-first') === '1' || true;
     var initialLoggedIn = document.body.getAttribute('data-logged-in') === '1';
     var pendingFiles = [];
     var busy = false;
@@ -238,7 +238,7 @@
     var draftWebsite = '';
     var lastPreview = null;
     var verifyPath = '';
-    var state = initialOnboard || { step: 'site' };
+    var state = Object.assign({ step: 'live' }, initialOnboard || {}, boardFirst ? { step: 'live' } : {});
     var boardEl = document.getElementById('cn-test-board');
     var boardDrop = document.getElementById('cn-board-drop');
     var boardFiles = document.getElementById('cn-board-files');
@@ -413,22 +413,25 @@
       return '$' + v.toLocaleString('en-US');
     }
 
+    function emptyBoard() {
+      return { conversationRate: 0, interactions: 0, customers: 0, revenue: 0, contextScore: 0 };
+    }
+
     function renderBoard(board) {
       if (!boardEl) return;
-      if (!board) {
-        boardEl.hidden = true;
-        document.body.classList.remove('cn-test-has-board');
-        if (reachFloat) reachFloat.hidden = false;
-        return;
-      }
-      document.getElementById('cn-board-rate').textContent = String(board.conversationRate || 0) + '%';
-      document.getElementById('cn-board-interactions').textContent = String(board.interactions || 0);
-      document.getElementById('cn-board-customers').textContent = String(board.customers || 0);
-      document.getElementById('cn-board-revenue').textContent = formatMoney(board.revenue);
+      // Board-first: never tear down the shell — show zeros when logged out.
+      var next = board || emptyBoard();
+      document.getElementById('cn-board-rate').textContent = String(next.conversationRate || 0) + '%';
+      document.getElementById('cn-board-interactions').textContent = String(next.interactions || 0);
+      document.getElementById('cn-board-customers').textContent = String(next.customers || 0);
+      document.getElementById('cn-board-revenue').textContent = formatMoney(next.revenue);
       boardEl.hidden = false;
+      boardEl.classList.add('is-ready');
       document.body.classList.add('cn-test-has-board');
       if (reachFloat) reachFloat.hidden = true;
       if (emptyEl) emptyEl.classList.add('is-gone');
+      if (onboardEl) onboardEl.hidden = true;
+      setDockVisible(false);
     }
 
     async function uploadBoardContext(fileList) {
@@ -491,7 +494,6 @@
       if (reachFloat) reachFloat.hidden = true;
       if (emptyEl) emptyEl.classList.add('is-gone');
       document.body.classList.add('cn-test-has-board');
-      if (initialBoard) renderBoard(initialBoard);
     }
 
     function renderGaps(gaps) {
@@ -545,13 +547,17 @@
     }
 
     function applyState(next, extra) {
-      state = next || state || { step: 'site' };
-      var step = state.step || 'site';
+      state = next || state || { step: 'live' };
+      var step = boardFirst ? 'live' : (state.step || 'site');
       // After preview, show email form before company exists.
-      if (extra && extra.forceEmail) step = 'email';
-      if (extra && extra.verifyPath) {
+      if (!boardFirst && extra && extra.forceEmail) step = 'email';
+      if (!boardFirst && extra && extra.verifyPath) {
         verifyPath = extra.verifyPath;
         step = 'verify';
+      }
+      if (boardFirst) {
+        state.step = 'live';
+        verifyPath = '';
       }
       showObStep(step);
       if (state.previewSummary) renderPreviewCard(lastPreview, state.previewSummary);
@@ -646,7 +652,7 @@
             });
           } catch (e) {}
           setLoggedIn(false, '');
-          initialBoard = { conversationRate: 0, interactions: 0, customers: 0, revenue: 0, contextScore: 0 };
+          initialBoard = emptyBoard();
           renderBoard(initialBoard);
           applyState({ step: 'live', status: null, title: '', gaps: [] }, { loggedIn: false, board: initialBoard });
         });
@@ -1039,8 +1045,17 @@
           setLoggedIn(true, (data2.company && data2.company.name) || '');
           if (data2.web) applyWeb(data2.web, true);
           toast(en ? 'Signed in.' : '已登录。');
-          var st = await apiJson('/airsup/china/test/api/onboard/state', { method: 'GET', headers: {} });
-          if (st.data && st.data.state) applyState(st.data.state);
+          var boardOut = await apiJson('/airsup/china/test/api/board', { method: 'GET', headers: {} });
+          if (boardOut.data && boardOut.data.board) {
+            initialBoard = boardOut.data.board;
+            renderBoard(initialBoard);
+          }
+          if (boardOut.data && boardOut.data.state) {
+            applyState(boardOut.data.state, { loggedIn: true, board: initialBoard });
+          } else {
+            var st = await apiJson('/airsup/china/test/api/onboard/state', { method: 'GET', headers: {} });
+            if (st.data && st.data.state) applyState(st.data.state, { loggedIn: true, board: initialBoard });
+          }
         }
       } catch (err) {
         authMsg.textContent = en ? 'Could not continue. Check email / code.' : '无法继续，请检查邮箱或验证码。';
