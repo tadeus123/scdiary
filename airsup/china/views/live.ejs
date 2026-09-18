@@ -93,7 +93,7 @@
         var text = pre.textContent || '';
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(text).then(function () {
-            btn.textContent = <%= JSON.stringify(t('live_test_copied')) %>;
+            btn.textContent = <%- JSON.stringify(t('live_test_copied')) %>;
           }).catch(function () {});
         }
       });
