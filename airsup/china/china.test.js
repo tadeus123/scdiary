@@ -1355,28 +1355,37 @@ function memoryChina(companies) {
   assert.ok(qMail.text.includes('https://www.tademehl.com/airsup/china/verify?token=abc&next=quotes'));
   assert.strictEqual(DEMO_NAME_EN.includes('Demo'), true);
 
-  // Isolated ChatGPT-like test concept at /airsup/china/test
+  // Isolated company-web concept at /airsup/china/test
   assert.ok(fs.existsSync(path.join(__dirname, 'test/routes.js')));
   assert.ok(fs.existsSync(path.join(__dirname, 'test/views/chat.ejs')));
+  assert.ok(fs.existsSync(path.join(__dirname, 'test/web.js')));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.use('/test'"));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('AIRSUP-CHINA-TEST-BEGIN'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-canvas'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('endpoint web') || fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('端点网'));
   const testChat = require('./test/chat');
-  assert.ok(testChat.welcomeMessage('zh').includes('Airsup'));
-  assert.ok(testChat.welcomeMessage('en').toLowerCase().includes('chatgpt'));
+  const testWeb = require('./test/web');
+  assert.ok(testChat.welcomeMessage('zh').includes('端点网'));
+  assert.ok(testChat.welcomeMessage('en').toLowerCase().includes('web'));
   const compressed = testChat.compressHistory(
     Array.from({ length: 20 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: `turn ${i} ${'x'.repeat(200)}` })),
     'en'
   );
   assert.ok(compressed.summary);
   assert.ok(compressed.history.length <= testChat.KEEP_RECENT);
-  const fallback = await testChat.completeTestTurn({
+  const grown = await testChat.completeTestTurn({
     lang: 'en',
-    message: 'https://factory-example.com',
+    message: 'https://demo.com SLA resin printing',
     history: [],
-    files: [],
+    files: [{ name: 'quote.pdf', mime: 'application/pdf', size: 1200 }],
     company: null,
+    web: testWeb.emptyWeb('en'),
   });
-  assert.ok(String(fallback.reply || '').length > 10);
+  assert.ok(String(grown.reply || '').length > 10);
+  assert.ok(grown.web.reach > 8);
+  assert.ok(grown.web.nodes.domain.strength > 0);
+  assert.ok(grown.web.nodes.quotes.strength > 0);
+  assert.ok(grown.web.reachHistory.length >= 2);
 
   console.log('airsup china tests passed');
 })().catch((error) => {
