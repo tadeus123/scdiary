@@ -98,6 +98,14 @@ async function deleteSession(sessionHash) {
   return true;
 }
 
+async function deleteSessionsForCompany(companyId) {
+  const id = String(companyId || '').trim();
+  if (!id) return;
+  for (const [hash, row] of sessions.entries()) {
+    if (String(row.company_id || '') === id) sessions.delete(hash);
+  }
+}
+
 async function getDomainAllow(domain, email) {
   const key = `${String(domain || '').toLowerCase()}::${String(email || '').toLowerCase()}`;
   return clone(allows.get(key) || null);
@@ -148,6 +156,7 @@ module.exports = {
   insertSession,
   getSession,
   deleteSession,
+  deleteSessionsForCompany,
   getDomainAllow,
   upsertDomainAllow,
   touchDomainAllow,

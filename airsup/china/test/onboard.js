@@ -428,6 +428,7 @@ async function saveInteraction(company, body, lang) {
     quotation_knowledge: prev.quotation_knowledge,
     claim_ready: prev.claim_ready,
     is_demo: prev.is_demo,
+    board: prev.board,
   });
 
   const patch = {

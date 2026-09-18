@@ -15,11 +15,12 @@ const db = require('../db');
 const peopleAuth = require('../../auth');
 const { welcomeMessage, completeTestTurn, emptyWeb } = require('./chat');
 const { describeUploads } = require('./files');
-const { layoutPositions, normalizeClientWeb, addCustomLink, seedFromCompany } = require('./web');
+const { layoutPositions, normalizeClientWeb, addCustomLink, seedFromCompany, applyDump } = require('./web');
 const authCodes = require('./auth-codes');
 const { sendVerifyEmail } = require('../mail');
 const onboard = require('./onboard');
 const memoryStore = require('./memory-store');
+const { computeBoard, applyContextUpload } = require('./board');
 
 const {
   previewWebsite,
@@ -76,7 +77,7 @@ router.use(express.static(path.join(__dirname, 'public'), {
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 4 * 1024 * 1024, files: 5 },
+  limits: { fileSize: 4 * 1024 * 1024, files: 8 },
 });
 
 function langFrom(req, res) {
@@ -185,40 +186,114 @@ async function ensureTestDemoAllowlist() {
   return ensureDemoAllowlist();
 }
 
-async function resetDemoPending(lang) {
+async function resetDemoPending(lang, req, res) {
   await ensureTestDemoAllowlist();
   const patch = {
     ...onboardingResetPatch(),
     locale: lang === 'en' ? 'en' : 'zh',
   };
+  let company = null;
   if (usingMemory()) {
     const existing = await memoryStore.getByDomain(DEMO_DOMAIN);
     if (existing) {
-      return memoryStore.updateCompany(existing.company_id, patch);
+      if (typeof memoryStore.deleteSessionsForCompany === 'function') {
+        await memoryStore.deleteSessionsForCompany(existing.company_id).catch(() => null);
+      }
+      company = await memoryStore.updateCompany(existing.company_id, patch);
+    } else {
+      company = await memoryStore.insertCompany({
+        domain: DEMO_DOMAIN,
+        ...patch,
+      });
     }
-    return memoryStore.insertCompany({
-      domain: DEMO_DOMAIN,
-      ...patch,
-    });
+  } else {
+    try {
+      company = await ensureDemoCompany({ forceLive: true });
+      if (company && typeof db.deleteSessionsForCompany === 'function') {
+        await db.deleteSessionsForCompany(company.company_id).catch(() => null);
+      }
+      company = await db.updateCompany(company.company_id, patch);
+    } catch (error) {
+      console.error('Airsup china test demo reset skipped:', error.message);
+      company = null;
+    }
   }
-  try {
-    let company = await ensureDemoCompany({ forceLive: true });
-    company = await db.updateCompany(company.company_id, patch);
+  // Drop this browser's cookie so SSR/API do not keep a stale logged-in company.
+  if (req && res) {
+    try {
+      await clearTestSession(req, res);
+    } catch {
+      /* ignore */
+    }
+  }
+  return company;
+}
+
+/**
+ * Ensure a live demo company exists and return it (memory or db).
+ * Used by board-first /test SSR and ?demo_login=1 / api/login-demo.
+ */
+async function ensureDemoLiveCompany(lang, req, res) {
+  await ensureTestDemoAllowlist();
+  let company = usingMemory()
+    ? await memoryStore.getByDomain(DEMO_DOMAIN)
+    : (db.isConfigured() ? await db.getByDomain(DEMO_DOMAIN).catch(() => null) : null);
+
+  if (company && company.status === 'live') {
     return company;
-  } catch (error) {
-    console.error('Airsup china test demo reset skipped:', error.message);
-    return null;
   }
+
+  if (usingMemory()) {
+    await resetDemoPending(lang, req, res);
+    const started = await startSignup({
+      website: `https://${DEMO_DOMAIN}`,
+      email: DEMO_EMAIL,
+      contact: 'Tade',
+      city: 'shenzhen',
+      lang,
+      source: 'demo',
+      publicOrigin: peopleAuth.getPublicOrigin(req),
+    });
+    if (!started.ok) return null;
+    const verified = await consumeVerifyToken(started.token);
+    if (!verified.ok || !verified.company) return null;
+    const withFields = await saveInteraction(verified.company, {
+      contact_wechat: 'airsup_demo_tade',
+      sample_lead: 'samples in 5 days',
+      flexibility: 'normal',
+      contact_name: 'Tade',
+    }, lang);
+    const published = await publishCompany(withFields);
+    return published.company || withFields || null;
+  }
+
+  if (!db.isConfigured()) return null;
+  return ensureDemoCompany({ forceLive: true });
 }
 
 router.get(['/', ''], async (req, res) => {
   const lang = langFrom(req, res);
-  res.set('Cache-Control', 'private, no-store');
+  res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+  res.set('Pragma', 'no-cache');
+
+  // One-click demo login for board demos: /airsup/china/test?demo_login=1
+  if (String(req.query.demo_login || '') === '1') {
+    try {
+      const company = await ensureDemoLiveCompany(lang, req, res);
+      if (company && company.company_id) {
+        await openSession(req, res, company.company_id);
+      }
+    } catch (error) {
+      console.error('Airsup china test demo_login skipped:', error.message);
+    }
+    return res.redirect('/airsup/china/test');
+  }
+
   res.locals.seo = {
-    title: lang === 'en' ? 'Airsup test — company endpoint web' : 'Airsup 测试 — 公司端点网',
+    title: lang === 'en' ? 'Airsup test — supplier board' : 'Airsup 测试 — 供应商看板',
     description: lang === 'en'
-      ? 'Isolated concept: grow your ChatGPT endpoint web by dumping real factory material. Live product unchanged.'
-      : '独立概念：往端点网里丢真材料，看着它变亮。不影响正式产品。',
+      ? 'Isolated supplier board: conversation rate, interactions, customers, revenue. Live product unchanged.'
+      : '独立供应商看板：转化率、互动、客户、收入。不影响正式产品。',
     path: '/airsup/china/test',
     noindex: true,
     includePersonSchema: false,
@@ -233,7 +308,25 @@ router.get(['/', ''], async (req, res) => {
     company = null;
   }
 
-  const onboardState = onboardingState(company, lang);
+  // Board-first: /test always lands on the live supplier board (no onboarding wizard).
+  // Guest mode (?guest=1) keeps the board shell with zeros and login available.
+  const guestMode = String(req.query.guest || '') === '1';
+  if ((!company || company.status !== 'live') && !guestMode) {
+    try {
+      const demo = await ensureDemoLiveCompany(lang, req, res);
+      if (demo && demo.company_id) {
+        await openSession(req, res, demo.company_id);
+        company = demo;
+      }
+    } catch (error) {
+      console.error('Airsup china test auto demo session skipped:', error.message);
+    }
+  }
+
+  // Surface as live when we have a live company — hide wizard copy from SSR.
+  const onboardState = company && company.status === 'live'
+    ? { ...onboardingState(company, lang), step: 'live' }
+    : onboardingState(company, lang);
   let initial = emptyWeb(lang);
   if (company) {
     try {
@@ -242,6 +335,9 @@ router.get(['/', ''], async (req, res) => {
       initial = seedFromCompany(emptyWeb(lang), company, lang).web;
     }
   }
+
+  // Always pass a board payload so the supplier board is the main surface.
+  const board = computeBoard(company, initial);
 
   return render(req, res, 'chat.ejs', {
     lang,
@@ -254,6 +350,10 @@ router.get(['/', ''], async (req, res) => {
     cities: CITIES,
     initialWeb: initial,
     layoutPositions: layoutPositions(),
+    demoMode: false,
+    autoDemo: false,
+    board,
+    boardFirst: true,
   });
 });
 
@@ -338,6 +438,7 @@ router.post('/api/onboard/start', express.json(), async (req, res) => {
 router.get('/verify', async (req, res) => {
   const lang = langFrom(req, res);
   const token = String(req.query.token || '').trim();
+  const auto = String(req.query.auto || '') === '1';
   if (!token) {
     return res.redirect('/airsup/china/test?err=token');
   }
@@ -347,7 +448,7 @@ router.get('/verify', async (req, res) => {
       return res.redirect(`/airsup/china/test?err=${encodeURIComponent(result.errorKey || 'err_token')}`);
     }
     await openSession(req, res, result.company.company_id);
-    return res.redirect('/airsup/china/test?ok=verified');
+    return res.redirect('/airsup/china/test?ok=verified' + (auto ? '&auto=1' : ''));
   } catch (error) {
     console.error('Airsup china test verify error:', error);
     return res.redirect(`/airsup/china/test?err=${encodeURIComponent('err_db')}`);
@@ -415,6 +516,7 @@ router.post('/api/onboard/publish', express.json(), async (req, res) => {
       company: companySummary(result.company, lang),
       state,
       web,
+      board: computeBoard(result.company, web),
       error: null,
     });
   } catch (error) {
@@ -456,7 +558,7 @@ router.post('/api/onboard/demo', express.json(), async (req, res) => {
   }
   const lang = langFrom(req, res);
   try {
-    await resetDemoPending(lang);
+    await resetDemoPending(lang, req, res);
     // Do not openSession until verify — demo UX returns verifyPath for one-click verify.
     const result = await startSignup({
       website: `https://${DEMO_DOMAIN}`,
@@ -565,6 +667,17 @@ router.post('/api/chat', (req, res) => {
     }
 
     try {
+      // Persist context uploads on the company so conversation rate rises for the board.
+      if (company && company.status === 'live' && files.length) {
+        try {
+          const profile = applyContextUpload(company, files);
+          const storeApi = usingMemory() ? memoryStore : db;
+          company = await storeApi.updateCompany(company.company_id, { profile });
+        } catch (error) {
+          console.error('Airsup china test board context bump skipped:', error.message);
+        }
+      }
+
       const result = await completeTestTurn({
         lang,
         message,
@@ -573,6 +686,7 @@ router.post('/api/chat', (req, res) => {
         company,
         web,
       });
+      const board = company ? computeBoard(company, result.web) : null;
       return res.json({
         reply: result.reply,
         files,
@@ -580,10 +694,117 @@ router.post('/api/chat', (req, res) => {
         compressed: Boolean(result.summary),
         web: result.web,
         signals: result.signals,
+        board,
       });
     } catch (error) {
       console.error('Airsup china test chat error:', error);
       return res.status(500).json({ error: 'chat_failed' });
+    }
+  });
+});
+
+router.get('/api/board', async (req, res) => {
+  const lang = langFrom(req, res);
+  try {
+    const company = await readTestCompany(req);
+    if (!company) {
+      // Board-first shell: zeros until login (do not force onboarding).
+      return res.json({
+        ok: true,
+        board: computeBoard(null, emptyWeb(lang)),
+        company: null,
+        state: onboardingState(null, lang),
+        loggedIn: false,
+      });
+    }
+    let web = emptyWeb(lang);
+    try {
+      web = seedWebFromCompany(company, lang).web || web;
+    } catch {
+      /* keep empty */
+    }
+    if (req.query.web) {
+      try {
+        web = parseWeb(req.query.web, lang);
+      } catch {
+        /* keep seed */
+      }
+    }
+    return res.json({
+      ok: true,
+      board: computeBoard(company, web),
+      company: companySummary(company, lang),
+      state: onboardingState(company, lang),
+      loggedIn: true,
+    });
+  } catch (error) {
+    console.error('Airsup china test board error:', error);
+    return res.status(500).json({ ok: false, error: 'board_failed' });
+  }
+});
+
+router.post('/api/board/context', (req, res) => {
+  upload.array('files', 8)(req, res, async (err) => {
+    if (err) {
+      const tooBig = err.code === 'LIMIT_FILE_SIZE';
+      return res.status(tooBig ? 413 : 400).json({
+        ok: false,
+        error: tooBig ? 'file_too_large' : 'upload_failed',
+      });
+    }
+    if (!peopleAuth.allowedOrigin(req)) {
+      return res.status(403).json({ ok: false, error: 'forbidden' });
+    }
+    const lang = langFrom(req, res);
+    const note = String((req.body && req.body.message) || '').trim();
+    const files = describeUploads(req.files || []);
+    let clientWeb = null;
+    try {
+      clientWeb = parseWeb(req.body && req.body.web, lang);
+    } catch {
+      clientWeb = null;
+    }
+
+    if (!note && !files.length) {
+      return res.status(400).json({ ok: false, error: 'empty' });
+    }
+
+    try {
+      let company = await readTestCompany(req);
+      if (!company) {
+        return res.status(401).json({ ok: false, error: 'login_required' });
+      }
+      if (company.status !== 'live') {
+        return res.status(400).json({ ok: false, error: 'not_live' });
+      }
+
+      const profile = applyContextUpload(company, files.length ? files : [{ size: note.length }]);
+      const storeApi = usingMemory() ? memoryStore : db;
+      company = await storeApi.updateCompany(company.company_id, { profile });
+
+      const seeded = seedWebFromCompany(company, lang).web || emptyWeb(lang);
+      const hasClientNodes = clientWeb
+        && clientWeb.nodes
+        && typeof clientWeb.nodes === 'object'
+        && Object.keys(clientWeb.nodes).length > 0;
+      const baseWeb = hasClientNodes ? clientWeb : seeded;
+      const dumped = applyDump(baseWeb, {
+        message: note || files.map((f) => f.name).join(' '),
+        files,
+        lang,
+      });
+      const board = computeBoard(company, dumped.web);
+
+      return res.json({
+        ok: true,
+        board,
+        web: dumped.web,
+        files,
+        company: companySummary(company, lang),
+      });
+    } catch (error) {
+      console.error('Airsup china test board context error:', error);
+      return res.status(500).json({ ok: false, error: 'upload_failed' });
     }
   });
 });
@@ -593,50 +814,14 @@ router.post('/api/login-demo', express.json(), async (req, res) => {
     return res.status(403).json({ error: 'forbidden' });
   }
   try {
-    await ensureTestDemoAllowlist();
-    let company;
-    if (usingMemory()) {
-      const existing = await memoryStore.getByDomain(DEMO_DOMAIN);
-      if (existing && existing.status === 'live') {
-        company = existing;
-      } else {
-        await resetDemoPending(langFrom(req, res));
-        const started = await startSignup({
-          website: `https://${DEMO_DOMAIN}`,
-          email: DEMO_EMAIL,
-          contact: 'Tade',
-          city: 'shenzhen',
-          lang: langFrom(req, res),
-          source: 'demo',
-          publicOrigin: peopleAuth.getPublicOrigin(req),
-        });
-        if (!started.ok) {
-          return res.status(500).json({ error: 'login_failed' });
-        }
-        const verified = await consumeVerifyToken(started.token);
-        if (!verified.ok || !verified.company) {
-          return res.status(500).json({ error: 'login_failed' });
-        }
-        const withFields = await saveInteraction(verified.company, {
-          contact_wechat: 'airsup_demo_tade',
-          sample_lead: 'samples in 3 days',
-          flexibility: 'normal',
-          contact_name: 'Tade',
-        }, langFrom(req, res));
-        const published = await publishCompany(withFields);
-        if (!published.ok) {
-          return res.status(500).json({ error: 'login_failed' });
-        }
-        company = published.company;
-      }
-    } else {
-      if (!db.isConfigured()) {
-        return res.status(503).json({ error: 'storage_unavailable' });
-      }
-      company = await ensureDemoCompany({ forceLive: true });
+    const lang = langFrom(req, res);
+    const company = await ensureDemoLiveCompany(lang, req, res);
+    if (!company || !company.company_id) {
+      return res.status(usingMemory() || db.isConfigured() ? 500 : 503).json({
+        error: usingMemory() || db.isConfigured() ? 'login_failed' : 'storage_unavailable',
+      });
     }
     await openSession(req, res, company.company_id);
-    const lang = langFrom(req, res);
     const seeded = seedWebFromCompany(company, lang);
     return res.json({
       ok: true,
@@ -647,6 +832,7 @@ router.post('/api/login-demo', express.json(), async (req, res) => {
       },
       web: seeded.web,
       seeded: seeded.added,
+      board: computeBoard(company, seeded.web),
     });
   } catch (error) {
     console.error('Airsup china test demo login error:', error);
@@ -709,7 +895,7 @@ router.post('/api/login/verify', express.json(), async (req, res) => {
         const demoLogin = await (async () => {
           const existing = await memoryStore.getByDomain(DEMO_DOMAIN);
           if (existing && existing.status === 'live') return existing;
-          await resetDemoPending(lang);
+          await resetDemoPending(lang, req, res);
           const started = await startSignup({
             website: `https://${DEMO_DOMAIN}`,
             email: DEMO_EMAIL,

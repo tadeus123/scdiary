@@ -251,6 +251,15 @@ function quotationInsightsText(company) {
   return `Quotation-learned (factory-approved, no customer names):\n${body}`;
 }
 
+function normalizeBoard(raw) {
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  return {
+    context_uploads: Math.max(0, Math.round(Number(source.context_uploads) || 0)),
+    context_bytes: Math.max(0, Math.round(Number(source.context_bytes) || 0)),
+    last_upload_at: source.last_upload_at ? String(source.last_upload_at) : '',
+  };
+}
+
 function normalizeProfile(raw) {
   const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
   return {
@@ -278,6 +287,7 @@ function normalizeProfile(raw) {
     is_demo: Boolean(source.is_demo),
     enrichment: normalizeEnrichment(source.enrichment),
     quotation_knowledge: normalizeQuotationKnowledge(source.quotation_knowledge),
+    board: normalizeBoard(source.board),
   };
 }
 
@@ -436,7 +446,7 @@ function fillEmptyCompany(company, draft) {
   next.profile = {
     ...prevProfile,
     ...Object.fromEntries(Object.entries(draftProfile).filter(([key, value]) => {
-      if (key === 'contacts' || key === 'flexibility' || key === 'enrichment' || key === 'quotation_knowledge' || key === 'claim_ready' || key === 'is_demo') return false;
+      if (key === 'contacts' || key === 'flexibility' || key === 'enrichment' || key === 'quotation_knowledge' || key === 'claim_ready' || key === 'is_demo' || key === 'board') return false;
       if (Array.isArray(value)) return value.length && !(Array.isArray(prevProfile[key]) && prevProfile[key].length);
       return Boolean(String(value || '').trim()) && !String(prevProfile[key] || '').trim();
     })),
@@ -450,6 +460,7 @@ function fillEmptyCompany(company, draft) {
       && prevProfile.quotation_knowledge.documents.length
       ? prevProfile.quotation_knowledge
       : draftProfile.quotation_knowledge,
+    board: prevProfile.board,
   };
   return next;
 }

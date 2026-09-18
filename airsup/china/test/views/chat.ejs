@@ -11,11 +11,14 @@
   <% } %>
 </head>
 <body
-  class="cn-body cn-test"
+  class="cn-body cn-test<%= typeof boardFirst !== 'undefined' && boardFirst ? ' cn-test-board-first' : '' %><%= typeof board !== 'undefined' && board ? ' cn-test-has-board' : '' %>"
   data-lang="<%= lang %>"
   data-logged-in="<%= loggedIn ? '1' : '0' %>"
-  data-onboard-step="<%= (onboard && onboard.step) || 'site' %>"
+  data-onboard-step="<%= (typeof boardFirst !== 'undefined' && boardFirst) ? 'live' : ((onboard && onboard.step) || 'site') %>"
+  data-board-first="<%= typeof boardFirst !== 'undefined' && boardFirst ? '1' : '0' %>"
   data-using-memory="<%= usingMemory ? '1' : '0' %>"
+  data-demo="0"
+  data-auto="0"
 >
   <header class="cn-test-top">
     <div class="cn-test-brand">
@@ -34,12 +37,12 @@
     </div>
   </header>
 
-  <div class="cn-test-reach-float" aria-hidden="true">
+  <div class="cn-test-reach-float" aria-hidden="true" hidden>
     <div class="n" id="cn-test-reach">0<span>/100</span></div>
     <svg class="cn-test-spark" id="cn-test-spark" viewBox="0 0 72 14"></svg>
   </div>
 
-  <aside class="cn-test-onboard" id="cn-test-onboard" aria-label="<%= lang === 'en' ? 'Factory onboarding' : '工厂上线' %>">
+  <aside class="cn-test-onboard" id="cn-test-onboard" aria-label="<%= lang === 'en' ? 'Factory onboarding' : '工厂上线' %>" hidden>
     <div class="cn-test-onboard-card">
       <p class="cn-test-onboard-kicker" id="cn-ob-kicker"></p>
       <h1 class="cn-test-onboard-title" id="cn-ob-title"></h1>
@@ -101,7 +104,7 @@
   </aside>
 
   <div id="cn-test-network"></div>
-  <div class="cn-test-empty" id="cn-test-empty">
+  <div class="cn-test-empty<%= typeof board !== 'undefined' && board ? ' is-gone' : '' %>" id="cn-test-empty" <%= typeof board !== 'undefined' && board ? 'hidden' : '' %>>
     <p><%= lang === 'en' ? 'Empty web. Drop a quote, site, or scrap — nodes appear and link.' : '空网。丢报价、网站或碎片 — 节点会出现并连上。' %></p>
   </div>
 
@@ -113,6 +116,35 @@
   </div>
 
   <div class="cn-test-toast" id="cn-test-toast" role="status"></div>
+
+  <section class="cn-test-board is-ready" id="cn-test-board" aria-label="<%= lang === 'en' ? 'Supplier board' : '供应商看板' %>">
+    <div class="cn-test-board-main">
+      <p class="cn-test-board-rate-label"><%= lang === 'en' ? 'Conversation rate' : '转化率' %></p>
+      <p class="cn-test-board-rate" id="cn-board-rate"><%= (typeof board !== 'undefined' && board ? board.conversationRate : 0) + '%' %></p>
+      <div class="cn-test-board-metrics">
+        <div class="cn-test-board-metric">
+          <div class="n" id="cn-board-interactions"><%= typeof board !== 'undefined' && board ? board.interactions : 0 %></div>
+          <div class="l"><%= lang === 'en' ? 'Endpoint interactions' : '端点互动次数' %></div>
+        </div>
+        <div class="cn-test-board-metric">
+          <div class="n" id="cn-board-customers"><%= typeof board !== 'undefined' && board ? board.customers : 0 %></div>
+          <div class="l"><%= lang === 'en' ? 'Customers from endpoint' : '由此而来的客户' %></div>
+        </div>
+        <div class="cn-test-board-metric">
+          <div class="n" id="cn-board-revenue"><%= typeof board !== 'undefined' && board ? ('$' + Number(board.revenue || 0).toLocaleString('en-US')) : '$0' %></div>
+          <div class="l"><%= lang === 'en' ? 'Revenue through endpoint' : '端点带来的收入' %></div>
+        </div>
+      </div>
+    </div>
+    <aside class="cn-test-board-side">
+      <div class="cn-test-board-drop" id="cn-board-drop" tabindex="0">
+        <input type="file" id="cn-board-files" multiple accept=".pdf,.xlsx,.xls,.zip,.csv,.txt,.doc,.docx,application/pdf,application/zip,image/*,text/*">
+        <p class="cn-test-board-drop-title"><%= lang === 'en' ? 'Drop files here' : '把文件拖到这里' %></p>
+        <p class="cn-test-board-drop-sub"><%= lang === 'en' ? 'or click to upload' : '或点击上传' %></p>
+      </div>
+      <p class="cn-test-board-hint"><%= lang === 'en' ? 'Upload more context to increase conversation rate' : '上传更多上下文以提高转化率' %></p>
+    </aside>
+  </section>
 
   <div class="cn-test-dock" id="cn-test-dock" hidden>
     <div class="cn-test-pending" id="cn-test-pending"></div>
@@ -152,6 +184,9 @@
     </div>
   </div>
 
+  <!-- Board is the only main surface on /test. -->
+  <script>document.body.classList.add('cn-test-has-board');</script>
+
   <script src="/airsup/china/test/test-network.js?v=2"></script>
   <script>
   (function () {
@@ -190,10 +225,13 @@
     var obVerifyNow = document.getElementById('cn-ob-verify-now');
     var initialWeb = <%- JSON.stringify(initialWeb) %>;
     var initialOnboard = <%- JSON.stringify(onboard || { step: 'site' }) %>;
+    var initialBoard = <%- JSON.stringify(typeof board !== 'undefined' ? board : { conversationRate: 0, interactions: 0, customers: 0, revenue: 0 }) %>;
+    var boardFirst = true;
     var initialLoggedIn = document.body.getAttribute('data-logged-in') === '1';
     var pendingFiles = [];
     var busy = false;
     var obBusy = false;
+    var boardBusy = false;
     var toastTimer = null;
     var authStep = 'email';
     var mounted = false;
@@ -201,6 +239,10 @@
     var lastPreview = null;
     var verifyPath = '';
     var state = initialOnboard || { step: 'site' };
+    var boardEl = document.getElementById('cn-test-board');
+    var boardDrop = document.getElementById('cn-board-drop');
+    var boardFiles = document.getElementById('cn-board-files');
+    var reachFloat = document.querySelector('.cn-test-reach-float');
 
     var copy = en ? {
       kicker: 'Factory onboarding',
@@ -285,6 +327,10 @@
         return new URLSearchParams(window.location.search).get(name) || '';
       } catch (e) { return ''; }
     }
+    // Prefer SSR flags — browser tooling sometimes strips ?demo before client JS runs.
+    // Board-first /test never runs the onboarding demo wizard.
+    var wantDemo = !boardFirst && (document.body.getAttribute('data-demo') === '1' || qs('demo') === '1');
+    var wantAuto = !boardFirst && (document.body.getAttribute('data-auto') === '1' || qs('auto') === '1');
 
     function hideDetails() {
       detailsEl.classList.add('hidden');
@@ -361,6 +407,63 @@
       });
     }
 
+    function formatMoney(n) {
+      var v = Math.round(Number(n) || 0);
+      if (en) return '$' + v.toLocaleString('en-US');
+      return '$' + v.toLocaleString('en-US');
+    }
+
+    function renderBoard(board) {
+      if (!boardEl) return;
+      if (!board) {
+        boardEl.hidden = true;
+        document.body.classList.remove('cn-test-has-board');
+        if (reachFloat) reachFloat.hidden = false;
+        return;
+      }
+      document.getElementById('cn-board-rate').textContent = String(board.conversationRate || 0) + '%';
+      document.getElementById('cn-board-interactions').textContent = String(board.interactions || 0);
+      document.getElementById('cn-board-customers').textContent = String(board.customers || 0);
+      document.getElementById('cn-board-revenue').textContent = formatMoney(board.revenue);
+      boardEl.hidden = false;
+      document.body.classList.add('cn-test-has-board');
+      if (reachFloat) reachFloat.hidden = true;
+      if (emptyEl) emptyEl.classList.add('is-gone');
+    }
+
+    async function uploadBoardContext(fileList) {
+      if (boardBusy) return;
+      var files = Array.prototype.slice.call(fileList || []);
+      if (!files.length) return;
+      boardBusy = true;
+      boardDrop.classList.add('is-busy');
+      try {
+        var body = new FormData();
+        body.append('web', JSON.stringify(web));
+        files.forEach(function (f) { body.append('files', f); });
+        var res = await fetch('/airsup/china/test/api/board/context', {
+          method: 'POST',
+          body: body,
+          credentials: 'same-origin',
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok || !data.ok) {
+          toast(en ? 'Upload failed.' : '上传失败。');
+          return;
+        }
+        if (data.web) applyWeb(data.web, true);
+        if (data.board) renderBoard(data.board);
+        toast(en
+          ? ('Conversation rate ' + (data.board && data.board.conversationRate) + '%')
+          : ('转化率 ' + (data.board && data.board.conversationRate) + '%'));
+      } catch (e) {
+        toast(en ? 'Upload failed.' : '上传失败。');
+      } finally {
+        boardBusy = false;
+        boardDrop.classList.remove('is-busy');
+      }
+    }
+
     function showObStep(step) {
       document.querySelectorAll('.cn-ob-step').forEach(function (el) {
         el.hidden = el.getAttribute('data-step') !== step;
@@ -379,9 +482,16 @@
       obLead.textContent = pair[1];
       document.getElementById('cn-ob-check-copy').textContent = copy.checkMail;
       document.getElementById('cn-ob-live-copy').textContent = copy.liveBody;
-      var showDock = step === 'live' || (step === 'fields' && state && state.qualityReady);
-      setDockVisible(showDock);
-      onboardEl.classList.toggle('is-compact', step === 'live');
+      // /test is board-only — never show onboarding panel or dump dock.
+      setDockVisible(false);
+      if (onboardEl) {
+        onboardEl.hidden = true;
+        onboardEl.classList.add('is-compact');
+      }
+      if (reachFloat) reachFloat.hidden = true;
+      if (emptyEl) emptyEl.classList.add('is-gone');
+      document.body.classList.add('cn-test-has-board');
+      if (initialBoard) renderBoard(initialBoard);
     }
 
     function renderGaps(gaps) {
@@ -461,6 +571,15 @@
       } else if (initialLoggedIn && state.title) {
         setLoggedIn(true, state.title);
       }
+      if (step === 'live' || boardFirst) {
+        if (extra && extra.board) renderBoard(extra.board);
+        else if (initialBoard) renderBoard(initialBoard);
+        else {
+          apiJson('/airsup/china/test/api/board', { method: 'GET', headers: {} }).then(function (out) {
+            if (out.data && out.data.board) renderBoard(out.data.board);
+          });
+        }
+      }
     }
 
     function setObMsg(text) {
@@ -527,7 +646,9 @@
             });
           } catch (e) {}
           setLoggedIn(false, '');
-          applyState({ step: 'site', status: null, title: '', gaps: [] }, { loggedIn: false });
+          initialBoard = { conversationRate: 0, interactions: 0, customers: 0, revenue: 0, contextScore: 0 };
+          renderBoard(initialBoard);
+          applyState({ step: 'live', status: null, title: '', gaps: [] }, { loggedIn: false, board: initialBoard });
         });
       }
     }
@@ -589,7 +710,31 @@
     }
     paintNetwork(web, true);
     bindAuthButtons();
-    applyState(state, { loggedIn: initialLoggedIn });
+    applyState(state, { loggedIn: initialLoggedIn, board: initialBoard });
+
+    if (boardDrop && boardFiles) {
+      boardDrop.addEventListener('click', function () { boardFiles.click(); });
+      boardFiles.addEventListener('change', function () {
+        uploadBoardContext(boardFiles.files);
+        boardFiles.value = '';
+      });
+      ;['dragenter', 'dragover'].forEach(function (ev) {
+        boardDrop.addEventListener(ev, function (e) {
+          e.preventDefault();
+          boardDrop.classList.add('is-drag');
+        });
+      });
+      ;['dragleave', 'drop'].forEach(function (ev) {
+        boardDrop.addEventListener(ev, function (e) {
+          e.preventDefault();
+          boardDrop.classList.remove('is-drag');
+        });
+      });
+      boardDrop.addEventListener('drop', function (e) {
+        var list = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files : [];
+        uploadBoardContext(list);
+      });
+    }
 
     var errKey = qs('err');
     if (errKey) {
@@ -722,8 +867,10 @@
         if (fieldsOut.data.web) applyWeb(fieldsOut.data.web, true);
         applyState(fieldsOut.data.state, { loggedIn: true });
         if (!fieldsOut.data.state || !fieldsOut.data.state.qualityReady) {
-          setObMsg(copy.needQuality);
-          renderGaps(fieldsOut.data.state && fieldsOut.data.state.gaps);
+          var st = fieldsOut.data.state;
+          // canPublish false → enrichment gaps; else missing WeChat/sample quality gate.
+          setObMsg(st && st.canPublish ? copy.needQuality : copy.publishFail);
+          renderGaps(st && st.gaps);
           return;
         }
         var pubOut = await apiJson('/airsup/china/test/api/onboard/publish', {
@@ -736,7 +883,7 @@
           return;
         }
         if (pubOut.data.web) applyWeb(pubOut.data.web, true);
-        applyState(pubOut.data.state, { loggedIn: true });
+        applyState(pubOut.data.state, { loggedIn: true, board: pubOut.data.board || null });
         if (pubOut.data.company && pubOut.data.company.name) {
           setLoggedIn(true, pubOut.data.company.name);
         }
@@ -748,7 +895,7 @@
       }
     });
 
-    if (qs('demo') === '1') {
+    if (wantDemo) {
       (async function () {
         setObMsg(en ? 'Starting demo…' : '正在启动演示…');
         setObBusy(true);
@@ -772,15 +919,16 @@
           applyState(out.data.state, { verifyPath: out.data.verifyPath || '', loggedIn: false });
           if (lastPreview) renderPreviewCard(lastPreview, (out.data.state && out.data.state.previewSummary) || '');
           setObMsg('');
-          var auto = qs('auto') === '1';
-          // Strip ?demo=1 so refresh does not reset the company mid-recording.
+          if (wantAuto && out.data.verifyPath) {
+            var next = out.data.verifyPath;
+            next += (next.indexOf('?') >= 0 ? '&' : '?') + 'auto=1';
+            window.location.href = next;
+            return;
+          }
+          // Non-auto: drop ?demo so refresh does not reset mid-session.
           try {
             history.replaceState({}, '', '/airsup/china/test' + (en ? '?lang=en' : ''));
           } catch (e2) {}
-          if (auto && out.data.verifyPath) {
-            window.location.href = out.data.verifyPath;
-            return;
-          }
         } catch (e) {
           setObMsg(copy.startFail);
         } finally {
@@ -788,6 +936,18 @@
         }
       })();
     }
+
+    // After verify with ?auto=1, finish WeChat/sample → publish for a smooth full-funnel demo.
+    (async function runAutoFields() {
+      if (!wantAuto) return;
+      if (!state || state.step !== 'fields') return;
+      await new Promise(function (r) { setTimeout(r, 700); });
+      document.getElementById('cn-ob-wechat').value = state.wechat || 'airsup_demo_tade';
+      document.getElementById('cn-ob-sample').value = state.sampleLead || (en ? 'samples in 5 days' : '样品 5 天');
+      document.getElementById('cn-ob-flex').value = state.flexibility || 'normal';
+      if (state.contactName) document.getElementById('cn-ob-contact-fields').value = state.contactName;
+      document.getElementById('cn-ob-publish').click();
+    })();
 
     fileInput.addEventListener('change', function () {
       Array.prototype.slice.call(fileInput.files || []).forEach(function (f) { pendingFiles.push(f); });
