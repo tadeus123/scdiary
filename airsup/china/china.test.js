@@ -1389,6 +1389,7 @@ function memoryChina(companies) {
   assert.strictEqual(typeof testOnboard.saveInteraction, 'function');
   assert.strictEqual(typeof testOnboard.publishCompany, 'function');
   assert.strictEqual(typeof testOnboard.qualityReady, 'function');
+  assert.strictEqual(typeof testOnboard.seedWebFromPreview, 'function');
   assert.strictEqual(typeof testOnboard.onboardingState, 'function');
   assert.strictEqual(typeof testOnboard.seedWebFromCompany, 'function');
   assert.strictEqual(typeof testOnboard.readTestCompany, 'function');
@@ -1422,7 +1423,7 @@ function memoryChina(companies) {
   assert.strictEqual(testOnboard.qualityReady(verified.company), false);
   const blocked = await testOnboard.publishCompany(verified.company);
   assert.strictEqual(blocked.ok, false);
-  assert.strictEqual(blocked.errorKey, 'err_publish');
+  assert.strictEqual(blocked.errorKey, 'err_publish_quality');
   const saved = await testOnboard.saveInteraction(verified.company, {
     contact_wechat: 'airsup_demo_tade',
     sample_lead: 'samples in 3 days',

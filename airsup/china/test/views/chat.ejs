@@ -73,6 +73,9 @@
         <a class="cn-btn cn-ob-primary cn-ob-verify-link" id="cn-ob-verify-now" href="#" hidden>
           <%= lang === 'en' ? 'Verify now' : '立即验证' %>
         </a>
+        <button type="button" class="cn-btn-ghost" id="cn-ob-resend" style="margin-top:0.55rem">
+          <%= lang === 'en' ? 'Resend link' : '重发链接' %>
+        </button>
       </div>
 
       <div class="cn-ob-step" data-step="fields" id="cn-ob-step-fields" hidden>
@@ -219,7 +222,9 @@
       publishFail: 'Could not publish yet.',
       needQuality: 'Add WeChat and a sample lead you will stand behind before publishing.',
       gapsTitle: 'Still thin for ChatGPT answers:',
-      continue: 'Continue'
+      continue: 'Continue',
+      resendOk: 'Link resent.',
+      rateWait: 'Please wait about 2 minutes before requesting another email.',
     } : {
       kicker: '工厂上线',
       siteTitle: '从网站开始',
@@ -240,7 +245,9 @@
       publishFail: '还不能发布。',
       needQuality: '上线前请填写微信号和你能承诺的样品交期。',
       gapsTitle: 'ChatGPT 回答还偏薄：',
-      continue: '继续'
+      continue: '继续',
+      resendOk: '链接已重发。',
+      rateWait: '请约 2 分钟后再请求邮件。',
     };
 
     function loadJson(key, fallback) {
@@ -348,7 +355,7 @@
 
     function setObBusy(on) {
       obBusy = Boolean(on);
-      ['cn-ob-continue-site', 'cn-ob-continue-email', 'cn-ob-publish'].forEach(function (id) {
+      ['cn-ob-continue-site', 'cn-ob-continue-email', 'cn-ob-publish', 'cn-ob-resend'].forEach(function (id) {
         var el = document.getElementById(id);
         if (el) el.disabled = obBusy;
       });
@@ -627,6 +634,7 @@
         if (lastPreview && lastPreview.cityId) {
           document.getElementById('cn-ob-city').value = lastPreview.cityId;
         }
+        if (out.data.web) applyWeb(out.data.web, true);
         renderPreviewCard(lastPreview, '');
         applyState(state, { forceEmail: true, loggedIn: false });
       } catch (e) {
@@ -636,30 +644,50 @@
       }
     });
 
+    async function runStartSignup() {
+      var out = await apiJson('/airsup/china/test/api/onboard/start', {
+        method: 'POST',
+        body: JSON.stringify({
+          website: draftWebsite || String(document.getElementById('cn-ob-website').value || '').trim(),
+          email: String(document.getElementById('cn-ob-email').value || '').trim(),
+          contact: String(document.getElementById('cn-ob-contact').value || '').trim(),
+          city: String(document.getElementById('cn-ob-city').value || 'shenzhen'),
+        }),
+      });
+      if (!out.res.ok || !out.data.ok) {
+        var key = out.data && out.data.errorKey;
+        setObMsg((out.data && out.data.error) || (key === 'err_rate' ? copy.rateWait : copy.startFail));
+        return null;
+      }
+      if (out.data.web) applyWeb(out.data.web, true);
+      applyState(out.data.state, { verifyPath: out.data.verifyPath || '', loggedIn: false });
+      if (out.data.verifyPath) {
+        obVerifyNow.hidden = false;
+        obVerifyNow.setAttribute('href', out.data.verifyPath);
+      }
+      return out.data;
+    }
+
     document.getElementById('cn-ob-continue-email').addEventListener('click', async function () {
       if (obBusy) return;
       setObMsg('');
       setObBusy(true);
       try {
-        var out = await apiJson('/airsup/china/test/api/onboard/start', {
-          method: 'POST',
-          body: JSON.stringify({
-            website: draftWebsite || String(document.getElementById('cn-ob-website').value || '').trim(),
-            email: String(document.getElementById('cn-ob-email').value || '').trim(),
-            contact: String(document.getElementById('cn-ob-contact').value || '').trim(),
-            city: String(document.getElementById('cn-ob-city').value || 'shenzhen'),
-          }),
-        });
-        if (!out.res.ok || !out.data.ok) {
-          setObMsg((out.data && out.data.error) || copy.startFail);
-          return;
-        }
-        if (out.data.web) applyWeb(out.data.web, true);
-        applyState(out.data.state, { verifyPath: out.data.verifyPath || '', loggedIn: false });
-        if (out.data.demo && out.data.verifyPath) {
-          obVerifyNow.hidden = false;
-          obVerifyNow.setAttribute('href', out.data.verifyPath);
-        }
+        await runStartSignup();
+      } catch (e) {
+        setObMsg(copy.startFail);
+      } finally {
+        setObBusy(false);
+      }
+    });
+
+    document.getElementById('cn-ob-resend').addEventListener('click', async function () {
+      if (obBusy) return;
+      setObMsg('');
+      setObBusy(true);
+      try {
+        var data = await runStartSignup();
+        if (data) setObMsg(copy.resendOk);
       } catch (e) {
         setObMsg(copy.startFail);
       } finally {
@@ -744,10 +772,15 @@
           applyState(out.data.state, { verifyPath: out.data.verifyPath || '', loggedIn: false });
           if (lastPreview) renderPreviewCard(lastPreview, (out.data.state && out.data.state.previewSummary) || '');
           setObMsg('');
+          var auto = qs('auto') === '1';
           // Strip ?demo=1 so refresh does not reset the company mid-recording.
           try {
             history.replaceState({}, '', '/airsup/china/test' + (en ? '?lang=en' : ''));
           } catch (e2) {}
+          if (auto && out.data.verifyPath) {
+            window.location.href = out.data.verifyPath;
+            return;
+          }
         } catch (e) {
           setObMsg(copy.startFail);
         } finally {

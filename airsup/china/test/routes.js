@@ -29,6 +29,7 @@ const {
   publishCompany,
   onboardingState,
   seedWebFromCompany,
+  seedWebFromPreview,
   readTestCompany,
   openSession,
   clearTestSession,
@@ -99,9 +100,18 @@ function companySummary(company, lang) {
 
 function jsonError(res, lang, status, errorKey) {
   const key = errorKey || 'err_db';
+  const TEST_COPY = {
+    err_publish_quality: lang === 'en'
+      ? 'Add WeChat and a sample lead you stand behind before publishing.'
+      : '上线前请填写微信号和你能承诺的样品交期。',
+    err_rate: lang === 'en'
+      ? 'Please wait about 2 minutes before requesting another email.'
+      : '请约 2 分钟后再请求邮件。',
+  };
+  const message = TEST_COPY[key] || t(lang, key);
   return res.status(status).json({
     ok: false,
-    error: t(lang, key),
+    error: message,
     errorKey: key,
   });
 }
@@ -262,11 +272,18 @@ router.post('/api/onboard/preview', express.json(), async (req, res) => {
       return res.status(400).json({
         ok: false,
         preview: null,
+        web: null,
         error: t(lang, (preview && preview.error) || 'err_website'),
         errorKey: (preview && preview.error) || 'err_website',
       });
     }
-    return res.json({ ok: true, preview, error: null });
+    let web = null;
+    try {
+      web = seedWebFromPreview(preview, lang).web;
+    } catch {
+      web = null;
+    }
+    return res.json({ ok: true, preview, web, error: null });
   } catch (error) {
     console.error('Airsup china test onboard preview error:', error);
     return jsonError(res, lang, 500, 'err_db');
