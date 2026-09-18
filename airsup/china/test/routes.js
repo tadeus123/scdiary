@@ -108,8 +108,8 @@ function jsonError(res, lang, status, errorKey) {
       ? 'Please wait about 2 minutes before requesting another email.'
       : '请约 2 分钟后再请求邮件。',
     unknown_company: lang === 'en'
-      ? 'No factory is registered for that email. Join from the China page first.'
-      : '该邮箱没有对应工厂。请先从中国页加入。',
+      ? 'No factory is registered for that email. Fill the website form on the homepage first.'
+      : '该邮箱没有对应工厂。请先在首页填写官网加入。',
     bad_code: lang === 'en' ? 'Invalid or expired code.' : '验证码无效或已过期。',
     bad_email: lang === 'en' ? 'Enter a valid work email.' : '请输入有效的工作邮箱。',
     mail_failed: lang === 'en' ? 'Could not send the login code. Try again.' : '验证码发送失败，请重试。',

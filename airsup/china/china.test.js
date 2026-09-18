@@ -1414,6 +1414,9 @@ function memoryChina(companies) {
   assert.ok(!fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-thread'));
   assert.ok(!fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-universe'));
   const testRoutesSrc = fs.readFileSync(path.join(__dirname, 'test/routes.js'), 'utf8');
+  assert.ok(testRoutesSrc.includes('Fill the website form on the homepage first.'));
+  assert.ok(!testRoutesSrc.includes('Join from the China page first.'));
+  assert.ok(!testRoutesSrc.includes('中国页加入'));
   assert.ok(testRoutesSrc.includes("/api/onboard/preview"));
   assert.ok(testRoutesSrc.includes("/api/onboard/start"));
   assert.ok(testRoutesSrc.includes("/api/onboard/fields"));
