@@ -191,14 +191,14 @@ function normalizeClientWeb(raw, lang) {
 function layoutPositions() {
   // Fixed abstract constellation — readable, not a physics sim
   return {
-    core: { x: 50, y: 48 },
-    domain: { x: 22, y: 28 },
-    process: { x: 78, y: 26 },
-    material: { x: 86, y: 52 },
-    quotes: { x: 72, y: 76 },
-    contact: { x: 28, y: 74 },
-    lead: { x: 14, y: 52 },
-    export: { x: 50, y: 18 },
+    core: { x: 50, y: 50 },
+    domain: { x: 18, y: 30 },
+    process: { x: 82, y: 28 },
+    material: { x: 88, y: 55 },
+    quotes: { x: 70, y: 82 },
+    contact: { x: 26, y: 80 },
+    lead: { x: 12, y: 55 },
+    export: { x: 50, y: 16 },
   };
 }
 
