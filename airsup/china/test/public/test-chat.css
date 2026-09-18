@@ -527,115 +527,239 @@ a.cn-ob-verify-link {
   }
 }
 
-/* Supplier main board (live) */
-.cn-test-board {
-  position: fixed;
-  inset: 0;
-  z-index: 880;
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.75fr);
-  gap: clamp(1.5rem, 4vw, 3.5rem);
-  align-items: center;
-  padding: 6.5rem clamp(1.5rem, 5vw, 4.5rem) 3rem;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse 80% 70% at 30% 40%, rgba(255, 252, 246, 0.97), rgba(239, 232, 220, 0.94) 55%, rgba(239, 232, 220, 0.98));
+
+/* Supplier board — match Airsup China live pages (simple, not arty) */
+.cn-test-board-first.cn-test {
+  --bg: #f4eee4;
+  --ink: #1a1512;
+  --muted: #4d4740;
+  --accent: #7a1e2b;
+  --line: #eadfce;
+  --panel: #fffdf8;
+  position: relative;
+  width: auto;
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  color: var(--ink);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse at 12% 0%, rgba(255, 255, 255, 0.55), transparent 42%),
+    repeating-linear-gradient(180deg, rgba(80, 50, 20, 0.018) 0 1px, transparent 1px 4px);
+  font-family: "PingFang SC", "Hiragino Sans GB", "Heiti SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
+  line-height: 1.65;
 }
+
+.cn-test-board-first .cn-test-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  align-items: center;
+  padding: 0.55rem clamp(1rem, 4vw, 1.5rem);
+  background: rgba(244, 238, 228, 0.94);
+  border-bottom: 1px solid rgba(196, 183, 157, 0.45);
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+}
+
+.cn-test-board-first .cn-test-brand a {
+  font-family: Georgia, "Times New Roman", "Songti SC", serif;
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: #7a1e2b;
+  letter-spacing: -0.02em;
+}
+
+.cn-test-board-first .cn-test-actions {
+  gap: 0.65rem;
+}
+
+.cn-test-board-first .cn-test-who {
+  font-size: 0.86rem;
+  color: #5e5852;
+  max-width: 200px;
+}
+
+.cn-test-board-first .cn-test-actions .cn-btn,
+.cn-test-board-first .cn-test-actions .cn-btn-ghost,
+.cn-test-board-first .cn-test-actions button {
+  font-size: 0.86rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 4px;
+  font-family: inherit;
+}
+
+.cn-test-board-first .cn-test-actions .cn-btn {
+  background: #7a1e2b;
+  border: 1px solid #7a1e2b;
+  color: #fff;
+}
+
+.cn-test-board-first .cn-test-actions .cn-btn-ghost {
+  background: transparent;
+  border: 1px solid #c4b79d;
+  color: #1a1512;
+  text-decoration: none;
+}
+
+.cn-test-board-first .cn-lang {
+  color: #5e5852;
+  font-size: 0.86rem;
+  text-decoration: none;
+}
+
+.cn-test-board {
+  position: relative;
+  inset: auto;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(240px, 0.7fr);
+  gap: 2rem 2.5rem;
+  align-items: start;
+  width: min(1120px, calc(100% - 2.4rem));
+  margin: 0 auto;
+  padding: 2rem 0 3.5rem;
+  pointer-events: auto;
+  background: none;
+}
+
 .cn-test-board[hidden] { display: none !important; }
 .cn-test-board > * { pointer-events: auto; }
 
 .cn-test-board-main {
-  max-width: 640px;
+  max-width: none;
 }
+
 .cn-test-board-rate-label {
-  margin: 0 0 0.35rem;
-  font-size: 0.78rem;
-  letter-spacing: 0.1em;
+  display: inline-block;
+  margin: 0 0 0.85rem;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid #7a1e2b;
+  color: #7a1e2b;
+  letter-spacing: 0.14em;
+  font-size: 0.75rem;
   text-transform: uppercase;
-  color: var(--accent);
+  background: transparent;
 }
+
 .cn-test-board-rate {
-  margin: 0 0 1.75rem;
-  font-family: Georgia, "Songti SC", "Noto Serif SC", serif;
-  font-size: clamp(3.2rem, 8vw, 5.2rem);
-  font-weight: 400;
-  line-height: 0.95;
-  letter-spacing: -0.03em;
-  color: var(--ink);
+  margin: 0 0 1.35rem;
+  font-family: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", Georgia, serif;
+  font-size: clamp(2rem, 4.2vw, 3.1rem);
+  font-weight: 600;
+  line-height: 1.18;
+  letter-spacing: 0.01em;
+  color: #171311;
 }
+
 .cn-test-board-metrics {
+  display: block;
+  width: 100%;
+  max-width: none;
+  background: #fffdf8;
+  border: 1px solid #eadfce;
+}
+
+.cn-test-board-metric {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.25rem 1.5rem;
-  max-width: 560px;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.75rem 0.9rem;
+  border-top: 1px solid #eadfce;
 }
-.cn-test-board-metric .n {
-  font-family: Georgia, "Songti SC", "Noto Serif SC", serif;
-  font-size: clamp(1.45rem, 3vw, 1.9rem);
-  font-weight: 500;
-  color: var(--ink);
-  line-height: 1.15;
+
+.cn-test-board-metric:first-child {
+  border-top: 0;
 }
+
 .cn-test-board-metric .l {
-  margin-top: 0.35rem;
-  font-size: 0.78rem;
-  line-height: 1.35;
-  color: var(--muted);
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: #4d4740;
+  order: 0;
+}
+
+.cn-test-board-metric .n {
+  margin: 0;
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: #171311;
+  line-height: 1.3;
+  text-align: right;
+  order: 1;
 }
 
 .cn-test-board-side {
-  justify-self: end;
-  width: min(320px, 100%);
+  justify-self: stretch;
+  width: 100%;
 }
+
 .cn-test-board-drop {
   position: relative;
-  min-height: 180px;
-  padding: 1.4rem 1.2rem;
-  border: 1.5px dashed rgba(193, 106, 40, 0.45);
-  border-radius: 14px;
-  background: rgba(255, 252, 246, 0.95);
+  min-height: 140px;
+  padding: 1.1rem 1rem;
+  border: 1px solid #eadfce;
+  border-radius: 10px;
+  background: #faf6ef;
   display: grid;
   place-content: center;
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
+
 .cn-test-board-drop input {
   position: absolute;
   inset: 0;
   opacity: 0;
   pointer-events: none;
 }
+
 .cn-test-board-drop:hover,
 .cn-test-board-drop.is-drag {
-  border-color: var(--accent);
+  border-color: #c4b79d;
   background: #fffdf8;
 }
+
 .cn-test-board-drop.is-busy { opacity: 0.55; pointer-events: none; }
+
 .cn-test-board-drop-title {
   margin: 0;
-  font-family: Georgia, "Songti SC", serif;
-  font-size: 1.05rem;
-  color: var(--ink);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 650;
+  color: #171311;
 }
+
 .cn-test-board-drop-sub {
-  margin: 0.35rem 0 0;
-  font-size: 0.8rem;
-  color: var(--muted);
+  margin: 0.3rem 0 0;
+  font-size: 0.86rem;
+  color: #4d4740;
 }
+
 .cn-test-board-hint {
-  margin: 0.85rem 0 0;
-  font-size: 0.82rem;
-  line-height: 1.4;
-  color: var(--muted);
-  text-align: center;
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #4d4740;
+  text-align: left;
 }
 
 .cn-test-has-board #cn-test-network {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
 }
+
 .cn-test-has-board .cn-test-empty,
 .cn-test-has-board .cn-test-reach-float,
 .cn-test-has-board .cn-test-dock,
@@ -643,29 +767,29 @@ a.cn-ob-verify-link {
 .cn-test-has-board .cn-test-onboard {
   display: none !important;
 }
+
 .cn-test-board-first .cn-test-board {
   display: grid;
 }
+
 .cn-test-board-first .cn-test-empty,
 .cn-test-board-first .cn-test-reach-float,
 .cn-test-board-first .cn-test-dock {
   display: none !important;
 }
 
+.cn-test-board-first .cn-test-toast {
+  bottom: 24px;
+}
+
 @media (max-width: 860px) {
   .cn-test-board {
     grid-template-columns: 1fr;
-    align-content: start;
-    gap: 1.75rem;
-    padding-top: 5.5rem;
-    overflow: auto;
+    gap: 1.5rem;
+    padding-top: 1.5rem;
   }
   .cn-test-board-side {
     justify-self: stretch;
     width: 100%;
-  }
-  .cn-test-board-metrics {
-    grid-template-columns: 1fr;
-    gap: 1rem;
   }
 }
