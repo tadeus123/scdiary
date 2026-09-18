@@ -1355,6 +1355,29 @@ function memoryChina(companies) {
   assert.ok(qMail.text.includes('https://www.tademehl.com/airsup/china/verify?token=abc&next=quotes'));
   assert.strictEqual(DEMO_NAME_EN.includes('Demo'), true);
 
+  // Isolated ChatGPT-like test concept at /airsup/china/test
+  assert.ok(fs.existsSync(path.join(__dirname, 'test/routes.js')));
+  assert.ok(fs.existsSync(path.join(__dirname, 'test/views/chat.ejs')));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.use('/test'"));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('AIRSUP-CHINA-TEST-BEGIN'));
+  const testChat = require('./test/chat');
+  assert.ok(testChat.welcomeMessage('zh').includes('Airsup'));
+  assert.ok(testChat.welcomeMessage('en').toLowerCase().includes('chatgpt'));
+  const compressed = testChat.compressHistory(
+    Array.from({ length: 20 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: `turn ${i} ${'x'.repeat(200)}` })),
+    'en'
+  );
+  assert.ok(compressed.summary);
+  assert.ok(compressed.history.length <= testChat.KEEP_RECENT);
+  const fallback = await testChat.completeTestTurn({
+    lang: 'en',
+    message: 'https://factory-example.com',
+    history: [],
+    files: [],
+    company: null,
+  });
+  assert.ok(String(fallback.reply || '').length > 10);
+
   console.log('airsup china tests passed');
 })().catch((error) => {
   console.error(error);

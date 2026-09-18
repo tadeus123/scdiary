@@ -1,0 +1,318 @@
+/* Airsup China test concept — ChatGPT-like single chat. Scoped under .cn-test */
+.cn-test {
+  --cn-test-bg: #efe8dc;
+  --cn-test-panel: #faf6ef;
+  --cn-test-ink: #1a1512;
+  --cn-test-muted: #6f675e;
+  --cn-test-line: #e0d5c4;
+  --cn-test-accent: #7a1e2b;
+  --cn-test-accent-soft: rgba(122, 30, 43, 0.08);
+  --cn-test-user: #7a1e2b;
+  --cn-test-assistant: #fffdf8;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(1200px 500px at 10% -10%, rgba(255, 255, 255, 0.7), transparent 55%),
+    radial-gradient(900px 420px at 90% 0%, rgba(122, 30, 43, 0.06), transparent 50%),
+    var(--cn-test-bg);
+  color: var(--cn-test-ink);
+}
+
+.cn-test-top {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--cn-test-line);
+  background: rgba(250, 246, 239, 0.92);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.cn-test-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.cn-test-brand a {
+  font-family: "Songti SC", "Noto Serif SC", "SimSun", Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--cn-test-accent);
+  text-decoration: none;
+  letter-spacing: 0.01em;
+}
+
+.cn-test-pill {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cn-test-muted);
+  border: 1px solid var(--cn-test-line);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.cn-test-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.cn-test-who {
+  font-size: 0.82rem;
+  color: var(--cn-test-muted);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cn-test-actions .cn-btn,
+.cn-test-actions .cn-btn-ghost,
+.cn-test-actions button {
+  font-size: 0.85rem;
+  padding: 0.45rem 0.85rem;
+}
+
+.cn-test-main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  width: min(820px, 100%);
+  margin: 0 auto;
+  min-height: 0;
+}
+
+.cn-test-thread {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 28px 18px 12px;
+  scroll-behavior: smooth;
+}
+
+.cn-test-empty {
+  max-width: 34rem;
+  margin: 12vh auto 0;
+  text-align: center;
+}
+
+.cn-test-empty h1 {
+  font-family: "Songti SC", "Noto Serif SC", "SimSun", Georgia, serif;
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  font-weight: 600;
+  color: var(--cn-test-accent);
+  margin: 0 0 0.75rem;
+  line-height: 1.25;
+}
+
+.cn-test-empty p {
+  margin: 0;
+  color: var(--cn-test-muted);
+  line-height: 1.55;
+  font-size: 0.98rem;
+}
+
+.cn-test-msg {
+  display: flex;
+  gap: 12px;
+  margin: 0 0 1.15rem;
+  align-items: flex-start;
+}
+
+.cn-test-msg.is-user {
+  flex-direction: row-reverse;
+}
+
+.cn-test-avatar {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-family: "Songti SC", "Noto Serif SC", Georgia, serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: var(--cn-test-accent);
+  color: #f7efe4;
+}
+
+.cn-test-msg.is-user .cn-test-avatar {
+  background: #2a241f;
+}
+
+.cn-test-bubble {
+  max-width: min(640px, calc(100% - 48px));
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  line-height: 1.55;
+  font-size: 0.98rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border: 1px solid transparent;
+}
+
+.cn-test-msg.is-assistant .cn-test-bubble {
+  background: var(--cn-test-assistant);
+  border-color: var(--cn-test-line);
+  box-shadow: 0 1px 0 rgba(26, 21, 18, 0.03);
+}
+
+.cn-test-msg.is-user .cn-test-bubble {
+  background: var(--cn-test-user);
+  color: #f7efe4;
+}
+
+.cn-test-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 0.55rem;
+}
+
+.cn-test-file-chip {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 8px;
+  background: var(--cn-test-accent-soft);
+  color: var(--cn-test-accent);
+  border: 1px solid rgba(122, 30, 43, 0.18);
+}
+
+.cn-test-msg.is-user .cn-test-file-chip {
+  background: rgba(247, 239, 228, 0.14);
+  color: #f7efe4;
+  border-color: rgba(247, 239, 228, 0.28);
+}
+
+.cn-test-typing {
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.cn-test-composer-wrap {
+  flex: 0 0 auto;
+  padding: 10px 18px 18px;
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(to top, var(--cn-test-bg) 55%, rgba(239, 232, 220, 0));
+}
+
+.cn-test-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--cn-test-panel);
+  border: 1px solid var(--cn-test-line);
+  border-radius: 18px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 30px rgba(26, 21, 18, 0.05);
+}
+
+.cn-test-pending {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cn-test-pending:empty {
+  display: none;
+}
+
+.cn-test-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.cn-test-attach {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--cn-test-line);
+  background: #fffdf8;
+  color: var(--cn-test-ink);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.cn-test-attach:hover {
+  border-color: var(--cn-test-accent);
+  color: var(--cn-test-accent);
+}
+
+.cn-test-attach input {
+  display: none;
+}
+
+.cn-test-input {
+  flex: 1 1 auto;
+  min-height: 44px;
+  max-height: 160px;
+  resize: none;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  line-height: 1.45;
+  padding: 10px 4px;
+  color: var(--cn-test-ink);
+}
+
+.cn-test-send {
+  flex: 0 0 auto;
+  min-width: 72px;
+  height: 40px;
+  border-radius: 12px;
+  border: 0;
+  background: var(--cn-test-accent);
+  color: #f7efe4;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 14px;
+}
+
+.cn-test-send:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.cn-test-hint {
+  margin: 8px 2px 0;
+  font-size: 0.75rem;
+  color: var(--cn-test-muted);
+  text-align: center;
+}
+
+.cn-test-hint a {
+  color: var(--cn-test-accent);
+}
+
+@media (max-width: 640px) {
+  .cn-test-top {
+    padding: 10px 12px;
+  }
+  .cn-test-thread {
+    padding: 18px 12px 8px;
+  }
+  .cn-test-composer-wrap {
+    padding: 8px 12px 14px;
+  }
+  .cn-test-who {
+    display: none;
+  }
+}
