@@ -233,6 +233,48 @@ router.get(['/', ''], async (req, res) => {
   const lang = langFrom(req, res);
   res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
   res.set('Pragma', 'no-cache');
+
+  // One-click demo login for board demos: /airsup/china/test?demo_login=1
+  if (String(req.query.demo_login || '') === '1') {
+    try {
+      await ensureTestDemoAllowlist();
+      let company = usingMemory()
+        ? await memoryStore.getByDomain(DEMO_DOMAIN)
+        : (db.isConfigured() ? await db.getByDomain(DEMO_DOMAIN).catch(() => null) : null);
+      if (!company || company.status !== 'live') {
+        await resetDemoPending(lang, req, res);
+        const started = await startSignup({
+          website: `https://${DEMO_DOMAIN}`,
+          email: DEMO_EMAIL,
+          contact: 'Tade',
+          city: 'shenzhen',
+          lang,
+          source: 'demo',
+          publicOrigin: peopleAuth.getPublicOrigin(req),
+        });
+        if (started.ok) {
+          const verified = await consumeVerifyToken(started.token);
+          if (verified.ok && verified.company) {
+            const withFields = await saveInteraction(verified.company, {
+              contact_wechat: 'airsup_demo_tade',
+              sample_lead: 'samples in 5 days',
+              flexibility: 'normal',
+              contact_name: 'Tade',
+            }, lang);
+            const published = await publishCompany(withFields);
+            company = published.company || withFields;
+          }
+        }
+      }
+      if (company && company.company_id) {
+        await openSession(req, res, company.company_id);
+      }
+    } catch (error) {
+      console.error('Airsup china test demo_login skipped:', error.message);
+    }
+    return res.redirect('/airsup/china/test');
+  }
+
   res.locals.seo = {
     title: lang === 'en' ? 'Airsup test — company endpoint web' : 'Airsup 测试 — 公司端点网',
     description: lang === 'en'
