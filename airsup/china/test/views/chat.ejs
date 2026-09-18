@@ -6,7 +6,7 @@
   <% if (typeof testCss === 'string' && testCss) { %>
   <style><%- testCss %></style>
   <% } else { %>
-  <link rel="stylesheet" href="/airsup/china/test/test-chat.css?v=2">
+  <link rel="stylesheet" href="/airsup/china/test/test-chat.css?v=3">
   <% } %>
 </head>
 <body class="cn-body cn-test" data-lang="<%= lang %>" data-logged-in="<%= loggedIn ? '1' : '0' %>">
@@ -28,38 +28,60 @@
     </div>
   </header>
 
-  <main class="cn-test-main">
-    <div class="cn-test-thread" id="cn-test-thread" aria-live="polite"></div>
-
-    <div class="cn-test-composer-wrap" id="cn-test-composer-wrap">
-      <form class="cn-test-composer" id="cn-test-form">
-        <div class="cn-test-pending" id="cn-test-pending"></div>
-        <div class="cn-test-row">
-          <label class="cn-test-attach" title="<%= lang === 'en' ? 'Attach files' : '上传文件' %>">
-            <input type="file" id="cn-test-files" multiple accept=".pdf,.xlsx,.xls,.zip,.csv,.txt,application/pdf,application/zip,image/*">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M21.4 11.6 12.1 20.9a5.2 5.2 0 0 1-7.4-7.4l9.9-9.9a3.5 3.5 0 0 1 4.9 4.9l-9.2 9.2a1.7 1.7 0 1 1-2.4-2.4l8.1-8.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </label>
-          <textarea class="cn-test-input" id="cn-test-input" rows="1" placeholder="<%= lang === 'en' ? 'Message Airsup…' : '给 Airsup 发消息…' %>"></textarea>
-          <button class="cn-test-send" id="cn-test-send" type="submit" aria-label="<%= lang === 'en' ? 'Send' : '发送' %>">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
+  <div class="cn-test-stage">
+    <section class="cn-test-web-pane" aria-label="<%= lang === 'en' ? 'Company endpoint web' : '公司端点网' %>">
+      <div class="cn-test-web-head">
+        <div>
+          <h1><%= lang === 'en' ? 'Your endpoint web' : '你们的端点网' %></h1>
+          <p><%= lang === 'en'
+            ? 'Abstract map of what ChatGPT can know about the factory. Feed it — it grows. Denser web, easier to find.'
+            : 'ChatGPT 能「看见」你们工厂的抽象地图。往里喂料，它就变亮。网越密，越容易被找到。' %></p>
         </div>
-      </form>
-      <p class="cn-test-hint">
-        <%= lang === 'en' ? 'One chat with Airsup · concept only' : '与 Airsup 的一条对话 · 概念页' %>
-        · <a href="/airsup/china"><%= lang === 'en' ? 'Live product' : '正式版' %></a>
-      </p>
-    </div>
-  </main>
+        <div class="cn-test-reach">
+          <div class="cn-test-reach-label"><%= lang === 'en' ? 'Reach in ChatGPT' : 'ChatGPT 可达' %></div>
+          <div class="cn-test-reach-value" id="cn-test-reach">8<span>/100</span></div>
+          <svg class="cn-test-spark" id="cn-test-spark" viewBox="0 0 140 36" aria-hidden="true"></svg>
+        </div>
+      </div>
+      <div class="cn-test-canvas-wrap">
+        <svg class="cn-test-canvas" id="cn-test-canvas" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <div class="cn-test-legend" id="cn-test-legend"></div>
+    </section>
+
+    <section class="cn-test-chat-pane" aria-label="<%= lang === 'en' ? 'Feed the web' : '喂养端点网' %>">
+      <div class="cn-test-thread" id="cn-test-thread" aria-live="polite"></div>
+      <div class="cn-test-composer-wrap">
+        <form class="cn-test-composer" id="cn-test-form">
+          <div class="cn-test-pending" id="cn-test-pending"></div>
+          <div class="cn-test-row">
+            <label class="cn-test-attach" title="<%= lang === 'en' ? 'Attach files' : '上传文件' %>">
+              <input type="file" id="cn-test-files" multiple accept=".pdf,.xlsx,.xls,.zip,.csv,.txt,application/pdf,application/zip,image/*">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M21.4 11.6 12.1 20.9a5.2 5.2 0 0 1-7.4-7.4l9.9-9.9a3.5 3.5 0 0 1 4.9 4.9l-9.2 9.2a1.7 1.7 0 1 1-2.4-2.4l8.1-8.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </label>
+            <textarea class="cn-test-input" id="cn-test-input" rows="1" placeholder="<%= lang === 'en' ? 'Drop a note, URL, or idea…' : '丢一段说明、网址或想法…' %>"></textarea>
+            <button class="cn-test-send" id="cn-test-send" type="submit" aria-label="<%= lang === 'en' ? 'Send' : '发送' %>">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </form>
+        <p class="cn-test-hint">
+          <%= lang === 'en' ? 'No form — feed the web · concept only' : '没有问卷 — 喂养端点网 · 概念页' %>
+          · <a href="/airsup/china"><%= lang === 'en' ? 'Live product' : '正式版' %></a>
+        </p>
+      </div>
+    </section>
+  </div>
 
   <script>
   (function () {
     var lang = document.body.getAttribute('data-lang') || 'zh';
-    var storageKey = 'airsup_china_test_chat_v1';
+    var chatKey = 'airsup_china_test_chat_v2';
+    var webKey = 'airsup_china_test_web_v2';
     var thread = document.getElementById('cn-test-thread');
     var form = document.getElementById('cn-test-form');
     var input = document.getElementById('cn-test-input');
@@ -67,26 +89,30 @@
     var pendingEl = document.getElementById('cn-test-pending');
     var sendBtn = document.getElementById('cn-test-send');
     var actionsEl = document.getElementById('cn-test-actions');
+    var canvas = document.getElementById('cn-test-canvas');
+    var spark = document.getElementById('cn-test-spark');
+    var reachEl = document.getElementById('cn-test-reach');
+    var legendEl = document.getElementById('cn-test-legend');
     var welcome = <%- JSON.stringify(welcome) %>;
+    var layout = <%- JSON.stringify(layoutPositions) %>;
+    var initialWeb = <%- JSON.stringify(initialWeb) %>;
     var pendingFiles = [];
     var busy = false;
     var typingRow = null;
+    var pulseIds = [];
 
-    function loadMessages() {
+    function loadJson(key, fallback) {
       try {
-        var raw = localStorage.getItem(storageKey);
-        if (!raw) return [];
-        var parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : [];
+        var raw = localStorage.getItem(key);
+        if (!raw) return fallback;
+        return JSON.parse(raw);
       } catch (e) {
-        return [];
+        return fallback;
       }
     }
 
-    function saveMessages(list) {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(list.slice(-80)));
-      } catch (e) {}
+    function saveJson(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
     }
 
     function esc(text) {
@@ -97,8 +123,7 @@
     }
 
     function linkify(text) {
-      var escaped = esc(text);
-      return escaped.replace(/(https?:\/\/[^\s<]+)/g, function (url) {
+      return esc(text).replace(/(https?:\/\/[^\s<]+)/g, function (url) {
         return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + '</a>';
       });
     }
@@ -127,86 +152,117 @@
       }).join('') + '</div>';
     }
 
-    function scrollToBottom(force) {
+    function scrollChat() {
       requestAnimationFrame(function () {
-        thread.scrollTop = thread.scrollHeight + 200;
-        if (force) {
-          setTimeout(function () {
-            thread.scrollTop = thread.scrollHeight + 200;
-          }, 40);
-        }
+        thread.scrollTop = thread.scrollHeight + 120;
       });
     }
 
     function appendBubble(role, content, files, opts) {
       opts = opts || {};
-      var empty = thread.querySelector('.cn-test-empty');
-      if (empty) empty.remove();
-
       var row = document.createElement('div');
       row.className = 'cn-test-msg is-' + (role === 'user' ? 'user' : 'assistant');
       if (opts.typing) row.classList.add('is-typing');
-
       var avatar = document.createElement('div');
       avatar.className = 'cn-test-avatar';
       avatar.textContent = role === 'user' ? 'U' : 'A';
-
       var bubble = document.createElement('div');
       bubble.className = 'cn-test-bubble';
       var hasText = Boolean(content && String(content).trim());
-      var hasFiles = files && files.length;
-      if (!hasText && hasFiles) bubble.classList.add('is-files-only');
-
+      if (!hasText && files && files.length) bubble.classList.add('is-files-only');
       if (opts.typing) {
-        bubble.innerHTML = '<span class="cn-test-dots" aria-label="…"><span></span><span></span><span></span></span>';
+        bubble.innerHTML = '<span class="cn-test-dots"><span></span><span></span><span></span></span>';
       } else {
         var html = '';
         if (hasText) html += '<div class="cn-test-text">' + (role === 'assistant' ? linkify(content) : esc(content)) + '</div>';
         html += renderFiles(files);
         bubble.innerHTML = html;
       }
-
       row.appendChild(avatar);
       row.appendChild(bubble);
       thread.appendChild(row);
-      scrollToBottom(true);
+      scrollChat();
       return row;
     }
 
-    function showEmpty() {
+    function paintChat(messages) {
       thread.innerHTML = '';
-      var empty = document.createElement('div');
-      empty.className = 'cn-test-empty';
-      empty.innerHTML = '<h1>Airsup</h1><p>' + esc(
-        lang === 'en'
-          ? 'One chat to set up your ChatGPT endpoint.'
-          : '一条对话开通 ChatGPT 端点。'
-      ) + '</p>';
-      thread.appendChild(empty);
-    }
-
-    function paintAll(messages) {
-      thread.innerHTML = '';
-      if (!messages.length) {
-        showEmpty();
-        return;
-      }
       messages.forEach(function (m) {
         appendBubble(m.role, m.content, m.files);
       });
-      scrollToBottom(true);
+    }
+
+    function nodeRadius(node) {
+      if (node.id === 'core') return 5.2 + node.strength * 1.8;
+      return 2.2 + node.strength * 3.6;
+    }
+
+    function renderWeb(web) {
+      var edges = web.edges || [];
+      var nodes = web.nodes || {};
+      var edgeHtml = edges.map(function (e) {
+        var a = layout[e.from];
+        var b = layout[e.to];
+        if (!a || !b) return '';
+        var live = (nodes[e.from] && nodes[e.from].strength > 0.12) && (nodes[e.to] && nodes[e.to].strength > 0.12);
+        return '<line class="cn-test-edge' + (live ? ' is-live' : '') + '" x1="' + a.x + '" y1="' + a.y + '" x2="' + b.x + '" y2="' + b.y + '"></line>';
+      }).join('');
+
+      var nodeHtml = Object.keys(layout).map(function (id) {
+        var pos = layout[id];
+        var node = nodes[id] || { id: id, label: id, strength: 0 };
+        var on = node.strength > 0.12 || id === 'core';
+        var pulse = pulseIds.indexOf(id) >= 0 ? ' is-pulse' : '';
+        var core = id === 'core' ? ' is-core' : '';
+        var r = nodeRadius(node);
+        var labelY = pos.y + r + 3.2;
+        return '<g class="cn-test-node' + (on ? ' is-on' : '') + core + pulse + '" data-id="' + id + '">'
+          + '<circle cx="' + pos.x + '" cy="' + pos.y + '" r="' + r.toFixed(2) + '"></circle>'
+          + '<text x="' + pos.x + '" y="' + labelY.toFixed(2) + '">' + esc(node.label) + '</text>'
+          + '</g>';
+      }).join('');
+
+      canvas.innerHTML = edgeHtml + nodeHtml;
+      reachEl.innerHTML = String(web.reach || 8) + '<span>/100</span>';
+      renderSpark(web.reachHistory || [web.reach || 8]);
+
+      var lit = Object.keys(nodes).filter(function (id) {
+        return id !== 'core' && nodes[id].strength > 0.15;
+      }).map(function (id) {
+        var hints = (nodes[id].hints || []).slice(0, 2).join(', ');
+        return '<span><strong>' + esc(nodes[id].label) + '</strong>' + (hints ? ' · ' + esc(hints) : '') + '</span>';
+      });
+      legendEl.innerHTML = lit.length
+        ? lit.join('')
+        : '<span>' + esc(lang === 'en' ? 'Ghost nodes wait for real material.' : '淡节点在等真材料。') + '</span>';
+    }
+
+    function renderSpark(history) {
+      var vals = (history || [8]).map(function (n) { return Number(n) || 0; });
+      if (vals.length < 2) vals = [vals[0] || 8, vals[0] || 8];
+      var min = Math.min.apply(null, vals.concat([0]));
+      var max = Math.max.apply(null, vals.concat([20]));
+      if (max - min < 8) max = min + 8;
+      var w = 140;
+      var h = 36;
+      var pts = vals.map(function (v, i) {
+        var x = (i / (vals.length - 1)) * (w - 4) + 2;
+        var y = h - 4 - ((v - min) / (max - min)) * (h - 10);
+        return x.toFixed(1) + ',' + y.toFixed(1);
+      }).join(' ');
+      spark.innerHTML = '<polyline fill="none" stroke="#7a1e2b" stroke-width="2" points="' + pts + '"></polyline>';
     }
 
     function ensureWelcome(messages) {
       if (messages.length) return messages;
       var boot = [{ role: 'assistant', content: welcome, at: Date.now() }];
-      saveMessages(boot);
+      saveJson(chatKey, boot);
       return boot;
     }
 
     function renderPending() {
       pendingEl.innerHTML = pendingFiles.map(function (f, i) {
-        return '<div class="cn-test-file-card" data-i="' + i + '" title="' + esc(lang === 'en' ? 'Remove' : '移除') + '">'
+        return '<div class="cn-test-file-card" data-i="' + i + '">'
           + '<span class="cn-test-file-ico">' + esc(fileExt(f.name)) + '</span>'
           + '<span class="cn-test-file-meta">'
           + '<span class="cn-test-file-name">' + esc(f.name) + '</span>'
@@ -223,7 +279,7 @@
 
     function autosize() {
       input.style.height = 'auto';
-      input.style.height = Math.min(140, input.scrollHeight) + 'px';
+      input.style.height = Math.min(120, input.scrollHeight) + 'px';
     }
 
     function bindAuthButtons() {
@@ -242,20 +298,12 @@
             var data = await res.json().catch(function () { return {}; });
             if (!res.ok) throw new Error('login');
             setLoggedIn(true, data.company && data.company.name);
-            appendBubble(
-              'assistant',
-              lang === 'en'
-                ? 'Logged in as ' + ((data.company && data.company.name) || 'demo') + '. We can keep building your endpoint in this same chat.'
-                : '已登录为 ' + ((data.company && data.company.name) || '演示工厂') + '。继续在这条对话里准备端点即可。'
-            );
-            messages.push({
-              role: 'assistant',
-              content: lang === 'en'
-                ? 'Logged in as ' + ((data.company && data.company.name) || 'demo') + '. We can keep building your endpoint in this same chat.'
-                : '已登录为 ' + ((data.company && data.company.name) || '演示工厂') + '。继续在这条对话里准备端点即可。',
-              at: Date.now(),
-            });
-            saveMessages(messages);
+            var note = lang === 'en'
+              ? 'Logged in. Keep feeding the same web — progress stays with the company.'
+              : '已登录。继续喂同一张网 — 进展会挂在公司下。';
+            messages.push({ role: 'assistant', content: note, at: Date.now() });
+            saveJson(chatKey, messages);
+            appendBubble('assistant', note);
           } catch (e) {
             alert(lang === 'en' ? 'Demo login failed.' : '演示登录失败。');
           } finally {
@@ -265,7 +313,6 @@
       }
       if (logoutBtn) {
         logoutBtn.addEventListener('click', async function () {
-          logoutBtn.disabled = true;
           try {
             await fetch('/airsup/china/test/api/logout', {
               method: 'POST',
@@ -275,7 +322,6 @@
             });
           } catch (e) {}
           setLoggedIn(false, '');
-          logoutBtn.disabled = false;
         });
       }
     }
@@ -297,13 +343,16 @@
       bindAuthButtons();
     }
 
-    var messages = ensureWelcome(loadMessages());
-    paintAll(messages);
+    var web = loadJson(webKey, initialWeb) || initialWeb;
+    var messages = ensureWelcome(loadJson(chatKey, []) || []);
+    renderWeb(web);
+    paintChat(messages);
     bindAuthButtons();
 
     fileInput.addEventListener('change', function () {
-      var list = Array.prototype.slice.call(fileInput.files || []);
-      list.forEach(function (f) { pendingFiles.push(f); });
+      Array.prototype.slice.call(fileInput.files || []).forEach(function (f) {
+        pendingFiles.push(f);
+      });
       fileInput.value = '';
       renderPending();
     });
@@ -337,7 +386,7 @@
         at: Date.now(),
       };
       messages.push(userMsg);
-      saveMessages(messages);
+      saveJson(chatKey, messages);
       appendBubble('user', userMsg.content, userMsg.files);
       typingRow = appendBubble('assistant', '', null, { typing: true });
 
@@ -347,6 +396,7 @@
         body.append('history', JSON.stringify(messages.slice(0, -1).map(function (m) {
           return { role: m.role, content: m.content || (m.files && m.files.length ? '[file upload]' : '') };
         })));
+        body.append('web', JSON.stringify(web));
         filesSnap.forEach(function (f) { body.append('files', f); });
 
         var res = await fetch('/airsup/china/test/api/chat', {
@@ -358,24 +408,31 @@
         if (typingRow && typingRow.parentNode) typingRow.parentNode.removeChild(typingRow);
         typingRow = null;
 
+        if (data.web) {
+          pulseIds = (data.signals || []).map(function (s) { return s.node; });
+          web = data.web;
+          saveJson(webKey, web);
+          renderWeb(web);
+          setTimeout(function () { pulseIds = []; renderWeb(web); }, 900);
+        }
+
         var replyText = res.ok
           ? (data.reply || '')
           : (lang === 'en' ? 'Something went wrong. Try again.' : '发送失败，请稍后再试。');
         messages.push({ role: 'assistant', content: replyText, at: Date.now() });
-        saveMessages(messages);
+        saveJson(chatKey, messages);
         appendBubble('assistant', replyText);
       } catch (err) {
         if (typingRow && typingRow.parentNode) typingRow.parentNode.removeChild(typingRow);
         typingRow = null;
         var fail = lang === 'en' ? 'Network error. Try again.' : '网络错误，请重试。';
         messages.push({ role: 'assistant', content: fail, at: Date.now() });
-        saveMessages(messages);
+        saveJson(chatKey, messages);
         appendBubble('assistant', fail);
       } finally {
         busy = false;
         sendBtn.disabled = false;
         input.focus();
-        scrollToBottom(true);
       }
     });
   })();

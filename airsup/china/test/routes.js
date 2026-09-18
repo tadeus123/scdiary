@@ -1,5 +1,5 @@
 /**
- * /airsup/china/test — concept ChatGPT-like setup chat.
+ * /airsup/china/test — company endpoint web concept (chat feeds the web).
  * Mounted only from china/routes.js. Delete this folder to remove.
  */
 const fs = require('fs');
@@ -13,8 +13,9 @@ const { companyTitle } = require('../fields');
 const { ensureDemoCompany, ensureDemoAllowlist } = require('../demo-company');
 const db = require('../db');
 const peopleAuth = require('../../auth');
-const { welcomeMessage, completeTestTurn } = require('./chat');
+const { welcomeMessage, completeTestTurn, emptyWeb } = require('./chat');
 const { describeUploads } = require('./files');
+const { layoutPositions, normalizeClientWeb } = require('./web');
 
 const router = express.Router();
 const VIEWS = path.join(__dirname, 'views');
@@ -25,7 +26,7 @@ const CHINA_CSS_PATH = path.join(__dirname, '../public/china.css');
 let testCssCache = null;
 let chinaCssCache = null;
 
-function readCss(filePath, cacheRef) {
+function readCss(filePath) {
   try {
     return fs.readFileSync(filePath, 'utf8');
   } catch (error) {
@@ -112,14 +113,23 @@ function parseHistory(raw) {
   }
 }
 
+function parseWeb(raw, lang) {
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return normalizeClientWeb(parsed, lang);
+  } catch {
+    return emptyWeb(lang);
+  }
+}
+
 router.get(['/', ''], async (req, res) => {
   const lang = langFrom(req, res);
   res.set('Cache-Control', 'private, no-store');
   res.locals.seo = {
-    title: lang === 'en' ? 'Airsup test — chat setup concept' : 'Airsup 测试 — 对话式开通概念',
+    title: lang === 'en' ? 'Airsup test — company endpoint web' : 'Airsup 测试 — 公司端点网',
     description: lang === 'en'
-      ? 'Isolated ChatGPT-like concept for Airsup China endpoint setup. Does not change the live product.'
-      : '独立的 ChatGPT 风格开通概念页。不影响现有正式流程。',
+      ? 'Isolated concept: grow your ChatGPT endpoint web by dumping real factory material. Live product unchanged.'
+      : '独立概念：往端点网里丢真材料，看着它变亮。不影响正式产品。',
     path: '/airsup/china/test',
     noindex: true,
     includePersonSchema: false,
@@ -140,6 +150,8 @@ router.get(['/', ''], async (req, res) => {
     companyLabel: company ? companyTitle(company, lang) : '',
     welcome: welcomeMessage(lang),
     loggedIn: Boolean(company),
+    initialWeb: emptyWeb(lang),
+    layoutPositions: layoutPositions(),
   });
 });
 
@@ -162,7 +174,9 @@ router.get('/api/state', async (req, res) => {
       email: company.contact_email || '',
     } : null,
     welcome: welcomeMessage(lang),
-    note: 'Client holds the single ongoing chat transcript; server compresses history each turn.',
+    web: emptyWeb(lang),
+    layout: layoutPositions(),
+    note: 'Company web is the main surface; chat feeds it. Client persists web + transcript.',
   });
 });
 
@@ -181,6 +195,7 @@ router.post('/api/chat', (req, res) => {
     const lang = langFrom(req, res);
     const message = String((req.body && req.body.message) || '').trim();
     const history = parseHistory(req.body && req.body.history);
+    const web = parseWeb(req.body && req.body.web, lang);
     const files = describeUploads(req.files || []);
 
     if (!message && !files.length) {
@@ -201,12 +216,15 @@ router.post('/api/chat', (req, res) => {
         history,
         files,
         company,
+        web,
       });
       return res.json({
         reply: result.reply,
         files,
         used_model: result.used_model,
         compressed: Boolean(result.summary),
+        web: result.web,
+        signals: result.signals,
       });
     } catch (error) {
       console.error('Airsup china test chat error:', error);
