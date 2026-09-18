@@ -138,6 +138,12 @@ app.get('/.well-known/oauth-authorization-server/airsupdev/oauth', (req, res) =>
 });
 // AIRSUPDEV-END
 
+// GAMES-BEGIN
+const gamesRoutes = require('../games/routes');
+app.use('/games', express.static(path.join(__dirname, '../games/public'), { index: false, redirect: false }));
+app.use('/games', gamesRoutes);
+// GAMES-END
+
 // Import routes
 const diaryRoutes = require('./routes/diary');
 const adminRoutes = require('./routes/admin');

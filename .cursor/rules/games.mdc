@@ -1,0 +1,32 @@
+---
+description: Games lives in games/ only and must stay removable
+---
+
+# Games isolation
+
+`/games` is a standalone speed-typing slice. Keep it easy to delete.
+
+## Put Games code only in
+- `games/` (routes, views, db, sql, public, revert)
+- the marked `GAMES-BEGIN` / `GAMES-END` blocks in `server/server.js`
+- `"games/**"` in `vercel.json` includeFiles
+- `.cursor/rules/games.mdc` (this file)
+
+## Product
+- Public URL: `https://www.tademehl.com/games`
+- 45-second English speed-typing sprint
+- Score: `max(0, round(WPM × 10) − (mistakes × 20))`
+- Table is `games_highscore` only
+
+## Do not
+- Import diary, admin, or `server/db/supabase.js` from Games
+- Add Games links, buttons, or data to other pages
+- Put Games styles in `public/css/style.css`
+- Share tables with the rest of the site
+- Add `/games` to the sitemap
+
+## Revert
+```bash
+node games/revert-games.js
+```
+See `games/REVERT.md`. Then delete `games/` and run `games/sql/drop.sql` in Supabase.

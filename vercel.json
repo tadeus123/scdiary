@@ -13,7 +13,8 @@
           "public/**",
           "airsup/**",
           "airsup20/**",
-          "airsupdev/**"
+          "airsupdev/**",
+          "games/**"
         ]
       }
     }
