@@ -1361,11 +1361,11 @@ function memoryChina(companies) {
   assert.ok(fs.existsSync(path.join(__dirname, 'test/web.js')));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.use('/test'"));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('AIRSUP-CHINA-TEST-BEGIN'));
-  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-canvas'));
-  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('endpoint web') || fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('端点网'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-universe'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-dock'));
   const testChat = require('./test/chat');
   const testWeb = require('./test/web');
-  assert.ok(testChat.welcomeMessage('zh').includes('端点网'));
+  assert.ok(testChat.welcomeMessage('zh').includes('网'));
   assert.ok(testChat.welcomeMessage('en').toLowerCase().includes('web'));
   const compressed = testChat.compressHistory(
     Array.from({ length: 20 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: `turn ${i} ${'x'.repeat(200)}` })),

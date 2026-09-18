@@ -6,14 +6,13 @@
   <% if (typeof testCss === 'string' && testCss) { %>
   <style><%- testCss %></style>
   <% } else { %>
-  <link rel="stylesheet" href="/airsup/china/test/test-chat.css?v=4">
+  <link rel="stylesheet" href="/airsup/china/test/test-chat.css?v=6">
   <% } %>
 </head>
 <body class="cn-body cn-test" data-lang="<%= lang %>" data-logged-in="<%= loggedIn ? '1' : '0' %>">
   <header class="cn-test-top">
     <div class="cn-test-brand">
       <a href="/airsup/china/test">Airsup</a>
-      <span class="cn-test-pill"><%= lang === 'en' ? 'Test' : '测试' %></span>
     </div>
     <div class="cn-test-actions" id="cn-test-actions">
       <% if (loggedIn) { %>
@@ -28,56 +27,42 @@
     </div>
   </header>
 
-  <div class="cn-test-stage">
-    <section class="cn-test-web-pane" aria-label="<%= lang === 'en' ? 'Company endpoint web' : '公司端点网' %>">
-      <div class="cn-test-web-head">
-        <div>
-          <h1><%= lang === 'en' ? 'Endpoint web' : '端点网' %></h1>
-        </div>
-        <div class="cn-test-reach">
-          <div class="cn-test-reach-label"><%= lang === 'en' ? 'Reach' : '可达' %></div>
-          <div class="cn-test-reach-value" id="cn-test-reach">10<span>/100</span></div>
-          <svg class="cn-test-spark" id="cn-test-spark" viewBox="0 0 120 28" aria-hidden="true"></svg>
-        </div>
-      </div>
-      <p class="cn-test-link-hint" id="cn-test-link-hint"><%= lang === 'en' ? 'Click two nodes to connect them' : '点两个节点，把它们连上' %></p>
-      <div class="cn-test-canvas-wrap">
-        <svg class="cn-test-canvas" id="cn-test-canvas" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
-      </div>
-    </section>
+  <div class="cn-test-reach-float" aria-hidden="true">
+    <div class="n" id="cn-test-reach">10<span>/100</span></div>
+    <svg class="cn-test-spark" id="cn-test-spark" viewBox="0 0 88 18"></svg>
+  </div>
 
-    <section class="cn-test-chat-pane" aria-label="<%= lang === 'en' ? 'Feed the web' : '喂养端点网' %>">
-      <div class="cn-test-thread" id="cn-test-thread" aria-live="polite"></div>
-      <div class="cn-test-composer-wrap">
-        <form class="cn-test-composer" id="cn-test-form">
-          <div class="cn-test-pending" id="cn-test-pending"></div>
-          <div class="cn-test-row">
-            <label class="cn-test-attach" title="<%= lang === 'en' ? 'Attach files' : '上传文件' %>">
-              <input type="file" id="cn-test-files" multiple accept=".pdf,.xlsx,.xls,.zip,.csv,.txt,application/pdf,application/zip,image/*">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M21.4 11.6 12.1 20.9a5.2 5.2 0 0 1-7.4-7.4l9.9-9.9a3.5 3.5 0 0 1 4.9 4.9l-9.2 9.2a1.7 1.7 0 1 1-2.4-2.4l8.1-8.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </label>
-            <textarea class="cn-test-input" id="cn-test-input" rows="1" placeholder="<%= lang === 'en' ? 'Drop a note, URL, or idea…' : '丢一段说明、网址或想法…' %>"></textarea>
-            <button class="cn-test-send" id="cn-test-send" type="submit" aria-label="<%= lang === 'en' ? 'Send' : '发送' %>">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </button>
-          </div>
-        </form>
-        <p class="cn-test-hint">
-          <%= lang === 'en' ? 'Concept · ' : '概念 · ' %><a href="/airsup/china"><%= lang === 'en' ? 'Live' : '正式版' %></a>
-        </p>
+  <div class="cn-test-universe" id="cn-test-universe">
+    <svg class="cn-test-canvas" id="cn-test-canvas" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+  </div>
+
+  <div class="cn-test-dock">
+    <div class="cn-test-peek" id="cn-test-thread" aria-live="polite"></div>
+    <form class="cn-test-composer" id="cn-test-form">
+      <div class="cn-test-pending" id="cn-test-pending"></div>
+      <div class="cn-test-row">
+        <label class="cn-test-attach" title="<%= lang === 'en' ? 'Attach' : '上传' %>">
+          <input type="file" id="cn-test-files" multiple accept=".pdf,.xlsx,.xls,.zip,.csv,.txt,application/pdf,application/zip,image/*">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M21.4 11.6 12.1 20.9a5.2 5.2 0 0 1-7.4-7.4l9.9-9.9a3.5 3.5 0 0 1 4.9 4.9l-9.2 9.2a1.7 1.7 0 1 1-2.4-2.4l8.1-8.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </label>
+        <textarea class="cn-test-input" id="cn-test-input" rows="1" placeholder="<%= lang === 'en' ? 'Drop files here, or type…' : '把文件丢到画面上，或直接输入…' %>"></textarea>
+        <button class="cn-test-send" id="cn-test-send" type="submit" aria-label="<%= lang === 'en' ? 'Send' : '发送' %>">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </div>
-    </section>
+    </form>
+    <p class="cn-test-hint"><a href="/airsup/china"><%= lang === 'en' ? 'Live product' : '正式版' %></a></p>
   </div>
 
   <script>
   (function () {
     var lang = document.body.getAttribute('data-lang') || 'zh';
-    var chatKey = 'airsup_china_test_chat_v3';
-    var webKey = 'airsup_china_test_web_v3';
+    var chatKey = 'airsup_china_test_chat_v4';
+    var webKey = 'airsup_china_test_web_v4';
     var thread = document.getElementById('cn-test-thread');
     var form = document.getElementById('cn-test-form');
     var input = document.getElementById('cn-test-input');
@@ -86,57 +71,46 @@
     var sendBtn = document.getElementById('cn-test-send');
     var actionsEl = document.getElementById('cn-test-actions');
     var canvas = document.getElementById('cn-test-canvas');
+    var universe = document.getElementById('cn-test-universe');
     var spark = document.getElementById('cn-test-spark');
     var reachEl = document.getElementById('cn-test-reach');
-    var linkHint = document.getElementById('cn-test-link-hint');
     var welcome = <%- JSON.stringify(welcome) %>;
     var layout = <%- JSON.stringify(layoutPositions) %>;
     var initialWeb = <%- JSON.stringify(initialWeb) %>;
     var pendingFiles = [];
     var busy = false;
     var typingRow = null;
-    var pulseIds = [];
-    var selectedNode = null;
+    var bloomIds = [];
+    var showLabels = false;
 
     function loadJson(key, fallback) {
       try {
         var raw = localStorage.getItem(key);
         if (!raw) return fallback;
         return JSON.parse(raw);
-      } catch (e) {
-        return fallback;
-      }
+      } catch (e) { return fallback; }
     }
-
     function saveJson(key, value) {
       try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
     }
-
     function esc(text) {
-      return String(text || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+      return String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
-
     function linkify(text) {
       return esc(text).replace(/(https?:\/\/[^\s<]+)/g, function (url) {
         return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + '</a>';
       });
     }
-
     function formatSize(n) {
       n = Number(n) || 0;
       if (n < 1024) return n + ' B';
       if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
       return (n / (1024 * 1024)).toFixed(1) + ' MB';
     }
-
     function fileExt(name) {
       var m = String(name || '').match(/\.([a-z0-9]+)$/i);
       return (m ? m[1] : 'FILE').toUpperCase().slice(0, 4);
     }
-
     function renderFiles(files) {
       if (!files || !files.length) return '';
       return '<div class="cn-test-files">' + files.map(function (f) {
@@ -148,11 +122,8 @@
           + '</span></div>';
       }).join('') + '</div>';
     }
-
-    function scrollChat() {
-      requestAnimationFrame(function () {
-        thread.scrollTop = thread.scrollHeight + 120;
-      });
+    function scrollPeek() {
+      requestAnimationFrame(function () { thread.scrollTop = thread.scrollHeight + 80; });
     }
 
     function appendBubble(role, content, files, opts) {
@@ -162,7 +133,6 @@
       if (opts.typing) row.classList.add('is-typing');
       var avatar = document.createElement('div');
       avatar.className = 'cn-test-avatar';
-      avatar.textContent = role === 'user' ? 'U' : 'A';
       var bubble = document.createElement('div');
       bubble.className = 'cn-test-bubble';
       var hasText = Boolean(content && String(content).trim());
@@ -178,20 +148,21 @@
       row.appendChild(avatar);
       row.appendChild(bubble);
       thread.appendChild(row);
-      scrollChat();
+      scrollPeek();
       return row;
     }
 
     function paintChat(messages) {
       thread.innerHTML = '';
-      messages.forEach(function (m) {
+      // Only keep last few on screen for calm feel
+      messages.slice(-6).forEach(function (m) {
         appendBubble(m.role, m.content, m.files);
       });
     }
 
     function nodeRadius(node) {
-      if (node.id === 'core') return 6.2 + (node.strength || 0) * 1.4;
-      return 2.4 + (node.strength || 0) * 3.2;
+      if (node.id === 'core') return 7.2 + (node.strength || 0) * 2.2;
+      return 1.6 + (node.strength || 0) * 4.4;
     }
 
     function curvePath(a, b, bend) {
@@ -200,7 +171,7 @@
       var dx = b.x - a.x;
       var dy = b.y - a.y;
       var len = Math.sqrt(dx * dx + dy * dy) || 1;
-      var mag = (bend == null ? 1 : bend) * Math.min(9, len * 0.2);
+      var mag = bend * Math.min(11, len * 0.22);
       var cx = mx + (-dy / len) * mag;
       var cy = my + (dx / len) * mag;
       return 'M ' + a.x + ' ' + a.y + ' Q ' + cx.toFixed(2) + ' ' + cy.toFixed(2) + ' ' + b.x + ' ' + b.y;
@@ -208,7 +179,7 @@
 
     function edgeBend(from, to) {
       var seed = (String(from) + String(to)).length;
-      return (seed % 2 === 0 ? 1 : -1) * (0.7 + (seed % 5) * 0.12);
+      return (seed % 2 === 0 ? 1 : -1) * (0.65 + (seed % 5) * 0.14);
     }
 
     function renderWeb(web) {
@@ -229,41 +200,32 @@
         var cls = 'cn-test-edge'
           + (e.kind === 'custom' ? ' is-custom' : '')
           + (live || e.kind === 'custom' ? ' is-live' : '');
-        var preview = selectedNode && (
-          (selectedNode === e.from || selectedNode === e.to) ? '' : ''
-        );
-        void preview;
-        return '<path class="' + cls + '" d="' + curvePath(a, b, edgeBend(e.from, e.to)) + '"></path>';
+        var op = live || e.kind === 'custom' ? '' : ' opacity="0.55"';
+        return '<path class="' + cls + '"' + op + ' d="' + curvePath(a, b, edgeBend(e.from, e.to)) + '"></path>';
       }).join('');
-
-      if (selectedNode && layout[selectedNode]) {
-        // soft preview ring already via selected class
-      }
 
       var nodeHtml = Object.keys(layout).map(function (id) {
         var pos = layout[id];
         var node = nodes[id] || { id: id, label: id, strength: 0 };
         var on = node.strength > 0.15 || id === 'core';
-        var pulse = pulseIds.indexOf(id) >= 0 ? ' is-pulse' : '';
+        var bloom = bloomIds.indexOf(id) >= 0 ? ' is-bloom' : '';
         var core = id === 'core' ? ' is-core' : '';
-        var sel = selectedNode === id ? ' is-selected' : '';
+        var lab = showLabels ? ' is-show-label' : '';
         var r = nodeRadius(node);
-        var halo = Math.max(r + 1.6, r * 1.35);
+        var halo = Math.max(r + 2.2, r * 1.55);
         var below = pos.y >= 52;
-        var labelY = below ? (pos.y + r + 3.6) : (pos.y - r - 1.8);
-        var short = String(node.label || '');
-        return '<g class="cn-test-node' + (on ? ' is-on' : '') + core + pulse + sel + '" data-id="' + id + '">'
+        var labelY = below ? (pos.y + r + 3.2) : (pos.y - r - 1.6);
+        return '<g class="cn-test-node' + (on ? ' is-on' : '') + core + bloom + lab + '" data-id="' + id + '">'
           + '<circle class="halo" cx="' + pos.x + '" cy="' + pos.y + '" r="' + halo.toFixed(2) + '"></circle>'
           + '<circle class="core-dot" cx="' + pos.x + '" cy="' + pos.y + '" r="' + r.toFixed(2) + '"></circle>'
-          + '<text x="' + pos.x + '" y="' + labelY.toFixed(2) + '">' + esc(short) + '</text>'
+          + '<text x="' + pos.x + '" y="' + labelY.toFixed(2) + '">' + esc(node.label || '') + '</text>'
           + '</g>';
       }).join('');
 
       canvas.innerHTML = edgeHtml + nodeHtml;
-      reachEl.innerHTML = String(web.reach || 10) + '<span>/100</span>';
-      renderSpark(web.reachHistory || [web.reach || 10]);
-      bindGraphClicks();
-      updateLinkHint();
+      var reach = web.reach || 10;
+      reachEl.innerHTML = String(reach) + '<span>/100</span>';
+      renderSpark(web.reachHistory || [reach]);
     }
 
     function renderSpark(history) {
@@ -272,79 +234,14 @@
       var min = Math.min.apply(null, vals.concat([0]));
       var max = Math.max.apply(null, vals.concat([20]));
       if (max - min < 8) max = min + 8;
-      var w = 120;
-      var h = 28;
+      var w = 88;
+      var h = 18;
       var pts = vals.map(function (v, i) {
-        var x = (i / (vals.length - 1)) * (w - 4) + 2;
-        var y = h - 3 - ((v - min) / (max - min)) * (h - 8);
+        var x = (i / (vals.length - 1)) * (w - 2) + 1;
+        var y = h - 2 - ((v - min) / (max - min)) * (h - 5);
         return x.toFixed(1) + ',' + y.toFixed(1);
       }).join(' ');
-      spark.innerHTML = '<polyline fill="none" stroke="#7a1e2b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" points="' + pts + '"></polyline>';
-    }
-
-    function updateLinkHint() {
-      if (!linkHint) return;
-      if (!selectedNode) {
-        linkHint.textContent = lang === 'en' ? 'Click two nodes to connect them' : '点两个节点，把它们连上';
-        return;
-      }
-      var label = (web.nodes[selectedNode] && web.nodes[selectedNode].label) || selectedNode;
-      linkHint.textContent = lang === 'en'
-        ? ('Selected “' + label + '” — click another node')
-        : ('已选「' + label + '」— 再点另一个节点');
-    }
-
-    function bindGraphClicks() {
-      canvas.querySelectorAll('.cn-test-node').forEach(function (g) {
-        g.onclick = function (ev) {
-          ev.preventDefault();
-          var id = g.getAttribute('data-id');
-          if (!id) return;
-          if (!selectedNode) {
-            selectedNode = id;
-            renderWeb(web);
-            return;
-          }
-          if (selectedNode === id) {
-            selectedNode = null;
-            renderWeb(web);
-            return;
-          }
-          var from = selectedNode;
-          var to = id;
-          selectedNode = null;
-          createLink(from, to);
-        };
-      });
-    }
-
-    async function createLink(from, to) {
-      try {
-        var res = await fetch('/airsup/china/test/api/link', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({ from: from, to: to, web: web }),
-        });
-        var data = await res.json().catch(function () { return {}; });
-        if (data.web) {
-          pulseIds = [from, to];
-          web = data.web;
-          saveJson(webKey, web);
-          renderWeb(web);
-          setTimeout(function () { pulseIds = []; renderWeb(web); }, 800);
-          var note = lang === 'en'
-            ? ('Linked. Reach ' + web.reach + '.')
-            : ('已连接。可达 ' + web.reach + '。');
-          messages.push({ role: 'assistant', content: note, at: Date.now() });
-          saveJson(chatKey, messages);
-          appendBubble('assistant', note);
-        } else {
-          renderWeb(web);
-        }
-      } catch (e) {
-        renderWeb(web);
-      }
+      spark.innerHTML = '<polyline fill="none" stroke="#7a1e2b" stroke-width="1.5" stroke-linecap="round" points="' + pts + '"></polyline>';
     }
 
     function ensureWelcome(messages) {
@@ -373,7 +270,7 @@
 
     function autosize() {
       input.style.height = 'auto';
-      input.style.height = Math.min(120, input.scrollHeight) + 'px';
+      input.style.height = Math.min(110, input.scrollHeight) + 'px';
     }
 
     function bindAuthButtons() {
@@ -392,12 +289,6 @@
             var data = await res.json().catch(function () { return {}; });
             if (!res.ok) throw new Error('login');
             setLoggedIn(true, data.company && data.company.name);
-            var note = lang === 'en'
-              ? 'Logged in. Keep feeding the same web — progress stays with the company.'
-              : '已登录。继续喂同一张网 — 进展会挂在公司下。';
-            messages.push({ role: 'assistant', content: note, at: Date.now() });
-            saveJson(chatKey, messages);
-            appendBubble('assistant', note);
           } catch (e) {
             alert(lang === 'en' ? 'Demo login failed.' : '演示登录失败。');
           } finally {
@@ -437,46 +328,16 @@
       bindAuthButtons();
     }
 
-    var web = loadJson(webKey, initialWeb) || initialWeb;
-    var messages = ensureWelcome(loadJson(chatKey, []) || []);
-    renderWeb(web);
-    paintChat(messages);
-    bindAuthButtons();
-
-    fileInput.addEventListener('change', function () {
-      Array.prototype.slice.call(fileInput.files || []).forEach(function (f) {
-        pendingFiles.push(f);
-      });
-      fileInput.value = '';
-      renderPending();
-    });
-
-    input.addEventListener('input', autosize);
-    input.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        form.requestSubmit();
-      }
-    });
-
-    form.addEventListener('submit', async function (e) {
-      e.preventDefault();
+    async function sendTurn(text, filesSnap) {
       if (busy) return;
-      var text = String(input.value || '').trim();
-      if (!text && !pendingFiles.length) return;
-
+      if (!text && !(filesSnap && filesSnap.length)) return;
       busy = true;
       sendBtn.disabled = true;
-      var filesSnap = pendingFiles.slice();
-      pendingFiles = [];
-      renderPending();
-      input.value = '';
-      autosize();
 
       var userMsg = {
         role: 'user',
-        content: text,
-        files: filesSnap.map(function (f) { return { name: f.name, size: f.size }; }),
+        content: text || '',
+        files: (filesSnap || []).map(function (f) { return { name: f.name, size: f.size }; }),
         at: Date.now(),
       };
       messages.push(userMsg);
@@ -486,12 +347,12 @@
 
       try {
         var body = new FormData();
-        body.append('message', text);
+        body.append('message', text || '');
         body.append('history', JSON.stringify(messages.slice(0, -1).map(function (m) {
           return { role: m.role, content: m.content || (m.files && m.files.length ? '[file upload]' : '') };
         })));
         body.append('web', JSON.stringify(web));
-        filesSnap.forEach(function (f) { body.append('files', f); });
+        (filesSnap || []).forEach(function (f) { body.append('files', f); });
 
         var res = await fetch('/airsup/china/test/api/chat', {
           method: 'POST',
@@ -503,23 +364,23 @@
         typingRow = null;
 
         if (data.web) {
-          pulseIds = (data.signals || []).map(function (s) { return s.node; });
+          bloomIds = (data.signals || []).map(function (s) { return s.node; });
           web = data.web;
           saveJson(webKey, web);
           renderWeb(web);
-          setTimeout(function () { pulseIds = []; renderWeb(web); }, 900);
+          setTimeout(function () { bloomIds = []; renderWeb(web); }, 1000);
         }
 
         var replyText = res.ok
           ? (data.reply || '')
-          : (lang === 'en' ? 'Something went wrong. Try again.' : '发送失败，请稍后再试。');
+          : (lang === 'en' ? 'Try again.' : '请重试。');
         messages.push({ role: 'assistant', content: replyText, at: Date.now() });
         saveJson(chatKey, messages);
         appendBubble('assistant', replyText);
       } catch (err) {
         if (typingRow && typingRow.parentNode) typingRow.parentNode.removeChild(typingRow);
         typingRow = null;
-        var fail = lang === 'en' ? 'Network error. Try again.' : '网络错误，请重试。';
+        var fail = lang === 'en' ? 'Network error.' : '网络错误。';
         messages.push({ role: 'assistant', content: fail, at: Date.now() });
         saveJson(chatKey, messages);
         appendBubble('assistant', fail);
@@ -528,6 +389,62 @@
         sendBtn.disabled = false;
         input.focus();
       }
+    }
+
+    var web = loadJson(webKey, initialWeb) || initialWeb;
+    var messages = ensureWelcome(loadJson(chatKey, []) || []);
+    renderWeb(web);
+    paintChat(messages);
+    bindAuthButtons();
+
+    fileInput.addEventListener('change', function () {
+      Array.prototype.slice.call(fileInput.files || []).forEach(function (f) { pendingFiles.push(f); });
+      fileInput.value = '';
+      renderPending();
+    });
+
+    // Drop onto the constellation
+    ;['dragenter', 'dragover'].forEach(function (ev) {
+      universe.addEventListener(ev, function (e) {
+        e.preventDefault();
+        universe.classList.add('is-drag');
+      });
+    });
+    ;['dragleave', 'drop'].forEach(function (ev) {
+      universe.addEventListener(ev, function (e) {
+        e.preventDefault();
+        universe.classList.remove('is-drag');
+      });
+    });
+    universe.addEventListener('drop', function (e) {
+      var list = e.dataTransfer && e.dataTransfer.files ? Array.prototype.slice.call(e.dataTransfer.files) : [];
+      if (!list.length) return;
+      sendTurn('', list);
+    });
+
+    // Brief label reveal on long-press / hover via CSS; double-click toggles all labels
+    universe.addEventListener('dblclick', function () {
+      showLabels = !showLabels;
+      renderWeb(web);
+    });
+
+    input.addEventListener('input', autosize);
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        form.requestSubmit();
+      }
+    });
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var text = String(input.value || '').trim();
+      var filesSnap = pendingFiles.slice();
+      pendingFiles = [];
+      renderPending();
+      input.value = '';
+      autosize();
+      sendTurn(text, filesSnap);
     });
   })();
   </script>

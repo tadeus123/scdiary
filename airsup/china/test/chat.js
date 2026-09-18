@@ -10,13 +10,9 @@ const MAX_MSG_CHARS = 6000;
 const KEEP_RECENT = 10;
 const OPENAI_MS = 25000;
 
-const WELCOME_ZH = [
-  '左边是端点网。往里丢材料，或点两个节点把它们连上 — 网会变密，可达会升高。',
-].join('\n');
+const WELCOME_ZH = '把报价、网站、碎片丢到画面上。网会亮起来。';
 
-const WELCOME_EN = [
-  'Left is your endpoint web. Dump material, or click two nodes to link them — denser web, higher reach.',
-].join('\n');
+const WELCOME_EN = 'Drop quotes, a site, scraps onto the canvas. The web brightens.';
 
 function welcomeMessage(lang) {
   return lang === 'en' ? WELCOME_EN : WELCOME_ZH;
