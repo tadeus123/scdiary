@@ -680,6 +680,17 @@ a.cn-ob-verify-link {
   user-select: none;
 }
 
+.cn-test-board-check.is-soon {
+  cursor: default;
+  opacity: 0.42;
+  color: #6a635a;
+  pointer-events: none;
+}
+
+.cn-test-board-check.is-soon .cn-test-board-check-mark {
+  border-color: #9a9186;
+}
+
 .cn-test-board-check input {
   position: absolute;
   opacity: 0;
