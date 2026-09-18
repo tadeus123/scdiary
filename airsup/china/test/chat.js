@@ -12,19 +12,13 @@ const OPENAI_MS = 25000;
 const WELCOME_ZH = [
   '你好 — 我是 Airsup。',
   '',
-  '这里不是传统后台，而是一条跟我的持续对话（像微信一样，只有这一条）。',
-  '你可以把公司网站、能力说明、过去的报价 PDF / Excel / ZIP 丢进来；我会帮你把 ChatGPT 端点准备好，让欧美采购能在 ChatGPT 里找到你们。',
-  '',
-  '先随便说一句，或者上传一份文件也行。登录后我会把进展记在你们公司下。',
+  '这里只有一条持续对话（像微信）。把网站、能力说明或过去的报价文件丢进来，我帮你把 ChatGPT 端点准备好。',
 ].join('\n');
 
 const WELCOME_EN = [
   'Hi — I am Airsup.',
   '',
-  'This is not a classic dashboard. It is one ongoing chat with me (like WhatsApp: a single thread).',
-  'Drop your website, capability notes, or past quotation PDF / Excel / ZIP files here. I will help you prepare the ChatGPT endpoint so Western buyers can find you inside ChatGPT.',
-  '',
-  'Say anything to start, or upload a file. After you log in, progress stays with your company.',
+  'One ongoing chat (like WhatsApp). Drop a website, capability note, or past quotation file — I will help prepare your ChatGPT endpoint.',
 ].join('\n');
 
 function welcomeMessage(lang) {
