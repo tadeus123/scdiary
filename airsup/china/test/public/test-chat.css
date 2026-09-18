@@ -531,7 +531,7 @@ a.cn-ob-verify-link {
 .cn-test-board {
   position: fixed;
   inset: 0;
-  z-index: 700;
+  z-index: 880;
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.75fr);
   gap: clamp(1.5rem, 4vw, 3.5rem);
@@ -539,8 +539,7 @@ a.cn-ob-verify-link {
   padding: 6.5rem clamp(1.5rem, 5vw, 4.5rem) 3rem;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 70% 55% at 28% 42%, rgba(255, 252, 246, 0.72), transparent 70%),
-    linear-gradient(180deg, rgba(239, 232, 220, 0.55), rgba(239, 232, 220, 0.82));
+    radial-gradient(ellipse 80% 70% at 30% 40%, rgba(255, 252, 246, 0.97), rgba(239, 232, 220, 0.94) 55%, rgba(239, 232, 220, 0.98));
 }
 .cn-test-board[hidden] { display: none !important; }
 .cn-test-board > * { pointer-events: auto; }
@@ -594,7 +593,7 @@ a.cn-ob-verify-link {
   padding: 1.4rem 1.2rem;
   border: 1.5px dashed rgba(193, 106, 40, 0.45);
   border-radius: 14px;
-  background: rgba(255, 252, 246, 0.78);
+  background: rgba(255, 252, 246, 0.95);
   display: grid;
   place-content: center;
   text-align: center;
@@ -610,7 +609,7 @@ a.cn-ob-verify-link {
 .cn-test-board-drop:hover,
 .cn-test-board-drop.is-drag {
   border-color: var(--accent);
-  background: rgba(255, 252, 246, 0.95);
+  background: #fffdf8;
 }
 .cn-test-board-drop.is-busy { opacity: 0.55; pointer-events: none; }
 .cn-test-board-drop-title {
@@ -633,10 +632,15 @@ a.cn-ob-verify-link {
 }
 
 .cn-test-has-board #cn-test-network {
-  opacity: 0.22;
-  filter: saturate(0.7);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
-.cn-test-has-board .cn-test-empty { display: none; }
+.cn-test-has-board .cn-test-empty,
+.cn-test-has-board .cn-test-reach-float,
+.cn-test-has-board .cn-test-dock {
+  display: none !important;
+}
 
 @media (max-width: 860px) {
   .cn-test-board {
