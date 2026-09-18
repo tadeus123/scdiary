@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <%- include('/partials/seo-head') %>
+  <link rel="stylesheet" href="/games/games.css?v=1">
+</head>
+<body class="games-page">
+  <input
+    id="typecatch"
+    class="games-catch"
+    type="text"
+    autocomplete="off"
+    autocorrect="off"
+    autocapitalize="off"
+    spellcheck="false"
+    aria-label="Type here"
+  >
+
+  <header class="games-top">
+    <p class="games-kicker">speed typing</p>
+    <div class="games-hud" aria-live="polite">
+      <div class="games-stat games-stat-wpm">
+        <span>WPM</span>
+        <strong id="stat-wpm">0</strong>
+      </div>
+      <div class="games-stat">
+        <span>mistakes</span>
+        <strong id="stat-mistakes">0</strong>
+      </div>
+      <div class="games-stat">
+        <span>time</span>
+        <strong id="stat-time"><%= roundSeconds %></strong>
+      </div>
+      <div class="games-stat">
+        <span>score</span>
+        <strong id="stat-score">0</strong>
+      </div>
+      <div class="games-stat games-stat-best">
+        <span>high score</span>
+        <strong id="stat-best"><%= highscore.score || 0 %></strong>
+      </div>
+    </div>
+  </header>
+
+  <main class="games-stage">
+    <section id="idle" class="games-panel">
+      <p class="games-prompt">English appears. Type it. Go fast.</p>
+      <p class="games-hint">Press any key to start. <%= roundSeconds %> seconds.</p>
+    </section>
+
+    <section id="play" class="games-panel" hidden>
+      <p id="line" class="games-line"></p>
+    </section>
+
+    <section id="results" class="games-panel" hidden>
+      <p class="games-result-label">score</p>
+      <p id="result-score" class="games-result-score">0</p>
+      <p id="result-beat" class="games-result-beat" hidden>new high score</p>
+      <p class="games-result-meta">
+        <span id="result-wpm">0</span> WPM
+        ·
+        <span id="result-mistakes">0</span> mistakes
+      </p>
+      <button type="button" id="again" class="games-again">play again</button>
+    </section>
+  </main>
+
+  <p class="games-formula">score = WPM × 10 − mistakes × 20</p>
+
+  <script>
+    window.GAMES = {
+      phrases: <%- JSON.stringify(phrases) %>,
+      highscore: <%- JSON.stringify(highscore) %>,
+      roundSeconds: <%= Number(roundSeconds) %>
+    };
+  </script>
+  <script src="/games/games.js?v=1"></script>
+</body>
+</html>
