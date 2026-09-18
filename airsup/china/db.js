@@ -1,11 +1,63 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+const DEFAULT_CHINA_SUPABASE_URL = 'https://wttyutffpgazxgwjzyuw.supabase.co';
+const supabaseUrl = String(process.env.AIRSUP_CHINA_SUPABASE_URL || DEFAULT_CHINA_SUPABASE_URL).trim();
+const supabaseKey = String(
+  process.env.AIRSUP_CHINA_SERVICE_ROLE_KEY
+  || process.env.AIRSUP_CHINA_SERVICE_KEY
+  || ''
+).trim();
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
+function opsOrigin() {
+  return String(
+    process.env.AIRSUP_CHINA_OPS_ORIGIN
+    || process.env.AIRSUP_CHINA_PUBLIC_ORIGIN
+    || 'https://www.airsup.co'
+  ).replace(/\/$/, '');
+}
+
+function opsSecret() {
+  return String(
+    process.env.AIRSUP_CHINA_OPS_SECRET
+    || process.env.AIRSUP_SESSION_SECRET
+    || process.env.SESSION_SECRET
+    || ''
+  ).trim();
+}
+
 function isConfigured() {
-  return Boolean(supabase);
+  return Boolean(supabase) || Boolean(opsSecret());
+}
+
+async function viaOps(method, args) {
+  const secret = opsSecret();
+  if (!secret) throw new Error('Airsup China storage is not configured.');
+  const res = await fetch(`${opsOrigin()}/api/ops/china-db`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${secret}`,
+    },
+    body: JSON.stringify({ method, args }),
+  });
+  let json = null;
+  try {
+    json = await res.json();
+  } catch {
+    json = null;
+  }
+  if (!res.ok || !json || json.ok === false) {
+    throw new Error((json && json.error) || `china_ops_${res.status}`);
+  }
+  return json.result;
+}
+
+function wrap(name, fn) {
+  return async (...args) => {
+    if (supabase) return fn(...args);
+    return viaOps(name, args);
+  };
 }
 
 function requireDb() {
@@ -335,33 +387,33 @@ async function listDomainAllows() {
 module.exports = {
   isConfigured,
   requireDb,
-  getByDomain,
-  getByContactEmail,
-  getById,
-  listCompanies,
-  listCompaniesProof,
-  listLive,
-  insertCompany,
-  updateCompany,
-  insertToken,
-  takeToken,
-  getToken,
-  listTokensForCompany,
-  listInquiriesForCompany,
-  insertSession,
-  getSession,
-  deleteSession,
-  deleteSessionsForCompany,
-  insertInquiry,
-  insertThread,
-  getThread,
-  findOpenThread,
-  listThreadsForCaller,
-  updateThread,
-  insertMessage,
-  listMessages,
-  getDomainAllow,
-  upsertDomainAllow,
-  touchDomainAllow,
-  listDomainAllows,
+  getByDomain: wrap('getByDomain', getByDomain),
+  getByContactEmail: wrap('getByContactEmail', getByContactEmail),
+  getById: wrap('getById', getById),
+  listCompanies: wrap('listCompanies', listCompanies),
+  listCompaniesProof: wrap('listCompaniesProof', listCompaniesProof),
+  listLive: wrap('listLive', listLive),
+  insertCompany: wrap('insertCompany', insertCompany),
+  updateCompany: wrap('updateCompany', updateCompany),
+  insertToken: wrap('insertToken', insertToken),
+  takeToken: wrap('takeToken', takeToken),
+  getToken: wrap('getToken', getToken),
+  listTokensForCompany: wrap('listTokensForCompany', listTokensForCompany),
+  listInquiriesForCompany: wrap('listInquiriesForCompany', listInquiriesForCompany),
+  insertSession: wrap('insertSession', insertSession),
+  getSession: wrap('getSession', getSession),
+  deleteSession: wrap('deleteSession', deleteSession),
+  deleteSessionsForCompany: wrap('deleteSessionsForCompany', deleteSessionsForCompany),
+  insertInquiry: wrap('insertInquiry', insertInquiry),
+  insertThread: wrap('insertThread', insertThread),
+  getThread: wrap('getThread', getThread),
+  findOpenThread: wrap('findOpenThread', findOpenThread),
+  listThreadsForCaller: wrap('listThreadsForCaller', listThreadsForCaller),
+  updateThread: wrap('updateThread', updateThread),
+  insertMessage: wrap('insertMessage', insertMessage),
+  listMessages: wrap('listMessages', listMessages),
+  getDomainAllow: wrap('getDomainAllow', getDomainAllow),
+  upsertDomainAllow: wrap('upsertDomainAllow', upsertDomainAllow),
+  touchDomainAllow: wrap('touchDomainAllow', touchDomainAllow),
+  listDomainAllows: wrap('listDomainAllows', listDomainAllows),
 };

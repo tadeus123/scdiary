@@ -76,9 +76,15 @@ assert.strictEqual(
   assert.ok(routes.includes('/connect'));
   assert.ok(routes.includes('/auth/google'));
   assert.ok(routes.includes('/oauth/authorize'));
+  assert.strictEqual(require('./config').MCP_URL, 'https://www.tademehl.com/airsupdev/mcp');
+  assert.strictEqual(require('../airsup/config').MCP_URL, 'https://www.tademehl.com/airsup/mcp');
   const mcpSrc = fs.readFileSync(path.join(__dirname, 'mcp.js'), 'utf8');
   assert.ok(mcpSrc.includes('Google OAuth'));
   assert.ok(!mcpSrc.includes('AIRSUPDEV_MCP_SECRET'));
+  const servicesSrc = fs.readFileSync(path.join(__dirname, 'services.js'), 'utf8');
+  assert.ok(servicesSrc.includes('chinaVerifyUrl'));
+  assert.ok(servicesSrc.includes('chinaLiveJsonUrl'));
+  assert.ok(!servicesSrc.includes('/airsup/china/verify'));
   assert.ok(fs.existsSync(path.join(__dirname, 'sql/schema.sql')));
 
   console.log('airsupdev tests passed');

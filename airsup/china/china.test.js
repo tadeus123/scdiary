@@ -51,6 +51,19 @@ assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("r
 assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.post('/claim/confirm'"));
 assert.ok(fs.readFileSync(path.join(__dirname, 'mint-claim.js'), 'utf8').includes('mintClaim'));
 assert.strictEqual(typeof require('./mint-claim').mintClaim, 'function');
+const chinaOrigin = require('./origin');
+assert.strictEqual(chinaOrigin.chinaPublicOrigin(), 'https://www.airsup.co');
+assert.ok(chinaOrigin.chinaClaimUrl('abc').startsWith('https://www.airsup.co/claim?'));
+assert.ok(chinaOrigin.chinaVerifyUrl('tok', 'quotes').includes('/verify?'));
+assert.ok(chinaOrigin.chinaVerifyUrl('tok', 'quotes').includes('next=quotes'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8').includes('AIRSUP_CHINA_SUPABASE_URL'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8').includes('AIRSUP_CHINA_SERVICE_ROLE_KEY'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8').includes('wttyutffpgazxgwjzyuw.supabase.co'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8').includes('/api/ops/china-db'));
+assert.ok(!fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8').includes('process.env.SUPABASE_URL'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'mint-claim.js'), 'utf8').includes('chinaClaimUrl'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'send-quotes-invite.js'), 'utf8').includes('chinaVerifyUrl'));
+assert.ok(fs.readFileSync(path.join(__dirname, '../routes.js'), 'utf8').includes('307'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'approve-claim.js'), 'utf8').includes("source: 'manual'"));
 assert.ok(fs.readFileSync(path.join(__dirname, 'funnel-status.js'), 'utf8').includes('allows_claim_opened'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8').includes('listDomainAllows'));
@@ -123,6 +136,7 @@ assert.deepStrictEqual(companies[0], {
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/partials/head.ejs'), 'utf8').includes('/airsup/live-companies.json'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/partials/head.ejs'), 'utf8').includes('/llms.txt'));
 assert.ok(fs.existsSync(path.join(__dirname, '../public/china.txt')));
+assert.ok(fs.readFileSync(path.join(__dirname, '../public/china.txt'), 'utf8').includes('https://www.airsup.co/'));
 assert.ok(fs.readFileSync(path.join(__dirname, '../../public/robots.txt'), 'utf8').includes('ChatGPT-User'));
 assert.ok(fs.readFileSync(path.join(__dirname, '../../public/robots.txt'), 'utf8').includes('OAI-SearchBot'));
 assert.ok(fs.readFileSync(path.join(__dirname, '../../public/llms.txt'), 'utf8').includes('/airsup/live-companies.json'));

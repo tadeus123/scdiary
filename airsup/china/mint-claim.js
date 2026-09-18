@@ -9,6 +9,7 @@ const db = require('./db');
 const session = require('./session');
 const { buildPreview, companyDraftFromPreview } = require('./site-preview');
 const { fillEmptyCompany, canPublish, normalizeProfile } = require('./fields');
+const { chinaClaimUrl } = require('./origin');
 
 function arg(name) {
   const prefix = `--${name}=`;
@@ -19,10 +20,6 @@ function arg(name) {
     return process.argv[idx + 1];
   }
   return '';
-}
-
-function publicBase() {
-  return String(process.env.PUBLIC_BASE_URL || process.env.SITE_URL || 'https://www.tademehl.com').replace(/\/$/, '');
 }
 
 async function mintClaim({ domain, email, source, note, lang, company_id: companyId }) {
@@ -107,7 +104,7 @@ async function mintClaim({ domain, email, source, note, lang, company_id: compan
   }
 
   const token = await session.createToken(company.company_id, parts.email, 'claim');
-  const link = `${publicBase()}/airsup/china/claim?token=${token}`;
+  const link = chinaClaimUrl(token);
   return {
     domain: site,
     email: parts.email,

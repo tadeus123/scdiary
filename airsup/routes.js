@@ -273,14 +273,20 @@ router.options('/oauth/token', (req, res) => {
 router.all('/mcp', (req, res) => mcp.handleMcp(req, res));
 
 // AIRSUP-CHINA-BEGIN
+function redirectToAirsupCo(req, res, dest) {
+  const path = dest.startsWith('/') ? dest : `/${dest}`;
+  const status = req.method === 'GET' || req.method === 'HEAD' ? 302 : 307;
+  return res.redirect(status, `https://www.airsup.co${path}`);
+}
+
 router.get('/live-companies.json', require('./china/live-companies'));
 router.use('/china', (req, res) => {
   const dest = req.url === '/' ? '/' : req.url;
-  return res.redirect(302, `https://www.airsup.co${dest.startsWith('/') ? dest : `/${dest}`}`);
+  return redirectToAirsupCo(req, res, dest);
 });
 router.use('/dashboard', (req, res) => {
   const dest = `/dashboard${req.url === '/' ? '' : req.url}`;
-  return res.redirect(302, `https://www.airsup.co${dest}`);
+  return redirectToAirsupCo(req, res, dest);
 });
 // AIRSUP-CHINA-END
 

@@ -1,6 +1,6 @@
 Airsup China — let ChatGPT find your factory
 
-URL: https://www.tademehl.com/airsup/china
+URL: https://www.airsup.co/
 Live JSON: https://www.tademehl.com/airsup/live-companies.json
 
 What it is

@@ -7,6 +7,7 @@
 const db = require('./db');
 const session = require('./session');
 const { sendQuotesInviteEmail } = require('./mail');
+const { chinaVerifyUrl } = require('./origin');
 
 function argsNamed(name) {
   const prefix = `--${name}=`;
@@ -21,16 +22,12 @@ function argsNamed(name) {
   return values.filter(Boolean);
 }
 
-function publicBase() {
-  return String(process.env.PUBLIC_BASE_URL || process.env.SITE_URL || 'https://www.tademehl.com').replace(/\/$/, '');
-}
-
 async function sendForDomain(domain) {
   const company = await db.getByDomain(domain);
   if (!company) throw new Error(`Company not found: ${domain}`);
   if (!company.contact_email) throw new Error(`No contact_email for ${domain}`);
   const token = await session.createToken(company.company_id, company.contact_email, 'login');
-  const link = `${publicBase()}/airsup/china/verify?token=${token}&next=quotes`;
+  const link = chinaVerifyUrl(token, 'quotes');
   await sendQuotesInviteEmail({
     lang: company.locale === 'en' ? 'en' : 'zh',
     to: company.contact_email,

@@ -33,7 +33,7 @@ const {
 } = require('../airsup/china/domain');
 const session = require('../airsup/china/session');
 const { sendVerifyEmail } = require('../airsup/china/mail');
-const { publicOriginFromEnv } = require('./config');
+const { chinaVerifyUrl, chinaLiveJsonUrl, chinaEndpointUrl } = require('../airsup/china/origin');
 
 function requireChinaDb() {
   if (!chinaDb.isConfigured()) {
@@ -491,7 +491,7 @@ async function verifySupplier(args = {}) {
   }
   await chinaDb.updateCompany(company.company_id, { contact_email: parts.email });
   const token = await session.createToken(company.company_id, parts.email, company.status === 'pending' ? 'verify' : 'login');
-  const link = `${publicOriginFromEnv()}/airsup/china/verify?token=${token}`;
+  const link = chinaVerifyUrl(token);
   await sendVerifyEmail({
     lang: args.lang === 'en' ? 'en' : 'zh',
     to: parts.email,
@@ -626,7 +626,6 @@ async function getEnrichmentGaps(args = {}) {
 async function generateDemo(args = {}) {
   const company = await resolveCompany(args, { allowFuzzy: true });
   if (!company) return { ok: false, error: 'supplier_not_found' };
-  const origin = publicOriginFromEnv();
   return {
     ok: true,
     company_id: company.company_id,
@@ -636,8 +635,8 @@ async function generateDemo(args = {}) {
     buyer_prompt: buyerTestPrompt(company),
     listing_text: listingText(company),
     card: endpointRecord(company),
-    live_json_url: `${origin}/airsup/china/live.json`,
-    endpoint_url: `${origin}/airsup/china/api/endpoint/${company.company_id}`,
+    live_json_url: chinaLiveJsonUrl(),
+    endpoint_url: chinaEndpointUrl(company.company_id),
   };
 }
 

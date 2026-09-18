@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const { GMAIL_SENDER } = require('../config');
 const peopleDb = require('../db');
 const { t } = require('./i18n');
+const { chinaPublicOrigin } = require('./origin');
 
 function encodeSubject(subject) {
   return `=?UTF-8?B?${Buffer.from(String(subject), 'utf8').toString('base64')}?=`;
@@ -84,7 +85,7 @@ async function sendRaw({ to, subject, text, html, fetchImpl }) {
 }
 
 function mailAssetOrigin() {
-  return (process.env.AIRSUP_PUBLIC_ORIGIN || 'https://www.tademehl.com').replace(/\/$/, '');
+  return chinaPublicOrigin();
 }
 
 function mailShell(inner, lang) {

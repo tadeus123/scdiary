@@ -114,7 +114,7 @@ async function fetchSitemapUrls(domain, limit = 20) {
       signal: controller.signal,
       headers: {
         Accept: 'application/xml,text/xml,text/plain',
-        'User-Agent': 'AirsupPreview/1 (https://www.tademehl.com/airsup/china)',
+        'User-Agent': 'AirsupPreview/1 (https://www.airsup.co/)',
       },
     });
     const finalHost = (() => {
@@ -161,7 +161,7 @@ async function fetchSiteText(domain) {
       signal: controller.signal,
       headers: {
         Accept: 'text/html,text/plain',
-        'User-Agent': 'AirsupPreview/1 (https://www.tademehl.com/airsup/china)',
+        'User-Agent': 'AirsupPreview/1 (https://www.airsup.co/)',
       },
     });
     const finalHost = (() => {
@@ -195,7 +195,7 @@ async function fetchOnePage(url, domain) {
       signal: controller.signal,
       headers: {
         Accept: 'text/html,text/plain,application/pdf',
-        'User-Agent': 'AirsupPreview/1 (https://www.tademehl.com/airsup/china)',
+        'User-Agent': 'AirsupPreview/1 (https://www.airsup.co/)',
       },
     });
     const finalHost = (() => {
