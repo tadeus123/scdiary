@@ -142,8 +142,8 @@
     }
 
     function nodeRadius(node) {
-      var base = node.kind === 'seed' ? 0.55 : 0.7;
-      return base + (Number(node.strength) || 0) * 1.15;
+      var base = node.kind === 'seed' ? 0.32 : 0.38;
+      return base + (Number(node.strength) || 0) * 0.7;
     }
 
     function curvePath(a, b, bend) {

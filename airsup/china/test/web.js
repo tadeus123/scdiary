@@ -74,8 +74,8 @@ function placeNode(id, index, totalHint) {
 }
 
 function nodeRadius(node) {
-  const base = node.kind === 'seed' ? 0.55 : 0.7;
-  return base + clamp01(node.strength) * 1.15;
+  const base = node.kind === 'seed' ? 0.32 : 0.38;
+  return base + clamp01(node.strength) * 0.7;
 }
 
 function computeReach(web) {
@@ -120,32 +120,37 @@ function detectKinds(message, files) {
   const kinds = [];
 
   if (/https?:\/\//i.test(text) || /\b[\w.-]+\.(com|cn|net|co)\b/i.test(text)) {
-    kinds.push({ kind: 'site', hint: (text.match(/https?:\/\/[^\s]+/i) || text.match(/\b[\w.-]+\.(com|cn|net|co)\b/i) || ['site'])[0] });
+    const m = text.match(/https?:\/\/[^\s]+/i) || text.match(/\b[\w.-]+\.(com|cn|net|co)\b/i);
+    kinds.push({ kind: 'site', hint: m ? m[0] : 'site' });
   }
-  if (/\b(sla|sls|fdm|mjf|cnc|注塑|机加|钣金|冲压|铸造|喷涂|阳极|3d\s*print|resin|铣削|车削|压铸)\b/i.test(lower)
-    || /工艺|打印|机加|注塑|压铸/.test(text)) {
-    const m = text.match(/\b(SLA|SLS|FDM|MJF|CNC|注塑|机加|钣金|压铸|3D\s*打印|树脂)\b/i);
-    kinds.push({ kind: 'process', hint: m ? m[0] : 'process' });
+  {
+    const m = text.match(/SLA|SLS|FDM|MJF|CNC|注塑|机加|钣金|冲压|铸造|压铸|喷涂|阳极|3D\s*打印|树脂|铣削|车削/i)
+      || lower.match(/\b(sla|sls|fdm|mjf|cnc|resin)\b/i);
+    if (m || /工艺|打印|机加|注塑|压铸/.test(text)) {
+      kinds.push({ kind: 'process', hint: m ? m[0] : 'process' });
+    }
   }
-  if (/\b(aluminum|aluminium|steel|resin|nylon|abs|peek|不锈钢|铝合金|钛|铜|塑料)\b/i.test(lower)
-    || /材料|树脂|尼龙/.test(text)) {
-    const m = text.match(/\b(aluminum|aluminium|steel|resin|nylon|ABS|PEEK|不锈钢|铝合金|树脂)\b/i);
-    kinds.push({ kind: 'material', hint: m ? m[0] : 'material' });
+  {
+    const m = text.match(/铝合金|不锈钢|钛|铜|塑料|树脂|尼龙|aluminum|aluminium|steel|resin|nylon|ABS|PEEK/i);
+    if (m || /材料/.test(text)) {
+      kinds.push({ kind: 'material', hint: m ? m[0] : 'material' });
+    }
   }
-  if (/wechat|微信|whatsapp|电话|sales@|联系人/i.test(lower) || /微信/.test(text)) {
-    kinds.push({ kind: 'contact', hint: 'contact' });
+  if (/wechat|微信|whatsapp|电话|sales@|联系人/i.test(text)) {
+    kinds.push({ kind: 'contact', hint: /微信/.test(text) ? '微信' : 'contact' });
   }
-  if (/lead\s*time|交期|样品|sample|working\s*days|天交|MOQ|moq/i.test(lower) || /交期|样品/.test(text)) {
-    kinds.push({ kind: 'lead', hint: 'lead' });
+  {
+    const m = text.match(/交期|样品|MOQ|moq|lead\s*time|sample|working\s*days/i);
+    if (m) kinds.push({ kind: 'lead', hint: m[0] });
   }
-  if (/export|出口|欧美|海外|incoterm|fob|exw/i.test(lower) || /出口|海外/.test(text)) {
-    kinds.push({ kind: 'export', hint: 'export' });
+  if (/export|出口|欧美|海外|incoterm|fob|exw/i.test(text)) {
+    kinds.push({ kind: 'export', hint: /出口|海外/.test(text) ? '出口' : 'export' });
   }
-  if (/iso|证书|cert|qc|品质|公差|tolerance|inspection/i.test(lower) || /品质|证书|公差/.test(text)) {
-    kinds.push({ kind: 'quality', hint: 'quality' });
+  if (/iso|证书|cert|qc|品质|公差|tolerance|inspection/i.test(text)) {
+    kinds.push({ kind: 'quality', hint: /品质|证书|公差/.test(text) ? '品质' : 'quality' });
   }
-  if (/产能|capacity|pcs\/|月产|台设备|machines?/i.test(lower) || /产能|设备/.test(text)) {
-    kinds.push({ kind: 'capacity', hint: 'capacity' });
+  if (/产能|capacity|pcs\/|月产|台设备|machines?/i.test(text)) {
+    kinds.push({ kind: 'capacity', hint: /产能|设备/.test(text) ? '产能' : 'capacity' });
   }
 
   for (const file of files || []) {
