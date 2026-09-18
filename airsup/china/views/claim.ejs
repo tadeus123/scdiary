@@ -7,31 +7,15 @@
 <body class="cn-body">
   <%- include('partials/header') %>
   <main class="cn-wrap cn-inner">
-    <p class="cn-stamp"><%= t('claim_stamp') %></p>
     <h1><%= companyTitle %></h1>
     <p class="cn-lead"><%= t('claim_lead') %></p>
     <% if (error) { %><p class="cn-error"><%= error %></p><% } %>
-
-    <table class="cn-spec">
-      <tbody>
-        <tr><th><%= lang === 'en' ? 'Website' : '网站' %></th><td><%= company.website || ('https://' + company.domain) %></td></tr>
-        <tr><th><%= lang === 'en' ? 'Capabilities' : '能力' %></th><td><%= capabilities || t('claim_caps_fallback') %></td></tr>
-        <tr><th><%= lang === 'en' ? 'Contact' : '联系邮箱' %></th><td><%= company.contact_email %></td></tr>
-      </tbody>
-    </table>
-
-    <% if (listingPreview) { %>
-      <section class="cn-live-listing" aria-labelledby="claim-listing-title">
-        <h2 id="claim-listing-title" class="cn-live-h2"><%= t('claim_listing_title') %></h2>
-        <pre class="cn-live-listing-text"><%= listingPreview %></pre>
-      </section>
-    <% } %>
-
+    <p class="cn-note"><%= company.website || ('https://' + company.domain) %></p>
+    <p class="cn-meta"><%= company.contact_email %></p>
     <form method="post" action="/airsup/china/claim/confirm" class="cn-form">
       <input type="hidden" name="token" value="<%= token %>">
       <button type="submit" class="cn-primary"><%= t('claim_publish') %></button>
     </form>
-    <p class="cn-muted"><%= t('claim_note') %></p>
   </main>
   <%- include('partials/footer') %>
 </body>

@@ -181,6 +181,11 @@
         </div>
       </div>
     </div>
+    <% if (typeof quotationMeta !== 'undefined') { %>
+      <div id="cn-dashboard-quotes">
+        <%- include('partials/quotations', { quotationMeta: quotationMeta }) %>
+      </div>
+    <% } %>
   </section>
 
   <div class="cn-test-dock" id="cn-test-dock" hidden>
@@ -364,10 +369,6 @@
         return new URLSearchParams(window.location.search).get(name) || '';
       } catch (e) { return ''; }
     }
-    // Prefer SSR flags — browser tooling sometimes strips ?demo before client JS runs.
-    // Board-first /test never runs the onboarding demo wizard.
-    var wantDemo = !boardFirst && (document.body.getAttribute('data-demo') === '1' || qs('demo') === '1');
-    var wantAuto = !boardFirst && (document.body.getAttribute('data-auto') === '1' || qs('auto') === '1');
 
     function hideDetails() {
       detailsEl.classList.add('hidden');
@@ -970,60 +971,6 @@
         setObBusy(false);
       }
     });
-
-    if (wantDemo) {
-      (async function () {
-        setObMsg(en ? 'Starting demo…' : '正在启动演示…');
-        setObBusy(true);
-        try {
-          var out = await apiJson('/airsup/dashboard/api/onboard/demo', {
-            method: 'POST',
-            body: '{}',
-          });
-          if (!out.res.ok || !out.data.ok) {
-            setObMsg((out.data && out.data.error) || copy.startFail);
-            return;
-          }
-          draftWebsite = 'https://demo.com';
-          document.getElementById('cn-ob-website').value = draftWebsite;
-          document.getElementById('cn-ob-email').value = 'tade@demo.com';
-          document.getElementById('cn-ob-contact').value = 'Tade';
-          if (out.data.web) applyWeb(out.data.web, true);
-          if (out.data.preview && out.data.preview.ok) {
-            lastPreview = out.data.preview;
-          }
-          applyState(out.data.state, { verifyPath: out.data.verifyPath || '', loggedIn: false });
-          if (lastPreview) renderPreviewCard(lastPreview, (out.data.state && out.data.state.previewSummary) || '');
-          setObMsg('');
-          if (wantAuto && out.data.verifyPath) {
-            var next = out.data.verifyPath;
-            next += (next.indexOf('?') >= 0 ? '&' : '?') + 'auto=1';
-            window.location.href = next;
-            return;
-          }
-          // Non-auto: drop ?demo so refresh does not reset mid-session.
-          try {
-            history.replaceState({}, '', '/airsup/dashboard' + (en ? '?lang=en' : ''));
-          } catch (e2) {}
-        } catch (e) {
-          setObMsg(copy.startFail);
-        } finally {
-          setObBusy(false);
-        }
-      })();
-    }
-
-    // After verify with ?auto=1, finish WeChat/sample → publish for a smooth full-funnel demo.
-    (async function runAutoFields() {
-      if (!wantAuto) return;
-      if (!state || state.step !== 'fields') return;
-      await new Promise(function (r) { setTimeout(r, 700); });
-      document.getElementById('cn-ob-wechat').value = state.wechat || 'airsup_demo_tade';
-      document.getElementById('cn-ob-sample').value = state.sampleLead || (en ? 'samples in 5 days' : '样品 5 天');
-      document.getElementById('cn-ob-flex').value = state.flexibility || 'normal';
-      if (state.contactName) document.getElementById('cn-ob-contact-fields').value = state.contactName;
-      document.getElementById('cn-ob-publish').click();
-    })();
 
     fileInput.addEventListener('change', function () {
       Array.prototype.slice.call(fileInput.files || []).forEach(function (f) { pendingFiles.push(f); });

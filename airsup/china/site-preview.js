@@ -447,10 +447,6 @@ async function buildPreview(website, lang, options = {}) {
   const domain = normalizeDomain(website);
   if (!domain) return { ok: false, error: 'err_website' };
   if (isFreeMail(domain) || isBlockedHost(domain)) return { ok: false, error: 'err_website_public' };
-  const { isDemoDomain, syntheticDemoPreview } = require('./demo-company');
-  if (isDemoDomain(domain)) {
-    return syntheticDemoPreview(lang);
-  }
   const skipCache = Boolean(options && options.skipCache);
   const cacheKey = `${lang}:${domain}`;
   if (!skipCache) {

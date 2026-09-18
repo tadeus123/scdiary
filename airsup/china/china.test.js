@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { domainMatches, emailAllowedForSite, normalizeDomain } = require('./domain');
 const { proofLines, proofPayload, industryPeers, liveSeries, formatChartDay, chartFromSeries, liveRoster, liveCompanies } = require('./proof');
-const { canPublish, normalizeProfile, mapCityId, fillEmptyCompany, listedContacts, buyerTestPrompt } = require('./fields');
+const { canPublish, normalizeProfile, mapCityId, fillEmptyCompany, listedContacts, buyerTestPrompt, listingText, qualityReady, interactionReady, afterVerifyNext } = require('./fields');
 const { extractSiteEmails } = require('./site-preview');
 const { verifyMail } = require('./mail');
 const { isBroadFactoryQuery, scoreCompany } = require('./find');
@@ -140,6 +140,40 @@ assert.strictEqual(canPublish({
   goal: 'answer RFQs',
 }), true);
 assert.strictEqual(canPublish({ company_name: 'x', city: 'shenzhen', profile: {}, goal: '' }), false);
+assert.ok(listingText({
+  company_name_en: 'Acme',
+  domain: 'acme.com',
+  city: 'shenzhen',
+  profile: {
+    max_workpiece: '600mm',
+    shipping: 'DDP',
+    year_founded: '2008',
+    employees: '80',
+    address: 'Baoan, Shenzhen',
+    sample_lead: '手板 7天',
+  },
+}).includes('Max workpiece: 600mm'));
+assert.ok(listingText({
+  company_name_en: 'Acme',
+  city: 'shenzhen',
+  profile: { shipping: 'DDP', year_founded: '2008', employees: '80', address: 'Baoan' },
+}).includes('Year founded: 2008'));
+assert.ok(interactionReady({
+  profile: { contacts: [{ wechat: 'wx_boss' }], sample_lead: 'samples 7 days' },
+}));
+assert.ok(!interactionReady({
+  profile: { contacts: [{ wechat: '' }, { wechat: 'sales_only' }], sample_lead: 'samples 7 days' },
+}));
+assert.ok(qualityReady({
+  company_name: 'Acme',
+  city: 'shenzhen',
+  goal: 'Win RFQs',
+  context: '5-axis',
+  profile: { contacts: [{ wechat: 'wx_boss' }], sample_lead: 'samples 7 days' },
+}));
+assert.strictEqual(afterVerifyNext({ status: 'live', profile: {} }, ''), '/airsup/dashboard');
+assert.strictEqual(afterVerifyNext({ status: 'live', profile: {} }, 'quotes'), '/airsup/dashboard?quotes=1');
+assert.strictEqual(afterVerifyNext({ status: 'verified', profile: {} }, ''), '/airsup/china/onboard');
 assert.ok(buyerTestPrompt({
   niche: 'injection',
   city: 'dongguan',
@@ -147,8 +181,9 @@ assert.ok(buyerTestPrompt({
 }).includes('Dongguan'));
 assert.strictEqual(normalizeProfile({ claim_ready: true, processes: ['5axis'] }).claim_ready, true);
 assert.strictEqual(normalizeProfile({ processes: ['5axis'] }).claim_ready, false);
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('live-buyer-prompt'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('listingPreview'));
+assert.ok(fs.existsSync(path.join(__dirname, 'views/onboard.ejs')));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/onboard.ejs'), 'utf8').includes('how_you_work'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("'/onboard'"));
 assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('claim_ready'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("purpose !== 'verify' &&"));
 assert.ok(!fs.readFileSync(path.join(__dirname, 'mint-claim.js'), 'utf8').startsWith("require('dotenv')"));
@@ -235,10 +270,8 @@ assert.ok(checklist.need.length >= 1);
 assert.ok(!emoji.test(gapEmailBody({ domain: 'acme.com', company_name_en: 'Acme' })));
 assert.ok(fs.existsSync(path.join(__dirname, 'enrich-company.js')));
 assert.ok(fs.readFileSync(path.join(__dirname, 'enrich.js'), 'utf8').includes('fillEmptyCompany'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('live_gaps_summary'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('enrich_gaps_lead'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('live_gaps_summary'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('enrich_gaps_lead'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/onboard.ejs'), 'utf8').includes('how_you_work'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/onboard.ejs'), 'utf8').includes('contact_wechat_'));
 assert.ok(COPY.zh.enrich_gaps_title);
 assert.ok(COPY.en.enrich_gaps_title);
 for (const lang of Object.keys(COPY)) {
@@ -333,23 +366,19 @@ assert.ok(!fs.readFileSync(path.join(__dirname, 'domain.js'), 'utf8').includes('
 assert.ok(fs.readFileSync(path.join(__dirname, 'domain.js'), 'utf8').includes("'163.com'"));
 assert.ok(fs.existsSync(path.join(__dirname, 'public/buyer-plugin.mp4')));
 assert.ok(fs.existsSync(path.join(__dirname, 'public/buyer-plugin.jpg')));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('cn-more-stay'));
-assert.ok(!fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('cn-more-stay" open'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('setup_primary_title'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('setup_site_summary'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes("t('wechat_ph')"));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('live_boss_title'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('operatorSummary'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('live_gaps_summary'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('live_status_value'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('showLive'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("edit === '1'"));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/onboard.ejs'), 'utf8').includes("t('wechat_ph')"));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/onboard.ejs'), 'utf8').includes('CONTACT_SLOTS'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('afterVerifyNext'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('/airsup/dashboard'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('proofLine'));
-assert.ok(fs.readFileSync(path.join(__dirname, 'views/preview.ejs'), 'utf8').includes("partials/demo"));
+assert.ok(!fs.readFileSync(path.join(__dirname, 'views/preview.ejs'), 'utf8').includes("partials/demo"));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/preview.ejs'), 'utf8').includes('/airsup/china/start'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/partials/header.ejs'), 'utf8').includes('header_live'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/partials/header.ejs'), 'utf8').includes('#what'));
-assert.ok(COPY.zh.live_boss_title);
-assert.ok(COPY.en.live_boss_title);
+assert.ok(COPY.zh.onboard_title);
+assert.ok(COPY.en.onboard_title);
+assert.ok(COPY.zh.how_you_work);
+assert.ok(COPY.en.how_you_work);
 assert.ok(COPY.zh.wechat_ph.includes('微信'));
 assert.ok(COPY.zh.privacy_page_title.includes('隐私'));
 assert.ok(COPY.en.privacy_lead.toLowerCase().includes('plain-language'));
@@ -1255,8 +1284,8 @@ function memoryChina(companies) {
   assert.ok(extractPdfText(Buffer.from('%PDF-1.4 (SLA resin quote) Tj')).toLowerCase().includes('sla'));
   assert.strictEqual(normalizeQuotationKnowledge({ endpoint_use: 1, documents: [] }).endpoint_use, true);
   assert.ok(fs.existsSync(path.join(__dirname, 'quotations.js')));
-  assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('partials/quotations'));
-  assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('/airsup/china/quotes'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('partials/quotations'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('/airsup/dashboard?quotes=1'));
   const quotationsPartial = fs.readFileSync(path.join(__dirname, 'views/partials/quotations.ejs'), 'utf8');
   assert.ok(quotationsPartial.includes("empty: <%- JSON.stringify(t('quote_empty')) %>"));
   assert.ok(!quotationsPartial.includes("empty: <%= JSON.stringify(t('quote_empty')) %>"));
@@ -1264,82 +1293,68 @@ function memoryChina(companies) {
   assert.ok(COPY.zh.quote_title.includes('报价'));
   assert.ok(COPY.en.quote_title.toLowerCase().includes('quotation'));
 
-  const {
-    isDemoCompany,
-    listingText: listingForDemo,
-  } = require('./fields');
-  const { demoSpec, DEMO_DOMAIN, DEMO_NAME_EN, DEMO_EMAIL, onboardingResetPatch, isDemoDomain, syntheticDemoPreview } = require('./demo-company');
-  const { matchView } = require('./find');
+  const { listingText: listingForEndpoint, endpointRecord } = require('./fields');
   const { systemPrompt } = require('./reply');
-  const { buildPreview } = require('./site-preview');
-  const demoRow = {
-    ...demoSpec(),
-    company_id: 'demo-id',
+  const factoryRow = {
+    company_id: 'cn_live_1',
+    status: 'live',
     live_at: '2026-09-18T00:00:00.000Z',
-  };
-  assert.ok(isDemoCompany(demoRow));
-  assert.ok(isDemoCompany({ source: 'demo', domain: DEMO_DOMAIN }));
-  assert.ok(!isDemoCompany({ source: 'web', domain: 'acme.com', profile: {} }));
-  assert.ok(isDemoDomain(DEMO_DOMAIN));
-  assert.ok(isDemoDomain(`https://www.${DEMO_DOMAIN}/about`));
-  assert.ok(!isDemoDomain('acme.com'));
-  assert.ok(DEMO_DOMAIN.includes('demo'));
-  assert.ok(DEMO_EMAIL.endsWith(`@${DEMO_DOMAIN}`));
-  const resetPatch = onboardingResetPatch();
-  assert.strictEqual(resetPatch.status, 'pending');
-  assert.strictEqual(resetPatch.live_at, null);
-  assert.strictEqual(resetPatch.verified_at, null);
-  assert.ok(resetPatch.profile.is_demo);
-  assert.strictEqual(resetPatch.company_name_en, '');
-  const synth = syntheticDemoPreview('en');
-  assert.ok(synth.ok);
-  assert.strictEqual(synth.domain, DEMO_DOMAIN);
-  assert.ok(synth.siteEmails.includes(DEMO_EMAIL));
-  assert.strictEqual(synth.niche, '3d_printing');
-  const builtDemo = await buildPreview(DEMO_DOMAIN, 'en');
-  assert.ok(builtDemo.ok);
-  assert.strictEqual(builtDemo.domain, DEMO_DOMAIN);
-  const hidden = liveCompanies([
-    {
-      status: 'live',
-      live_at: '2026-09-18T00:00:00.000Z',
-      domain: 'real-factory.com',
-      company_name_en: 'Real Factory',
-      niche: 'cnc',
-      source: 'web',
+    domain: 'acme-cnc.test',
+    company_name: '深圳某某',
+    company_name_en: 'Acme CNC',
+    city: 'shenzhen',
+    niche: 'cnc',
+    source: 'web',
+    goal: 'Win qualified export RFQs',
+    context: 'Five-axis aluminum parts',
+    profile: {
+      processes: ['5axis'],
+      materials: ['alu'],
+      max_workpiece: '600mm',
+      shipping: 'DDP',
+      year_founded: '2008',
+      employees: '80',
+      address: 'Baoan',
+      sample_lead: '手板 7天，小批量15-30天',
+      contacts: [{ role: 'ceo', name: 'Li', wechat: 'wx_boss' }],
+      quotation_knowledge: {
+        endpoint_use: true,
+        extracted: { insights_for_endpoint: 'Past quotes: SLA 20 pcs in 5 days' },
+      },
     },
-    demoRow,
-  ]);
-  assert.strictEqual(hidden.length, 1);
-  assert.strictEqual(hidden[0].domain, 'real-factory.com');
-  const roster = liveRoster([demoRow, {
+  };
+  const listed = listingForEndpoint(factoryRow);
+  assert.ok(listed.includes('Max workpiece: 600mm'));
+  assert.ok(listed.includes('Shipping: DDP'));
+  assert.ok(listed.includes('Year founded: 2008'));
+  assert.ok(listed.includes('Employees: 80'));
+  assert.ok(listed.includes('Address: Baoan'));
+  assert.ok(listed.includes('How they work'));
+  assert.ok(listed.includes('Past quotes: SLA 20 pcs in 5 days'));
+  assert.ok(!listed.includes('DEMO COMPANY'));
+  const prompt = systemPrompt(factoryRow);
+  assert.ok(prompt.includes('published working style'));
+  assert.ok(!prompt.includes('NOT a real factory'));
+  assert.ok(endpointRecord(factoryRow).listing_text.includes('Five-axis'));
+  const roster = liveRoster([factoryRow, {
     status: 'live',
     live_at: '2026-09-18T00:00:00.000Z',
     domain: 'peer.com',
     company_name_en: 'Peer',
     niche: '3d_printing',
   }]);
-  assert.ok(!roster.factories.some((row) => row.domain === DEMO_DOMAIN));
-  const demoListing = listingForDemo(demoRow);
-  assert.ok(demoListing.includes('DEMO COMPANY'));
-  assert.ok(demoListing.includes('Tade'));
-  const found = matchView(demoRow, 'demo 3D printing Shenzhen');
-  assert.ok(found.name.includes('Demo') || found.name.includes('Tade'));
-  assert.ok(found.description.includes('DEMO'));
-  assert.ok(found.demo);
-  assert.ok(scoreCompany(demoRow, 'Airsup demo company') > scoreCompany(demoRow, 'zzz'));
-  const prompt = systemPrompt(demoRow);
-  assert.ok(prompt.includes('DEMO'));
-  assert.ok(prompt.includes('NOT a real factory'));
-  assert.ok(fs.existsSync(path.join(__dirname, 'demo-company.js')));
-  assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.get('/demo'"));
-  assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.get('/demo/onboarding'"));
+  assert.strictEqual(roster.live, 2);
+  assert.ok(roster.factories.some((row) => row.domain === 'acme-cnc.test'));
+  assert.ok(!fs.existsSync(path.join(__dirname, 'demo-company.js')));
+  assert.ok(!fs.existsSync(path.join(__dirname, 'views/setup.ejs')));
+  assert.ok(!fs.existsSync(path.join(__dirname, 'views/live.ejs')));
+  assert.ok(!fs.existsSync(path.join(__dirname, 'views/quotes.ejs')));
+  assert.ok(!fs.existsSync(path.join(__dirname, 'views/partials/demo.ejs')));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.get(['/demo'"));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.get('/quotes'"));
-  assert.ok(fs.existsSync(path.join(__dirname, 'views/quotes.ejs')));
-  assert.ok(fs.readFileSync(path.join(__dirname, 'views/check.ejs'), 'utf8').includes('demo_check_cta'));
-  assert.ok(COPY.zh.demo_banner.includes('演示'));
-  assert.ok(COPY.en.demo_banner.toLowerCase().includes('demo'));
-  assert.ok(COPY.en.demo_restart_onboarding.toLowerCase().includes('onboarding'));
+  assert.ok(!fs.readFileSync(path.join(__dirname, 'views/check.ejs'), 'utf8').includes('demo_check_cta'));
+  assert.ok(!COPY.zh.demo_banner);
+  assert.ok(!COPY.en.demo_banner);
   assert.ok(COPY.zh.quote_page_title.includes('上传'));
   assert.ok(COPY.en.quote_page_title.toLowerCase().includes('upload'));
   assert.ok(COPY.zh.mail_quotes_button.includes('上传'));
@@ -1353,7 +1368,6 @@ function memoryChina(companies) {
   });
   assert.ok(qMail.subject.toLowerCase().includes('quotation') || qMail.subject.includes('报价'));
   assert.ok(qMail.text.includes('https://www.tademehl.com/airsup/china/verify?token=abc&next=quotes'));
-  assert.strictEqual(DEMO_NAME_EN.includes('Demo'), true);
 
   // Supplier dashboard (board UI) at /airsup/dashboard; /airsup/china/test redirects
   assert.ok(fs.existsSync(path.join(__dirname, 'test/routes.js')));
@@ -1361,7 +1375,8 @@ function memoryChina(companies) {
   assert.ok(fs.existsSync(path.join(__dirname, 'test/web.js')));
   assert.ok(fs.existsSync(path.join(__dirname, 'test/REPLACE.md')));
   assert.ok(fs.existsSync(path.join(__dirname, 'test/memory-store.js')));
-  assert.ok(fs.existsSync(path.join(__dirname, 'test/onboard.js')));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'test/onboard.js'), 'utf8').includes("VERIFY_PATH = '/airsup/china/verify'"));
+  assert.ok(!fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('/api/onboard/demo'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.use('/test'"));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('AIRSUP-CHINA-TEST-BEGIN'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('/airsup/dashboard'));
@@ -1387,17 +1402,18 @@ function memoryChina(companies) {
   assert.ok(testRoutesSrc.includes("/api/onboard/fields"));
   assert.ok(testRoutesSrc.includes("/api/onboard/publish"));
   assert.ok(testRoutesSrc.includes("/api/onboard/state"));
-  assert.ok(testRoutesSrc.includes("/api/onboard/demo"));
-  assert.ok(testRoutesSrc.includes('ensureDemoLiveCompany'));
+  assert.ok(testRoutesSrc.includes("status(410)"));
+  assert.ok(!testRoutesSrc.includes('ensureDemoLiveCompany'));
+  assert.ok(!testRoutesSrc.includes("guest || '') === '1'"));
   assert.ok(testRoutesSrc.includes('boardFirst: true'));
-  assert.ok(testRoutesSrc.includes("guest || '') === '1'"));
   assert.ok(testRoutesSrc.includes("router.get('/verify'"));
+  assert.ok(testRoutesSrc.includes('/airsup/china/verify'));
   assert.ok(fs.existsSync(path.join(__dirname, 'test/board.js')));
   const { computeBoard } = require('./test/board');
   assert.strictEqual(computeBoard(null, { nodes: {}, edges: [], reach: 0 }).conversationRate, 0);
   const boardSample = computeBoard({
     company_id: 'cn_test',
-    domain: 'demo.com',
+    domain: 'acme-cnc.test',
     live_at: new Date().toISOString(),
     profile: {},
   });
@@ -1420,29 +1436,40 @@ function memoryChina(companies) {
   assert.strictEqual(typeof testOnboard.openSession, 'function');
   assert.strictEqual(typeof testOnboard.clearTestSession, 'function');
   assert.strictEqual(typeof testOnboard.usingMemory, 'function');
-  assert.ok(testOnboard.DEMO_DOMAIN);
-  assert.ok(testOnboard.DEMO_EMAIL);
+  assert.ok(!testOnboard.DEMO_DOMAIN);
+  assert.ok(!testOnboard.DEMO_EMAIL);
   const memoryStore = require('./test/memory-store');
   memoryStore.resetAll();
   assert.ok(testOnboard.usingMemory());
-  const preview = await testOnboard.previewWebsite('https://demo.com', 'en');
-  assert.ok(preview.ok);
-  assert.strictEqual(preview.domain, 'demo.com');
-  const started = await testOnboard.startSignup({
-    website: 'https://demo.com',
-    email: testOnboard.DEMO_EMAIL,
-    contact: 'Tade',
+  const pending = await memoryStore.insertCompany({
+    domain: 'acme-cnc.test',
+    website: 'https://acme-cnc.test',
+    contact_email: 'sales@acme-cnc.test',
+    company_name: '深圳某某',
+    company_name_en: 'Acme CNC',
     city: 'shenzhen',
-    lang: 'en',
-    source: 'test',
-    publicOrigin: 'http://localhost:3000',
+    status: 'pending',
+    source: 'web',
+    goal: 'Win qualified export RFQs',
+    context: 'Five-axis aluminum parts',
+    profile: {
+      processes: ['5axis'],
+      materials: ['alu'],
+      machines: 'DMG 5-axis',
+      max_workpiece: '600mm',
+      shipping: 'DDP',
+      year_founded: '2008',
+      employees: '80',
+      address: 'Baoan',
+      lead_time: '3-7 days',
+      quotation_knowledge: {
+        endpoint_use: true,
+        extracted: { insights_for_endpoint: 'Past quotes: SLA 20 pcs in 5 days' },
+      },
+    },
   });
-  assert.ok(started.ok, started.errorKey);
-  assert.ok(started.token);
-  assert.ok(String(started.verifyPath || '').includes('/airsup/dashboard/verify'), started.verifyPath);
-  assert.ok(/\/verify\?token=/.test(String(started.verifyPath || '')), started.verifyPath);
-  assert.strictEqual(started.company.status, 'pending');
-  const verified = await testOnboard.consumeVerifyToken(started.token);
+  const token = await testOnboard.mintToken(pending.company_id, pending.contact_email, 'verify');
+  const verified = await testOnboard.consumeVerifyToken(token);
   assert.ok(verified.ok, verified.errorKey);
   assert.strictEqual(verified.company.status, 'verified');
   assert.strictEqual(testOnboard.qualityReady(verified.company), false);
@@ -1450,42 +1477,26 @@ function memoryChina(companies) {
   assert.strictEqual(blocked.ok, false);
   assert.strictEqual(blocked.errorKey, 'err_publish_quality');
   const saved = await testOnboard.saveInteraction(verified.company, {
-    contact_wechat: 'airsup_demo_tade',
-    sample_lead: 'samples in 3 days',
-    flexibility: 'normal',
-    contact_name: 'Tade',
-    goal: 'Win qualified export RFQs from buyers who find us in ChatGPT.',
+    contact_wechat: 'wx_boss',
+    sample_lead: '手板 7天，小批量15-30天',
+    contact_name: 'Li',
   }, 'en');
   assert.ok(saved && saved.company_id);
+  assert.ok(saved.profile.processes.includes('5axis'));
+  assert.strictEqual(saved.profile.machines, 'DMG 5-axis');
+  assert.strictEqual(saved.profile.max_workpiece, '600mm');
+  assert.strictEqual(saved.profile.lead_time, '3-7 days');
+  assert.ok(String(saved.context || '').includes('Five-axis'));
   assert.ok(testOnboard.qualityReady(saved));
+  const listedAfter = listingForEndpoint(saved);
+  assert.ok(listedAfter.includes('Max workpiece: 600mm'));
+  assert.ok(listedAfter.includes('Past quotes: SLA 20 pcs in 5 days'));
+  assert.ok(listedAfter.includes('How they work'));
   const published = await testOnboard.publishCompany(saved);
   assert.ok(published.ok, published.errorKey);
   assert.strictEqual(published.company.status, 'live');
   assert.strictEqual(testOnboard.onboardingState(published.company, 'en').step, 'live');
   assert.ok(testOnboard.onboardingState(published.company, 'en').wechat);
-  // Demo reset must clear profile (not leave stale WeChat / capabilities).
-  memoryStore.resetAll();
-  const stale = await memoryStore.insertCompany({
-    domain: testOnboard.DEMO_DOMAIN,
-    website: `https://${testOnboard.DEMO_DOMAIN}`,
-    contact_email: testOnboard.DEMO_EMAIL,
-    company_name: 'Stale',
-    city: 'shenzhen',
-    status: 'live',
-    source: 'demo',
-    goal: 'old',
-    context: 'old',
-    profile: {
-      processes: ['sla'],
-      sample_lead: 'keep?',
-      contacts: [{ role: 'ceo', name: 'X', wechat: 'stale_wx' }],
-    },
-  });
-  const cleared = await memoryStore.updateCompany(stale.company_id, onboardingResetPatch());
-  assert.strictEqual(cleared.status, 'pending');
-  assert.strictEqual(String(cleared.company_name || ''), '');
-  assert.ok(!require('./fields').listedContacts(cleared.profile.contacts).length);
-  assert.strictEqual(String((cleared.profile && cleared.profile.sample_lead) || ''), '');
   const testChat = require('./test/chat');
   const testWeb = require('./test/web');
   assert.strictEqual(testChat.welcomeMessage('zh'), '');
@@ -1499,7 +1510,7 @@ function memoryChina(companies) {
   assert.ok(compressed.history.length <= testChat.KEEP_RECENT);
   const grown = await testChat.completeTestTurn({
     lang: 'en',
-    message: 'https://demo.com SLA resin printing',
+    message: 'https://acme-cnc.test SLA resin printing',
     history: [],
     files: [{ name: 'quote.pdf', mime: 'application/pdf', size: 1200 }],
     company: null,
@@ -1522,7 +1533,7 @@ function memoryChina(companies) {
     assert.ok(linked.web.edges.some((e) => e.kind === 'custom'));
     assert.ok(linked.web.reach >= grown.web.reach);
   }
-  const seeded = testWeb.seedFromCompany(testWeb.emptyWeb(), { domain: 'demo.com', company_name: 'Demo Co' }, 'en');
+  const seeded = testWeb.seedFromCompany(testWeb.emptyWeb(), { domain: 'acme-cnc.test', company_name: 'Acme CNC' }, 'en');
   assert.ok(Object.keys(seeded.web.nodes).length >= 1);
 
   console.log('airsup china tests passed');

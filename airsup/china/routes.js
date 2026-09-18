@@ -11,41 +11,21 @@ const db = require('./db');
 const session = require('./session');
 const { t, otherLang } = require('./i18n');
 const { emailAllowedForSite, normalizeDomain, emailParts } = require('./domain');
-const { genericDemo } = require('./demo');
 const { buildPreview, companyDraftFromPreview } = require('./site-preview');
 const quotations = require('./quotations');
 const {
-  NICHES,
-  PROCESS_GROUPS,
   CITIES,
-  PROCESSES,
-  MATERIALS,
-  FINISHES,
-  CERTS,
-  ACTIONS,
-  DEFAULT_ACTIONS,
-  FLEX,
   CONTACT_SLOTS,
   normalizeProfile,
-  normalizeActions,
-  normalizeNiche,
-  canPublish,
-  buyerTestPrompt,
-  endpointRecord,
-  listingText,
+  interactionReady,
+  afterVerifyNext,
   companyTitle,
   fillEmptyCompany,
-  enrichmentGaps,
-  gapWhy,
-  operatorListingSummary,
-  formatLiveAt,
-  isDemoCompany,
 } = require('./fields');
-const { confirmChecklist } = require('./enrich');
-const { proofPayload, industryPeers, formatChartDay, liveRoster } = require('./proof');
-const { sendVerifyEmail, sendQuotesInviteEmail } = require('./mail');
+const { proofPayload, formatChartDay, liveRoster } = require('./proof');
+const { sendVerifyEmail } = require('./mail');
 const { sendForDomain } = require('./send-quotes-invite');
-const { ensureDemoCompany, DEMO_DOMAIN, DEMO_EMAIL, resetDemoForOnboarding, isDemoDomain, ensureDemoAllowlist } = require('./demo-company');
+const { saveInteraction, publishCompany } = require('./test/onboard');
 const peopleAuth = require('../auth');
 const handleLiveCompanies = require('./live-companies');
 
@@ -236,7 +216,7 @@ router.get(['/', ''], async (req, res) => {
     ? await session.readCompany(req).catch(() => null)
     : null;
   if (company && (company.status === 'verified' || company.status === 'live')) {
-    return res.redirect('/airsup/china/setup');
+    return res.redirect(afterVerifyNext(company));
   }
   render(req, res, 'home.ejs', {
     proof: await proof(),
@@ -282,16 +262,12 @@ async function renderPreview(req, res, { website, form, error, source }) {
     });
   }
   const nextForm = form || { website: built.website, email: '', contact: '', city: built.cityId || 'shenzhen' };
-  const counts = await proof();
-  const peers = industryPeers(counts.recent, { niche: built.niche, domain: built.domain });
   return render(req, res, 'preview.ejs', {
-    proof: counts,
+    proof: await proof(),
     form: { ...nextForm, website: nextForm.website || built.website, city: nextForm.city || built.cityId || 'shenzhen' },
     error: error || null,
-    cities: CITIES,
     source: source || 'web',
     preview: built,
-    peers,
     here: `/airsup/china/preview?w=${encodeURIComponent(built.domain)}`,
   });
 }
@@ -379,7 +355,7 @@ router.post('/start', async (req, res) => {
       }).catch((error) => console.error('Airsup china allow upsert skipped:', error.message));
     }
     let company = await db.getByDomain(matched.domain);
-    if (company && tooSoon(company) && !isDemoCompany(company) && !isDemoDomain(matched.domain)) {
+    if (company && tooSoon(company)) {
       return fail('err_rate');
     }
     if (!company) {
@@ -390,9 +366,9 @@ router.post('/start', async (req, res) => {
         contact_name: contact,
         city: CITIES.some((item) => item.id === city) ? city : 'shenzhen',
         locale: lang,
-        niche: isDemoDomain(matched.domain) ? '3d_printing' : 'cnc',
+        niche: 'cnc',
         status: 'pending',
-        source: isDemoDomain(matched.domain) ? 'demo' : source,
+        source,
       });
     } else if (company.status === 'pending') {
       const existingEmail = String(company.contact_email || '').toLowerCase();
@@ -405,7 +381,7 @@ router.post('/start', async (req, res) => {
         contact_name: contact || company.contact_name,
         city: CITIES.some((item) => item.id === city) ? city : company.city,
         locale: lang,
-        source: isDemoCompany(company) ? 'demo' : company.source,
+        source: company.source,
       });
     } else if (matched.email !== String(company.contact_email || '').toLowerCase()) {
       return fail('err_taken');
@@ -416,24 +392,14 @@ router.post('/start', async (req, res) => {
     const purpose = company.status === 'pending' ? 'verify' : 'login';
     const token = await session.createToken(company.company_id, matched.email, purpose);
     const link = `${publicOrigin(req)}/airsup/china/verify?token=${token}`;
-    const demoFlow = isDemoDomain(matched.domain) || isDemoCompany(company);
-    try {
-      await sendVerifyEmail({
-        lang,
-        to: matched.email,
-        link,
-        contactName: contact || company.contact_name,
-      });
-    } catch (error) {
-      if (!demoFlow) throw error;
-      console.error('Airsup china demo verify mail skipped:', error.message);
-    }
+    await sendVerifyEmail({
+      lang,
+      to: matched.email,
+      link,
+      contactName: contact || company.contact_name,
+    });
     await db.updateCompany(company.company_id, { last_email_at: new Date().toISOString() });
-    const checkQs = new URLSearchParams({ email: matched.email });
-    if (demoFlow) {
-      checkQs.set('demo_token', token);
-    }
-    return res.redirect(`/airsup/china/check?${checkQs.toString()}`);
+    return res.redirect(`/airsup/china/check?email=${encodeURIComponent(matched.email)}`);
   } catch (error) {
     console.error('Airsup china start error:', error);
     return fail(error.code === 'mail' ? 'err_mail' : 'err_db');
@@ -441,26 +407,11 @@ router.post('/start', async (req, res) => {
 });
 
 router.get('/check', async (req, res) => {
-  const demoToken = String(req.query.demo_token || '').trim();
-  const demoLink = demoToken
-    ? `${publicOrigin(req)}/airsup/china/verify?token=${encodeURIComponent(demoToken)}`
-    : '';
   render(req, res, 'check.ejs', {
     proof: await proof(),
     email: String(req.query.email || ''),
-    demoLink,
   });
 });
-
-function claimCapabilities(company) {
-  const profile = normalizeProfile(company && company.profile);
-  const parts = [];
-  if (profile.processes.length) {
-    parts.push(profile.processes.join(', '));
-  }
-  if (company && company.context) parts.push(String(company.context).slice(0, 160));
-  return parts.filter(Boolean).join(' · ');
-}
 
 router.get('/claim', async (req, res) => {
   const lang = langFrom(req, res);
@@ -489,8 +440,6 @@ router.get('/claim', async (req, res) => {
       proof: await proof(),
       company,
       companyTitle: companyTitle(company, lang),
-      capabilities: claimCapabilities(company),
-      listingPreview: listingText(company),
       token,
       error: null,
     });
@@ -524,7 +473,7 @@ router.post('/claim/confirm', async (req, res) => {
     } else {
     company = await db.updateCompany(company.company_id, {
       contact_email: email,
-      // Mark that claim confirm happened so /verify may auto-publish once.
+      // Claim confirm only mails a verify link. Live happens after WeChat + how-you-work.
       source: company.source === 'web' ? 'outreach' : company.source,
       profile: normalizeProfile({
         ...normalizeProfile(company.profile),
@@ -616,44 +565,10 @@ router.get('/verify', async (req, res) => {
     }
     await session.createSession(req, res, company.company_id);
     let fresh = await db.getById(company.company_id);
-    if (fresh && fresh.status === 'pending') {
-      fresh = await applySiteDraft(fresh, company.website || company.domain, lang) || fresh;
-    } else if (fresh && fresh.status === 'verified') {
+    if (fresh && (fresh.status === 'pending' || fresh.status === 'verified')) {
       fresh = await applySiteDraft(fresh, company.website || company.domain, lang) || fresh;
     }
-    const profile = normalizeProfile(fresh && fresh.profile);
-    const claimReady = Boolean(profile.claim_ready);
-    const outreachSource = ['outreach', 'manual'].includes(String((fresh && fresh.source) || ''));
-    // Auto-publish only after claim confirm + verify (not on login, not for paused re-login).
-    if (
-      fresh
-      && row.purpose === 'verify'
-      && claimReady
-      && outreachSource
-      && canPublish(fresh)
-      && fresh.status === 'verified'
-      && !fresh.live_at
-    ) {
-      fresh = await db.updateCompany(fresh.company_id, {
-        status: 'live',
-        live_at: new Date().toISOString(),
-        verified_at: fresh.verified_at || new Date().toISOString(),
-        profile: { ...profile, claim_ready: false },
-      });
-      try {
-        await db.touchDomainAllow(fresh.domain, fresh.contact_email, {
-          published_at: new Date().toISOString(),
-        });
-      } catch (error) {
-        console.error('Airsup china allow publish touch skipped:', error.message);
-      }
-      return res.redirect('/airsup/china/setup?ok=live');
-    }
-    const next = String(req.query.next || '').trim().toLowerCase();
-    if (next === 'quotes' || next === 'quotations') {
-      return res.redirect('/airsup/china/quotes');
-    }
-    return res.redirect('/airsup/china/setup');
+    return res.redirect(afterVerifyNext(fresh, req.query.next));
   } catch (error) {
     console.error('Airsup china verify error:', error);
     return render(req, res, 'home.ejs', {
@@ -688,113 +603,73 @@ const quoteUpload = multer({
   limits: { fileSize: quotations.MAX_BYTES, files: 1 },
 });
 
-function readSetup(body, company) {
-  const prev = normalizeProfile(company && company.profile);
-  const contacts = [0, 1, 2, 3].map((index) => ({
-    role: index === 0 ? 'ceo' : 'sales',
-    name: body[`contact_name_${index}`],
-    wechat: body[`contact_wechat_${index}`],
-  }));
-  const profile = normalizeProfile({
-    year_founded: body.year_founded,
-    employees: body.employees,
-    address: body.address,
-    export_markets: body.export_markets,
-    other_city: body.other_city,
-    processes: [].concat(body.processes || []),
-    materials: [].concat(body.materials || []),
-    finishing: [].concat(body.finishing || []),
-    certifications: [].concat(body.certifications || []),
-    machines: body.machines,
-    tolerance: body.tolerance,
-    max_workpiece: body.max_workpiece,
-    moq: body.moq,
-    lead_time: body.lead_time,
-    shipping: body.shipping,
-    sample_lead: body.sample_lead,
-    holidays: body.holidays,
-    flexibility: body.flexibility,
-    contacts,
-    site_notes: prev.site_notes,
-    enrichment: prev.enrichment,
-    quotation_knowledge: prev.quotation_knowledge,
-    claim_ready: prev.claim_ready,
-    is_demo: prev.is_demo,
-  });
-  return {
-    company_name: String(body.company_name || '').trim(),
-    company_name_en: String(body.company_name_en || '').trim(),
-    city: String(body.city || '').trim(),
-    niche: normalizeNiche(body.niche),
-    contact_name: String(body.contact_name || '').trim(),
-    context: String(body.context || '').trim(),
-    goal: String(body.goal || '').trim(),
-    actions: normalizeActions([].concat(body.actions || DEFAULT_ACTIONS)),
-    profile,
-  };
-}
-
-async function showLive(req, res, company) {
-  const lang = langFrom(req, res);
-  const record = endpointRecord(company);
-  return render(req, res, 'live.ejs', {
-    proof: await proof(),
-    company,
-    companyTitle: companyTitle(company, lang),
-    operatorSummary: operatorListingSummary(company, lang),
-    liveAtLabel: formatLiveAt(company.live_at, lang),
-    listingPreview: listingText(company),
-    buyerPrompt: buyerTestPrompt(company),
-    endpointPreview: record,
-    enrichmentGaps: enrichmentGaps(company),
-    gapWhy: (gap) => gapWhy(gap, lang),
-    quotationMeta: quotations.listMeta(company),
-    isDemo: isDemoCompany(company),
-    headerLive: true,
-  });
-}
-
-async function showSetup(req, res, { company, error, saved, paused }) {
-  const lang = langFrom(req, res);
-  const checklist = confirmChecklist(company);
+async function showOnboard(req, res, { company, error }) {
   const profile = normalizeProfile(company.profile);
-  const siteOpen = !canPublish(company)
-    || (!profile.processes.length && !profile.materials.length && !String(company.context || '').trim());
-  return render(req, res, 'setup.ejs', {
+  return render(req, res, 'onboard.ejs', {
     proof: await proof(),
     company,
     profile,
-    actions: normalizeActions(company.actions),
-    catalogs: { NICHES, CITIES, PROCESSES, PROCESS_GROUPS, MATERIALS, FINISHES, CERTS, ACTIONS, FLEX, CONTACT_SLOTS },
+    catalogs: { CONTACT_SLOTS },
     error: error || null,
-    saved: Boolean(saved),
-    paused: Boolean(paused),
-    enrichmentGaps: enrichmentGaps(company),
-    confirmChecklist: checklist,
-    gapWhy: (gap) => gapWhy(gap, lang),
-    quotationMeta: quotations.listMeta(company),
-    isDemo: isDemoCompany(company),
-    siteOpen,
+    askTolerance: !String(profile.tolerance || '').trim(),
+    askMoq: !String(profile.moq || '').trim(),
     headerLive: company.status === 'live',
   });
 }
 
+router.get('/onboard', async (req, res) => {
+  const company = await requireCompany(req, res);
+  if (!company) return;
+  if (company.status === 'live' || interactionReady(company)) {
+    return res.redirect('/airsup/dashboard');
+  }
+  return showOnboard(req, res, { company, error: null });
+});
+
+router.post('/onboard', async (req, res) => {
+  const lang = langFrom(req, res);
+  if (!peopleAuth.allowedOrigin(req)) return res.redirect('/airsup/china');
+  const company = await requireCompany(req, res);
+  if (!company) return;
+  try {
+    const saved = await saveInteraction(company, req.body || {}, lang);
+    if (saved.status === 'live') {
+      return res.redirect('/airsup/dashboard');
+    }
+    if (!interactionReady(saved)) {
+      return showOnboard(req, res, {
+        company: saved,
+        error: t(lang, 'err_publish_quality'),
+      });
+    }
+    const published = await publishCompany(saved);
+    if (published.ok || published.errorKey === 'err_publish') {
+      return res.redirect('/airsup/dashboard');
+    }
+    return showOnboard(req, res, {
+      company: published.company || saved,
+      error: t(lang, published.errorKey || 'err_db'),
+    });
+  } catch (error) {
+    console.error('Airsup china onboard error:', error);
+    return showOnboard(req, res, { company, error: t(lang, 'err_db') });
+  }
+});
+
 router.get('/setup', async (req, res) => {
   const company = await requireCompany(req, res);
   if (!company) return;
-  const wantEdit = req.query.edit === '1' || req.query.error === 'publish' || req.query.saved === '1' || req.query.paused === '1';
-  if (company.status === 'live' && !wantEdit) {
-    return showLive(req, res, company);
-  }
-  if (req.query.ok === 'live' && company.status === 'live') {
-    return showLive(req, res, company);
-  }
-  return showSetup(req, res, {
-    company,
-    error: req.query.error === 'publish' ? t(langFrom(req, res), 'err_publish') : null,
-    saved: req.query.saved === '1',
-    paused: req.query.paused === '1',
-  });
+  return res.redirect(afterVerifyNext(company));
+});
+
+router.post('/setup', async (req, res) => {
+  if (!peopleAuth.allowedOrigin(req)) return res.redirect('/airsup/china');
+  return res.redirect('/airsup/china/onboard');
+});
+
+router.post('/publish', async (req, res) => {
+  if (!peopleAuth.allowedOrigin(req)) return res.redirect('/airsup/china');
+  return res.redirect('/airsup/china/onboard');
 });
 
 router.get('/quotes', async (req, res) => {
@@ -804,127 +679,11 @@ router.get('/quotes', async (req, res) => {
   }
   const company = await requireCompany(req, res);
   if (!company) return;
-  const lang = langFrom(req, res);
-  return render(req, res, 'quotes.ejs', {
-    proof: await proof(),
-    company,
-    companyTitle: companyTitle(company, lang),
-    quotationMeta: quotations.listMeta(company),
-    headerLive: company.status === 'live',
-  });
+  return res.redirect('/airsup/dashboard?quotes=1');
 });
 
-router.get('/demo', async (req, res) => {
-  if (!db.isConfigured()) {
-    return res.status(503).send('Airsup China storage is not configured.');
-  }
-  try {
-    await ensureDemoAllowlist();
-    const company = await ensureDemoCompany({ forceLive: true });
-    await session.createSession(req, res, company.company_id);
-    if (req.query.edit === '1') {
-      return res.redirect('/airsup/china/setup?edit=1');
-    }
-    return res.redirect('/airsup/china/setup');
-  } catch (error) {
-    console.error('Airsup china demo open error:', error);
-    return res.status(500).send('Could not open demo company.');
-  }
-});
-
-router.get('/demo/onboarding', async (req, res) => {
-  if (!db.isConfigured()) {
-    return res.status(503).send('Airsup China storage is not configured.');
-  }
-  try {
-    await session.clearSession(req, res);
-    await resetDemoForOnboarding();
-    const qs = new URLSearchParams({
-      w: DEMO_DOMAIN,
-      ref: 'demo',
-      email: DEMO_EMAIL,
-    });
-    return res.redirect(`/airsup/china/preview?${qs.toString()}`);
-  } catch (error) {
-    console.error('Airsup china demo onboarding reset error:', error);
-    return res.status(500).send('Could not reset demo onboarding.');
-  }
-});
-
-router.get('/api/demo', async (req, res) => {
-  if (!db.isConfigured()) return res.status(503).json({ error: 'unavailable' });
-  try {
-    const company = await ensureDemoCompany();
-    return res.json({
-      demo: true,
-      domain: DEMO_DOMAIN,
-      email: DEMO_EMAIL,
-      company_id: company.company_id,
-      name: company.company_name_en || DEMO_DOMAIN,
-      status: company.status,
-      dashboard: '/airsup/china/demo',
-      edit: '/airsup/china/demo?edit=1',
-      onboarding: '/airsup/china/demo/onboarding',
-      note: 'Hidden from public live roster. /demo = live dashboard. /demo/onboarding = reset and replay preview→verify→setup→publish on the same demo company.',
-    });
-  } catch (error) {
-    console.error('Airsup china demo api error:', error);
-    return res.status(500).json({ error: 'unavailable' });
-  }
-});
-
-router.post('/setup', async (req, res) => {
-  const lang = langFrom(req, res);
-  if (!peopleAuth.allowedOrigin(req)) return res.redirect('/airsup/china');
-  const company = await requireCompany(req, res);
-  if (!company) return;
-  const patch = readSetup(req.body || {}, company);
-  const next = { ...company, ...patch };
-  try {
-    await db.updateCompany(company.company_id, patch);
-    if (company.status === 'live') {
-      return res.redirect('/airsup/china/setup?edit=1&saved=1');
-    }
-    return res.redirect('/airsup/china/setup?saved=1');
-  } catch (error) {
-    console.error('Airsup china setup error:', error);
-    return showSetup(req, res, { company: next, error: t(lang, 'err_db') });
-  }
-});
-
-router.post('/publish', async (req, res) => {
-  const lang = langFrom(req, res);
-  if (!peopleAuth.allowedOrigin(req)) return res.redirect('/airsup/china');
-  const company = await requireCompany(req, res);
-  if (!company) return;
-  const patch = readSetup(req.body || {}, company);
-  const next = { ...company, ...patch };
-  try {
-    if (!canPublish(next)) {
-      await db.updateCompany(company.company_id, patch);
-      return res.redirect('/airsup/china/setup?error=publish');
-    }
-    await db.updateCompany(company.company_id, {
-      ...patch,
-      status: 'live',
-      live_at: company.live_at || new Date().toISOString(),
-      verified_at: company.verified_at || new Date().toISOString(),
-    });
-    try {
-      await db.touchDomainAllow(company.domain, next.contact_email || company.contact_email, {
-        published_at: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error('Airsup china allow publish touch skipped:', error.message);
-    }
-    return res.redirect('/airsup/china/setup?ok=live');
-  } catch (error) {
-    console.error('Airsup china publish error:', error);
-    return showSetup(req, res, {
-      company: next,
-      error: canPublish(next) ? t(lang, 'err_db') : t(lang, 'err_publish'),
-    });
-  }
+router.get(['/demo', '/demo/onboarding', '/api/demo'], (req, res) => {
+  return res.redirect('/airsup/china');
 });
 
 router.post('/pause', async (req, res) => {
@@ -935,10 +694,10 @@ router.post('/pause', async (req, res) => {
     if (company.status === 'live') {
       await db.updateCompany(company.company_id, { status: 'verified' });
     }
-    return res.redirect('/airsup/china/setup?paused=1');
+    return res.redirect('/airsup/dashboard');
   } catch (error) {
     console.error('Airsup china pause error:', error);
-    return res.redirect('/airsup/china/setup');
+    return res.redirect('/airsup/dashboard');
   }
 });
 
@@ -982,7 +741,7 @@ router.get('/api/registry', async (req, res) => {
   if (!db.isConfigured()) return res.json({ suppliers: [], proof: proofPayload([]) });
   try {
     const { publicRecord } = require('./fields');
-    const rows = (await db.listLive()).filter((row) => !isDemoCompany(row));
+    const rows = await db.listLive();
     res.json({
       region: 'Shenzhen / Dongguan',
       suppliers: rows.map(publicRecord),

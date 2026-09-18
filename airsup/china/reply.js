@@ -1,4 +1,4 @@
-const { endpointRecord, companyTitle, normalizeActions, isDemoCompany } = require('./fields');
+const { endpointRecord, companyTitle, normalizeActions } = require('./fields');
 const { signedInBuyerName } = require('../directory');
 
 const RFQ_KEYS = ['quantity', 'material', 'tolerance', 'finish', 'target_date', 'destination', 'drawings', 'notes'];
@@ -111,13 +111,10 @@ function systemPrompt(company) {
   const record = endpointRecord(company) || {};
   const name = companyTitle(company, 'en');
   const actions = (record && record.action_labels) || [];
-  const demo = isDemoCompany(company);
   const win = String((record && record.goal) || '').trim()
     || 'Win qualified export customers: confirm fit, collect a usable RFQ, and get the buyer to send drawings or a visit/call request.';
   return [
-    demo
-      ? `You are the Airsup DEMO company endpoint operated by Tade Mehl / HUGE Production (${(company && company.domain) || 'demo.com'}). This is NOT a real factory. Behave exactly like a live supplier sales engineer using the published demo capabilities below, and make it clear you are the Airsup demo if the buyer asks who you are.`
-      : `You are a sales engineer at ${name} in ${record.city || 'China'} (${(company && company.domain) || ''}), talking AI-to-AI with a Western buyer's agent.`,
+    `You are a sales engineer at ${name} in ${record.city || 'China'} (${(company && company.domain) || ''}), talking AI-to-AI with a Western buyer's agent.`,
     'This channel is high-bandwidth and latency-sensitive: write a dense, complete reply packet fast. Lead with the decision (fit / no / alternative). Pack engineering judgment, constraints, next steps, and clarifying questions that change the quote. Prefer useful density over a short chat bubble — and over padded essays.',
     'Do not retrieve or dump a brochure. Do not recap fields as "Noted from this thread" or "Still needed for a usable RFQ". Never list every process or material unless the buyer asked for the catalog.',
     'Use ONLY the published company context below as what the factory can offer. Do not invent machines, certificates, prices, capacity, WeChat IDs, or lead times that are not listed. If a fact is not published, say you need it from the buyer or from sales — do not guess.',
@@ -129,8 +126,8 @@ function systemPrompt(company) {
     'If the job is a poor fit even after looking at listed options, say so clearly and stop pushing. A honest no is better than a capability dump.',
     'Ask clarifying questions that actually change fit, process, or quote. Keep known facts in the rfq object, not as a hollow recap paragraph.',
     record.sample_lead
-      ? `You may state this sample / fastest lead time they will stand behind: ${record.sample_lead}. Never promise faster than that.`
-      : 'No sample lead time is published. Do not guess days for samples or production.',
+      ? `You may state this published working style / lead times / shutdowns they will stand behind: ${record.sample_lead}. Never promise faster than that.`
+      : 'No working style or lead time is published. Do not guess days for samples, production, or shutdowns.',
     record.holidays
       ? `Factory shutdown / holidays: ${record.holidays}. Do not promise dates that fall inside a shutdown.`
       : '',
@@ -250,7 +247,7 @@ function fallbackReply({ company, message, rfq, history }) {
     `${name} in ${record.city || 'China'}.`,
     oneLineOffer(record),
     'Tell me the part, quantity, and material and I will say if it fits — or if it does not.',
-    askedAboutTime(message) && record.sample_lead ? `Fastest sample lead we will stand behind: ${record.sample_lead}.` : '',
+    askedAboutTime(message) && record.sample_lead ? `How we work / lead times / shutdowns: ${record.sample_lead}.` : '',
     askedAboutTime(message) && record.holidays ? `Shutdown: ${record.holidays}.` : '',
     askedVisit && record.contacts && record.contacts.length
       ? `WeChat: ${record.contacts.map((row) => `${row.name || row.role} ${row.wechat}`).join('; ')}.`

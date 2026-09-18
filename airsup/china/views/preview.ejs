@@ -9,36 +9,8 @@
   <main class="cn-wrap cn-inner">
     <p><a class="cn-btn-ghost" href="/airsup/china"><%= t('preview_back') %></a></p>
     <h1><%= preview.companyName || preview.domain %></h1>
-    <p class="cn-lead"><%= preview.fromSite ? t('preview_from_site') : t('preview_from_domain') %></p>
-    <% if (preview.summary) { %>
-      <p class="cn-note"><%= preview.summary %></p>
-    <% } %>
-    <% var found = [];
-      if (preview.companyName) found.push(preview.companyName);
-      if (preview.city) found.push(preview.city);
-      if (preview.capabilities && preview.capabilities.length) found = found.concat(preview.capabilities.slice(0, 6));
-      else if (preview.profile && preview.profile.processes && preview.profile.processes.length) found = found.concat(preview.profile.processes);
-    %>
-    <% if (found.length) { %>
-      <p class="cn-label"><%= t('found_facts') %></p>
-      <ul class="cn-peers">
-        <% found.forEach(function (item) { %>
-          <li><%= item %></li>
-        <% }) %>
-      </ul>
-    <% } %>
-    <p class="cn-price"><%= preview.website %></p>
-    <%- include('partials/diagram', {
-      query: preview.demo && preview.demo.chatgptBuyer,
-      companyName: preview.companyName,
-      domain: preview.domain,
-      capabilities: (preview.capabilities && preview.capabilities.length) ? preview.capabilities : (preview.demo && preview.demo.suppliers && preview.demo.suppliers[0] && preview.demo.suppliers[0].lines) || []
-    }) %>
-    <% if (preview.demo) { %>
-      <%- include('partials/demo', { demo: preview.demo }) %>
-    <% } %>
+    <p class="cn-note"><%= preview.website %></p>
     <form class="cn-form cn-signup" method="post" action="/airsup/china/start">
-      <h2><%= t('activate') %></h2>
       <% if (error) { %>
         <p class="cn-error"><%= error %></p>
       <% } %>
@@ -54,28 +26,11 @@
         <span><%= t('contact') %></span>
         <input type="text" name="contact" value="<%= form.contact || '' %>" placeholder="<%= t('contact_ph') %>" autocomplete="name">
       </label>
-      <label>
-        <span><%= t('city') %></span>
-        <select name="city">
-          <% cities.forEach((city) => { %>
-            <option value="<%= city.id %>" <%= form.city === city.id ? 'selected' : '' %>><%= lang === 'en' ? city.en : city.zh %></option>
-          <% }) %>
-        </select>
-      </label>
       <button class="cn-btn" type="submit"><%= t('submit') %></button>
+      <input type="hidden" name="city" value="<%= form.city || preview.cityId || 'shenzhen' %>">
       <input type="hidden" name="source" value="<%= typeof source !== 'undefined' && source ? source : 'web' %>">
       <input type="hidden" name="locale" value="<%= lang %>">
-      <p class="cn-note"><%= t('note') %></p>
     </form>
-    <% if (typeof peers !== 'undefined' && peers && peers.length) { %>
-      <h2><%= t('peers_industry') %></h2>
-      <p class="cn-note"><%= t('peers_lead') %></p>
-      <ul class="cn-peers">
-        <% peers.forEach((row) => { %>
-          <li><a href="https://<%= row.domain %>" rel="noopener noreferrer" target="_blank"><%= row.domain %></a></li>
-        <% }) %>
-      </ul>
-    <% } %>
   </main>
   <%- include('partials/footer') %>
 </body>

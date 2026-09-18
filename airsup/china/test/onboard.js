@@ -8,7 +8,7 @@
  *
  * Live UI still lives in `airsup/china/routes.js`. This file mirrors
  * applySiteDraft / POST /start / GET /verify / setup interaction fields, but
- * returns data (no redirects) and uses `/airsup/china/test/verify` links.
+ * returns data (no redirects) and uses `/airsup/china/verify` links.
  */
 const db = require('../db');
 const session = require('../session');
@@ -18,24 +18,17 @@ const {
   CITIES,
   fillEmptyCompany,
   canPublish,
+  qualityReady,
   normalizeProfile,
   companyTitle,
   enrichmentGaps,
-  isDemoCompany,
   listedContacts,
 } = require('../fields');
 const { normalizeDomain, emailAllowedForSite, emailParts } = require('../domain');
 const { sendVerifyEmail } = require('../mail');
-const {
-  isDemoDomain,
-  ensureDemoCompany,
-  ensureDemoAllowlist,
-  DEMO_DOMAIN,
-  DEMO_EMAIL,
-} = require('../demo-company');
 const { emptyWeb, seedFromCompany, applyDump } = require('./web');
 
-const VERIFY_PATH = '/airsup/dashboard/verify';
+const VERIFY_PATH = '/airsup/china/verify';
 
 /** Live Supabase when configured; otherwise test-only memory store (demos / local). */
 function store() {
@@ -114,7 +107,6 @@ function fail(errorKey) {
     company: null,
     token: null,
     verifyPath: null,
-    demo: false,
   };
 }
 
@@ -157,10 +149,10 @@ async function previewWebsite(website, lang) {
 /**
  * Same rules as live POST /start (emailAllowedForSite, allowlist fallback,
  * 2min rate via last_email_at, insert/update, applySiteDraft, verify/login
- * token, sendVerifyEmail; demo skips mail failure).
+ * token, sendVerifyEmail (skipped only when the in-memory test store is active).
  *
- * Returns { ok, errorKey, company, token, verifyPath, demo }.
- * verifyPath is always under /airsup/china/test (never live /verify).
+ * Returns { ok, errorKey, company, token, verifyPath }.
+ * verifyPath is always under /airsup/china/verify.
  */
 async function startSignup({
   website,
@@ -217,7 +209,7 @@ async function startSignup({
     }
 
     let company = await store().getByDomain(matched.domain);
-    if (company && tooSoon(company) && !isDemoCompany(company) && !isDemoDomain(matched.domain)) {
+    if (company && tooSoon(company)) {
       return fail('err_rate');
     }
 
@@ -229,9 +221,9 @@ async function startSignup({
         contact_name: contactName,
         city: CITIES.some((item) => item.id === cityId) ? cityId : 'shenzhen',
         locale,
-        niche: isDemoDomain(matched.domain) ? '3d_printing' : 'cnc',
+        niche: 'cnc',
         status: 'pending',
-        source: isDemoDomain(matched.domain) ? 'demo' : src,
+        source: src,
       });
     } else if (company.status === 'pending') {
       const existingEmail = String(company.contact_email || '').toLowerCase();
@@ -244,7 +236,7 @@ async function startSignup({
         contact_name: contactName || company.contact_name,
         city: CITIES.some((item) => item.id === cityId) ? cityId : company.city,
         locale,
-        source: isDemoCompany(company) ? 'demo' : company.source,
+        source: company.source,
       });
     } else if (matched.email !== String(company.contact_email || '').toLowerCase()) {
       return fail('err_taken');
@@ -258,18 +250,14 @@ async function startSignup({
     const token = await mintToken(company.company_id, matched.email, purpose);
     const verifyPath = `${VERIFY_PATH}?token=${encodeURIComponent(token)}`;
     const link = origin ? `${origin}${verifyPath}` : verifyPath;
-    const demoFlow = isDemoDomain(matched.domain) || isDemoCompany(company);
 
-    try {
+    if (!usingMemory()) {
       await sendVerifyEmail({
         lang: locale,
         to: matched.email,
         link,
         contactName: contactName || company.contact_name,
       });
-    } catch (error) {
-      if (!demoFlow) throw error;
-      console.error('Airsup china test demo verify mail skipped:', error.message);
     }
 
     await store().updateCompany(company.company_id, { last_email_at: new Date().toISOString() });
@@ -281,7 +269,6 @@ async function startSignup({
       company,
       token,
       verifyPath,
-      demo: demoFlow,
     };
   } catch (error) {
     console.error('Airsup china test startSignup error:', error);
@@ -345,34 +332,6 @@ async function consumeVerifyToken(token) {
       fresh = await applySiteDraft(fresh, company.website || company.domain, lang) || fresh;
     }
 
-    const profile = normalizeProfile(fresh && fresh.profile);
-    const claimReady = Boolean(profile.claim_ready);
-    const outreachSource = ['outreach', 'manual'].includes(String((fresh && fresh.source) || ''));
-    // Auto-publish only after claim confirm + verify (same as live).
-    if (
-      fresh
-      && row.purpose === 'verify'
-      && claimReady
-      && outreachSource
-      && qualityReady(fresh)
-      && fresh.status === 'verified'
-      && !fresh.live_at
-    ) {
-      fresh = await store().updateCompany(fresh.company_id, {
-        status: 'live',
-        live_at: new Date().toISOString(),
-        verified_at: fresh.verified_at || new Date().toISOString(),
-        profile: { ...profile, claim_ready: false },
-      });
-      try {
-        await store().touchDomainAllow(fresh.domain, fresh.contact_email, {
-          published_at: new Date().toISOString(),
-        });
-      } catch (error) {
-        console.error('Airsup china test allow publish touch skipped:', error.message);
-      }
-    }
-
     return {
       ok: true,
       errorKey: null,
@@ -419,9 +378,19 @@ async function saveInteraction(company, body, lang) {
     }));
   }
 
+  const howYouWork = src.sample_lead !== undefined
+    ? String(src.sample_lead || '').trim()
+    : prev.sample_lead;
+  const nextLeadTime = prev.lead_time || howYouWork;
+  const nextTolerance = prev.tolerance || (src.tolerance !== undefined ? String(src.tolerance || '').trim() : '');
+  const nextMoq = prev.moq || (src.moq !== undefined ? String(src.moq || '').trim() : '');
+
   const profile = normalizeProfile({
     ...prev,
-    sample_lead: src.sample_lead !== undefined ? src.sample_lead : prev.sample_lead,
+    sample_lead: howYouWork,
+    lead_time: nextLeadTime,
+    tolerance: nextTolerance || prev.tolerance,
+    moq: nextMoq || prev.moq,
     holidays: src.holidays !== undefined ? src.holidays : prev.holidays,
     flexibility: src.flexibility !== undefined ? src.flexibility : prev.flexibility,
     contacts,
@@ -446,17 +415,6 @@ async function saveInteraction(company, body, lang) {
   void lang;
 
   return store().updateCompany(company.company_id, patch);
-}
-
-/**
- * Endpoint-quality gate on top of live canPublish.
- * Live canPublish only needs name/city/capability/goal. Airsup china pitch also
- * asks WeChat + sample lead before publish so ChatGPT can convert buyers.
- */
-function qualityReady(company) {
-  if (!canPublish(company)) return false;
-  const profile = normalizeProfile(company && company.profile);
-  return Boolean(listedContacts(profile.contacts).length && String(profile.sample_lead || '').trim());
 }
 
 /** Publish when qualityReady; else err_publish or err_publish_quality. */
@@ -604,11 +562,4 @@ module.exports = {
   clearTestSession,
   usingMemory,
   mintToken,
-  // Re-export demo constants helpers may need when wiring test routes.
-  DEMO_DOMAIN,
-  DEMO_EMAIL,
-  ensureDemoCompany,
-  ensureDemoAllowlist,
-  isDemoDomain,
-  isDemoCompany,
 };

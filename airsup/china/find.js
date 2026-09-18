@@ -1,6 +1,5 @@
 const db = require('./db');
-const { listingText, endpointRecord, isDemoCompany } = require('./fields');
-const { ensureDemoCompany } = require('./demo-company');
+const { listingText, endpointRecord } = require('./fields');
 const { isBroadFactoryQuery, routeQueryToCategory } = require('./manufacturing-categories');
 
 function tokens(value) {
@@ -18,8 +17,8 @@ function scoreCompany(company, query) {
     if (hay.includes(word)) hits += 1;
   }
   const extra = [
-    'shenzhen', 'dongguan', 'supplier', 'demo',
-    '深圳', '东莞', '厂家', '演示',
+    'shenzhen', 'dongguan', 'supplier',
+    '深圳', '东莞', '厂家',
   ];
   for (const word of extra) {
     if (String(query || '').toLowerCase().includes(word) && hay.includes(word)) hits += 1;
@@ -27,7 +26,6 @@ function scoreCompany(company, query) {
   const routed = routeQueryToCategory(query);
   if (routed && String((company && company.niche) || '') === routed) hits += 8;
   if (!hits && isBroadFactoryQuery(query)) hits = 1;
-  if (isDemoCompany(company) && /\bdemo\b|演示|tade|airsup/i.test(String(query || ''))) hits += 3;
   return hits;
 }
 
@@ -39,20 +37,14 @@ function matchView(company, query) {
   const description = idx >= 0
     ? hay.slice(Math.max(0, idx - 40), idx + 180).trim()
     : hay.slice(0, 180);
-  const demo = isDemoCompany(company);
-  const name = demo
-    ? (record.company_name_en || record.company_name || 'Demo company (Tade / Airsup)')
-    : (record.company_name_en || record.company_name || company.domain);
+  const name = record.company_name_en || record.company_name || company.domain;
   return {
     person_id: company.company_id,
     name,
-    description: demo
-      ? `DEMO company operated by Tade / Airsup for testing (not a real factory). ChatGPT can ask it like a live supplier. ${description}`
-      : (description
-        ? `A factory ChatGPT can ask (replies in this send_message). ${description}`
-        : 'A factory ChatGPT can ask. Replies in this send_message.'),
+    description: description
+      ? `A factory ChatGPT can ask (replies in this send_message). ${description}`
+      : 'A factory ChatGPT can ask. Replies in this send_message.',
     score: scoreCompany(company, query),
-    demo: demo || undefined,
   };
 }
 
@@ -60,7 +52,7 @@ async function countLive() {
   if (!db.isConfigured()) return 0;
   try {
     const rows = await db.listLive();
-    return Array.isArray(rows) ? rows.filter((row) => !isDemoCompany(row)).length : 0;
+    return Array.isArray(rows) ? rows.length : 0;
   } catch (error) {
     console.error('Airsup china live count skipped:', error.message);
     return 0;
@@ -71,11 +63,6 @@ async function findForPlugin({ query, limit, excludeIds }) {
   if (!db.isConfigured()) return [];
   const q = String(query || '').trim();
   if (!q) return [];
-  try {
-    await ensureDemoCompany();
-  } catch (error) {
-    console.error('Airsup china demo ensure skipped:', error.message);
-  }
   const skip = new Set((excludeIds || []).filter(Boolean));
   const rows = await db.listLive();
   return rows
@@ -89,8 +76,8 @@ async function findForPlugin({ query, limit, excludeIds }) {
 module.exports = {
   tokens,
   scoreCompany,
-  isBroadFactoryQuery,
+  matchView,
   countLive,
   findForPlugin,
-  matchView,
+  isBroadFactoryQuery,
 };

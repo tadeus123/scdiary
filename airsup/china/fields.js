@@ -274,11 +274,14 @@ function normalizeProfile(raw) {
   };
 }
 
-function isDemoCompany(company) {
-  if (!company || typeof company !== 'object') return false;
-  if (String(company.source || '').trim().toLowerCase() === 'demo') return true;
-  const profile = company.profile && typeof company.profile === 'object' ? company.profile : {};
-  return Boolean(profile.is_demo);
+function founderWechat(profile) {
+  const contacts = normalizeContacts(profile && profile.contacts);
+  return String((contacts[0] && contacts[0].wechat) || '').trim();
+}
+
+function interactionReady(company) {
+  const profile = normalizeProfile(company && company.profile);
+  return Boolean(founderWechat(profile) && String(profile.sample_lead || '').trim());
 }
 
 function normalizeActions(raw) {
@@ -308,11 +311,7 @@ function companyTitle(company, lang) {
 function listingText(company) {
   const profile = normalizeProfile(company && company.profile);
   const city = displayCity(company, 'en');
-  const demo = isDemoCompany(company);
   const lines = [
-    demo
-      ? 'DEMO COMPANY (Tade / Airsup): This is an internal Airsup test endpoint operated by Tade Mehl / HUGE Production. It is not a real manufacturing supplier. Use it only to exercise find_people and send_message.'
-      : '',
     `Company: ${companyTitle(company, 'en')}`,
     company && company.company_name ? `Name ZH: ${company.company_name}` : '',
     company && company.domain ? `Domain: ${company.domain}` : '',
@@ -325,10 +324,15 @@ function listingText(company) {
     profile.certifications.length ? `Certifications: ${labelsFor(profile.certifications, CERTS, 'en').join(', ')}` : '',
     profile.tolerance ? `Tolerance: ${profile.tolerance}` : '',
     profile.moq ? `MOQ: ${profile.moq}` : '',
+    profile.max_workpiece ? `Max workpiece: ${profile.max_workpiece}` : '',
     profile.lead_time ? `Lead time: ${profile.lead_time}` : '',
+    profile.shipping ? `Shipping: ${profile.shipping}` : '',
+    profile.year_founded ? `Year founded: ${profile.year_founded}` : '',
+    profile.employees ? `Employees: ${profile.employees}` : '',
+    profile.address ? `Address: ${profile.address}` : '',
     profile.export_markets ? `Export markets: ${profile.export_markets}` : '',
     profile.machines ? `Machines: ${profile.machines}` : '',
-    profile.sample_lead ? `Sample / fastest lead they will stand behind: ${profile.sample_lead}` : '',
+    profile.sample_lead ? `How they work / lead times / shutdowns they stand behind: ${profile.sample_lead}` : '',
     profile.holidays ? `Shutdown / holiday calendar: ${profile.holidays}` : '',
     profile.flexibility ? `Reply style: ${profile.flexibility}` : '',
     listedContacts(profile.contacts).length
@@ -348,6 +352,21 @@ function canPublish(company) {
   const hasCapability = profile.processes.length > 0 || profile.materials.length > 0 || String((company && company.context) || '').trim();
   const goal = String((company && company.goal) || '').trim();
   return Boolean(name && city && hasCapability && goal);
+}
+
+/** New publishes need founder WeChat + how-you-work. Already-live factories skip this gate. */
+function qualityReady(company) {
+  return canPublish(company) && interactionReady(company);
+}
+
+function afterVerifyNext(company, nextQuery) {
+  const next = String(nextQuery || '').trim().toLowerCase();
+  const dash = (next === 'quotes' || next === 'quotations')
+    ? '/airsup/dashboard?quotes=1'
+    : '/airsup/dashboard';
+  if (company && company.status === 'live') return dash;
+  if (interactionReady(company)) return dash;
+  return '/airsup/china/onboard';
 }
 
 function buyerTestPrompt(company) {
@@ -435,13 +454,27 @@ function fillEmptyCompany(company, draft) {
     claim_ready: prevProfile.claim_ready || draftProfile.claim_ready,
     is_demo: prevProfile.is_demo || draftProfile.is_demo,
     enrichment: mergeEnrichment(prevProfile.enrichment, draftProfile.enrichment),
-    quotation_knowledge: prevProfile.quotation_knowledge && prevProfile.quotation_knowledge.documents
-      && prevProfile.quotation_knowledge.documents.length
-      ? prevProfile.quotation_knowledge
-      : draftProfile.quotation_knowledge,
+    quotation_knowledge: keepQuotationKnowledge(prevProfile.quotation_knowledge, draftProfile.quotation_knowledge),
     board: prevProfile.board,
   };
   return next;
+}
+
+function quotationKnowledgePresent(knowledge) {
+  const row = normalizeQuotationKnowledge(knowledge);
+  const extracted = row.extracted || {};
+  return Boolean(
+    row.documents.length
+    || row.endpoint_use
+    || String(extracted.insights_for_endpoint || '').trim()
+    || String(extracted.summary || '').trim()
+  );
+}
+
+function keepQuotationKnowledge(prev, incoming) {
+  return quotationKnowledgePresent(prev)
+    ? normalizeQuotationKnowledge(prev)
+    : normalizeQuotationKnowledge(incoming);
 }
 
 function mergeEnrichment(prev, incoming) {
@@ -617,7 +650,8 @@ module.exports = {
   normalizeQuotationKnowledge,
   normalizeExtracted,
   quotationInsightsText,
-  isDemoCompany,
+  founderWechat,
+  interactionReady,
   normalizeActions,
   normalizeNiche,
   normalizeContacts,
@@ -637,6 +671,8 @@ module.exports = {
   listingText,
   categorySearchHaystack,
   canPublish,
+  qualityReady,
+  afterVerifyNext,
   buyerTestPrompt,
   publicRecord,
   endpointRecord,

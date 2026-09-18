@@ -1,13 +1,13 @@
-const { NICHES, isDemoCompany } = require('./fields');
+const { NICHES } = require('./fields');
 
 const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-function withoutDemo(rows) {
-  return (Array.isArray(rows) ? rows : []).filter((row) => !isDemoCompany(row));
+function asRows(rows) {
+  return Array.isArray(rows) ? rows : [];
 }
 
 function countsFromRows(rows) {
-  const list = withoutDemo(rows);
+  const list = asRows(rows);
   return {
     started: list.length,
     verified: list.filter((row) => row.verified_at || row.status === 'verified' || row.status === 'live').length,
@@ -76,7 +76,7 @@ function nicheCopy(id) {
 }
 
 function liveRows(rows) {
-  return withoutDemo(rows)
+  return asRows(rows)
     .filter((row) => row.status === 'live' && row.live_at && row.domain)
     .sort((a, b) => new Date(b.live_at).getTime() - new Date(a.live_at).getTime())
     .map((row) => {
@@ -94,7 +94,7 @@ function liveRows(rows) {
 }
 
 function liveSeries(rows, now) {
-  const lives = withoutDemo(rows)
+  const lives = asRows(rows)
     .filter((row) => row.status === 'live' && row.live_at)
     .map((row) => shanghaiDay(row.live_at))
     .filter(Boolean)

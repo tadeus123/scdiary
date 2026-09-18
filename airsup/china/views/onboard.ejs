@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="<%= lang === 'en' ? 'en' : 'zh-CN' %>">
+<head>
+  <meta charset="UTF-8">
+  <%- include('partials/head') %>
+</head>
+<body class="cn-body">
+  <%- include('partials/header') %>
+  <main class="cn-wrap cn-inner">
+    <h1><%= t('onboard_title') %></h1>
+    <p class="cn-lead"><%= t('onboard_lead') %></p>
+    <p class="cn-meta"><%= company.contact_email %> · <%= company.domain %></p>
+    <% if (error) { %>
+      <p class="cn-error"><%= error %></p>
+    <% } %>
+    <form class="cn-form" method="post" action="/airsup/china/onboard">
+      <p class="cn-label"><%= t('wechat_title') %></p>
+      <div class="cn-wechat">
+        <% catalogs.CONTACT_SLOTS.forEach(function (slot, index) {
+          var row = (profile.contacts && profile.contacts[index]) || {};
+        %>
+          <div class="cn-wechat-row">
+            <span><%= lang === 'en' ? slot.en : slot.zh %></span>
+            <input type="text" name="contact_name_<%= index %>" value="<%= row.name || '' %>" placeholder="<%= t('contact_ph') %>">
+            <input type="text" name="contact_wechat_<%= index %>" value="<%= row.wechat || '' %>" placeholder="<%= t('wechat_ph') %>" <%= index === 0 ? 'required' : '' %>>
+          </div>
+        <% }) %>
+      </div>
+      <label>
+        <span><%= t('how_you_work') %></span>
+        <textarea name="sample_lead" rows="4" required placeholder="<%= t('how_you_work_ph') %>"><%= profile.sample_lead || profile.lead_time || '' %></textarea>
+      </label>
+      <% if (askTolerance) { %>
+        <label>
+          <span><%= t('tolerance') %></span>
+          <input type="text" name="tolerance" value="<%= profile.tolerance || '' %>" placeholder="±0.02 mm">
+        </label>
+      <% } %>
+      <% if (askMoq) { %>
+        <label>
+          <span><%= t('moq') %></span>
+          <input type="text" name="moq" value="<%= profile.moq || '' %>">
+        </label>
+      <% } %>
+      <div class="cn-actions">
+        <button type="submit" class="cn-primary"><%= t('onboard_go') %></button>
+      </div>
+    </form>
+  </main>
+  <%- include('partials/footer') %>
+</body>
+</html>

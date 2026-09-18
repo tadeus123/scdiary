@@ -11,8 +11,7 @@ const ejs = require('ejs');
 const multer = require('multer');
 const session = require('../session');
 const { t, otherLang } = require('../i18n');
-const { companyTitle, CITIES } = require('../fields');
-const { ensureDemoCompany, onboardingResetPatch } = require('../demo-company');
+const { companyTitle, CITIES, interactionReady } = require('../fields');
 const db = require('../db');
 const peopleAuth = require('../../auth');
 const { welcomeMessage, completeTestTurn, emptyWeb } = require('./chat');
@@ -23,6 +22,7 @@ const { sendLoginCodeEmail } = require('../mail');
 const onboard = require('./onboard');
 const memoryStore = require('./memory-store');
 const { computeBoard, applyContextUpload } = require('./board');
+const quotations = require('../quotations');
 
 const {
   previewWebsite,
@@ -37,9 +37,6 @@ const {
   openSession,
   clearTestSession,
   usingMemory,
-  DEMO_DOMAIN,
-  DEMO_EMAIL,
-  ensureDemoAllowlist,
 } = onboard;
 
 const router = express.Router();
@@ -205,120 +202,10 @@ function parseWeb(raw, lang) {
   }
 }
 
-async function ensureTestDemoAllowlist() {
-  if (usingMemory()) {
-    return memoryStore.upsertDomainAllow({
-      domain: DEMO_DOMAIN,
-      contact_email: DEMO_EMAIL,
-      source: 'manual',
-      note: 'Airsup demo onboarding mailbox (memory)',
-    });
-  }
-  return ensureDemoAllowlist();
-}
-
-async function resetDemoPending(lang, req, res) {
-  await ensureTestDemoAllowlist();
-  const patch = {
-    ...onboardingResetPatch(),
-    locale: lang === 'en' ? 'en' : 'zh',
-  };
-  let company = null;
-  if (usingMemory()) {
-    const existing = await memoryStore.getByDomain(DEMO_DOMAIN);
-    if (existing) {
-      if (typeof memoryStore.deleteSessionsForCompany === 'function') {
-        await memoryStore.deleteSessionsForCompany(existing.company_id).catch(() => null);
-      }
-      company = await memoryStore.updateCompany(existing.company_id, patch);
-    } else {
-      company = await memoryStore.insertCompany({
-        domain: DEMO_DOMAIN,
-        ...patch,
-      });
-    }
-  } else {
-    try {
-      company = await ensureDemoCompany({ forceLive: true });
-      if (company && typeof db.deleteSessionsForCompany === 'function') {
-        await db.deleteSessionsForCompany(company.company_id).catch(() => null);
-      }
-      company = await db.updateCompany(company.company_id, patch);
-    } catch (error) {
-      console.error('Airsup china test demo reset skipped:', error.message);
-      company = null;
-    }
-  }
-  // Drop this browser's cookie so SSR/API do not keep a stale logged-in company.
-  if (req && res) {
-    try {
-      await clearTestSession(req, res);
-    } catch {
-      /* ignore */
-    }
-  }
-  return company;
-}
-
-/**
- * Ensure a live demo company exists and return it (memory or db).
- * Used by board-first /test SSR and ?demo_login=1 / api/login-demo.
- */
-async function ensureDemoLiveCompany(lang, req, res) {
-  await ensureTestDemoAllowlist();
-  let company = usingMemory()
-    ? await memoryStore.getByDomain(DEMO_DOMAIN)
-    : (db.isConfigured() ? await db.getByDomain(DEMO_DOMAIN).catch(() => null) : null);
-
-  if (company && company.status === 'live') {
-    return company;
-  }
-
-  if (usingMemory()) {
-    await resetDemoPending(lang, req, res);
-    const started = await startSignup({
-      website: `https://${DEMO_DOMAIN}`,
-      email: DEMO_EMAIL,
-      contact: 'Tade',
-      city: 'shenzhen',
-      lang,
-      source: 'demo',
-      publicOrigin: peopleAuth.getPublicOrigin(req),
-    });
-    if (!started.ok) return null;
-    const verified = await consumeVerifyToken(started.token);
-    if (!verified.ok || !verified.company) return null;
-    const withFields = await saveInteraction(verified.company, {
-      contact_wechat: 'airsup_demo_tade',
-      sample_lead: 'samples in 5 days',
-      flexibility: 'normal',
-      contact_name: 'Tade',
-    }, lang);
-    const published = await publishCompany(withFields);
-    return published.company || withFields || null;
-  }
-
-  if (!db.isConfigured()) return null;
-  return ensureDemoCompany({ forceLive: true });
-}
-
 router.get(['/', ''], async (req, res) => {
   const lang = langFrom(req, res);
   res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
   res.set('Pragma', 'no-cache');
-
-  // One-click demo login for board demos: /airsup/dashboard?demo_login=1
-  if (String(req.query.demo_login || '') === '1') {
-    try {
-      const company = await ensureDemoLiveCompany(lang, req, res);
-      if (company && company.company_id) {
-        await openSession(req, res, company.company_id);
-      }
-    } catch (error) {
-      console.error('Airsup china test demo_login skipped:', error.message);
-    }
-    return res.redirect('/airsup/dashboard');
-  }
 
   res.locals.seo = {
     title: lang === 'en' ? 'Airsup test — supplier board' : 'Airsup 测试 — 供应商看板',
@@ -339,43 +226,31 @@ router.get(['/', ''], async (req, res) => {
     company = null;
   }
 
-  // Board-first: /test always lands on the live supplier board (no onboarding wizard).
-  // Guest mode (?guest=1) keeps the board shell with zeros and login available.
-  const guestMode = String(req.query.guest || '') === '1';
-  if ((!company || company.status !== 'live') && !guestMode) {
-    try {
-      const demo = await ensureDemoLiveCompany(lang, req, res);
-      if (demo && demo.company_id) {
-        await openSession(req, res, demo.company_id);
-        company = demo;
-      }
-    } catch (error) {
-      console.error('Airsup china test auto demo session skipped:', error.message);
-    }
+  if (!company) {
+    return res.redirect('/airsup/china');
+  }
+  if (company.status !== 'live' && !interactionReady(company)) {
+    return res.redirect('/airsup/china/onboard');
   }
 
-  // Surface as live when we have a live company — hide wizard copy from SSR.
-  const onboardState = company && company.status === 'live'
+  const onboardState = company.status === 'live'
     ? { ...onboardingState(company, lang), step: 'live' }
     : onboardingState(company, lang);
   let initial = emptyWeb(lang);
-  if (company) {
-    try {
-      initial = seedWebFromCompany(company, lang).web || initial;
-    } catch {
-      initial = seedFromCompany(emptyWeb(lang), company, lang).web;
-    }
+  try {
+    initial = seedWebFromCompany(company, lang).web || initial;
+  } catch {
+    initial = seedFromCompany(emptyWeb(lang), company, lang).web;
   }
 
-  // Always pass a board payload so the supplier board is the main surface.
   const board = computeBoard(company, initial);
 
   return render(req, res, 'chat.ejs', {
     lang,
     company,
-    companyLabel: company ? companyTitle(company, lang) : '',
+    companyLabel: companyTitle(company, lang),
     welcome: welcomeMessage(lang),
-    loggedIn: Boolean(company),
+    loggedIn: true,
     usingMemory: usingMemory(),
     onboard: onboardState,
     cities: CITIES,
@@ -385,6 +260,9 @@ router.get(['/', ''], async (req, res) => {
     autoDemo: false,
     board,
     boardFirst: true,
+    quotationMeta: quotations.listMeta(company),
+    headerLive: company.status === 'live',
+    quotesFocus: String(req.query.quotes || '') === '1',
   });
 });
 
@@ -455,8 +333,6 @@ router.post('/api/onboard/start', express.json(), async (req, res) => {
       company: companySummary(result.company, lang),
       state,
       verifyPath: result.verifyPath,
-      demo: Boolean(result.demo),
-      token: result.demo ? result.token : undefined,
       web,
       error: null,
     });
@@ -466,24 +342,14 @@ router.post('/api/onboard/start', express.json(), async (req, res) => {
   }
 });
 
-router.get('/verify', async (req, res) => {
-  const lang = langFrom(req, res);
+router.get('/verify', (req, res) => {
   const token = String(req.query.token || '').trim();
-  const auto = String(req.query.auto || '') === '1';
-  if (!token) {
-    return res.redirect('/airsup/dashboard?err=token');
-  }
-  try {
-    const result = await consumeVerifyToken(token);
-    if (!result.ok || !result.company) {
-      return res.redirect(`/airsup/dashboard?err=${encodeURIComponent(result.errorKey || 'err_token')}`);
-    }
-    await openSession(req, res, result.company.company_id);
-    return res.redirect('/airsup/dashboard?ok=verified' + (auto ? '&auto=1' : ''));
-  } catch (error) {
-    console.error('Airsup china test verify error:', error);
-    return res.redirect(`/airsup/dashboard?err=${encodeURIComponent('err_db')}`);
-  }
+  const qs = new URLSearchParams();
+  if (token) qs.set('token', token);
+  const next = String(req.query.next || '').trim();
+  if (next) qs.set('next', next);
+  const suffix = qs.toString();
+  return res.redirect(`/airsup/china/verify${suffix ? `?${suffix}` : ''}`);
 });
 
 router.post('/api/onboard/fields', express.json(), async (req, res) => {
@@ -583,55 +449,8 @@ router.get('/api/onboard/state', async (req, res) => {
   }
 });
 
-router.post('/api/onboard/demo', express.json(), async (req, res) => {
-  if (!peopleAuth.allowedOrigin(req)) {
-    return jsonError(res, langFrom(req, res), 403, 'err_origin');
-  }
-  const lang = langFrom(req, res);
-  try {
-    await resetDemoPending(lang, req, res);
-    // Do not openSession until verify — demo UX returns verifyPath for one-click verify.
-    const result = await startSignup({
-      website: `https://${DEMO_DOMAIN}`,
-      email: DEMO_EMAIL,
-      contact: 'Tade',
-      city: 'shenzhen',
-      lang,
-      source: 'demo',
-      publicOrigin: peopleAuth.getPublicOrigin(req),
-    });
-    if (!result.ok) {
-      return jsonError(res, lang, 400, result.errorKey || 'err_db');
-    }
-    const state = onboardingState(result.company, lang);
-    let web = null;
-    let preview = null;
-    try {
-      web = seedWebFromCompany(result.company, lang).web;
-    } catch {
-      web = null;
-    }
-    try {
-      preview = await previewWebsite(`https://${DEMO_DOMAIN}`, lang);
-      if (preview && !preview.ok) preview = null;
-    } catch {
-      preview = null;
-    }
-    return res.json({
-      ok: true,
-      company: companySummary(result.company, lang),
-      state,
-      verifyPath: result.verifyPath,
-      demo: true,
-      token: result.token,
-      web,
-      preview,
-      error: null,
-    });
-  } catch (error) {
-    console.error('Airsup china test onboard demo error:', error);
-    return jsonError(res, lang, 500, 'err_db');
-  }
+router.post('/api/onboard/demo', (req, res) => {
+  return res.status(410).json({ error: 'gone' });
 });
 
 router.get('/api/state', async (req, res) => {
@@ -840,35 +659,8 @@ router.post('/api/board/context', (req, res) => {
   });
 });
 
-router.post('/api/login-demo', express.json(), async (req, res) => {
-  if (!peopleAuth.allowedOrigin(req)) {
-    return res.status(403).json({ error: 'forbidden' });
-  }
-  try {
-    const lang = langFrom(req, res);
-    const company = await ensureDemoLiveCompany(lang, req, res);
-    if (!company || !company.company_id) {
-      return res.status(usingMemory() || db.isConfigured() ? 500 : 503).json({
-        error: usingMemory() || db.isConfigured() ? 'login_failed' : 'storage_unavailable',
-      });
-    }
-    await openSession(req, res, company.company_id);
-    const seeded = seedWebFromCompany(company, lang);
-    return res.json({
-      ok: true,
-      company: {
-        domain: company.domain,
-        name: companyTitle(company, lang),
-        status: company.status,
-      },
-      web: seeded.web,
-      seeded: seeded.added,
-      board: computeBoard(company, seeded.web),
-    });
-  } catch (error) {
-    console.error('Airsup china test demo login error:', error);
-    return res.status(500).json({ error: 'login_failed' });
-  }
+router.post('/api/login-demo', (req, res) => {
+  return res.status(410).json({ error: 'gone' });
 });
 
 router.post('/api/login/request', express.json(), async (req, res) => {
