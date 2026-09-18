@@ -351,6 +351,9 @@ assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("m
 assert.ok(fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8').includes('listCompaniesProof'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('rfq_title'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('manual_email_cta'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('id="cn-login-modal"'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/partials/header.ejs'), 'utf8').includes('id="cn-header-login"'));
+assert.strictEqual((fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').match(/<\/html>/g) || []).length, 1);
 assert.ok(COPY.en.growth_launch.toLowerCase().includes('launch'));
 assert.ok(COPY.zh.growth_launch.includes('开通'));
 assert.ok(COPY.en.cta_activate.toLowerCase().includes('prefilled'));
