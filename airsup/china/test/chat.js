@@ -11,19 +11,11 @@ const KEEP_RECENT = 10;
 const OPENAI_MS = 25000;
 
 const WELCOME_ZH = [
-  '左边是你们公司在 ChatGPT 里的「端点网」— 现在还很淡。',
-  '',
-  '随便丢东西进来：网站、一段能力说明、过去的报价 PDF… 网会变大变亮。越充实，欧美采购越容易在 ChatGPT 里找到你们。',
-  '',
-  '没有固定问卷。你怎么补，网怎么长。',
+  '左边是端点网。往里丢材料，或点两个节点把它们连上 — 网会变密，可达会升高。',
 ].join('\n');
 
 const WELCOME_EN = [
-  'On the left is your company endpoint web inside ChatGPT — faint for now.',
-  '',
-  'Drop anything useful: a website, a capability note, a past quote PDF… the web grows brighter. Richer web → easier for Western buyers to find you in ChatGPT.',
-  '',
-  'No fixed form. You feed it; it grows.',
+  'Left is your endpoint web. Dump material, or click two nodes to link them — denser web, higher reach.',
 ].join('\n');
 
 function welcomeMessage(lang) {
