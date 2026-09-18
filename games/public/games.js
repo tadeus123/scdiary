@@ -33,6 +33,7 @@
   let startedAt = 0;
   let timerId = null;
   let missUntil = 0;
+  let allowRestartAt = 0;
 
   function computeWpm(chars, elapsed) {
     if (chars <= 0 || elapsed <= 0) return 0;
@@ -125,6 +126,7 @@
     resultScore.textContent = String(score);
     resultWpm.textContent = String(Math.round(wpm));
     resultMistakes.textContent = String(mistakes);
+    allowRestartAt = Date.now() + 1000;
     setMode('results');
 
     fetch('/games/api/score', {
@@ -209,9 +211,9 @@
 
   document.addEventListener('keydown', function (event) {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
-    if (mode === 'results' && (event.key === 'Enter' || event.key === ' ')) {
+    if (mode === 'results') {
       event.preventDefault();
-      startRound();
+      if (event.key === 'Enter' && Date.now() >= allowRestartAt) startRound();
       return;
     }
     if (event.key === 'Tab') return;

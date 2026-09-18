@@ -183,6 +183,7 @@ body {
   font: inherit;
   font-size: 1rem;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .games-again:hover,
