@@ -1388,6 +1388,7 @@ function memoryChina(companies) {
   assert.strictEqual(typeof testOnboard.consumeVerifyToken, 'function');
   assert.strictEqual(typeof testOnboard.saveInteraction, 'function');
   assert.strictEqual(typeof testOnboard.publishCompany, 'function');
+  assert.strictEqual(typeof testOnboard.qualityReady, 'function');
   assert.strictEqual(typeof testOnboard.onboardingState, 'function');
   assert.strictEqual(typeof testOnboard.seedWebFromCompany, 'function');
   assert.strictEqual(typeof testOnboard.readTestCompany, 'function');
@@ -1418,6 +1419,10 @@ function memoryChina(companies) {
   const verified = await testOnboard.consumeVerifyToken(started.token);
   assert.ok(verified.ok, verified.errorKey);
   assert.strictEqual(verified.company.status, 'verified');
+  assert.strictEqual(testOnboard.qualityReady(verified.company), false);
+  const blocked = await testOnboard.publishCompany(verified.company);
+  assert.strictEqual(blocked.ok, false);
+  assert.strictEqual(blocked.errorKey, 'err_publish');
   const saved = await testOnboard.saveInteraction(verified.company, {
     contact_wechat: 'airsup_demo_tade',
     sample_lead: 'samples in 3 days',
@@ -1426,10 +1431,35 @@ function memoryChina(companies) {
     goal: 'Win qualified export RFQs from buyers who find us in ChatGPT.',
   }, 'en');
   assert.ok(saved && saved.company_id);
+  assert.ok(testOnboard.qualityReady(saved));
   const published = await testOnboard.publishCompany(saved);
   assert.ok(published.ok, published.errorKey);
   assert.strictEqual(published.company.status, 'live');
   assert.strictEqual(testOnboard.onboardingState(published.company, 'en').step, 'live');
+  assert.ok(testOnboard.onboardingState(published.company, 'en').wechat);
+  // Demo reset must clear profile (not leave stale WeChat / capabilities).
+  memoryStore.resetAll();
+  const stale = await memoryStore.insertCompany({
+    domain: testOnboard.DEMO_DOMAIN,
+    website: `https://${testOnboard.DEMO_DOMAIN}`,
+    contact_email: testOnboard.DEMO_EMAIL,
+    company_name: 'Stale',
+    city: 'shenzhen',
+    status: 'live',
+    source: 'demo',
+    goal: 'old',
+    context: 'old',
+    profile: {
+      processes: ['sla'],
+      sample_lead: 'keep?',
+      contacts: [{ role: 'ceo', name: 'X', wechat: 'stale_wx' }],
+    },
+  });
+  const cleared = await memoryStore.updateCompany(stale.company_id, onboardingResetPatch());
+  assert.strictEqual(cleared.status, 'pending');
+  assert.strictEqual(String(cleared.company_name || ''), '');
+  assert.ok(!require('./fields').listedContacts(cleared.profile.contacts).length);
+  assert.strictEqual(String((cleared.profile && cleared.profile.sample_lead) || ''), '');
   const testChat = require('./test/chat');
   const testWeb = require('./test/web');
   assert.strictEqual(testChat.welcomeMessage('zh'), '');

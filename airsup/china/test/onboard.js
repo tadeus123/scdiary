@@ -22,6 +22,7 @@ const {
   companyTitle,
   enrichmentGaps,
   isDemoCompany,
+  listedContacts,
 } = require('../fields');
 const { normalizeDomain, emailAllowedForSite, emailParts } = require('../domain');
 const { sendVerifyEmail } = require('../mail');
@@ -351,7 +352,7 @@ async function consumeVerifyToken(token) {
       && row.purpose === 'verify'
       && claimReady
       && outreachSource
-      && canPublish(fresh)
+      && qualityReady(fresh)
       && fresh.status === 'verified'
       && !fresh.live_at
     ) {
@@ -444,12 +445,23 @@ async function saveInteraction(company, body, lang) {
   return store().updateCompany(company.company_id, patch);
 }
 
-/** Publish when canPublish; else { ok:false, errorKey:'err_publish' }. */
+/**
+ * Endpoint-quality gate on top of live canPublish.
+ * Live canPublish only needs name/city/capability/goal. Airsup china pitch also
+ * asks WeChat + sample lead before publish so ChatGPT can convert buyers.
+ */
+function qualityReady(company) {
+  if (!canPublish(company)) return false;
+  const profile = normalizeProfile(company && company.profile);
+  return Boolean(listedContacts(profile.contacts).length && String(profile.sample_lead || '').trim());
+}
+
+/** Publish when canPublish + qualityReady; else { ok:false, errorKey:'err_publish' }. */
 async function publishCompany(company) {
   if (!company || !company.company_id) {
     return { ok: false, errorKey: 'err_publish', company: null };
   }
-  if (!canPublish(company)) {
+  if (!qualityReady(company)) {
     return { ok: false, errorKey: 'err_publish', company };
   }
   try {
@@ -484,7 +496,12 @@ function onboardingState(company, lang) {
   const email = company ? String(company.contact_email || '') : '';
   const title = company ? companyTitle(company, locale) : '';
   const publishOk = company ? canPublish(company) : false;
+  const ready = company ? qualityReady(company) : false;
   const gaps = company ? enrichmentGaps(company) : [];
+  const wechat = (listedContacts(profile.contacts)[0] && listedContacts(profile.contacts)[0].wechat) || '';
+  const contactName = company
+    ? String(company.contact_name || (profile.contacts[0] && profile.contacts[0].name) || '').trim()
+    : '';
 
   let step = 'site';
   if (!company || !domain) {
@@ -513,7 +530,12 @@ function onboardingState(company, lang) {
     title,
     domain,
     email,
+    contactName,
+    wechat,
+    sampleLead: String(profile.sample_lead || '').trim(),
+    flexibility: profile.flexibility || 'normal',
     canPublish: publishOk,
+    qualityReady: ready,
     gaps,
     previewSummary,
   };
@@ -552,6 +574,7 @@ module.exports = {
   consumeVerifyToken,
   saveInteraction,
   publishCompany,
+  qualityReady,
   onboardingState,
   seedWebFromCompany,
   readTestCompany,
