@@ -456,13 +456,16 @@ function qualityReady(company) {
   return Boolean(listedContacts(profile.contacts).length && String(profile.sample_lead || '').trim());
 }
 
-/** Publish when canPublish + qualityReady; else { ok:false, errorKey:'err_publish' }. */
+/** Publish when qualityReady; else err_publish or err_publish_quality. */
 async function publishCompany(company) {
   if (!company || !company.company_id) {
     return { ok: false, errorKey: 'err_publish', company: null };
   }
-  if (!qualityReady(company)) {
+  if (!canPublish(company)) {
     return { ok: false, errorKey: 'err_publish', company };
+  }
+  if (!qualityReady(company)) {
+    return { ok: false, errorKey: 'err_publish_quality', company };
   }
   try {
     const next = await store().updateCompany(company.company_id, {
@@ -567,6 +570,21 @@ function seedWebFromCompany(company, lang, web) {
   };
 }
 
+/** Grow the note-web from a scrape preview before signup (growth story). */
+function seedWebFromPreview(preview, lang) {
+  if (!preview || !preview.ok) {
+    return { web: emptyWeb(), added: [] };
+  }
+  const draft = preview.draft || companyDraftFromPreview(preview) || {};
+  const fake = {
+    domain: preview.domain || '',
+    company_name: draft.company_name || '',
+    company_name_en: draft.company_name_en || '',
+    profile: draft.profile || {},
+  };
+  return seedWebFromCompany(fake, lang);
+}
+
 module.exports = {
   applySiteDraft,
   previewWebsite,
@@ -577,6 +595,7 @@ module.exports = {
   qualityReady,
   onboardingState,
   seedWebFromCompany,
+  seedWebFromPreview,
   readTestCompany,
   openSession,
   clearTestSession,
