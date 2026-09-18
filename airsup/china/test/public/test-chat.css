@@ -638,7 +638,17 @@ a.cn-ob-verify-link {
 }
 .cn-test-has-board .cn-test-empty,
 .cn-test-has-board .cn-test-reach-float,
-.cn-test-has-board .cn-test-dock {
+.cn-test-has-board .cn-test-dock,
+.cn-test-board-first .cn-test-onboard,
+.cn-test-has-board .cn-test-onboard {
+  display: none !important;
+}
+.cn-test-board-first .cn-test-board {
+  display: grid;
+}
+.cn-test-board-first .cn-test-empty,
+.cn-test-board-first .cn-test-reach-float,
+.cn-test-board-first .cn-test-dock {
   display: none !important;
 }
 
