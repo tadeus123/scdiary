@@ -1,6 +1,6 @@
 # Revert Airsup China TEST concept (`/airsup/china/test`)
 
-This is an isolated company-endpoint-web concept (chat feeds a growing abstract map). It does not own live china tables.
+This is an isolated company-endpoint-web concept (dumps grow a bookshelf-style vis.js network). It does not own live china tables.
 
 ## Remove only the test concept
 

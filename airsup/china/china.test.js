@@ -1361,10 +1361,14 @@ function memoryChina(companies) {
   assert.ok(fs.existsSync(path.join(__dirname, 'test/web.js')));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.use('/test'"));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('AIRSUP-CHINA-TEST-BEGIN'));
-  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-universe'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-network'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-dock'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('vis-network@10.1.2'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('login/request'));
+  assert.ok(fs.existsSync(path.join(__dirname, 'test/public/test-network.js')));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'test/public/test-network.js'), 'utf8').includes('gravitationalConstant: -5000'));
   assert.ok(!fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-thread'));
+  assert.ok(!fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-universe'));
   const testChat = require('./test/chat');
   const testWeb = require('./test/web');
   assert.strictEqual(testChat.welcomeMessage('zh'), '');
