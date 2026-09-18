@@ -15,7 +15,9 @@ const db = require('../db');
 const peopleAuth = require('../../auth');
 const { welcomeMessage, completeTestTurn, emptyWeb } = require('./chat');
 const { describeUploads } = require('./files');
-const { layoutPositions, normalizeClientWeb, addCustomLink } = require('./web');
+const { layoutPositions, normalizeClientWeb, addCustomLink, seedFromCompany } = require('./web');
+const authCodes = require('./auth-codes');
+const { sendVerifyEmail } = require('../mail');
 
 const router = express.Router();
 const VIEWS = path.join(__dirname, 'views');
@@ -36,9 +38,8 @@ function readCss(filePath) {
 }
 
 function readTestCss() {
-  if (testCssCache !== null) return testCssCache;
-  testCssCache = readCss(TEST_CSS_PATH);
-  return testCssCache;
+  // Concept page: always fresh so UI iterations show up without restart
+  return readCss(TEST_CSS_PATH);
 }
 
 function readChinaCss() {
@@ -150,7 +151,11 @@ router.get(['/', ''], async (req, res) => {
     companyLabel: company ? companyTitle(company, lang) : '',
     welcome: welcomeMessage(lang),
     loggedIn: Boolean(company),
-    initialWeb: emptyWeb(lang),
+    initialWeb: (() => {
+      let web = emptyWeb(lang);
+      if (company) web = seedFromCompany(web, company, lang).web;
+      return web;
+    })(),
     layoutPositions: layoutPositions(),
   });
 });
@@ -244,16 +249,90 @@ router.post('/api/login-demo', express.json(), async (req, res) => {
     await ensureDemoAllowlist();
     const company = await ensureDemoCompany({ forceLive: true });
     await session.createSession(req, res, company.company_id);
+    const lang = langFrom(req, res);
+    const seeded = seedFromCompany(emptyWeb(lang), company, lang);
     return res.json({
       ok: true,
       company: {
         domain: company.domain,
-        name: companyTitle(company, langFrom(req, res)),
+        name: companyTitle(company, lang),
         status: company.status,
       },
+      web: seeded.web,
+      seeded: seeded.added,
     });
   } catch (error) {
     console.error('Airsup china test demo login error:', error);
+    return res.status(500).json({ error: 'login_failed' });
+  }
+});
+
+router.post('/api/login/request', express.json(), async (req, res) => {
+  if (!peopleAuth.allowedOrigin(req)) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  const lang = langFrom(req, res);
+  const email = authCodes.normalizeEmail(req.body && req.body.email);
+  if (!authCodes.looksLikeEmail(email)) {
+    return res.status(400).json({ error: 'bad_email' });
+  }
+  const code = authCodes.issueCode(email);
+  let mailed = false;
+  try {
+    await sendVerifyEmail({
+      lang,
+      to: email,
+      link: `${req.protocol}://${req.get('host')}/airsup/china/test#code=${code}`,
+      contactName: '',
+    });
+    mailed = true;
+  } catch (error) {
+    console.error('Airsup china test login code mail skipped:', error.message);
+  }
+  // Concept surface: always return code so the flow is tryable without mail.
+  return res.json({ ok: true, mailed, devCode: code });
+});
+
+router.post('/api/login/verify', express.json(), async (req, res) => {
+  if (!peopleAuth.allowedOrigin(req)) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  if (!db.isConfigured()) {
+    return res.status(503).json({ error: 'storage_unavailable' });
+  }
+  const lang = langFrom(req, res);
+  const email = authCodes.normalizeEmail(req.body && req.body.email);
+  const code = String((req.body && req.body.code) || '').trim();
+  if (!authCodes.looksLikeEmail(email) || !authCodes.verifyCode(email, code)) {
+    return res.status(401).json({ error: 'bad_code' });
+  }
+  try {
+    await ensureDemoAllowlist();
+    const domain = email.split('@')[1] || '';
+    let company = null;
+    try {
+      company = domain ? await db.getByDomain(domain) : null;
+    } catch {
+      company = null;
+    }
+    if (!company) {
+      company = await ensureDemoCompany({ forceLive: true });
+    }
+    await session.createSession(req, res, company.company_id);
+    const seeded = seedFromCompany(emptyWeb(lang), company, lang);
+    return res.json({
+      ok: true,
+      company: {
+        domain: company.domain,
+        name: companyTitle(company, lang),
+        status: company.status,
+        email,
+      },
+      web: seeded.web,
+      seeded: seeded.added,
+    });
+  } catch (error) {
+    console.error('Airsup china test login verify error:', error);
     return res.status(500).json({ error: 'login_failed' });
   }
 });

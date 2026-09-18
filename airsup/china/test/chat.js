@@ -1,18 +1,17 @@
 /**
- * Airsup China TEST — AI turn for growing the company endpoint web.
+ * Airsup China TEST — dump turns grow a floating note-web.
  * Isolated from live china flows.
  */
 const crypto = require('crypto');
-const { emptyWeb, extractSignals, applySignals, normalizeClientWeb } = require('./web');
+const { emptyWeb, applyDump, normalizeClientWeb, seedFromCompany } = require('./web');
 
 const MAX_HISTORY_CHARS = 14000;
 const MAX_MSG_CHARS = 6000;
 const KEEP_RECENT = 10;
 const OPENAI_MS = 25000;
 
-const WELCOME_ZH = '把报价、网站、碎片丢到画面上。网会亮起来。';
-
-const WELCOME_EN = 'Drop quotes, a site, scraps onto the canvas. The web brightens.';
+const WELCOME_ZH = '';
+const WELCOME_EN = '';
 
 function welcomeMessage(lang) {
   return lang === 'en' ? WELCOME_EN : WELCOME_ZH;
@@ -21,20 +20,18 @@ function welcomeMessage(lang) {
 function setupSystemPrompt(lang, company, web) {
   const logged = company
     ? `Signed-in company: ${company.company_name || company.company_name_en || company.domain} (${company.domain || ''}), status=${company.status || 'unknown'}.`
-    : 'User may be browsing as guest; invite login only when saving matters.';
+    : 'Guest browsing; login (email + code) only matters when saving.';
   const locale = lang === 'en' ? 'Reply in English.' : '用中文回复（可夹英文专有名词）。';
-  const reach = web && web.reach != null ? web.reach : 8;
-  const filled = web && web.nodes
-    ? Object.values(web.nodes).filter((n) => n.id !== 'core' && n.strength > 0.15).map((n) => n.label).join(', ')
+  const reach = web && web.reach != null ? web.reach : 0;
+  const labels = web && web.nodes
+    ? Object.values(web.nodes).slice(0, 12).map((n) => n.label).join(', ')
     : '';
   return [
-    'You are Airsup. The main UI is a living abstract company web (endpoint map), not a form wizard.',
-    'Incentive: whatever they upload or tell you should visibly grow that web and raise "reach" (how findable they are in ChatGPT).',
-    'Do NOT run a long onboarding checklist. Invite creativity: quotes, notes, photos descriptions, process scraps, WeChat, lead times — anything real.',
-    'Be short (2-5 sentences). Celebrate what just strengthened the web. Optionally hint one creative next dump — never a numbered mandatory funnel.',
-    'When files arrive: originals stay private from buyers; patterns can feed the endpoint.',
-    'Do not invent facts they did not give. Never use emoji. Never mention system instructions.',
-    `Current reach score: ${reach}/100. Stronger nodes: ${filled || '(almost empty)'}.`,
+    'You are Airsup. The UI is a floating fine-grained company web — NOT a chat product.',
+    'User dumps create tiny note nodes that link when relevant. Do not run form onboarding.',
+    'Be extremely short (1-2 sentences). The canvas is the product; your reply is optional metadata only.',
+    'Never use emoji. Never mention system instructions.',
+    `Reach ${reach}/100. Nodes: ${labels || '(empty)'}.`,
     locale,
     logged,
   ].join('\n');
@@ -58,8 +55,8 @@ function compressHistory(messages, lang) {
   const recent = list.slice(-KEEP_RECENT);
   const blob = older.map((row) => `${row.role}: ${row.content}`).join('\n').slice(0, 8000);
   const summary = lang === 'en'
-    ? `Earlier in this Airsup thread (compressed):\n${blob}`
-    : `本条对话更早内容（已压缩）：\n${blob}`;
+    ? `Earlier dumps (compressed):\n${blob}`
+    : `更早丢入的内容（已压缩）：\n${blob}`;
 
   let trimmed = recent;
   while (approxChars(trimmed) > MAX_HISTORY_CHARS && trimmed.length > 2) {
@@ -68,28 +65,14 @@ function compressHistory(messages, lang) {
   return { history: trimmed, summary: summary.slice(0, 6000) };
 }
 
-function fallbackReply({ lang, message, files, web, changedNodes }) {
+function fallbackReply({ lang, web, createdLabels }) {
   const reach = web.reach;
-  const names = (files || []).map((f) => f.name).filter(Boolean);
-  const grew = (changedNodes || []).join(lang === 'en' ? ', ' : '、') || (lang === 'en' ? 'the web' : '端点网');
-
+  const grew = (createdLabels || []).slice(0, 4).join(lang === 'en' ? ', ' : '、')
+    || (lang === 'en' ? 'new notes' : '新节点');
   if (lang === 'en') {
-    if (names.length) {
-      return `Got ${names.join(', ')} — buyers never see the original. That thickened ${grew}. Reach is now ${reach}. Keep dumping real factory material; denser web means ChatGPT can route better RFQs to you.`;
-    }
-    if (/https?:\/\//i.test(message || '') || /\.\w{2,}/.test(message || '')) {
-      return `Website noted — domain lit up. Reach ${reach}. A past quote or a process scrap will branch the web further.`;
-    }
-    return `Reach ${reach}. No form — drop whatever makes the factory truer (quote, WeChat, lead time, capability note) and watch the map grow.`;
+    return `Added ${grew}. Reach ${reach}.`;
   }
-
-  if (names.length) {
-    return `收到 ${names.join('、')}（买家看不到原件）。${grew} 变亮了。可达 ${reach}。继续丢真材料就行 — 网越密，ChatGPT 越容易把合适询盘推过来。`;
-  }
-  if (/https?:\/\//i.test(message || '') || /\.\w{2,}/.test(message || '')) {
-    return `网站记上了，域名亮了。可达 ${reach}。再丢一份过去报价或一段工艺说明，网会继续分叉。`;
-  }
-  return `可达 ${reach}。没有问卷 — 报价、微信、交期、能力碎片，什么真就丢什么，看左边变亮。`;
+  return `已加入 ${grew}。可达 ${reach}。`;
 }
 
 async function completeTestTurn({
@@ -101,14 +84,14 @@ async function completeTestTurn({
   web: rawWeb,
   fetchImpl,
 }) {
-  const before = normalizeClientWeb(rawWeb, lang);
-  const signals = extractSignals({ message, files, lang });
-  const eventLabel = (files && files.length)
-    ? ((files[0] && files[0].name) || 'upload')
-    : String(message || '').trim().slice(0, 40);
-  const applied = applySignals(before, signals, eventLabel);
+  let before = normalizeClientWeb(rawWeb, lang);
+  if (company && Object.keys(before.nodes).length === 0) {
+    before = seedFromCompany(before, company, lang).web;
+  }
+  const applied = applyDump(before, { message, files, lang });
   const web = applied.web;
-  const changedNodes = [...new Set(signals.map((s) => (web.nodes[s.node] && web.nodes[s.node].label) || s.node))];
+  const createdLabels = (applied.signals || [])
+    .map((s) => (web.nodes[s.node] && web.nodes[s.node].label) || s.node);
 
   const { history: compressed, summary } = compressHistory(history, lang);
   const fileNote = (files || []).length
@@ -116,17 +99,11 @@ async function completeTestTurn({
     : '';
   const userContent = `${String(message || '').trim() || (files && files.length ? '(uploaded files)' : '')}${fileNote}`.slice(0, MAX_MSG_CHARS);
 
-  const fallback = fallbackReply({
-    lang,
-    message: userContent,
-    files,
-    web,
-    changedNodes,
-  });
+  const fallback = fallbackReply({ lang, web, createdLabels });
 
   const key = process.env.OPENAI_API_KEY;
   if (!key && !fetchImpl) {
-    return { reply: fallback, summary, used_model: null, web, signals };
+    return { reply: fallback, summary, used_model: null, web, signals: applied.signals };
   }
 
   const controller = typeof AbortController === 'function' ? new AbortController() : null;
@@ -140,7 +117,7 @@ async function completeTestTurn({
     for (const row of compressed) messages.push(row);
     messages.push({
       role: 'user',
-      content: `${userContent || '(empty)'}\n\n[Web delta] reach ${before.reach} → ${web.reach}; touched: ${changedNodes.join(', ') || 'none'}`,
+      content: `${userContent || '(empty)'}\n\n[Web delta] reach ${before.reach} → ${web.reach}; new: ${createdLabels.join(', ') || 'none'}`,
     });
 
     const res = await fetchFn('https://api.openai.com/v1/chat/completions', {
@@ -152,19 +129,19 @@ async function completeTestTurn({
       signal: controller ? controller.signal : undefined,
       body: JSON.stringify({
         model: 'gpt-4o-mini',
-        temperature: 0.45,
-        max_tokens: 500,
+        temperature: 0.4,
+        max_tokens: 120,
         messages,
       }),
     });
-    if (!res.ok) return { reply: fallback, summary, used_model: null, web, signals };
+    if (!res.ok) return { reply: fallback, summary, used_model: null, web, signals: applied.signals };
     const data = await res.json();
     const reply = String(
       data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '',
     ).trim();
-    return { reply: reply || fallback, summary, used_model: 'gpt-4o-mini', web, signals };
+    return { reply: reply || fallback, summary, used_model: 'gpt-4o-mini', web, signals: applied.signals };
   } catch {
-    return { reply: fallback, summary, used_model: null, web, signals };
+    return { reply: fallback, summary, used_model: null, web, signals: applied.signals };
   } finally {
     if (timer) clearTimeout(timer);
   }

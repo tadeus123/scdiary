@@ -6,7 +6,7 @@
   <% if (typeof testCss === 'string' && testCss) { %>
   <style><%- testCss %></style>
   <% } else { %>
-  <link rel="stylesheet" href="/airsup/china/test/test-chat.css?v=6">
+  <link rel="stylesheet" href="/airsup/china/test/test-chat.css?v=7">
   <% } %>
 </head>
 <body class="cn-body cn-test" data-lang="<%= lang %>" data-logged-in="<%= loggedIn ? '1' : '0' %>">
@@ -28,42 +28,61 @@
   </header>
 
   <div class="cn-test-reach-float" aria-hidden="true">
-    <div class="n" id="cn-test-reach">10<span>/100</span></div>
-    <svg class="cn-test-spark" id="cn-test-spark" viewBox="0 0 88 18"></svg>
+    <div class="n" id="cn-test-reach">0<span>/100</span></div>
+    <svg class="cn-test-spark" id="cn-test-spark" viewBox="0 0 72 14"></svg>
   </div>
 
   <div class="cn-test-universe" id="cn-test-universe">
     <svg class="cn-test-canvas" id="cn-test-canvas" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
   </div>
+  <div class="cn-test-empty" id="cn-test-empty">
+    <p><%= lang === 'en' ? 'Empty web. Drop a quote, site, or scrap — nodes appear and link.' : '空网。丢报价、网站或碎片 — 节点会出现并连上。' %></p>
+  </div>
+
+  <div class="cn-test-toast" id="cn-test-toast" role="status"></div>
 
   <div class="cn-test-dock">
-    <div class="cn-test-peek" id="cn-test-thread" aria-live="polite"></div>
+    <div class="cn-test-pending" id="cn-test-pending"></div>
     <form class="cn-test-composer" id="cn-test-form">
-      <div class="cn-test-pending" id="cn-test-pending"></div>
-      <div class="cn-test-row">
-        <label class="cn-test-attach" title="<%= lang === 'en' ? 'Attach' : '上传' %>">
-          <input type="file" id="cn-test-files" multiple accept=".pdf,.xlsx,.xls,.zip,.csv,.txt,application/pdf,application/zip,image/*">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M21.4 11.6 12.1 20.9a5.2 5.2 0 0 1-7.4-7.4l9.9-9.9a3.5 3.5 0 0 1 4.9 4.9l-9.2 9.2a1.7 1.7 0 1 1-2.4-2.4l8.1-8.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </label>
-        <textarea class="cn-test-input" id="cn-test-input" rows="1" placeholder="<%= lang === 'en' ? 'Drop files here, or type…' : '把文件丢到画面上，或直接输入…' %>"></textarea>
-        <button class="cn-test-send" id="cn-test-send" type="submit" aria-label="<%= lang === 'en' ? 'Send' : '发送' %>">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </div>
+      <label class="cn-test-attach" title="<%= lang === 'en' ? 'Attach' : '上传' %>">
+        <input type="file" id="cn-test-files" multiple accept=".pdf,.xlsx,.xls,.zip,.csv,.txt,application/pdf,application/zip,image/*">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M21.4 11.6 12.1 20.9a5.2 5.2 0 0 1-7.4-7.4l9.9-9.9a3.5 3.5 0 0 1 4.9 4.9l-9.2 9.2a1.7 1.7 0 1 1-2.4-2.4l8.1-8.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </label>
+      <textarea class="cn-test-input" id="cn-test-input" rows="1" placeholder="<%= lang === 'en' ? 'Drop files on the canvas, or type…' : '把文件丢到画面上，或直接输入…' %>"></textarea>
+      <button class="cn-test-send" id="cn-test-send" type="submit" aria-label="<%= lang === 'en' ? 'Send' : '发送' %>">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
     </form>
-    <p class="cn-test-hint"><a href="/airsup/china"><%= lang === 'en' ? 'Live product' : '正式版' %></a></p>
+  </div>
+
+  <div class="cn-test-auth" id="cn-test-auth" aria-hidden="true">
+    <div class="cn-test-auth-card">
+      <h2><%= lang === 'en' ? 'Log in' : '登录' %></h2>
+      <p><%= lang === 'en'
+        ? 'Work email → we send a 6-digit code. Same idea as magic link, typed instead of clicked.'
+        : '工作邮箱 → 发 6 位验证码。和魔法链接一样，只是改成输入码。' %></p>
+      <div class="cn-test-auth-msg" id="cn-test-auth-msg"></div>
+      <label for="cn-test-auth-email"><%= lang === 'en' ? 'Email' : '邮箱' %></label>
+      <input type="email" id="cn-test-auth-email" autocomplete="email" placeholder="you@factory.com">
+      <div id="cn-test-auth-code-wrap" hidden>
+        <label for="cn-test-auth-code"><%= lang === 'en' ? 'Code' : '验证码' %></label>
+        <input type="text" id="cn-test-auth-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456">
+      </div>
+      <div class="cn-test-auth-actions">
+        <button type="button" class="cn-btn-ghost" id="cn-test-auth-cancel"><%= lang === 'en' ? 'Cancel' : '取消' %></button>
+        <button type="button" class="cn-btn" id="cn-test-auth-go"><%= lang === 'en' ? 'Send code' : '发送验证码' %></button>
+      </div>
+    </div>
   </div>
 
   <script>
   (function () {
     var lang = document.body.getAttribute('data-lang') || 'zh';
-    var chatKey = 'airsup_china_test_chat_v4';
-    var webKey = 'airsup_china_test_web_v4';
-    var thread = document.getElementById('cn-test-thread');
+    var webKey = 'airsup_china_test_web_v5';
     var form = document.getElementById('cn-test-form');
     var input = document.getElementById('cn-test-input');
     var fileInput = document.getElementById('cn-test-files');
@@ -74,14 +93,21 @@
     var universe = document.getElementById('cn-test-universe');
     var spark = document.getElementById('cn-test-spark');
     var reachEl = document.getElementById('cn-test-reach');
-    var welcome = <%- JSON.stringify(welcome) %>;
-    var layout = <%- JSON.stringify(layoutPositions) %>;
+    var emptyEl = document.getElementById('cn-test-empty');
+    var toastEl = document.getElementById('cn-test-toast');
+    var authEl = document.getElementById('cn-test-auth');
+    var authMsg = document.getElementById('cn-test-auth-msg');
+    var authEmail = document.getElementById('cn-test-auth-email');
+    var authCode = document.getElementById('cn-test-auth-code');
+    var authCodeWrap = document.getElementById('cn-test-auth-code-wrap');
+    var authGo = document.getElementById('cn-test-auth-go');
     var initialWeb = <%- JSON.stringify(initialWeb) %>;
     var pendingFiles = [];
     var busy = false;
-    var typingRow = null;
     var bloomIds = [];
     var showLabels = false;
+    var toastTimer = null;
+    var authStep = 'email';
 
     function loadJson(key, fallback) {
       try {
@@ -96,11 +122,6 @@
     function esc(text) {
       return String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
-    function linkify(text) {
-      return esc(text).replace(/(https?:\/\/[^\s<]+)/g, function (url) {
-        return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + '</a>';
-      });
-    }
     function formatSize(n) {
       n = Number(n) || 0;
       if (n < 1024) return n + ' B';
@@ -111,58 +132,18 @@
       var m = String(name || '').match(/\.([a-z0-9]+)$/i);
       return (m ? m[1] : 'FILE').toUpperCase().slice(0, 4);
     }
-    function renderFiles(files) {
-      if (!files || !files.length) return '';
-      return '<div class="cn-test-files">' + files.map(function (f) {
-        return '<div class="cn-test-file-card">'
-          + '<span class="cn-test-file-ico">' + esc(fileExt(f.name)) + '</span>'
-          + '<span class="cn-test-file-meta">'
-          + '<span class="cn-test-file-name">' + esc(f.name || 'file') + '</span>'
-          + (f.size ? '<span class="cn-test-file-size">' + esc(formatSize(f.size)) + '</span>' : '')
-          + '</span></div>';
-      }).join('') + '</div>';
-    }
-    function scrollPeek() {
-      requestAnimationFrame(function () { thread.scrollTop = thread.scrollHeight + 80; });
-    }
 
-    function appendBubble(role, content, files, opts) {
-      opts = opts || {};
-      var row = document.createElement('div');
-      row.className = 'cn-test-msg is-' + (role === 'user' ? 'user' : 'assistant');
-      if (opts.typing) row.classList.add('is-typing');
-      var avatar = document.createElement('div');
-      avatar.className = 'cn-test-avatar';
-      var bubble = document.createElement('div');
-      bubble.className = 'cn-test-bubble';
-      var hasText = Boolean(content && String(content).trim());
-      if (!hasText && files && files.length) bubble.classList.add('is-files-only');
-      if (opts.typing) {
-        bubble.innerHTML = '<span class="cn-test-dots"><span></span><span></span><span></span></span>';
-      } else {
-        var html = '';
-        if (hasText) html += '<div class="cn-test-text">' + (role === 'assistant' ? linkify(content) : esc(content)) + '</div>';
-        html += renderFiles(files);
-        bubble.innerHTML = html;
-      }
-      row.appendChild(avatar);
-      row.appendChild(bubble);
-      thread.appendChild(row);
-      scrollPeek();
-      return row;
-    }
-
-    function paintChat(messages) {
-      thread.innerHTML = '';
-      // Only keep last few on screen for calm feel
-      messages.slice(-6).forEach(function (m) {
-        appendBubble(m.role, m.content, m.files);
-      });
+    function toast(text) {
+      if (!text) return;
+      toastEl.textContent = text;
+      toastEl.classList.add('is-on');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toastEl.classList.remove('is-on'); }, 3200);
     }
 
     function nodeRadius(node) {
-      if (node.id === 'core') return 7.2 + (node.strength || 0) * 2.2;
-      return 1.6 + (node.strength || 0) * 4.4;
+      var base = node.kind === 'seed' ? 0.55 : 0.7;
+      return base + (Number(node.strength) || 0) * 1.15;
     }
 
     function curvePath(a, b, bend) {
@@ -171,7 +152,7 @@
       var dx = b.x - a.x;
       var dy = b.y - a.y;
       var len = Math.sqrt(dx * dx + dy * dy) || 1;
-      var mag = bend * Math.min(11, len * 0.22);
+      var mag = bend * Math.min(8, len * 0.2);
       var cx = mx + (-dy / len) * mag;
       var cy = my + (dx / len) * mag;
       return 'M ' + a.x + ' ' + a.y + ' Q ' + cx.toFixed(2) + ' ' + cy.toFixed(2) + ' ' + b.x + ' ' + b.y;
@@ -179,86 +160,74 @@
 
     function edgeBend(from, to) {
       var seed = (String(from) + String(to)).length;
-      return (seed % 2 === 0 ? 1 : -1) * (0.65 + (seed % 5) * 0.14);
+      return (seed % 2 === 0 ? 1 : -1) * (0.55 + (seed % 4) * 0.12);
+    }
+
+    function floatPos(node) {
+      return { x: Number(node.x) || 50, y: Number(node.y) || 50 };
     }
 
     function renderWeb(web) {
       var nodes = web.nodes || {};
-      var baseEdges = web.edges || [];
-      var custom = web.customLinks || [];
-      var allEdges = baseEdges.concat(custom.map(function (e) {
-        return { from: e.from, to: e.to, kind: 'custom' };
-      }));
+      var list = Object.keys(nodes);
+      emptyEl.classList.toggle('is-gone', list.length > 0);
 
-      var edgeHtml = allEdges.map(function (e) {
-        var a = layout[e.from];
-        var b = layout[e.to];
+      var positions = {};
+      list.forEach(function (id) {
+        positions[id] = floatPos(nodes[id]);
+      });
+
+      var edgeHtml = (web.edges || []).map(function (e) {
+        var a = positions[e.from];
+        var b = positions[e.to];
         if (!a || !b) return '';
-        var sa = nodes[e.from] ? nodes[e.from].strength : 0;
-        var sb = nodes[e.to] ? nodes[e.to].strength : 0;
-        var live = sa > 0.15 && sb > 0.15;
-        var cls = 'cn-test-edge'
-          + (e.kind === 'custom' ? ' is-custom' : '')
-          + (live || e.kind === 'custom' ? ' is-live' : '');
-        var op = live || e.kind === 'custom' ? '' : ' opacity="0.55"';
-        return '<path class="' + cls + '"' + op + ' d="' + curvePath(a, b, edgeBend(e.from, e.to)) + '"></path>';
+        var cls = 'cn-test-edge' + (e.kind === 'custom' ? ' is-custom' : '');
+        return '<path class="' + cls + '" d="' + curvePath(a, b, edgeBend(e.from, e.to)) + '"></path>';
       }).join('');
 
-      var nodeHtml = Object.keys(layout).map(function (id) {
-        var pos = layout[id];
-        var node = nodes[id] || { id: id, label: id, strength: 0 };
-        var on = node.strength > 0.15 || id === 'core';
+      var nodeHtml = list.map(function (id) {
+        var node = nodes[id];
+        var pos = positions[id];
         var bloom = bloomIds.indexOf(id) >= 0 ? ' is-bloom' : '';
-        var core = id === 'core' ? ' is-core' : '';
+        var seed = node.kind === 'seed' ? ' is-seed' : '';
         var lab = showLabels ? ' is-show-label' : '';
         var r = nodeRadius(node);
-        var halo = Math.max(r + 2.2, r * 1.55);
-        var below = pos.y >= 52;
-        var labelY = below ? (pos.y + r + 3.2) : (pos.y - r - 1.6);
-        return '<g class="cn-test-node' + (on ? ' is-on' : '') + core + bloom + lab + '" data-id="' + id + '">'
-          + '<circle class="halo" cx="' + pos.x + '" cy="' + pos.y + '" r="' + halo.toFixed(2) + '"></circle>'
-          + '<circle class="core-dot" cx="' + pos.x + '" cy="' + pos.y + '" r="' + r.toFixed(2) + '"></circle>'
-          + '<text x="' + pos.x + '" y="' + labelY.toFixed(2) + '">' + esc(node.label || '') + '</text>'
+        var labelY = pos.y + r + 2.4;
+        return '<g class="cn-test-node is-on' + seed + bloom + lab + '" data-id="' + id + '">'
+          + '<circle class="core-dot" cx="' + pos.x.toFixed(2) + '" cy="' + pos.y.toFixed(2) + '" r="' + r.toFixed(2) + '"></circle>'
+          + '<text x="' + pos.x.toFixed(2) + '" y="' + labelY.toFixed(2) + '">' + esc(node.label || '') + '</text>'
           + '</g>';
       }).join('');
 
       canvas.innerHTML = edgeHtml + nodeHtml;
-      var reach = web.reach || 10;
+      var reach = web.reach || 0;
       reachEl.innerHTML = String(reach) + '<span>/100</span>';
       renderSpark(web.reachHistory || [reach]);
     }
 
     function renderSpark(history) {
-      var vals = (history || [10]).map(function (n) { return Number(n) || 0; });
-      if (vals.length < 2) vals = [vals[0] || 10, vals[0] || 10];
+      var vals = (history || [0]).map(function (n) { return Number(n) || 0; });
+      if (vals.length < 2) vals = [vals[0] || 0, vals[0] || 0];
       var min = Math.min.apply(null, vals.concat([0]));
-      var max = Math.max.apply(null, vals.concat([20]));
-      if (max - min < 8) max = min + 8;
-      var w = 88;
-      var h = 18;
+      var max = Math.max.apply(null, vals.concat([12]));
+      if (max - min < 6) max = min + 6;
+      var w = 72;
+      var h = 14;
       var pts = vals.map(function (v, i) {
         var x = (i / (vals.length - 1)) * (w - 2) + 1;
-        var y = h - 2 - ((v - min) / (max - min)) * (h - 5);
+        var y = h - 2 - ((v - min) / (max - min)) * (h - 4);
         return x.toFixed(1) + ',' + y.toFixed(1);
       }).join(' ');
-      spark.innerHTML = '<polyline fill="none" stroke="#7a1e2b" stroke-width="1.5" stroke-linecap="round" points="' + pts + '"></polyline>';
-    }
-
-    function ensureWelcome(messages) {
-      if (messages.length) return messages;
-      var boot = [{ role: 'assistant', content: welcome, at: Date.now() }];
-      saveJson(chatKey, boot);
-      return boot;
+      spark.innerHTML = '<polyline fill="none" stroke="#7a1e2b" stroke-width="1.3" stroke-linecap="round" points="' + pts + '"></polyline>';
     }
 
     function renderPending() {
       pendingEl.innerHTML = pendingFiles.map(function (f, i) {
         return '<div class="cn-test-file-card" data-i="' + i + '">'
           + '<span class="cn-test-file-ico">' + esc(fileExt(f.name)) + '</span>'
-          + '<span class="cn-test-file-meta">'
           + '<span class="cn-test-file-name">' + esc(f.name) + '</span>'
           + '<span class="cn-test-file-size">' + esc(formatSize(f.size)) + '</span>'
-          + '</span></div>';
+          + '</div>';
       }).join('');
       pendingEl.querySelectorAll('[data-i]').forEach(function (chip) {
         chip.addEventListener('click', function () {
@@ -270,32 +239,28 @@
 
     function autosize() {
       input.style.height = 'auto';
-      input.style.height = Math.min(110, input.scrollHeight) + 'px';
+      input.style.height = Math.min(100, input.scrollHeight) + 'px';
+    }
+
+    function openAuth() {
+      authStep = 'email';
+      authMsg.textContent = '';
+      authCodeWrap.hidden = true;
+      authCode.value = '';
+      authGo.textContent = lang === 'en' ? 'Send code' : '发送验证码';
+      authEl.classList.add('is-open');
+      authEl.setAttribute('aria-hidden', 'false');
+      authEmail.focus();
+    }
+    function closeAuth() {
+      authEl.classList.remove('is-open');
+      authEl.setAttribute('aria-hidden', 'true');
     }
 
     function bindAuthButtons() {
       var loginBtn = document.getElementById('cn-test-login');
       var logoutBtn = document.getElementById('cn-test-logout');
-      if (loginBtn) {
-        loginBtn.addEventListener('click', async function () {
-          loginBtn.disabled = true;
-          try {
-            var res = await fetch('/airsup/china/test/api/login-demo', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'same-origin',
-              body: '{}',
-            });
-            var data = await res.json().catch(function () { return {}; });
-            if (!res.ok) throw new Error('login');
-            setLoggedIn(true, data.company && data.company.name);
-          } catch (e) {
-            alert(lang === 'en' ? 'Demo login failed.' : '演示登录失败。');
-          } finally {
-            loginBtn.disabled = false;
-          }
-        });
-      }
+      if (loginBtn) loginBtn.addEventListener('click', openAuth);
       if (logoutBtn) {
         logoutBtn.addEventListener('click', async function () {
           try {
@@ -333,24 +298,10 @@
       if (!text && !(filesSnap && filesSnap.length)) return;
       busy = true;
       sendBtn.disabled = true;
-
-      var userMsg = {
-        role: 'user',
-        content: text || '',
-        files: (filesSnap || []).map(function (f) { return { name: f.name, size: f.size }; }),
-        at: Date.now(),
-      };
-      messages.push(userMsg);
-      saveJson(chatKey, messages);
-      appendBubble('user', userMsg.content, userMsg.files);
-      typingRow = appendBubble('assistant', '', null, { typing: true });
-
       try {
         var body = new FormData();
         body.append('message', text || '');
-        body.append('history', JSON.stringify(messages.slice(0, -1).map(function (m) {
-          return { role: m.role, content: m.content || (m.files && m.files.length ? '[file upload]' : '') };
-        })));
+        body.append('history', '[]');
         body.append('web', JSON.stringify(web));
         (filesSnap || []).forEach(function (f) { body.append('files', f); });
 
@@ -360,30 +311,16 @@
           credentials: 'same-origin',
         });
         var data = await res.json().catch(function () { return {}; });
-        if (typingRow && typingRow.parentNode) typingRow.parentNode.removeChild(typingRow);
-        typingRow = null;
-
         if (data.web) {
           bloomIds = (data.signals || []).map(function (s) { return s.node; });
           web = data.web;
           saveJson(webKey, web);
           renderWeb(web);
-          setTimeout(function () { bloomIds = []; renderWeb(web); }, 1000);
+          setTimeout(function () { bloomIds = []; }, 1000);
         }
-
-        var replyText = res.ok
-          ? (data.reply || '')
-          : (lang === 'en' ? 'Try again.' : '请重试。');
-        messages.push({ role: 'assistant', content: replyText, at: Date.now() });
-        saveJson(chatKey, messages);
-        appendBubble('assistant', replyText);
+        if (data.reply) toast(data.reply);
       } catch (err) {
-        if (typingRow && typingRow.parentNode) typingRow.parentNode.removeChild(typingRow);
-        typingRow = null;
-        var fail = lang === 'en' ? 'Network error.' : '网络错误。';
-        messages.push({ role: 'assistant', content: fail, at: Date.now() });
-        saveJson(chatKey, messages);
-        appendBubble('assistant', fail);
+        toast(lang === 'en' ? 'Network error.' : '网络错误。');
       } finally {
         busy = false;
         sendBtn.disabled = false;
@@ -391,10 +328,12 @@
       }
     }
 
-    var web = loadJson(webKey, initialWeb) || initialWeb;
-    var messages = ensureWelcome(loadJson(chatKey, []) || []);
+    var web = loadJson(webKey, null);
+    if (!web || !web.nodes || Array.isArray(web.nodes) || web.nodes.core) {
+      web = initialWeb || { nodes: {}, edges: [], reach: 0, reachHistory: [0] };
+      saveJson(webKey, web);
+    }
     renderWeb(web);
-    paintChat(messages);
     bindAuthButtons();
 
     fileInput.addEventListener('change', function () {
@@ -403,7 +342,6 @@
       renderPending();
     });
 
-    // Drop onto the constellation
     ;['dragenter', 'dragover'].forEach(function (ev) {
       universe.addEventListener(ev, function (e) {
         e.preventDefault();
@@ -422,7 +360,6 @@
       sendTurn('', list);
     });
 
-    // Brief label reveal on long-press / hover via CSS; double-click toggles all labels
     universe.addEventListener('dblclick', function () {
       showLabels = !showLabels;
       renderWeb(web);
@@ -445,6 +382,61 @@
       input.value = '';
       autosize();
       sendTurn(text, filesSnap);
+    });
+
+    document.getElementById('cn-test-auth-cancel').addEventListener('click', closeAuth);
+    authEl.addEventListener('click', function (e) {
+      if (e.target === authEl) closeAuth();
+    });
+    authGo.addEventListener('click', async function () {
+      authMsg.textContent = '';
+      authGo.disabled = true;
+      try {
+        if (authStep === 'email') {
+          var email = String(authEmail.value || '').trim();
+          var res = await fetch('/airsup/china/test/api/login/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ email: email }),
+          });
+          var data = await res.json().catch(function () { return {}; });
+          if (!res.ok) throw new Error(data.error || 'request');
+          authStep = 'code';
+          authCodeWrap.hidden = false;
+          authGo.textContent = lang === 'en' ? 'Verify' : '验证';
+          authMsg.textContent = data.devCode
+            ? ((lang === 'en' ? 'Concept code: ' : '概念验证码：') + data.devCode)
+            : (lang === 'en' ? 'Code sent. Check your inbox.' : '验证码已发送，请查收邮箱。');
+          authCode.focus();
+        } else {
+          var res2 = await fetch('/airsup/china/test/api/login/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+              email: String(authEmail.value || '').trim(),
+              code: String(authCode.value || '').trim(),
+            }),
+          });
+          var data2 = await res2.json().catch(function () { return {}; });
+          if (!res2.ok) throw new Error(data2.error || 'verify');
+          closeAuth();
+          setLoggedIn(true, (data2.company && data2.company.name) || '');
+          if (data2.web) {
+            web = data2.web;
+            saveJson(webKey, web);
+            bloomIds = (data2.seeded || []).slice();
+            renderWeb(web);
+            setTimeout(function () { bloomIds = []; }, 1000);
+          }
+          toast(lang === 'en' ? 'Signed in. Tiny seeds may appear from your company.' : '已登录。公司信息可能留下细小种子节点。');
+        }
+      } catch (err) {
+        authMsg.textContent = lang === 'en' ? 'Could not continue. Check email / code.' : '无法继续，请检查邮箱或验证码。';
+      } finally {
+        authGo.disabled = false;
+      }
     });
   })();
   </script>
