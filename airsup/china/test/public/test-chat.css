@@ -813,6 +813,13 @@ a.cn-ob-verify-link {
     grid-template-columns: 1fr;
     gap: 1.25rem;
   }
+  .cn-test-board-kpi-rate {
+    text-align: left;
+    order: 2;
+  }
+  .cn-test-board-kpi-rate-flow {
+    justify-content: flex-start;
+  }
   .cn-test-board-lower {
     grid-template-columns: 1fr;
     gap: 1.75rem;

@@ -122,11 +122,15 @@
       <div class="cn-test-board-kpi">
         <div class="cn-test-board-kpi-label"><%= lang === 'en' ? 'Interactions' : '互动' %></div>
         <div class="cn-test-board-kpi-value" id="cn-board-interactions"><%= typeof board !== 'undefined' && board ? board.interactions : 0 %></div>
-        <div class="cn-test-board-kpi-sub">
-          <span class="cn-test-board-kpi-arrow" aria-hidden="true">↳</span>
-          <span id="cn-board-rate"><%= (typeof board !== 'undefined' && board ? board.conversationRate : 0) %>%</span>
-          <span><%= lang === 'en' ? 'conversation rate' : '转化率' %></span>
+      </div>
+      <div class="cn-test-board-kpi cn-test-board-kpi-rate" aria-label="<%= lang === 'en' ? 'Conversation rate from interactions to customers' : '从互动到客户的转化率' %>">
+        <div class="cn-test-board-kpi-rate-flow">
+          <span class="cn-test-board-kpi-rate-from"><%= lang === 'en' ? 'Interactions' : '互动' %></span>
+          <span class="cn-test-board-kpi-rate-arrow" aria-hidden="true">→</span>
+          <span class="cn-test-board-kpi-rate-to"><%= lang === 'en' ? 'Customers' : '客户' %></span>
         </div>
+        <div class="cn-test-board-kpi-value" id="cn-board-rate"><%= (typeof board !== 'undefined' && board ? board.conversationRate : 0) + '%' %></div>
+        <div class="cn-test-board-kpi-sub"><%= lang === 'en' ? 'conversation rate' : '转化率' %></div>
       </div>
       <div class="cn-test-board-kpi">
         <div class="cn-test-board-kpi-label"><%= lang === 'en' ? 'Customers' : '客户' %></div>
