@@ -612,13 +612,13 @@ a.cn-ob-verify-link {
 
 .cn-test-board-kpis {
   display: grid;
-  /* Rate is a narrower bridge between Interactions and Customers */
-  grid-template-columns: minmax(0, 1fr) minmax(8rem, 0.9fr) minmax(0, 1fr) minmax(0, 1.2fr);
+  /* Four even tracks; rate content is the visual bridge, not a squeezed column */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-template-rows: auto auto auto;
-  column-gap: clamp(0.85rem, 2.2vw, 1.5rem);
-  row-gap: 0.35rem;
+  column-gap: clamp(1rem, 2.4vw, 1.75rem);
+  row-gap: 0.4rem;
   align-items: start;
-  padding-bottom: 1.35rem;
+  padding-bottom: 1.4rem;
   border-bottom: 1px solid rgba(196, 183, 157, 0.55);
 }
 
@@ -628,6 +628,7 @@ a.cn-ob-verify-link {
   grid-row: span 3;
   min-width: 0;
   align-content: start;
+  justify-items: start;
 }
 
 .cn-test-board-kpi-label,
@@ -648,20 +649,19 @@ a.cn-ob-verify-link {
   font-weight: 600;
   line-height: 1.15;
   color: #171311;
-  align-self: end;
 }
 
 .cn-test-board-kpi-rate {
   text-align: center;
+  justify-items: center;
   width: 100%;
-  padding: 0;
+  padding: 0 0.35rem;
 }
 
 .cn-test-board-kpi-rate-flow {
   justify-content: center;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 0.28rem;
-  white-space: nowrap;
   color: #7a1e2b;
   font-size: 0.78rem;
   letter-spacing: 0.01em;
@@ -675,7 +675,7 @@ a.cn-ob-verify-link {
 
 .cn-test-board-kpi-rate .cn-test-board-kpi-value {
   color: #7a1e2b;
-  font-size: clamp(1.45rem, 2.9vw, 1.9rem);
+  font-size: clamp(1.5rem, 3vw, 2rem);
 }
 
 .cn-test-board-kpi-sub {
@@ -688,10 +688,10 @@ a.cn-ob-verify-link {
 .cn-test-board-lower {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  column-gap: clamp(1.35rem, 3vw, 2.25rem);
+  column-gap: clamp(1.5rem, 3.2vw, 2.5rem);
   row-gap: 1.5rem;
-  align-items: start;
-  padding-top: 1.35rem;
+  align-items: stretch;
+  padding-top: 1.4rem;
 }
 
 .cn-test-board-connect,
@@ -712,9 +712,9 @@ a.cn-ob-verify-link {
 }
 
 .cn-test-board-hint {
-  font-weight: 400;
-  color: #4d4740;
-  font-style: italic;
+  font-weight: 650;
+  color: #171311;
+  font-style: normal;
 }
 
 .cn-test-board-connect-list {
@@ -838,8 +838,7 @@ a.cn-ob-verify-link {
 
 @media (max-width: 1020px) and (min-width: 861px) {
   .cn-test-board-kpis {
-    grid-template-columns: minmax(0, 1fr) minmax(7rem, 0.85fr) minmax(0, 1fr) minmax(0, 1.15fr);
-    column-gap: 0.85rem;
+    column-gap: 0.9rem;
   }
   .cn-test-board-kpi-rate-flow {
     font-size: 0.72rem;
@@ -864,10 +863,17 @@ a.cn-ob-verify-link {
     flex-direction: column;
     grid-row: auto;
     gap: 0.3rem;
+    justify-items: stretch;
+    align-items: flex-start;
+  }
+  .cn-test-board-kpi-value {
+    align-self: flex-start;
   }
   /* Keep DOM order: Interactions → rate → Customers → Revenue */
   .cn-test-board-kpi-rate {
     text-align: left;
+    justify-items: start;
+    align-items: flex-start;
     width: 100%;
     margin: 0.1rem 0;
     padding: 0.65rem 0;
@@ -876,8 +882,6 @@ a.cn-ob-verify-link {
   }
   .cn-test-board-kpi-rate-flow {
     justify-content: flex-start;
-    white-space: normal;
-    flex-wrap: wrap;
   }
   .cn-test-board-kpi-label,
   .cn-test-board-kpi-rate-flow {
