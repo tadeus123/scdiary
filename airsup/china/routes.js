@@ -1092,4 +1092,8 @@ router.post('/api/ops/send-quotes-invite', express.json(), async (req, res) => {
   return res.json({ sent, failed });
 });
 
+// AIRSUP-CHINA-TEST-BEGIN — concept ChatGPT-like setup chat; delete airsup/china/test/ to remove
+router.use('/test', require('./test/routes'));
+// AIRSUP-CHINA-TEST-END
+
 module.exports = router;

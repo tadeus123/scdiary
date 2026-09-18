@@ -16,6 +16,10 @@ This slice is independent of people Airsup (`/airsup`, MCP, `airsup_people`).
 
 Do not drop `airsup_people`, `airsup_gmail_send`, conversations, or diary tables.
 
+## Test concept only (`/airsup/china/test`)
+
+See `airsup/china/test/REVERT.md`. Delete `airsup/china/test/` and the `AIRSUP-CHINA-TEST` mount block in `routes.js`.
+
 ## After revert — verify
 
 - `https://www.tademehl.com/airsup` still loads
