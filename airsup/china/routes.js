@@ -42,7 +42,8 @@ const {
 } = require('./fields');
 const { confirmChecklist } = require('./enrich');
 const { proofPayload, industryPeers, formatChartDay, liveRoster } = require('./proof');
-const { sendVerifyEmail } = require('./mail');
+const { sendVerifyEmail, sendQuotesInviteEmail } = require('./mail');
+const { sendForDomain } = require('./send-quotes-invite');
 const { ensureDemoCompany, DEMO_DOMAIN, DEMO_EMAIL, resetDemoForOnboarding, isDemoDomain, ensureDemoAllowlist } = require('./demo-company');
 const peopleAuth = require('../auth');
 const handleLiveCompanies = require('./live-companies');
@@ -568,7 +569,20 @@ router.get('/verify', async (req, res) => {
         cities: CITIES,
       });
     }
-    const row = await db.takeToken(session.sha256(token));
+    // Login links stay reusable until expiry so WeChat/email link-preview does not burn them.
+    // Verify / claim tokens stay one-shot.
+    let row = peek;
+    if (peek.purpose === 'verify') {
+      row = await db.takeToken(session.sha256(token));
+      if (!row || row.purpose !== 'verify') {
+        return render(req, res, 'home.ejs', {
+          proof: await proof(),
+          form: formFromCompany(null),
+          error: t(lang, 'err_token'),
+          cities: CITIES,
+        });
+      }
+    }
     if (!row || (row.purpose !== 'verify' && row.purpose !== 'login')) {
       return render(req, res, 'home.ejs', {
         proof: await proof(),
@@ -783,6 +797,10 @@ router.get('/setup', async (req, res) => {
 });
 
 router.get('/quotes', async (req, res) => {
+  const token = String(req.query.token || '').trim();
+  if (token && db.isConfigured()) {
+    return res.redirect(`/airsup/china/verify?token=${encodeURIComponent(token)}&next=quotes`);
+  }
   const company = await requireCompany(req, res);
   if (!company) return;
   const lang = langFrom(req, res);
@@ -1043,6 +1061,28 @@ router.post('/api/quotations/approve', express.json(), async (req, res) => {
     console.error('Airsup china quotation approve error:', error);
     return res.status(500).json({ error: 'unavailable' });
   }
+});
+
+router.post('/api/ops/send-quotes-invite', express.json(), async (req, res) => {
+  const key = String(req.get('x-airsup-ops') || (req.body && req.body.key) || '').trim();
+  const expected = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '').trim();
+  if (!expected || key !== expected) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+  if (!db.isConfigured()) return res.status(503).json({ error: 'unavailable' });
+  const domains = [].concat((req.body && req.body.domains) || []).map((item) => String(item || '').trim()).filter(Boolean);
+  if (!domains.length) return res.status(400).json({ error: 'domains_required' });
+  const sent = [];
+  const failed = [];
+  for (const domain of domains) {
+    try {
+      sent.push(await sendForDomain(domain));
+    } catch (error) {
+      console.error('Airsup china quotes invite failed:', domain, error.message);
+      failed.push({ domain, error: error.message || 'send_failed' });
+    }
+  }
+  return res.json({ sent, failed });
 });
 
 module.exports = router;

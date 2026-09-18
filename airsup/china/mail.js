@@ -173,6 +173,54 @@ async function sendVerifyEmail({ lang, to, link, contactName }) {
   await sendRaw({ to, ...mail });
 }
 
+function quotesInviteMail({ lang, link, contactName, companyName }) {
+  const helloName = String(contactName || '').trim();
+  const firm = String(companyName || '').trim();
+  const zhHello = helloName ? `您好 ${helloName}` : t('zh', 'mail_quotes_hello');
+  const enHello = helloName ? `Hello ${helloName}` : t('en', 'mail_quotes_hello');
+  const zhBody = firm
+    ? `${t('zh', 'mail_quotes_body')}\n\n公司：${firm}`
+    : t('zh', 'mail_quotes_body');
+  const enBody = firm
+    ? `${t('en', 'mail_quotes_body')}\n\nCompany: ${firm}`
+    : t('en', 'mail_quotes_body');
+  const primary = lang === 'en'
+    ? { hello: enHello, body: enBody, button: t('en', 'mail_quotes_button'), expire: t('en', 'mail_quotes_expire') }
+    : { hello: zhHello, body: zhBody, button: t('zh', 'mail_quotes_button'), expire: t('zh', 'mail_quotes_expire') };
+  const secondary = lang === 'en'
+    ? { hello: zhHello, body: zhBody, button: t('zh', 'mail_quotes_button'), expire: t('zh', 'mail_quotes_expire') }
+    : { hello: enHello, body: enBody, button: t('en', 'mail_quotes_button'), expire: t('en', 'mail_quotes_expire') };
+  const subject = lang === 'en'
+    ? `${t('en', 'mail_quotes_subject')} / ${t('zh', 'mail_quotes_subject')}`
+    : `${t('zh', 'mail_quotes_subject')} / ${t('en', 'mail_quotes_subject')}`;
+  const inner = `
+    <p style="font-size:18px;margin:0 0 16px;">${primary.hello}</p>
+    <p style="font-size:15px;line-height:1.7;margin:0 0 20px;white-space:pre-wrap;">${escapeHtml(primary.body)}</p>
+    <p style="margin:0 0 28px;"><a href="${link}" style="display:inline-block;background:#a32035;color:#f4efe6;text-decoration:none;padding:10px 18px;font-size:14px;">${primary.button}</a></p>
+    <p style="font-size:12px;color:#6a6158;margin:0 0 28px;">${primary.expire}</p>
+    <p style="border-top:1px solid #cfc4b4;padding-top:18px;font-size:14px;line-height:1.7;color:#4a453e;white-space:pre-wrap;">${escapeHtml(secondary.body)}<br><a href="${link}" style="color:#a32035;">${secondary.button}</a><br>${secondary.expire}</p>
+  `;
+  const text = [
+    primary.hello,
+    '',
+    primary.body,
+    link,
+    primary.expire,
+    '',
+    secondary.body,
+    link,
+    '',
+    'Tade Mehl',
+    'tademehl@gmail.com',
+  ].join('\n');
+  return { subject, text, html: mailShell(inner, lang) };
+}
+
+async function sendQuotesInviteEmail({ lang, to, link, contactName, companyName }) {
+  const mail = quotesInviteMail({ lang, link, contactName, companyName });
+  await sendRaw({ to, ...mail });
+}
+
 async function sendInquiryNotice({ company, message, callerName }) {
   if (!company || !company.contact_email) return;
   const mail = inquiryMail({
@@ -254,7 +302,9 @@ module.exports = {
   encodeSubject,
   rfc822,
   verifyMail,
+  quotesInviteMail,
   sendVerifyEmail,
+  sendQuotesInviteEmail,
   sendInquiryNotice,
   sendFactoryNotice,
   factoryNoticeMail,

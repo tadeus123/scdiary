@@ -1256,7 +1256,7 @@ function memoryChina(companies) {
   assert.strictEqual(normalizeQuotationKnowledge({ endpoint_use: 1, documents: [] }).endpoint_use, true);
   assert.ok(fs.existsSync(path.join(__dirname, 'quotations.js')));
   assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('partials/quotations'));
-  assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('partials/quotations'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('/airsup/china/quotes'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('/api/quotations'));
   assert.ok(COPY.zh.quote_title.includes('报价'));
   assert.ok(COPY.en.quote_title.toLowerCase().includes('quotation'));
@@ -1339,6 +1339,17 @@ function memoryChina(companies) {
   assert.ok(COPY.en.demo_restart_onboarding.toLowerCase().includes('onboarding'));
   assert.ok(COPY.zh.quote_page_title.includes('上传'));
   assert.ok(COPY.en.quote_page_title.toLowerCase().includes('upload'));
+  assert.ok(COPY.zh.mail_quotes_button.includes('上传'));
+  assert.ok(COPY.en.mail_quotes_button.toLowerCase().includes('upload'));
+  const { quotesInviteMail } = require('./mail');
+  const qMail = quotesInviteMail({
+    lang: 'en',
+    link: 'https://www.tademehl.com/airsup/china/verify?token=abc&next=quotes',
+    contactName: 'Lynn',
+    companyName: 'Elite',
+  });
+  assert.ok(qMail.subject.toLowerCase().includes('quotation') || qMail.subject.includes('报价'));
+  assert.ok(qMail.text.includes('https://www.tademehl.com/airsup/china/verify?token=abc&next=quotes'));
   assert.strictEqual(DEMO_NAME_EN.includes('Demo'), true);
 
   console.log('airsup china tests passed');
