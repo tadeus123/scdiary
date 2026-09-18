@@ -9,8 +9,8 @@ const ejs = require('ejs');
 const multer = require('multer');
 const session = require('../session');
 const { t, otherLang } = require('../i18n');
-const { companyTitle } = require('../fields');
-const { ensureDemoCompany, ensureDemoAllowlist } = require('../demo-company');
+const { companyTitle, CITIES } = require('../fields');
+const { ensureDemoCompany } = require('../demo-company');
 const db = require('../db');
 const peopleAuth = require('../../auth');
 const { welcomeMessage, completeTestTurn, emptyWeb } = require('./chat');
@@ -18,6 +18,25 @@ const { describeUploads } = require('./files');
 const { layoutPositions, normalizeClientWeb, addCustomLink, seedFromCompany } = require('./web');
 const authCodes = require('./auth-codes');
 const { sendVerifyEmail } = require('../mail');
+const onboard = require('./onboard');
+const memoryStore = require('./memory-store');
+
+const {
+  previewWebsite,
+  startSignup,
+  consumeVerifyToken,
+  saveInteraction,
+  publishCompany,
+  onboardingState,
+  seedWebFromCompany,
+  readTestCompany,
+  openSession,
+  clearTestSession,
+  usingMemory,
+  DEMO_DOMAIN,
+  DEMO_EMAIL,
+  ensureDemoAllowlist,
+} = onboard;
 
 const router = express.Router();
 const VIEWS = path.join(__dirname, 'views');
@@ -64,6 +83,27 @@ function langFrom(req, res) {
   const asked = String((req.query && req.query.lang) || '').toLowerCase();
   if (asked === 'en' || asked === 'zh') return session.setLang(req, res, asked);
   return lang;
+}
+
+function companySummary(company, lang) {
+  if (!company) return null;
+  return {
+    domain: company.domain || '',
+    status: company.status || '',
+    name: companyTitle(company, lang),
+    email: company.contact_email || '',
+    city: company.city || '',
+    contact: company.contact_name || '',
+  };
+}
+
+function jsonError(res, lang, status, errorKey) {
+  const key = errorKey || 'err_db';
+  return res.status(status).json({
+    ok: false,
+    error: t(lang, key),
+    errorKey: key,
+  });
 }
 
 function render(req, res, viewName, extra = {}) {
@@ -123,6 +163,52 @@ function parseWeb(raw, lang) {
   }
 }
 
+async function resetDemoPending(lang) {
+  await ensureDemoAllowlist();
+  if (usingMemory()) {
+    const existing = await memoryStore.getByDomain(DEMO_DOMAIN);
+    if (existing) {
+      await memoryStore.updateCompany(existing.company_id, {
+        status: 'pending',
+        live_at: null,
+        verified_at: null,
+        last_email_at: null,
+        contact_email: DEMO_EMAIL,
+        contact_name: '',
+        company_name: '',
+        company_name_en: '',
+        goal: '',
+        context: '',
+        city: 'shenzhen',
+        source: 'demo',
+      });
+    }
+    return null;
+  }
+  try {
+    let company = await ensureDemoCompany({ forceLive: true });
+    company = await db.updateCompany(company.company_id, {
+      status: 'pending',
+      live_at: null,
+      verified_at: null,
+      last_email_at: null,
+      contact_email: DEMO_EMAIL,
+      contact_name: '',
+      company_name: '',
+      company_name_en: '',
+      goal: '',
+      context: '',
+      city: 'shenzhen',
+      source: 'demo',
+      locale: lang === 'en' ? 'en' : 'zh',
+    });
+    return company;
+  } catch (error) {
+    console.error('Airsup china test demo reset skipped:', error.message);
+    return null;
+  }
+}
+
 router.get(['/', ''], async (req, res) => {
   const lang = langFrom(req, res);
   res.set('Cache-Control', 'private, no-store');
@@ -140,9 +226,19 @@ router.get(['/', ''], async (req, res) => {
 
   let company = null;
   try {
-    company = await session.readCompany(req);
+    company = await readTestCompany(req);
   } catch {
     company = null;
+  }
+
+  const onboardState = onboardingState(company, lang);
+  let initial = emptyWeb(lang);
+  if (company) {
+    try {
+      initial = seedWebFromCompany(company, lang).web || initial;
+    } catch {
+      initial = seedFromCompany(emptyWeb(lang), company, lang).web;
+    }
   }
 
   return render(req, res, 'chat.ejs', {
@@ -151,20 +247,248 @@ router.get(['/', ''], async (req, res) => {
     companyLabel: company ? companyTitle(company, lang) : '',
     welcome: welcomeMessage(lang),
     loggedIn: Boolean(company),
-    initialWeb: (() => {
-      let web = emptyWeb(lang);
-      if (company) web = seedFromCompany(web, company, lang).web;
-      return web;
-    })(),
+    usingMemory: usingMemory(),
+    onboard: onboardState,
+    cities: CITIES,
+    initialWeb: initial,
     layoutPositions: layoutPositions(),
   });
+});
+
+router.post('/api/onboard/preview', express.json(), async (req, res) => {
+  if (!peopleAuth.allowedOrigin(req)) {
+    return jsonError(res, langFrom(req, res), 403, 'err_origin');
+  }
+  const lang = langFrom(req, res);
+  const website = String((req.body && req.body.website) || '').trim();
+  if (!website) {
+    return jsonError(res, lang, 400, 'err_website');
+  }
+  try {
+    const preview = await previewWebsite(website, lang);
+    if (!preview || !preview.ok) {
+      return res.status(400).json({
+        ok: false,
+        preview: null,
+        error: t(lang, (preview && preview.error) || 'err_website'),
+        errorKey: (preview && preview.error) || 'err_website',
+      });
+    }
+    return res.json({ ok: true, preview, error: null });
+  } catch (error) {
+    console.error('Airsup china test onboard preview error:', error);
+    return jsonError(res, lang, 500, 'err_db');
+  }
+});
+
+router.post('/api/onboard/start', express.json(), async (req, res) => {
+  if (!peopleAuth.allowedOrigin(req)) {
+    return jsonError(res, langFrom(req, res), 403, 'err_origin');
+  }
+  const lang = langFrom(req, res);
+  const website = String((req.body && req.body.website) || '').trim();
+  const email = String((req.body && req.body.email) || '').trim();
+  const contact = String((req.body && req.body.contact) || '').trim();
+  const city = String((req.body && req.body.city) || 'shenzhen');
+  try {
+    const result = await startSignup({
+      website,
+      email,
+      contact,
+      city,
+      lang,
+      source: 'test_web',
+      publicOrigin: peopleAuth.getPublicOrigin(req),
+    });
+    if (!result.ok) {
+      return jsonError(res, lang, 400, result.errorKey || 'err_db');
+    }
+    const state = onboardingState(result.company, lang);
+    let web = null;
+    try {
+      web = seedWebFromCompany(result.company, lang).web;
+    } catch {
+      web = null;
+    }
+    return res.json({
+      ok: true,
+      company: companySummary(result.company, lang),
+      state,
+      verifyPath: result.verifyPath,
+      demo: Boolean(result.demo),
+      token: result.demo ? result.token : undefined,
+      web,
+      error: null,
+    });
+  } catch (error) {
+    console.error('Airsup china test onboard start error:', error);
+    return jsonError(res, lang, 500, 'err_db');
+  }
+});
+
+router.get('/verify', async (req, res) => {
+  const lang = langFrom(req, res);
+  const token = String(req.query.token || '').trim();
+  if (!token) {
+    return res.redirect('/airsup/china/test?err=token');
+  }
+  try {
+    const result = await consumeVerifyToken(token);
+    if (!result.ok || !result.company) {
+      return res.redirect(`/airsup/china/test?err=${encodeURIComponent(result.errorKey || 'err_token')}`);
+    }
+    await openSession(req, res, result.company.company_id);
+    return res.redirect('/airsup/china/test?ok=verified');
+  } catch (error) {
+    console.error('Airsup china test verify error:', error);
+    return res.redirect(`/airsup/china/test?err=${encodeURIComponent('err_db')}`);
+  }
+});
+
+router.post('/api/onboard/fields', express.json(), async (req, res) => {
+  if (!peopleAuth.allowedOrigin(req)) {
+    return jsonError(res, langFrom(req, res), 403, 'err_origin');
+  }
+  const lang = langFrom(req, res);
+  try {
+    const company = await readTestCompany(req);
+    if (!company) {
+      return jsonError(res, lang, 401, 'err_token');
+    }
+    const body = (req.body && typeof req.body === 'object') ? { ...req.body } : {};
+    if (body.wechat !== undefined && body.contact_wechat === undefined) {
+      body.contact_wechat = body.wechat;
+    }
+    const next = await saveInteraction(company, body, lang);
+    const state = onboardingState(next, lang);
+    let web = null;
+    try {
+      web = seedWebFromCompany(next, lang).web;
+    } catch {
+      web = null;
+    }
+    return res.json({
+      ok: true,
+      company: companySummary(next, lang),
+      state,
+      web,
+      error: null,
+    });
+  } catch (error) {
+    console.error('Airsup china test onboard fields error:', error);
+    return jsonError(res, lang, 500, 'err_db');
+  }
+});
+
+router.post('/api/onboard/publish', express.json(), async (req, res) => {
+  if (!peopleAuth.allowedOrigin(req)) {
+    return jsonError(res, langFrom(req, res), 403, 'err_origin');
+  }
+  const lang = langFrom(req, res);
+  try {
+    const company = await readTestCompany(req);
+    if (!company) {
+      return jsonError(res, lang, 401, 'err_token');
+    }
+    const result = await publishCompany(company);
+    if (!result.ok) {
+      return jsonError(res, lang, 400, result.errorKey || 'err_publish');
+    }
+    const state = onboardingState(result.company, lang);
+    let web = null;
+    try {
+      web = seedWebFromCompany(result.company, lang).web;
+    } catch {
+      web = null;
+    }
+    return res.json({
+      ok: true,
+      company: companySummary(result.company, lang),
+      state,
+      web,
+      error: null,
+    });
+  } catch (error) {
+    console.error('Airsup china test onboard publish error:', error);
+    return jsonError(res, lang, 500, 'err_db');
+  }
+});
+
+router.get('/api/onboard/state', async (req, res) => {
+  const lang = langFrom(req, res);
+  try {
+    const company = await readTestCompany(req);
+    const state = onboardingState(company, lang);
+    let web = null;
+    if (company) {
+      try {
+        web = seedWebFromCompany(company, lang).web;
+      } catch {
+        web = null;
+      }
+    }
+    return res.json({
+      ok: true,
+      company: companySummary(company, lang),
+      state,
+      web,
+      loggedIn: Boolean(company),
+      usingMemory: usingMemory(),
+    });
+  } catch (error) {
+    console.error('Airsup china test onboard state error:', error);
+    return jsonError(res, lang, 500, 'err_db');
+  }
+});
+
+router.post('/api/onboard/demo', express.json(), async (req, res) => {
+  if (!peopleAuth.allowedOrigin(req)) {
+    return jsonError(res, langFrom(req, res), 403, 'err_origin');
+  }
+  const lang = langFrom(req, res);
+  try {
+    await resetDemoPending(lang);
+    // Do not openSession until verify — demo UX returns verifyPath for one-click verify.
+    const result = await startSignup({
+      website: `https://${DEMO_DOMAIN}`,
+      email: DEMO_EMAIL,
+      contact: 'Tade',
+      city: 'shenzhen',
+      lang,
+      source: 'demo',
+      publicOrigin: peopleAuth.getPublicOrigin(req),
+    });
+    if (!result.ok) {
+      return jsonError(res, lang, 400, result.errorKey || 'err_db');
+    }
+    const state = onboardingState(result.company, lang);
+    let web = null;
+    try {
+      web = seedWebFromCompany(result.company, lang).web;
+    } catch {
+      web = null;
+    }
+    return res.json({
+      ok: true,
+      company: companySummary(result.company, lang),
+      state,
+      verifyPath: result.verifyPath,
+      demo: true,
+      token: result.token,
+      web,
+      error: null,
+    });
+  } catch (error) {
+    console.error('Airsup china test onboard demo error:', error);
+    return jsonError(res, lang, 500, 'err_db');
+  }
 });
 
 router.get('/api/state', async (req, res) => {
   const lang = langFrom(req, res);
   let company = null;
   try {
-    company = await session.readCompany(req);
+    company = await readTestCompany(req);
   } catch {
     company = null;
   }
@@ -172,12 +496,9 @@ router.get('/api/state', async (req, res) => {
     concept: true,
     lang,
     loggedIn: Boolean(company),
-    company: company ? {
-      domain: company.domain,
-      status: company.status,
-      name: companyTitle(company, lang),
-      email: company.contact_email || '',
-    } : null,
+    usingMemory: usingMemory(),
+    company: companySummary(company, lang),
+    onboard: onboardingState(company, lang),
     welcome: welcomeMessage(lang),
     web: emptyWeb(lang),
     layout: layoutPositions(),
@@ -209,7 +530,7 @@ router.post('/api/chat', (req, res) => {
 
     let company = null;
     try {
-      company = await session.readCompany(req);
+      company = await readTestCompany(req);
     } catch {
       company = null;
     }
@@ -342,7 +663,7 @@ router.post('/api/logout', express.json(), async (req, res) => {
     return res.status(403).json({ error: 'forbidden' });
   }
   try {
-    await session.clearSession(req, res);
+    await clearTestSession(req, res);
   } catch (error) {
     console.error('Airsup china test logout error:', error);
   }
