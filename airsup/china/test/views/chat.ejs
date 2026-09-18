@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <%- include('partials/head') %>
+  <script src="https://unpkg.com/vis-network@10.1.2/standalone/umd/vis-network.min.js"></script>
   <% if (typeof testCss === 'string' && testCss) { %>
   <style><%- testCss %></style>
   <% } else { %>
-  <link rel="stylesheet" href="/airsup/china/test/test-chat.css?v=7">
+  <link rel="stylesheet" href="/airsup/china/test/test-chat.css?v=8">
   <% } %>
 </head>
 <body class="cn-body cn-test" data-lang="<%= lang %>" data-logged-in="<%= loggedIn ? '1' : '0' %>">
@@ -32,11 +33,16 @@
     <svg class="cn-test-spark" id="cn-test-spark" viewBox="0 0 72 14"></svg>
   </div>
 
-  <div class="cn-test-universe" id="cn-test-universe">
-    <svg class="cn-test-canvas" id="cn-test-canvas" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
-  </div>
+  <div id="cn-test-network"></div>
   <div class="cn-test-empty" id="cn-test-empty">
     <p><%= lang === 'en' ? 'Empty web. Drop a quote, site, or scrap — nodes appear and link.' : '空网。丢报价、网站或碎片 — 节点会出现并连上。' %></p>
+  </div>
+
+  <div class="cn-test-details hidden" id="cn-test-details">
+    <button type="button" class="cn-test-details-close" id="cn-test-details-close" aria-label="Close">✕</button>
+    <p class="kind" id="cn-test-details-kind"></p>
+    <h2 id="cn-test-details-title"></h2>
+    <p class="body" id="cn-test-details-body"></p>
   </div>
 
   <div class="cn-test-toast" id="cn-test-toast" role="status"></div>
@@ -79,18 +85,18 @@
     </div>
   </div>
 
+  <script src="/airsup/china/test/test-network.js?v=1"></script>
   <script>
   (function () {
     var lang = document.body.getAttribute('data-lang') || 'zh';
-    var webKey = 'airsup_china_test_web_v5';
+    var webKey = 'airsup_china_test_web_v6';
     var form = document.getElementById('cn-test-form');
     var input = document.getElementById('cn-test-input');
     var fileInput = document.getElementById('cn-test-files');
     var pendingEl = document.getElementById('cn-test-pending');
     var sendBtn = document.getElementById('cn-test-send');
     var actionsEl = document.getElementById('cn-test-actions');
-    var canvas = document.getElementById('cn-test-canvas');
-    var universe = document.getElementById('cn-test-universe');
+    var networkEl = document.getElementById('cn-test-network');
     var spark = document.getElementById('cn-test-spark');
     var reachEl = document.getElementById('cn-test-reach');
     var emptyEl = document.getElementById('cn-test-empty');
@@ -101,13 +107,16 @@
     var authCode = document.getElementById('cn-test-auth-code');
     var authCodeWrap = document.getElementById('cn-test-auth-code-wrap');
     var authGo = document.getElementById('cn-test-auth-go');
+    var detailsEl = document.getElementById('cn-test-details');
+    var detailsKind = document.getElementById('cn-test-details-kind');
+    var detailsTitle = document.getElementById('cn-test-details-title');
+    var detailsBody = document.getElementById('cn-test-details-body');
     var initialWeb = <%- JSON.stringify(initialWeb) %>;
     var pendingFiles = [];
     var busy = false;
-    var bloomIds = [];
-    var showLabels = false;
     var toastTimer = null;
     var authStep = 'email';
+    var mounted = false;
 
     function loadJson(key, fallback) {
       try {
@@ -132,7 +141,6 @@
       var m = String(name || '').match(/\.([a-z0-9]+)$/i);
       return (m ? m[1] : 'FILE').toUpperCase().slice(0, 4);
     }
-
     function toast(text) {
       if (!text) return;
       toastEl.textContent = text;
@@ -141,68 +149,15 @@
       toastTimer = setTimeout(function () { toastEl.classList.remove('is-on'); }, 3200);
     }
 
-    function nodeRadius(node) {
-      var base = node.kind === 'seed' ? 0.32 : 0.38;
-      return base + (Number(node.strength) || 0) * 0.7;
+    function hideDetails() {
+      detailsEl.classList.add('hidden');
     }
-
-    function curvePath(a, b, bend) {
-      var mx = (a.x + b.x) / 2;
-      var my = (a.y + b.y) / 2;
-      var dx = b.x - a.x;
-      var dy = b.y - a.y;
-      var len = Math.sqrt(dx * dx + dy * dy) || 1;
-      var mag = bend * Math.min(8, len * 0.2);
-      var cx = mx + (-dy / len) * mag;
-      var cy = my + (dx / len) * mag;
-      return 'M ' + a.x + ' ' + a.y + ' Q ' + cx.toFixed(2) + ' ' + cy.toFixed(2) + ' ' + b.x + ' ' + b.y;
-    }
-
-    function edgeBend(from, to) {
-      var seed = (String(from) + String(to)).length;
-      return (seed % 2 === 0 ? 1 : -1) * (0.55 + (seed % 4) * 0.12);
-    }
-
-    function floatPos(node) {
-      return { x: Number(node.x) || 50, y: Number(node.y) || 50 };
-    }
-
-    function renderWeb(web) {
-      var nodes = web.nodes || {};
-      var list = Object.keys(nodes);
-      emptyEl.classList.toggle('is-gone', list.length > 0);
-
-      var positions = {};
-      list.forEach(function (id) {
-        positions[id] = floatPos(nodes[id]);
-      });
-
-      var edgeHtml = (web.edges || []).map(function (e) {
-        var a = positions[e.from];
-        var b = positions[e.to];
-        if (!a || !b) return '';
-        var cls = 'cn-test-edge' + (e.kind === 'custom' ? ' is-custom' : '');
-        return '<path class="' + cls + '" d="' + curvePath(a, b, edgeBend(e.from, e.to)) + '"></path>';
-      }).join('');
-
-      var nodeHtml = list.map(function (id) {
-        var node = nodes[id];
-        var pos = positions[id];
-        var bloom = bloomIds.indexOf(id) >= 0 ? ' is-bloom' : '';
-        var seed = node.kind === 'seed' ? ' is-seed' : '';
-        var lab = showLabels ? ' is-show-label' : '';
-        var r = nodeRadius(node);
-        var labelY = pos.y + r + 2.4;
-        return '<g class="cn-test-node is-on' + seed + bloom + lab + '" data-id="' + id + '">'
-          + '<circle class="core-dot" cx="' + pos.x.toFixed(2) + '" cy="' + pos.y.toFixed(2) + '" r="' + r.toFixed(2) + '"></circle>'
-          + '<text x="' + pos.x.toFixed(2) + '" y="' + labelY.toFixed(2) + '">' + esc(node.label || '') + '</text>'
-          + '</g>';
-      }).join('');
-
-      canvas.innerHTML = edgeHtml + nodeHtml;
-      var reach = web.reach || 0;
-      reachEl.innerHTML = String(reach) + '<span>/100</span>';
-      renderSpark(web.reachHistory || [reach]);
+    function showDetails(node) {
+      if (!node) return hideDetails();
+      detailsKind.textContent = node.kind || 'note';
+      detailsTitle.textContent = node.label || '';
+      detailsBody.textContent = node.detail || node.label || '';
+      detailsEl.classList.remove('hidden');
     }
 
     function renderSpark(history) {
@@ -218,7 +173,36 @@
         var y = h - 2 - ((v - min) / (max - min)) * (h - 4);
         return x.toFixed(1) + ',' + y.toFixed(1);
       }).join(' ');
-      spark.innerHTML = '<polyline fill="none" stroke="#7a1e2b" stroke-width="1.3" stroke-linecap="round" points="' + pts + '"></polyline>';
+      spark.innerHTML = '<polyline fill="none" stroke="#C16A28" stroke-width="1.3" stroke-linecap="round" points="' + pts + '"></polyline>';
+    }
+
+    function renderReach(web) {
+      reachEl.innerHTML = String(web.reach || 0) + '<span>/100</span>';
+      renderSpark(web.reachHistory || [web.reach || 0]);
+    }
+
+    function paintNetwork(web, forceRemount) {
+      var count = Object.keys(web.nodes || {}).length;
+      emptyEl.classList.toggle('is-gone', count > 0);
+      renderReach(web);
+      if (!count) {
+        AirsupChinaTestNetwork.destroy();
+        mounted = false;
+        return;
+      }
+      if (!mounted || forceRemount) {
+        AirsupChinaTestNetwork.mount(networkEl, web, {
+          onSelect: showDetails,
+          onDeselect: hideDetails,
+        });
+        mounted = true;
+      } else if (!AirsupChinaTestNetwork.syncWeb(web)) {
+        AirsupChinaTestNetwork.mount(networkEl, web, {
+          onSelect: showDetails,
+          onDeselect: hideDetails,
+        });
+        mounted = true;
+      }
     }
 
     function renderPending() {
@@ -312,11 +296,9 @@
         });
         var data = await res.json().catch(function () { return {}; });
         if (data.web) {
-          bloomIds = (data.signals || []).map(function (s) { return s.node; });
           web = data.web;
           saveJson(webKey, web);
-          renderWeb(web);
-          setTimeout(function () { bloomIds = []; }, 1000);
+          paintNetwork(web);
         }
         if (data.reply) toast(data.reply);
       } catch (err) {
@@ -333,7 +315,7 @@
       web = initialWeb || { nodes: {}, edges: [], reach: 0, reachHistory: [0] };
       saveJson(webKey, web);
     }
-    renderWeb(web);
+    paintNetwork(web, true);
     bindAuthButtons();
 
     fileInput.addEventListener('change', function () {
@@ -343,26 +325,21 @@
     });
 
     ;['dragenter', 'dragover'].forEach(function (ev) {
-      universe.addEventListener(ev, function (e) {
+      networkEl.addEventListener(ev, function (e) {
         e.preventDefault();
-        universe.classList.add('is-drag');
+        networkEl.classList.add('is-drag');
       });
     });
     ;['dragleave', 'drop'].forEach(function (ev) {
-      universe.addEventListener(ev, function (e) {
+      networkEl.addEventListener(ev, function (e) {
         e.preventDefault();
-        universe.classList.remove('is-drag');
+        networkEl.classList.remove('is-drag');
       });
     });
-    universe.addEventListener('drop', function (e) {
+    networkEl.addEventListener('drop', function (e) {
       var list = e.dataTransfer && e.dataTransfer.files ? Array.prototype.slice.call(e.dataTransfer.files) : [];
       if (!list.length) return;
       sendTurn('', list);
-    });
-
-    universe.addEventListener('dblclick', function () {
-      showLabels = !showLabels;
-      renderWeb(web);
     });
 
     input.addEventListener('input', autosize);
@@ -382,6 +359,11 @@
       input.value = '';
       autosize();
       sendTurn(text, filesSnap);
+    });
+
+    document.getElementById('cn-test-details-close').addEventListener('click', hideDetails);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') hideDetails();
     });
 
     document.getElementById('cn-test-auth-cancel').addEventListener('click', closeAuth);
@@ -426,11 +408,9 @@
           if (data2.web) {
             web = data2.web;
             saveJson(webKey, web);
-            bloomIds = (data2.seeded || []).slice();
-            renderWeb(web);
-            setTimeout(function () { bloomIds = []; }, 1000);
+            paintNetwork(web, true);
           }
-          toast(lang === 'en' ? 'Signed in. Tiny seeds may appear from your company.' : '已登录。公司信息可能留下细小种子节点。');
+          toast(lang === 'en' ? 'Signed in.' : '已登录。');
         }
       } catch (err) {
         authMsg.textContent = lang === 'en' ? 'Could not continue. Check email / code.' : '无法继续，请检查邮箱或验证码。';
