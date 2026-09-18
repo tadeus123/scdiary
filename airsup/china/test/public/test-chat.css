@@ -612,8 +612,9 @@ a.cn-ob-verify-link {
 
 .cn-test-board-kpis {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.25rem 1.5rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.25rem 1.25rem;
+  align-items: start;
 }
 
 .cn-test-board-kpi-label {
@@ -631,19 +632,37 @@ a.cn-ob-verify-link {
   color: #171311;
 }
 
-.cn-test-board-kpi-sub {
-  margin-top: 0.45rem;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem 0.35rem;
-  font-size: 0.88rem;
-  color: #4d4740;
+.cn-test-board-kpi-rate {
+  text-align: center;
+  padding: 0.15rem 0.35rem;
 }
 
-.cn-test-board-kpi-arrow {
+.cn-test-board-kpi-rate-flow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
   color: #7a1e2b;
+  letter-spacing: 0.01em;
+}
+
+.cn-test-board-kpi-rate-arrow {
   font-size: 0.95rem;
+  line-height: 1;
+}
+
+.cn-test-board-kpi-rate .cn-test-board-kpi-value {
+  color: #7a1e2b;
+  font-size: clamp(1.45rem, 3vw, 1.95rem);
+}
+
+.cn-test-board-kpi-sub {
+  margin-top: 0.25rem;
+  font-size: 0.86rem;
+  color: #4d4740;
 }
 
 .cn-test-board-lower {
