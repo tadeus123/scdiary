@@ -284,12 +284,24 @@ h3 {
 }
 
 .cn-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
   font-family: Georgia, "Times New Roman", "Songti SC", serif;
   font-size: 1.55rem;
   font-weight: 700;
   color: #7a1e2b;
   text-decoration: none;
   letter-spacing: -0.02em;
+}
+
+.cn-logo img {
+  display: block;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 8px;
+  background: #000;
 }
 
 .cn-nav a {

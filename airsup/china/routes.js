@@ -140,7 +140,7 @@ function setSeo(req, res, { title, description, noindex }) {
     noindex: noindex !== false,
     includePersonSchema: false,
     ogLocale: (res.locals.lang === 'en' ? 'en_US' : 'zh_CN'),
-    ogImage: '/og-image.png',
+    ogImage: '/airsup-og.png',
   };
 }
 

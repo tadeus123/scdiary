@@ -83,14 +83,20 @@ async function sendRaw({ to, subject, text, html, fetchImpl }) {
   }
 }
 
+function mailAssetOrigin() {
+  return (process.env.AIRSUP_PUBLIC_ORIGIN || 'https://www.tademehl.com').replace(/\/$/, '');
+}
+
 function mailShell(inner, lang) {
   const sign = t(lang, 'mail_sign');
   const where = t(lang, 'mail_where');
+  const logo = `${mailAssetOrigin()}/airsup-logo.png`;
   return `<!DOCTYPE html>
 <html lang="${lang === 'en' ? 'en' : 'zh-CN'}">
 <head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#f4efe6;color:#1c1814;">
   <div style="max-width:560px;margin:0 auto;padding:32px 20px;font-family:'PingFang SC','Microsoft YaHei',serif;">
+    <img src="${logo}" width="40" height="40" alt="Airsup" style="display:block;margin:0 0 12px;border:0;border-radius:8px;background:#000;">
     <p style="margin:0 0 4px;font-size:12px;letter-spacing:0.18em;color:#8a7348;">AIRSUP</p>
     <p style="margin:0 0 28px;font-size:12px;color:#6a6158;">${where}</p>
     ${inner}

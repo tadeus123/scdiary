@@ -7,7 +7,7 @@
   <% if (typeof testCss === 'string' && testCss) { %>
   <style><%- testCss %></style>
   <% } else { %>
-  <link rel="stylesheet" href="/airsup/dashboard/test-chat.css?v=13">
+  <link rel="stylesheet" href="/airsup/dashboard/test-chat.css?v=14">
   <% } %>
 </head>
 <body
@@ -22,7 +22,10 @@
 >
   <header class="cn-test-top">
     <div class="cn-test-brand">
-      <a href="/airsup/dashboard">Airsup</a>
+      <a href="/airsup/dashboard">
+        <img src="/airsup-logo.png" width="32" height="32" alt="">
+        <span>Airsup</span>
+      </a>
     </div>
     <div class="cn-test-actions" id="cn-test-actions">
       <% if (loggedIn) { %>

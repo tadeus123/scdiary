@@ -30,12 +30,22 @@
 .cn-test-top > * { pointer-events: auto; }
 
 .cn-test-brand a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 1.8rem;
   font-weight: 400;
   letter-spacing: -0.02em;
   color: var(--ink);
   text-decoration: none;
   font-family: Georgia, "Songti SC", "Noto Serif SC", serif;
+}
+.cn-test-brand img {
+  display: block;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  background: #000;
 }
 .cn-test-brand a:hover { color: var(--ink); }
 

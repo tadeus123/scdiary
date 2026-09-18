@@ -8,8 +8,13 @@
 <% if (seo.description) { %>
 <meta itemprop="description" content="<%= seo.description %>">
 <% } %>
-<meta itemprop="image" content="<%= SITE_URL %>/og-image.png">
+<meta itemprop="image" content="<%= SITE_URL %>/airsup-og.png">
 <%- include('/partials/seo-head') %>
+<link rel="icon" type="image/png" sizes="48x48" href="/airsup-favicon-48.png?v=1">
+<link rel="icon" type="image/png" sizes="32x32" href="/airsup-favicon-32.png?v=1">
+<link rel="icon" type="image/png" sizes="16x16" href="/airsup-favicon-16.png?v=1">
+<link rel="shortcut icon" type="image/png" href="/airsup-favicon-48.png?v=1">
+<link rel="apple-touch-icon" href="/airsup-apple-touch-icon.png?v=1">
 <link rel="alternate" type="application/json" href="/airsup/live-companies.json">
 <link rel="alternate" type="application/json" href="/airsup/china/live.json">
 <link rel="alternate" type="text/plain" href="/airsup/china.txt">
@@ -17,5 +22,5 @@
 <% if (typeof chinaCss === 'string' && chinaCss) { %>
 <style><%- chinaCss %></style>
 <% } else { %>
-<link rel="stylesheet" href="/airsup/china/china.css?v=8">
+<link rel="stylesheet" href="/airsup/china/china.css?v=9">
 <% } %>

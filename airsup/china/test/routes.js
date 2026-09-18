@@ -216,7 +216,7 @@ router.get(['/', ''], async (req, res) => {
     noindex: true,
     includePersonSchema: false,
     ogLocale: lang === 'en' ? 'en_US' : 'zh_CN',
-    ogImage: '/og-image.png',
+    ogImage: '/airsup-og.png',
   };
 
   let company = null;
