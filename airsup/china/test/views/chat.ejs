@@ -41,7 +41,7 @@
     <svg class="cn-test-spark" id="cn-test-spark" viewBox="0 0 72 14"></svg>
   </div>
 
-  <aside class="cn-test-onboard" id="cn-test-onboard" aria-label="<%= lang === 'en' ? 'Factory onboarding' : '工厂上线' %>">
+  <aside class="cn-test-onboard" id="cn-test-onboard" aria-label="<%= lang === 'en' ? 'Factory onboarding' : '工厂上线' %>" <%= onboard && onboard.step === 'live' ? 'hidden' : '' %>>
     <div class="cn-test-onboard-card">
       <p class="cn-test-onboard-kicker" id="cn-ob-kicker"></p>
       <h1 class="cn-test-onboard-title" id="cn-ob-title"></h1>
@@ -116,21 +116,21 @@
 
   <div class="cn-test-toast" id="cn-test-toast" role="status"></div>
 
-  <section class="cn-test-board" id="cn-test-board" hidden aria-label="<%= lang === 'en' ? 'Supplier board' : '供应商看板' %>">
+  <section class="cn-test-board<%= typeof board !== 'undefined' && board ? ' is-ready' : '' %>" id="cn-test-board" <%= typeof board !== 'undefined' && board ? '' : 'hidden' %> aria-label="<%= lang === 'en' ? 'Supplier board' : '供应商看板' %>">
     <div class="cn-test-board-main">
       <p class="cn-test-board-rate-label"><%= lang === 'en' ? 'Conversation rate' : '转化率' %></p>
-      <p class="cn-test-board-rate" id="cn-board-rate">0%</p>
+      <p class="cn-test-board-rate" id="cn-board-rate"><%= typeof board !== 'undefined' && board ? (board.conversationRate + '%') : '0%' %></p>
       <div class="cn-test-board-metrics">
         <div class="cn-test-board-metric">
-          <div class="n" id="cn-board-interactions">0</div>
+          <div class="n" id="cn-board-interactions"><%= typeof board !== 'undefined' && board ? board.interactions : 0 %></div>
           <div class="l"><%= lang === 'en' ? 'Endpoint interactions' : '端点互动次数' %></div>
         </div>
         <div class="cn-test-board-metric">
-          <div class="n" id="cn-board-customers">0</div>
+          <div class="n" id="cn-board-customers"><%= typeof board !== 'undefined' && board ? board.customers : 0 %></div>
           <div class="l"><%= lang === 'en' ? 'Customers from endpoint' : '由此而来的客户' %></div>
         </div>
         <div class="cn-test-board-metric">
-          <div class="n" id="cn-board-revenue">$0</div>
+          <div class="n" id="cn-board-revenue"><%= typeof board !== 'undefined' && board ? ('$' + Number(board.revenue || 0).toLocaleString('en-US')) : '$0' %></div>
           <div class="l"><%= lang === 'en' ? 'Revenue through endpoint' : '端点带来的收入' %></div>
         </div>
       </div>
@@ -182,6 +182,11 @@
       </div>
     </div>
   </div>
+
+  <!-- Prefer server board so the dashboard paints before JS. -->
+  <% if (typeof board !== 'undefined' && board) { %>
+  <script>document.body.classList.add('cn-test-has-board');</script>
+  <% } %>
 
   <script src="/airsup/china/test/test-network.js?v=2"></script>
   <script>
@@ -479,8 +484,10 @@
       var isLive = step === 'live';
       // Board replaces dock + onboard panel once published.
       setDockVisible(!isLive && (step === 'fields' && state && state.qualityReady));
-      onboardEl.hidden = isLive;
-      onboardEl.classList.toggle('is-compact', isLive);
+      if (onboardEl) {
+        onboardEl.hidden = isLive;
+        onboardEl.classList.toggle('is-compact', isLive);
+      }
       if (!isLive) renderBoard(null);
     }
 
