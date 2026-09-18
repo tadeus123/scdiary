@@ -7,7 +7,7 @@
   <% if (typeof testCss === 'string' && testCss) { %>
   <style><%- testCss %></style>
   <% } else { %>
-  <link rel="stylesheet" href="/airsup/china/test/test-chat.css?v=12">
+  <link rel="stylesheet" href="/airsup/dashboard/test-chat.css?v=13">
   <% } %>
 </head>
 <body
@@ -22,7 +22,7 @@
 >
   <header class="cn-test-top">
     <div class="cn-test-brand">
-      <a href="/airsup/china/test">Airsup</a>
+      <a href="/airsup/dashboard">Airsup</a>
     </div>
     <div class="cn-test-actions" id="cn-test-actions">
       <% if (loggedIn) { %>
@@ -31,7 +31,7 @@
       <% } else { %>
         <button type="button" class="cn-btn" id="cn-test-login"><%= lang === 'en' ? 'Log in' : '登录' %></button>
       <% } %>
-      <a class="cn-lang" href="/airsup/china/lang/<%= otherLang %>?next=<%= encodeURIComponent('/airsup/china/test') %>">
+      <a class="cn-lang" href="/airsup/china/lang/<%= otherLang %>?next=<%= encodeURIComponent('/airsup/dashboard') %>">
         <%= t('other_lang') %>
       </a>
     </div>
@@ -144,7 +144,7 @@
 
     <div class="cn-test-board-lower">
       <div class="cn-test-board-connect">
-        <p class="cn-test-board-connect-title"><%= lang === 'en' ? 'Connect live context to increase conversation rate' : '接入实时上下文以提高转化率' %></p>
+        <p class="cn-test-board-connect-title"><%= lang === 'en' ? 'Connect live context' : '接入实时上下文' %></p>
         <ul class="cn-test-board-connect-list">
           <li>
             <label class="cn-test-board-check is-soon">
@@ -171,10 +171,13 @@
       </div>
 
       <div class="cn-test-board-upload-row">
-        <p class="cn-test-board-hint"><%= lang === 'en' ? 'Upload more context to increase conversation rate' : '上传更多上下文以提高转化率' %></p>
+        <p class="cn-test-board-hint"><%= lang === 'en' ? 'Upload more context for your factory endpoint' : '上传更多上下文，供工厂端点使用' %></p>
         <div class="cn-test-board-drop" id="cn-board-drop" tabindex="0">
           <input type="file" id="cn-board-files" multiple accept=".pdf,.xlsx,.xls,.zip,.csv,.txt,.doc,.docx,application/pdf,application/zip,image/*,text/*">
           <p class="cn-test-board-drop-title"><%= lang === 'en' ? 'Upload' : '上传' %></p>
+        </div>
+        <div class="cn-test-board-upload-list" id="cn-board-upload-list" hidden>
+          <ul id="cn-board-upload-ul"></ul>
         </div>
       </div>
     </div>
@@ -221,7 +224,7 @@
   <!-- Board is the only main surface on /test. -->
   <script>document.body.classList.add('cn-test-has-board');</script>
 
-  <script src="/airsup/china/test/test-network.js?v=2"></script>
+  <script src="/airsup/dashboard/test-network.js?v=2"></script>
   <script>
   (function () {
     var lang = document.body.getAttribute('data-lang') || 'zh';
@@ -447,7 +450,39 @@
     }
 
     function emptyBoard() {
-      return { conversationRate: 0, interactions: 0, customers: 0, revenue: 0, contextScore: 0 };
+      return { conversationRate: 0, interactions: 0, customers: 0, revenue: 0, uploadedFiles: [] };
+    }
+
+    function formatFileSize(n) {
+      var v = Math.max(0, Number(n) || 0);
+      if (v < 1024) return v + ' B';
+      if (v < 1024 * 1024) return (v / 1024).toFixed(1) + ' KB';
+      return (v / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function renderUploadList(files) {
+      var wrap = document.getElementById('cn-board-upload-list');
+      var ul = document.getElementById('cn-board-upload-ul');
+      if (!wrap || !ul) return;
+      var list = Array.isArray(files) ? files : [];
+      ul.innerHTML = '';
+      if (!list.length) {
+        wrap.hidden = true;
+        return;
+      }
+      list.forEach(function (f) {
+        var li = document.createElement('li');
+        var name = document.createElement('span');
+        name.className = 'cn-test-board-upload-name';
+        name.textContent = (f && f.name) || 'file';
+        var meta = document.createElement('span');
+        meta.className = 'cn-test-board-upload-meta';
+        meta.textContent = formatFileSize(f && f.size);
+        li.appendChild(name);
+        li.appendChild(meta);
+        ul.appendChild(li);
+      });
+      wrap.hidden = false;
     }
 
     function renderBoard(board) {
@@ -458,6 +493,7 @@
       document.getElementById('cn-board-interactions').textContent = String(next.interactions || 0);
       document.getElementById('cn-board-customers').textContent = String(next.customers || 0);
       document.getElementById('cn-board-revenue').textContent = formatMoney(next.revenue);
+      renderUploadList(next.uploadedFiles || []);
       boardEl.hidden = false;
       boardEl.classList.add('is-ready');
       document.body.classList.add('cn-test-has-board');
@@ -477,7 +513,7 @@
         var body = new FormData();
         body.append('web', JSON.stringify(web));
         files.forEach(function (f) { body.append('files', f); });
-        var res = await fetch('/airsup/china/test/api/board/context', {
+        var res = await fetch('/airsup/dashboard/api/board/context', {
           method: 'POST',
           body: body,
           credentials: 'same-origin',
@@ -489,9 +525,10 @@
         }
         if (data.web) applyWeb(data.web, true);
         if (data.board) renderBoard(data.board);
+        else if (data.files) renderUploadList(data.board && data.board.uploadedFiles);
         toast(en
-          ? ('Conversation rate ' + (data.board && data.board.conversationRate) + '%')
-          : ('转化率 ' + (data.board && data.board.conversationRate) + '%'));
+          ? ('Uploaded ' + files.length + ' file' + (files.length === 1 ? '' : 's') + '.')
+          : ('已上传 ' + files.length + ' 个文件。'));
       } catch (e) {
         toast(en ? 'Upload failed.' : '上传失败。');
       } finally {
@@ -614,7 +651,7 @@
         if (extra && extra.board) renderBoard(extra.board);
         else if (initialBoard) renderBoard(initialBoard);
         else {
-          apiJson('/airsup/china/test/api/board', { method: 'GET', headers: {} }).then(function (out) {
+          apiJson('/airsup/dashboard/api/board', { method: 'GET', headers: {} }).then(function (out) {
             if (out.data && out.data.board) renderBoard(out.data.board);
           });
         }
@@ -677,7 +714,7 @@
       if (logoutBtn) {
         logoutBtn.addEventListener('click', async function () {
           try {
-            await fetch('/airsup/china/test/api/logout', {
+            await fetch('/airsup/dashboard/api/logout', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'same-origin',
@@ -721,7 +758,7 @@
         body.append('web', JSON.stringify(web));
         (filesSnap || []).forEach(function (f) { body.append('files', f); });
 
-        var res = await fetch('/airsup/china/test/api/chat', {
+        var res = await fetch('/airsup/dashboard/api/chat', {
           method: 'POST',
           body: body,
           credentials: 'same-origin',
@@ -785,7 +822,7 @@
     if (qs('ok') === 'verified') {
       toast(en ? 'Email verified.' : '邮箱已验证。');
       initialLoggedIn = true;
-      apiJson('/airsup/china/test/api/onboard/state', { method: 'GET', headers: {} }).then(function (out) {
+      apiJson('/airsup/dashboard/api/onboard/state', { method: 'GET', headers: {} }).then(function (out) {
         if (out.data && out.data.state) applyState(out.data.state, { loggedIn: Boolean(out.data.loggedIn) });
         if (out.data && out.data.web) applyWeb(out.data.web, true);
         if (out.data && out.data.company && out.data.company.name) {
@@ -804,7 +841,7 @@
       }
       setObBusy(true);
       try {
-        var out = await apiJson('/airsup/china/test/api/onboard/preview', {
+        var out = await apiJson('/airsup/dashboard/api/onboard/preview', {
           method: 'POST',
           body: JSON.stringify({ website: website }),
         });
@@ -829,7 +866,7 @@
     });
 
     async function runStartSignup() {
-      var out = await apiJson('/airsup/china/test/api/onboard/start', {
+      var out = await apiJson('/airsup/dashboard/api/onboard/start', {
         method: 'POST',
         body: JSON.stringify({
           website: draftWebsite || String(document.getElementById('cn-ob-website').value || '').trim(),
@@ -890,7 +927,7 @@
       }
       setObBusy(true);
       try {
-        var fieldsOut = await apiJson('/airsup/china/test/api/onboard/fields', {
+        var fieldsOut = await apiJson('/airsup/dashboard/api/onboard/fields', {
           method: 'POST',
           body: JSON.stringify({
             wechat: wechatVal,
@@ -912,7 +949,7 @@
           renderGaps(st && st.gaps);
           return;
         }
-        var pubOut = await apiJson('/airsup/china/test/api/onboard/publish', {
+        var pubOut = await apiJson('/airsup/dashboard/api/onboard/publish', {
           method: 'POST',
           body: '{}',
         });
@@ -939,7 +976,7 @@
         setObMsg(en ? 'Starting demo…' : '正在启动演示…');
         setObBusy(true);
         try {
-          var out = await apiJson('/airsup/china/test/api/onboard/demo', {
+          var out = await apiJson('/airsup/dashboard/api/onboard/demo', {
             method: 'POST',
             body: '{}',
           });
@@ -966,7 +1003,7 @@
           }
           // Non-auto: drop ?demo so refresh does not reset mid-session.
           try {
-            history.replaceState({}, '', '/airsup/china/test' + (en ? '?lang=en' : ''));
+            history.replaceState({}, '', '/airsup/dashboard' + (en ? '?lang=en' : ''));
           } catch (e2) {}
         } catch (e) {
           setObMsg(copy.startFail);
@@ -1047,7 +1084,7 @@
       try {
         if (authStep === 'email') {
           var email = String(authEmail.value || '').trim();
-          var res = await fetch('/airsup/china/test/api/login/request', {
+          var res = await fetch('/airsup/dashboard/api/login/request', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
@@ -1058,12 +1095,10 @@
           authStep = 'code';
           authCodeWrap.hidden = false;
           authGo.textContent = en ? 'Verify' : '验证';
-          authMsg.textContent = data.devCode
-            ? ((en ? 'Concept code: ' : '概念验证码：') + data.devCode)
-            : (en ? 'Code sent. Check your inbox.' : '验证码已发送，请查收邮箱。');
+          authMsg.textContent = en ? 'Code sent. Check your inbox.' : '验证码已发送，请查收邮箱。';
           authCode.focus();
         } else {
-          var res2 = await fetch('/airsup/china/test/api/login/verify', {
+          var res2 = await fetch('/airsup/dashboard/api/login/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
@@ -1077,8 +1112,9 @@
           closeAuth();
           setLoggedIn(true, (data2.company && data2.company.name) || '');
           if (data2.web) applyWeb(data2.web, true);
+          if (data2.board) renderBoard(data2.board);
           toast(en ? 'Signed in.' : '已登录。');
-          var boardOut = await apiJson('/airsup/china/test/api/board', { method: 'GET', headers: {} });
+          var boardOut = await apiJson('/airsup/dashboard/api/board', { method: 'GET', headers: {} });
           if (boardOut.data && boardOut.data.board) {
             initialBoard = boardOut.data.board;
             renderBoard(initialBoard);
@@ -1086,7 +1122,7 @@
           if (boardOut.data && boardOut.data.state) {
             applyState(boardOut.data.state, { loggedIn: true, board: initialBoard });
           } else {
-            var st = await apiJson('/airsup/china/test/api/onboard/state', { method: 'GET', headers: {} });
+            var st = await apiJson('/airsup/dashboard/api/onboard/state', { method: 'GET', headers: {} });
             if (st.data && st.data.state) applyState(st.data.state, { loggedIn: true, board: initialBoard });
           }
         }

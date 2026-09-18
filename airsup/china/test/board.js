@@ -1,15 +1,13 @@
 /**
- * Supplier main board metrics for /airsup/china/test (replaceable).
+ * Supplier main board metrics for /airsup/dashboard.
  *
- * Conversation rate rises with uploaded / published context.
- * Customers = interactions × conversationRate.
- * Revenue = customers × average deal (stable demo unit).
+ * Conversation rate is pure math: customers / interactions.
+ * Uploads do not change interactions, customers, or conversation rate.
  */
-const { normalizeProfile, listedContacts } = require('../fields');
+const { normalizeProfile } = require('../fields');
 
 const AVG_DEAL_USD = 2800;
-const MIN_RATE = 0.04;
-const MAX_RATE = 0.42;
+const MAX_UPLOAD_FILES = 80;
 
 function hashSeed(text) {
   const s = String(text || 'x');
@@ -28,77 +26,62 @@ function daysSince(iso) {
   return Math.max(0, Math.floor((Date.now() - t) / (24 * 60 * 60 * 1000)));
 }
 
-/** 0–100 context score from profile + dumps + note-web. */
-function contextScore(company, web) {
+function listUploadedFiles(company) {
   const profile = normalizeProfile(company && company.profile);
   const board = (profile.board && typeof profile.board === 'object') ? profile.board : {};
-  const docs = (profile.quotation_knowledge && Array.isArray(profile.quotation_knowledge.documents))
-    ? profile.quotation_knowledge.documents
-    : [];
-  const nodes = web && web.nodes && typeof web.nodes === 'object'
-    ? Object.keys(web.nodes).length
-    : 0;
-  const reach = web && web.reach != null ? Number(web.reach) || 0 : 0;
-  const uploads = Math.max(0, Number(board.context_uploads) || 0);
-  const uploadBytes = Math.max(0, Number(board.context_bytes) || 0);
-
-  let score = 0;
-  if (listedContacts(profile.contacts).length) score += 12;
-  if (String(profile.sample_lead || '').trim()) score += 10;
-  score += Math.min(18, ((profile.processes || []).length + (profile.materials || []).length) * 3);
-  score += Math.min(20, docs.length * 7);
-  score += Math.min(22, Math.floor(reach / 5) + nodes * 2);
-  score += Math.min(30, uploads * 6 + Math.floor(uploadBytes / (180 * 1024)));
-  if (String(company && company.context || '').trim().length > 40) score += 6;
-  return Math.max(0, Math.min(100, Math.round(score)));
+  const files = Array.isArray(board.uploaded_files) ? board.uploaded_files : [];
+  return files.map((f) => ({
+    name: String((f && f.name) || 'file').slice(0, 200),
+    size: Math.max(0, Number((f && f.size) || 0) || 0),
+    mime: String((f && f.mime) || '').slice(0, 120),
+    uploaded_at: String((f && f.uploaded_at) || ''),
+  }));
 }
 
 /**
- * Conversation rate as percent (one decimal), driven by context.
- * Higher context → higher rate → more customers & revenue from the same traffic.
+ * Interactions and customers are independent traffic numbers (not upload-driven).
+ * Conversation rate = customers / interactions (percent, one decimal).
  */
-function conversationRate(score) {
-  const t = Math.max(0, Math.min(100, Number(score) || 0)) / 100;
-  const rate = MIN_RATE + t * (MAX_RATE - MIN_RATE);
-  return Math.round(rate * 1000) / 10; // e.g. 18.4
-}
-
-function computeBoard(company, web) {
+function computeBoard(company) {
   if (!company) {
     return {
       conversationRate: 0,
       interactions: 0,
       customers: 0,
       revenue: 0,
-      contextScore: 0,
       currency: 'USD',
       avgDeal: AVG_DEAL_USD,
+      uploads: 0,
+      uploadedFiles: [],
     };
   }
 
-  const score = contextScore(company, web);
-  const ratePct = conversationRate(score);
   const seed = hashSeed(company.company_id || company.domain) % 37;
   const liveDays = daysSince(company.live_at || company.verified_at || company.created_at);
-  // Endpoint traffic grows mildly with context (stronger answers → more ChatGPT reuse).
-  const interactions = Math.round(18 + seed + liveDays * 2.8 + score * 0.55);
-  const customers = Math.max(0, Math.round(interactions * (ratePct / 100)));
+  const interactions = Math.round(18 + seed + liveDays * 2.8);
+  // Stable customer fraction of traffic (company-specific), not context/uploads.
+  const customerShare = 0.22 + (seed % 17) / 100;
+  const customers = Math.max(0, Math.round(interactions * customerShare));
+  const conversationRate = interactions > 0
+    ? Math.round((customers / interactions) * 1000) / 10
+    : 0;
   const revenue = customers * AVG_DEAL_USD;
+  const uploadedFiles = listUploadedFiles(company);
 
   return {
-    conversationRate: ratePct,
+    conversationRate,
     interactions,
     customers,
     revenue,
-    contextScore: score,
     currency: 'USD',
     avgDeal: AVG_DEAL_USD,
-    uploads: Number((normalizeProfile(company.profile).board || {}).context_uploads) || 0,
+    uploads: uploadedFiles.length,
+    uploadedFiles,
   };
 }
 
 /**
- * Bump profile.board context counters after a supplier dump.
+ * Record file metadata for the upload list. Does not affect board KPIs.
  * Caller persists via store.updateCompany.
  */
 function applyContextUpload(company, files) {
@@ -107,19 +90,29 @@ function applyContextUpload(company, files) {
   const list = Array.isArray(files) ? files : [];
   const added = list.length || 1;
   const bytes = list.reduce((n, f) => n + (Number(f.size) || 0), 0);
+  const now = new Date().toISOString();
+  const prevFiles = Array.isArray(prev.uploaded_files) ? prev.uploaded_files : [];
+  const newFiles = list.length
+    ? list.map((f) => ({
+      name: String((f && f.name) || 'file').slice(0, 200),
+      size: Math.max(0, Number((f && f.size) || 0) || 0),
+      mime: String((f && f.mime) || '').slice(0, 120),
+      uploaded_at: now,
+    }))
+    : [{ name: 'note', size: bytes, mime: 'text/plain', uploaded_at: now }];
   profile.board = {
     ...prev,
     context_uploads: Math.max(0, Number(prev.context_uploads) || 0) + added,
     context_bytes: Math.max(0, Number(prev.context_bytes) || 0) + bytes,
-    last_upload_at: new Date().toISOString(),
+    last_upload_at: now,
+    uploaded_files: [...newFiles, ...prevFiles].slice(0, MAX_UPLOAD_FILES),
   };
   return profile;
 }
 
 module.exports = {
   computeBoard,
-  contextScore,
-  conversationRate,
   applyContextUpload,
+  listUploadedFiles,
   AVG_DEAL_USD,
 };

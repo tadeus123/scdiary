@@ -1355,7 +1355,7 @@ function memoryChina(companies) {
   assert.ok(qMail.text.includes('https://www.tademehl.com/airsup/china/verify?token=abc&next=quotes'));
   assert.strictEqual(DEMO_NAME_EN.includes('Demo'), true);
 
-  // Isolated company-web concept at /airsup/china/test
+  // Supplier dashboard (board UI) at /airsup/dashboard; /airsup/china/test redirects
   assert.ok(fs.existsSync(path.join(__dirname, 'test/routes.js')));
   assert.ok(fs.existsSync(path.join(__dirname, 'test/views/chat.ejs')));
   assert.ok(fs.existsSync(path.join(__dirname, 'test/web.js')));
@@ -1364,6 +1364,8 @@ function memoryChina(companies) {
   assert.ok(fs.existsSync(path.join(__dirname, 'test/onboard.js')));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.use('/test'"));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('AIRSUP-CHINA-TEST-BEGIN'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('/airsup/dashboard'));
+  assert.ok(fs.readFileSync(path.join(__dirname, '../routes.js'), 'utf8').includes("router.use('/dashboard'"));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-network'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-dock'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-onboard'));
@@ -1372,6 +1374,8 @@ function memoryChina(companies) {
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('api/onboard'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-board'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('data-board-first'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('/airsup/dashboard'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-board-upload-list'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-board-first'));
   assert.ok(fs.existsSync(path.join(__dirname, 'test/public/test-network.js')));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/public/test-network.js'), 'utf8').includes('gravitationalConstant: -5000'));
@@ -1390,7 +1394,19 @@ function memoryChina(companies) {
   assert.ok(testRoutesSrc.includes("router.get('/verify'"));
   assert.ok(fs.existsSync(path.join(__dirname, 'test/board.js')));
   const { computeBoard } = require('./test/board');
-  assert.strictEqual(computeBoard(null, { nodes: {}, edges: [], reach: 0 }).conversationRate, 0);  const testOnboard = require('./test/onboard');
+  assert.strictEqual(computeBoard(null, { nodes: {}, edges: [], reach: 0 }).conversationRate, 0);
+  const boardSample = computeBoard({
+    company_id: 'cn_test',
+    domain: 'demo.com',
+    live_at: new Date().toISOString(),
+    profile: {},
+  });
+  assert.ok(boardSample.interactions > 0);
+  assert.strictEqual(
+    boardSample.conversationRate,
+    Math.round((boardSample.customers / boardSample.interactions) * 1000) / 10
+  );
+  const testOnboard = require('./test/onboard');
   assert.strictEqual(typeof testOnboard.previewWebsite, 'function');
   assert.strictEqual(typeof testOnboard.startSignup, 'function');
   assert.strictEqual(typeof testOnboard.consumeVerifyToken, 'function');
@@ -1423,7 +1439,8 @@ function memoryChina(companies) {
   });
   assert.ok(started.ok, started.errorKey);
   assert.ok(started.token);
-  assert.ok(String(started.verifyPath || '').includes('/airsup/china/test/verify'));
+  assert.ok(String(started.verifyPath || '').includes('/airsup/dashboard/verify'), started.verifyPath);
+  assert.ok(/\/verify\?token=/.test(String(started.verifyPath || '')), started.verifyPath);
   assert.strictEqual(started.company.status, 'pending');
   const verified = await testOnboard.consumeVerifyToken(started.token);
   assert.ok(verified.ok, verified.errorKey);

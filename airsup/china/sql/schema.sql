@@ -11,7 +11,7 @@ create table if not exists public.airsup_china_companies (
   contact_name text not null default '',
   contact_email text not null default '',
   locale text not null default 'zh',
-  niche text not null default 'cnc',
+  niche text not null default 'cnc', -- primary category slug from airsup/china/manufacturing-categories.js
   status text not null default 'pending',
   source text not null default 'web',
   profile jsonb not null default '{}'::jsonb,
@@ -32,6 +32,9 @@ create unique index if not exists airsup_china_companies_domain_idx
 
 create index if not exists airsup_china_companies_status_idx
   on public.airsup_china_companies (status);
+
+create index if not exists airsup_china_companies_niche_idx
+  on public.airsup_china_companies (niche);
 
 create table if not exists public.airsup_china_tokens (
   token_hash text primary key,

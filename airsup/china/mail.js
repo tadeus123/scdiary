@@ -173,6 +173,48 @@ async function sendVerifyEmail({ lang, to, link, contactName }) {
   await sendRaw({ to, ...mail });
 }
 
+function loginCodeMail({ lang, code, contactName }) {
+  const helloName = String(contactName || '').trim();
+  const digits = String(code || '').trim();
+  const zhHello = helloName ? `您好 ${helloName}` : '您好';
+  const enHello = helloName ? `Hello ${helloName}` : 'Hello';
+  const zhBody = '您的 Airsup 登录验证码如下。10 分钟内有效。';
+  const enBody = 'Your Airsup login code is below. It expires in 10 minutes.';
+  const primary = lang === 'en'
+    ? { hello: enHello, body: enBody }
+    : { hello: zhHello, body: zhBody };
+  const secondary = lang === 'en'
+    ? { hello: zhHello, body: zhBody }
+    : { hello: enHello, body: enBody };
+  const subject = lang === 'en'
+    ? 'Your Airsup login code / Airsup 登录验证码'
+    : 'Airsup 登录验证码 / Your Airsup login code';
+  const inner = `
+    <p style="font-size:18px;margin:0 0 16px;">${primary.hello}</p>
+    <p style="font-size:15px;line-height:1.7;margin:0 0 20px;">${primary.body}</p>
+    <p style="margin:0 0 28px;font-size:28px;letter-spacing:0.28em;font-weight:700;color:#a32035;">${escapeHtml(digits)}</p>
+    <p style="border-top:1px solid #cfc4b4;padding-top:18px;font-size:14px;line-height:1.7;color:#4a453e;">${secondary.body}<br><strong style="letter-spacing:0.2em;color:#a32035;">${escapeHtml(digits)}</strong></p>
+  `;
+  const text = [
+    primary.hello,
+    '',
+    primary.body,
+    digits,
+    '',
+    secondary.body,
+    digits,
+    '',
+    'Tade Mehl',
+    'tademehl@gmail.com',
+  ].join('\n');
+  return { subject, text, html: mailShell(inner, lang) };
+}
+
+async function sendLoginCodeEmail({ lang, to, code, contactName }) {
+  const mail = loginCodeMail({ lang, code, contactName });
+  await sendRaw({ to, ...mail });
+}
+
 function quotesInviteMail({ lang, link, contactName, companyName }) {
   const helloName = String(contactName || '').trim();
   const firm = String(companyName || '').trim();
@@ -304,6 +346,7 @@ module.exports = {
   verifyMail,
   quotesInviteMail,
   sendVerifyEmail,
+  sendLoginCodeEmail,
   sendQuotesInviteEmail,
   sendInquiryNotice,
   sendFactoryNotice,

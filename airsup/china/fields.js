@@ -1,33 +1,16 @@
-const NICHES = [
-  { id: 'cnc', zh: 'CNC 机加工', en: 'CNC machining' },
-  { id: 'injection', zh: '注塑 / 模具', en: 'Injection molding / molds' },
-  { id: 'pcba', zh: 'PCBA / SMT', en: 'PCBA / SMT' },
-  { id: '3d_printing', zh: '3D 打印 / 增材', en: '3D printing / additive' },
-  { id: 'other', zh: '其他出口制造', en: 'Other export manufacturing' },
-];
+const {
+  CATEGORIES,
+  NICHES,
+  PROCESSES,
+  PROCESS_GROUPS,
+  normalizeNiche,
+  categorySearchHaystack,
+} = require('./manufacturing-categories');
 
 const CITIES = [
   { id: 'shenzhen', zh: '深圳', en: 'Shenzhen' },
   { id: 'dongguan', zh: '东莞', en: 'Dongguan' },
   { id: 'other', zh: '其他', en: 'Other' },
-];
-
-const PROCESSES = [
-  { id: '3axis', zh: '三轴铣', en: '3-axis milling' },
-  { id: '4axis', zh: '四轴铣', en: '4-axis milling' },
-  { id: '5axis', zh: '五轴铣', en: '5-axis milling' },
-  { id: 'turning', zh: '车削', en: 'CNC turning' },
-  { id: 'swiss', zh: '走心机', en: 'Swiss turning' },
-  { id: 'edm', zh: '放电加工', en: 'EDM' },
-  { id: 'grinding', zh: '磨削', en: 'Grinding' },
-  { id: 'sheet', zh: '钣金', en: 'Sheet metal' },
-  { id: 'injection', zh: '注塑', en: 'Injection molding' },
-  { id: 'mold', zh: '模具', en: 'Mold making' },
-  { id: 'pcba', zh: 'PCBA / SMT', en: 'PCBA / SMT' },
-  { id: 'sla', zh: 'SLA 光固化', en: 'SLA resin printing' },
-  { id: 'sls', zh: 'SLS 尼龙烧结', en: 'SLS nylon sintering' },
-  { id: 'fdm', zh: 'FDM / FFF', en: 'FDM / FFF' },
-  { id: 'mjf', zh: 'HP MJF', en: 'HP Multi Jet Fusion' },
 ];
 
 const MATERIALS = [
@@ -303,11 +286,6 @@ function normalizeActions(raw) {
   return picked.length ? picked : DEFAULT_ACTIONS.slice();
 }
 
-function normalizeNiche(raw) {
-  const id = String(raw || '').trim();
-  return NICHES.some((item) => item.id === id) ? id : 'cnc';
-}
-
 function labelsFor(ids, catalog, lang) {
   const map = new Map(catalog.map((item) => [item.id, lang === 'en' ? item.en : item.zh]));
   return ids.map((id) => map.get(id) || id);
@@ -340,6 +318,7 @@ function listingText(company) {
     company && company.domain ? `Domain: ${company.domain}` : '',
     city ? `City: ${city}` : '',
     company && company.niche ? `Niche: ${labelsFor([company.niche], NICHES, 'en')[0] || company.niche}` : '',
+    company && company.niche ? `Category search: ${categorySearchHaystack(company.niche)}` : '',
     profile.processes.length ? `Processes: ${labelsFor(profile.processes, PROCESSES, 'en').join(', ')}` : '',
     profile.materials.length ? `Materials: ${labelsFor(profile.materials, MATERIALS, 'en').join(', ')}` : '',
     profile.finishing.length ? `Finishing: ${labelsFor(profile.finishing, FINISHES, 'en').join(', ')}` : '',
@@ -621,7 +600,9 @@ function formatLiveAt(iso, lang) {
 }
 
 module.exports = {
+  CATEGORIES,
   NICHES,
+  PROCESS_GROUPS,
   CITIES,
   PROCESSES,
   MATERIALS,
@@ -654,6 +635,7 @@ module.exports = {
   displayCity,
   companyTitle,
   listingText,
+  categorySearchHaystack,
   canPublish,
   buyerTestPrompt,
   publicRecord,

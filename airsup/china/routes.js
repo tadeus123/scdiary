@@ -16,6 +16,7 @@ const { buildPreview, companyDraftFromPreview } = require('./site-preview');
 const quotations = require('./quotations');
 const {
   NICHES,
+  PROCESS_GROUPS,
   CITIES,
   PROCESSES,
   MATERIALS,
@@ -764,7 +765,7 @@ async function showSetup(req, res, { company, error, saved, paused }) {
     company,
     profile,
     actions: normalizeActions(company.actions),
-    catalogs: { NICHES, CITIES, PROCESSES, MATERIALS, FINISHES, CERTS, ACTIONS, FLEX, CONTACT_SLOTS },
+    catalogs: { NICHES, CITIES, PROCESSES, PROCESS_GROUPS, MATERIALS, FINISHES, CERTS, ACTIONS, FLEX, CONTACT_SLOTS },
     error: error || null,
     saved: Boolean(saved),
     paused: Boolean(paused),
@@ -1092,8 +1093,12 @@ router.post('/api/ops/send-quotes-invite', express.json(), async (req, res) => {
   return res.json({ sent, failed });
 });
 
-// AIRSUP-CHINA-TEST-BEGIN — concept ChatGPT-like setup chat; delete airsup/china/test/ to remove
-router.use('/test', require('./test/routes'));
+// AIRSUP-CHINA-TEST-BEGIN — legacy path; board now lives at /airsup/dashboard
+router.use('/test', (req, res) => {
+  const suffix = req.url === '/' ? '' : req.url;
+  const target = `/airsup/dashboard${suffix.startsWith('/') ? suffix : `/${suffix}`}`;
+  return res.redirect(302, target);
+});
 // AIRSUP-CHINA-TEST-END
 
 module.exports = router;

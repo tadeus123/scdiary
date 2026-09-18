@@ -3,7 +3,8 @@ const db = require('./db');
 
 const COOKIE = 'airsup_china_sid';
 const LANG_COOKIE = 'airsup_china_lang';
-const PATH = '/airsup/china';
+/** Shared by /airsup/china/* and /airsup/dashboard */
+const PATH = '/airsup';
 const SESSION_DAYS = 30;
 
 function cookieBase(req) {
@@ -56,6 +57,8 @@ async function createSession(req, res, companyId) {
     company_id: companyId,
     expires_at: new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000).toISOString(),
   });
+  // Drop legacy path cookie if present so only the shared /airsup cookie remains.
+  res.clearCookie(COOKIE, { ...cookieBase(req), path: '/airsup/china' });
   res.cookie(COOKIE, sid, { ...cookieBase(req), maxAge: SESSION_DAYS * 24 * 60 * 60 * 1000 });
 }
 
@@ -65,6 +68,8 @@ async function clearSession(req, res) {
     await db.deleteSession(sha256(sid)).catch(() => null);
   }
   res.clearCookie(COOKIE, cookieBase(req));
+  // Also clear legacy path so old sessions do not linger under /airsup/china only.
+  res.clearCookie(COOKIE, { ...cookieBase(req), path: '/airsup/china' });
 }
 
 async function createToken(companyId, email, purpose) {

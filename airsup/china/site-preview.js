@@ -1,6 +1,11 @@
 const { normalizeDomain, isFreeMail } = require('./domain');
 const { genericDemo, personalizedDemo, nameFromDomain, guessNiche } = require('./demo');
 const { normalizeProfile, normalizeNiche, mapCityId, normalizeEnrichment } = require('./fields');
+const {
+  heuristicProcessIdsFromText,
+  scrapeNicheEnum,
+  scrapeProcessEnum,
+} = require('./manufacturing-categories');
 
 const BLOCKED_HOSTS = new Set(['localhost', 'localhost.localdomain', 'metadata.google.internal']);
 const PAGE_BUDGET = 10;
@@ -229,25 +234,13 @@ async function fetchOnePage(url, domain) {
 
 function heuristicHintsFromText(text) {
   const hay = String(text || '');
-  const processes = [];
+  const processes = heuristicProcessIdsFromText(hay).slice();
   const materials = [];
   const certifications = [];
   const lower = hay.toLowerCase();
   if (/5[-\s]?axis|五轴/.test(lower)) processes.push('5axis');
   if (/4[-\s]?axis|四轴/.test(lower)) processes.push('4axis');
   if (/3[-\s]?axis|三轴/.test(lower)) processes.push('3axis');
-  if (/swiss|走心/.test(lower)) processes.push('swiss');
-  if (/turning|车削|车床/.test(lower)) processes.push('turning');
-  if (/edm|放电/.test(lower)) processes.push('edm');
-  if (/grind|磨削/.test(lower)) processes.push('grinding');
-  if (/sheet metal|钣金/.test(lower)) processes.push('sheet');
-  if (/injection|注塑/.test(lower)) processes.push('injection');
-  if (/mold|mould|模具/.test(lower)) processes.push('mold');
-  if (/pcba|smt|贴片/.test(lower)) processes.push('pcba');
-  if (/\bsla\b|光固化|stereolith/.test(lower)) processes.push('sla');
-  if (/\bsls\b|尼龙烧结|selective laser sinter/.test(lower)) processes.push('sls');
-  if (/\bfdm\b|\bfff\b|fused deposition/.test(lower)) processes.push('fdm');
-  if (/\bmjf\b|multi\s*jet\s*fusion|多射流/.test(lower)) processes.push('mjf');
   if (/6061|7075|aluminum|aluminium|铝/.test(lower)) materials.push('alu');
   if (/stainless|不锈钢/.test(lower)) materials.push('stainless');
   if (/titanium|钛/.test(lower)) materials.push('titanium');
@@ -357,7 +350,7 @@ async function inferFromText(domain, page) {
           {
             role: 'system',
             content:
-              'Extract only facts stated on a public manufacturer website. Return JSON with keys: companyNameZh, companyNameEn, city, niche (cnc|injection|pcba|3d_printing|other), processes (ids from 3axis,4axis,5axis,turning,swiss,edm,grinding,sheet,injection,mold,pcba,sla,sls,fdm,mjf), materials (ids from alu,steel,stainless,titanium,copper,plastic,resin,pa12,tpu), finishing (ids from anodize,powder,plating,bead,polish,heat), certifications (ids from iso9001,iso13485,as9100,iatf,iso14001), machines, tolerance, max_workpiece, moq, lead_time, shipping, year_founded, employees, address, export_markets, capabilities (string array max 8), summary, evidence (array of {field, quote} max 12). Do not invent machines, certificates, prices or lead times. Unknown = empty string or [].',
+              `Extract only facts stated on a public manufacturer website. Return JSON with keys: companyNameZh, companyNameEn, city, niche (${scrapeNicheEnum()}), processes (ids from ${scrapeProcessEnum()}), materials (ids from alu,steel,stainless,titanium,copper,plastic,resin,pa12,tpu), finishing (ids from anodize,powder,plating,bead,polish,heat), certifications (ids from iso9001,iso13485,as9100,iatf,iso14001), machines, tolerance, max_workpiece, moq, lead_time, shipping, year_founded, employees, address, export_markets, capabilities (string array max 8), summary, evidence (array of {field, quote} max 12). Do not invent machines, certificates, prices or lead times. Unknown = empty string or []. Biosignal electrodes means EEG/ECG/EMG/wearable sensing, not welding or electrolysis electrodes. Battery manufacturing means cells/packs/BMS factories, not battery resellers. Sintering/powder metallurgy is not SLS/SLA 3D printing.`,
           },
           {
             role: 'user',

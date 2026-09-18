@@ -1,7 +1,9 @@
 /**
- * /airsup/china/test — company endpoint web concept (chat feeds the web).
- * Mounted only from china/routes.js. Delete this folder to remove.
+ * /airsup/dashboard — supplier board (was /airsup/china/test).
+ * Mounted from airsup/routes.js; /airsup/china/test redirects here.
+ * Delete airsup/china/test/ to remove.
  */
+const DASHBOARD_BASE = '/airsup/dashboard';
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
@@ -17,7 +19,7 @@ const { welcomeMessage, completeTestTurn, emptyWeb } = require('./chat');
 const { describeUploads } = require('./files');
 const { layoutPositions, normalizeClientWeb, addCustomLink, seedFromCompany, applyDump } = require('./web');
 const authCodes = require('./auth-codes');
-const { sendVerifyEmail } = require('../mail');
+const { sendLoginCodeEmail } = require('../mail');
 const onboard = require('./onboard');
 const memoryStore = require('./memory-store');
 const { computeBoard, applyContextUpload } = require('./board');
@@ -108,6 +110,12 @@ function jsonError(res, lang, status, errorKey) {
     err_rate: lang === 'en'
       ? 'Please wait about 2 minutes before requesting another email.'
       : '请约 2 分钟后再请求邮件。',
+    unknown_company: lang === 'en'
+      ? 'No factory is registered for that email. Join from the China page first.'
+      : '该邮箱没有对应工厂。请先从中国页加入。',
+    bad_code: lang === 'en' ? 'Invalid or expired code.' : '验证码无效或已过期。',
+    bad_email: lang === 'en' ? 'Enter a valid work email.' : '请输入有效的工作邮箱。',
+    mail_failed: lang === 'en' ? 'Could not send the login code. Try again.' : '验证码发送失败，请重试。',
   };
   const message = TEST_COPY[key] || t(lang, key);
   return res.status(status).json({
@@ -126,7 +134,8 @@ function render(req, res, viewName, extra = {}) {
     lang,
     otherLang: otherLang(lang),
     t: (key) => t(lang, key),
-    here: '/airsup/china/test',
+    here: DASHBOARD_BASE,
+    dashboardBase: DASHBOARD_BASE,
     landing: false,
     quietChrome: true,
     chinaCss: readChinaCss(),
@@ -143,12 +152,34 @@ function render(req, res, viewName, extra = {}) {
     },
     (err, html) => {
       if (err) {
-        console.error('Airsup china test render error:', err);
-        return res.status(500).send('Failed to render test concept');
+        console.error('Airsup dashboard render error:', err);
+        return res.status(500).send('Failed to render dashboard');
       }
       res.send(html);
     }
   );
+}
+
+/** Match existing company by contact email, else by email domain. No demo fallback. */
+async function findCompanyForLogin(email) {
+  const storeApi = usingMemory() ? memoryStore : db;
+  if (!usingMemory() && !db.isConfigured()) return { error: 'storage_unavailable' };
+  try {
+    if (typeof storeApi.getByContactEmail === 'function') {
+      const byEmail = await storeApi.getByContactEmail(email);
+      if (byEmail) return { company: byEmail };
+    }
+  } catch {
+    /* fall through */
+  }
+  const domain = String(email.split('@')[1] || '').trim().toLowerCase();
+  if (!domain) return { company: null };
+  try {
+    const byDomain = await storeApi.getByDomain(domain);
+    return { company: byDomain || null };
+  } catch {
+    return { company: null };
+  }
 }
 
 function parseHistory(raw) {
@@ -276,7 +307,7 @@ router.get(['/', ''], async (req, res) => {
   res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
   res.set('Pragma', 'no-cache');
 
-  // One-click demo login for board demos: /airsup/china/test?demo_login=1
+  // One-click demo login for board demos: /airsup/dashboard?demo_login=1
   if (String(req.query.demo_login || '') === '1') {
     try {
       const company = await ensureDemoLiveCompany(lang, req, res);
@@ -286,7 +317,7 @@ router.get(['/', ''], async (req, res) => {
     } catch (error) {
       console.error('Airsup china test demo_login skipped:', error.message);
     }
-    return res.redirect('/airsup/china/test');
+    return res.redirect('/airsup/dashboard');
   }
 
   res.locals.seo = {
@@ -294,7 +325,7 @@ router.get(['/', ''], async (req, res) => {
     description: lang === 'en'
       ? 'Isolated supplier board: conversation rate, interactions, customers, revenue. Live product unchanged.'
       : '独立供应商看板：转化率、互动、客户、收入。不影响正式产品。',
-    path: '/airsup/china/test',
+    path: '/airsup/dashboard',
     noindex: true,
     includePersonSchema: false,
     ogLocale: lang === 'en' ? 'en_US' : 'zh_CN',
@@ -440,18 +471,18 @@ router.get('/verify', async (req, res) => {
   const token = String(req.query.token || '').trim();
   const auto = String(req.query.auto || '') === '1';
   if (!token) {
-    return res.redirect('/airsup/china/test?err=token');
+    return res.redirect('/airsup/dashboard?err=token');
   }
   try {
     const result = await consumeVerifyToken(token);
     if (!result.ok || !result.company) {
-      return res.redirect(`/airsup/china/test?err=${encodeURIComponent(result.errorKey || 'err_token')}`);
+      return res.redirect(`/airsup/dashboard?err=${encodeURIComponent(result.errorKey || 'err_token')}`);
     }
     await openSession(req, res, result.company.company_id);
-    return res.redirect('/airsup/china/test?ok=verified' + (auto ? '&auto=1' : ''));
+    return res.redirect('/airsup/dashboard?ok=verified' + (auto ? '&auto=1' : ''));
   } catch (error) {
     console.error('Airsup china test verify error:', error);
-    return res.redirect(`/airsup/china/test?err=${encodeURIComponent('err_db')}`);
+    return res.redirect(`/airsup/dashboard?err=${encodeURIComponent('err_db')}`);
   }
 });
 
@@ -667,7 +698,7 @@ router.post('/api/chat', (req, res) => {
     }
 
     try {
-      // Persist context uploads on the company so conversation rate rises for the board.
+      // Persist uploaded file metadata for the dashboard list (does not change conversation rate).
       if (company && company.status === 'live' && files.length) {
         try {
           const profile = applyContextUpload(company, files);
@@ -842,93 +873,62 @@ router.post('/api/login-demo', express.json(), async (req, res) => {
 
 router.post('/api/login/request', express.json(), async (req, res) => {
   if (!peopleAuth.allowedOrigin(req)) {
-    return res.status(403).json({ error: 'forbidden' });
+    return res.status(403).json({ ok: false, error: 'forbidden' });
   }
   const lang = langFrom(req, res);
   const email = authCodes.normalizeEmail(req.body && req.body.email);
   if (!authCodes.looksLikeEmail(email)) {
-    return res.status(400).json({ error: 'bad_email' });
+    return jsonError(res, lang, 400, 'bad_email');
+  }
+  const found = await findCompanyForLogin(email);
+  if (found.error === 'storage_unavailable') {
+    return res.status(503).json({ ok: false, error: 'storage_unavailable' });
+  }
+  if (!found.company) {
+    return jsonError(res, lang, 404, 'unknown_company');
   }
   const code = authCodes.issueCode(email);
-  let mailed = false;
   try {
-    await sendVerifyEmail({
+    await sendLoginCodeEmail({
       lang,
       to: email,
-      link: `${req.protocol}://${req.get('host')}/airsup/china/test#code=${code}`,
-      contactName: '',
+      code,
+      contactName: found.company.contact_name || '',
     });
-    mailed = true;
   } catch (error) {
-    console.error('Airsup china test login code mail skipped:', error.message);
+    console.error('Airsup dashboard login code mail failed:', error.message);
+    return jsonError(res, lang, 502, 'mail_failed');
   }
-  // Concept surface: always return code so the flow is tryable without mail.
-  return res.json({ ok: true, mailed, devCode: code });
+  return res.json({ ok: true, mailed: true });
 });
 
 router.post('/api/login/verify', express.json(), async (req, res) => {
   if (!peopleAuth.allowedOrigin(req)) {
-    return res.status(403).json({ error: 'forbidden' });
+    return res.status(403).json({ ok: false, error: 'forbidden' });
   }
   const lang = langFrom(req, res);
   const email = authCodes.normalizeEmail(req.body && req.body.email);
   const code = String((req.body && req.body.code) || '').trim();
-  if (!authCodes.looksLikeEmail(email) || !authCodes.verifyCode(email, code)) {
-    return res.status(401).json({ error: 'bad_code' });
+  if (!authCodes.looksLikeEmail(email)) {
+    return jsonError(res, lang, 400, 'bad_email');
+  }
+  if (!authCodes.verifyCode(email, code)) {
+    return jsonError(res, lang, 401, 'bad_code');
   }
   try {
-    await ensureTestDemoAllowlist();
-    const domain = email.split('@')[1] || '';
-    let company = null;
-    const storeApi = usingMemory() ? memoryStore : db;
-    if (!usingMemory() && !db.isConfigured()) {
-      return res.status(503).json({ error: 'storage_unavailable' });
+    const found = await findCompanyForLogin(email);
+    if (found.error === 'storage_unavailable') {
+      return res.status(503).json({ ok: false, error: 'storage_unavailable' });
     }
-    try {
-      company = domain ? await storeApi.getByDomain(domain) : null;
-    } catch {
-      company = null;
-    }
+    const company = found.company;
     if (!company) {
-      if (usingMemory()) {
-        // Fall back to a published demo company in memory so login is tryable offline.
-        const demoLogin = await (async () => {
-          const existing = await memoryStore.getByDomain(DEMO_DOMAIN);
-          if (existing && existing.status === 'live') return existing;
-          await resetDemoPending(lang, req, res);
-          const started = await startSignup({
-            website: `https://${DEMO_DOMAIN}`,
-            email: DEMO_EMAIL,
-            contact: 'Tade',
-            city: 'shenzhen',
-            lang,
-            source: 'demo',
-            publicOrigin: peopleAuth.getPublicOrigin(req),
-          });
-          if (!started.ok) return null;
-          const verified = await consumeVerifyToken(started.token);
-          if (!verified.ok) return null;
-          const withFields = await saveInteraction(verified.company, {
-            contact_wechat: 'airsup_demo_tade',
-            sample_lead: 'samples in 3 days',
-            flexibility: 'normal',
-            contact_name: 'Tade',
-          }, lang);
-          const published = await publishCompany(withFields);
-          return published.ok ? published.company : null;
-        })();
-        company = demoLogin;
-      } else {
-        company = await ensureDemoCompany({ forceLive: true });
-      }
-    }
-    if (!company) {
-      return res.status(500).json({ error: 'login_failed' });
+      return jsonError(res, lang, 404, 'unknown_company');
     }
     await openSession(req, res, company.company_id);
     const seeded = seedWebFromCompany(company, lang);
     return res.json({
       ok: true,
+      redirect: DASHBOARD_BASE,
       company: {
         domain: company.domain,
         name: companyTitle(company, lang),
@@ -937,10 +937,11 @@ router.post('/api/login/verify', express.json(), async (req, res) => {
       },
       web: seeded.web,
       seeded: seeded.added,
+      board: computeBoard(company),
     });
   } catch (error) {
-    console.error('Airsup china test login verify error:', error);
-    return res.status(500).json({ error: 'login_failed' });
+    console.error('Airsup dashboard login verify error:', error);
+    return res.status(500).json({ ok: false, error: 'login_failed' });
   }
 });
 

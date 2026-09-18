@@ -1,18 +1,13 @@
 const db = require('./db');
 const { listingText, endpointRecord, isDemoCompany } = require('./fields');
 const { ensureDemoCompany } = require('./demo-company');
+const { isBroadFactoryQuery, routeQueryToCategory } = require('./manufacturing-categories');
 
 function tokens(value) {
   return String(value || '')
     .toLowerCase()
     .split(/[^a-z0-9\u4e00-\u9fff.+-]+/i)
     .filter((word) => word.length > 1);
-}
-
-function isBroadFactoryQuery(query) {
-  return /\b(factor(?:y|ies)?|supplier|manufactur|cnc|pcba|smt|mold|injection|machin|sheet\s*metal|3d|printing|additive|demo|谁|厂家|工厂|制造商|供应商|注塑|模具|增材|3d打印|演示)\b/i.test(
-    String(query || '')
-  );
 }
 
 function scoreCompany(company, query) {
@@ -23,13 +18,14 @@ function scoreCompany(company, query) {
     if (hay.includes(word)) hits += 1;
   }
   const extra = [
-    'cnc', 'shenzhen', 'dongguan', 'supplier', 'machining', 'machin', 'mold', 'injection', 'pcba', 'smt',
-    '3d', 'printing', 'additive', 'sla', 'sls', 'fdm', 'mjf', 'demo',
-    '深圳', '东莞', '厂家', '注塑', '模具', '增材', '打印', '演示',
+    'shenzhen', 'dongguan', 'supplier', 'demo',
+    '深圳', '东莞', '厂家', '演示',
   ];
   for (const word of extra) {
     if (String(query || '').toLowerCase().includes(word) && hay.includes(word)) hits += 1;
   }
+  const routed = routeQueryToCategory(query);
+  if (routed && String((company && company.niche) || '') === routed) hits += 8;
   if (!hits && isBroadFactoryQuery(query)) hits = 1;
   if (isDemoCompany(company) && /\bdemo\b|演示|tade|airsup/i.test(String(query || ''))) hits += 3;
   return hits;

@@ -1,5 +1,5 @@
 /**
- * In-memory email + 6-digit code login for /airsup/china/test only.
+ * In-memory email + 6-digit code login for /airsup/dashboard.
  */
 const crypto = require('crypto');
 

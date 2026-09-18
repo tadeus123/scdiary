@@ -21,6 +21,9 @@
       <% } else { %>
         <a class="cn-btn cn-btn-nav" href="/airsup/china#activate"><%= t('cta_activate') %></a>
       <% } %>
+      <% if (typeof landing !== 'undefined' && landing) { %>
+      <button type="button" class="cn-btn cn-btn-nav cn-btn-nav-login" id="cn-header-login"><%= t('header_login') %></button>
+      <% } %>
       <% } %>
       <% if (typeof landing !== 'undefined' && landing) { %>
         <button class="cn-burger" type="button" id="cn-burger" aria-expanded="false" aria-controls="cn-nav" aria-label="<%= t('menu') %>"><span></span><span></span><span></span></button>

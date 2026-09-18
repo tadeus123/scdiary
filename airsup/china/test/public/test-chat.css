@@ -812,6 +812,54 @@ a.cn-ob-verify-link {
   color: #171311;
 }
 
+.cn-test-board-upload-list {
+  margin-top: 0.75rem;
+  max-height: 11rem;
+  overflow: auto;
+  border: 1px solid #e6dccb;
+  border-radius: 10px;
+  background: #faf6ef;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cn-test-board-upload-list[hidden] {
+  display: none;
+}
+
+.cn-test-board-upload-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem 0;
+}
+
+.cn-test-board-upload-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid rgba(196, 183, 157, 0.35);
+  font-size: 0.86rem;
+  color: #3f3a35;
+}
+
+.cn-test-board-upload-list li:last-child {
+  border-bottom: 0;
+}
+
+.cn-test-board-upload-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.cn-test-board-upload-meta {
+  flex: 0 0 auto;
+  color: #6a6158;
+  font-size: 0.78rem;
+}
+
 .cn-test-has-board #cn-test-network {
   opacity: 0;
   visibility: hidden;

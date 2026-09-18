@@ -1,3 +1,5 @@
+const { guessNiche } = require('./manufacturing-categories');
+
 function nameFromDomain(domain) {
   const host = String(domain || '').replace(/^www\./, '');
   const stem = host.split('.')[0] || host;
@@ -6,15 +8,6 @@ function nameFromDomain(domain) {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ') || host;
-}
-
-function guessNiche(text) {
-  const hay = String(text || '').toLowerCase();
-  if (/pcba|smt|pcb|电路|贴片/.test(hay)) return 'pcba';
-  if (/3d\s*print|additive|sla|sls|fdm|mjf|增材|3d打印|三维打印/.test(hay)) return '3d_printing';
-  if (/injection|mold|mould|注塑|模具|pa66|abs|housing/.test(hay)) return 'injection';
-  if (/cnc|machin|铣|车削|五轴|精密/.test(hay)) return 'cnc';
-  return 'cnc';
 }
 
 function genericDemo(lang) {

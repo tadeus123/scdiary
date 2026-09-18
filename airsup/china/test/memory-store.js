@@ -26,6 +26,15 @@ async function getByDomain(domain) {
   return null;
 }
 
+async function getByContactEmail(email) {
+  const value = String(email || '').trim().toLowerCase();
+  if (!value) return null;
+  for (const row of companies.values()) {
+    if (String(row.contact_email || '').toLowerCase() === value) return clone(row);
+  }
+  return null;
+}
+
 async function getById(companyId) {
   return clone(companies.get(companyId) || null);
 }
@@ -147,6 +156,7 @@ function resetAll() {
 module.exports = {
   isConfigured,
   getByDomain,
+  getByContactEmail,
   getById,
   insertCompany,
   updateCompany,

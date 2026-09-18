@@ -184,11 +184,26 @@
           <details class="cn-more" <%= foundCaps ? '' : 'open' %>>
             <summary><%= t('cap_title') %></summary>
           <p class="cn-label"><%= t('processes') %></p>
-          <div class="cn-checks">
-            <% catalogs.PROCESSES.forEach((item) => { %>
-              <label class="cn-check"><input type="checkbox" name="processes" value="<%= item.id %>" <%= profile.processes.includes(item.id) ? 'checked' : '' %>><span><%= lang === 'en' ? item.en : item.zh %></span></label>
-            <% }) %>
-          </div>
+          <%
+            var processGroups = (catalogs.PROCESS_GROUPS && catalogs.PROCESS_GROUPS.length)
+              ? catalogs.PROCESS_GROUPS.slice()
+              : [{ id: '', zh: t('processes'), en: t('processes'), items: catalogs.PROCESSES || [] }];
+            processGroups.sort(function (a, b) {
+              if (a.id === company.niche) return -1;
+              if (b.id === company.niche) return 1;
+              return 0;
+            });
+          %>
+          <% processGroups.forEach(function (group) { %>
+            <div class="cn-process-group">
+              <p class="cn-label cn-process-group-label"><%= lang === 'en' ? group.en : group.zh %></p>
+              <div class="cn-checks">
+                <% group.items.forEach(function (item) { %>
+                  <label class="cn-check"><input type="checkbox" name="processes" value="<%= item.id %>" <%= profile.processes.includes(item.id) ? 'checked' : '' %>><span><%= lang === 'en' ? item.en : item.zh %></span></label>
+                <% }) %>
+              </div>
+            </div>
+          <% }) %>
           <p class="cn-label"><%= t('materials') %></p>
           <div class="cn-checks">
             <% catalogs.MATERIALS.forEach((item) => { %>

@@ -35,7 +35,7 @@ const {
 } = require('../demo-company');
 const { emptyWeb, seedFromCompany, applyDump } = require('./web');
 
-const VERIFY_PATH = '/airsup/china/test/verify';
+const VERIFY_PATH = '/airsup/dashboard/verify';
 
 /** Live Supabase when configured; otherwise test-only memory store (demos / local). */
 function store() {
@@ -71,10 +71,11 @@ async function openSession(req, res, companyId) {
     company_id: companyId,
     expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
   });
+  res.clearCookie('airsup_china_sid', { path: '/airsup/china' });
   res.cookie('airsup_china_sid', sid, {
     httpOnly: true,
     sameSite: 'lax',
-    path: '/airsup/china',
+    path: '/airsup',
     secure: req.secure || req.get('x-forwarded-proto') === 'https',
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
@@ -97,6 +98,7 @@ async function clearTestSession(req, res) {
   }
   const sid = session.readSid(req);
   if (sid) await memoryStore.deleteSession(session.sha256(sid)).catch(() => null);
+  res.clearCookie('airsup_china_sid', { path: '/airsup' });
   res.clearCookie('airsup_china_sid', { path: '/airsup/china' });
 }
 

@@ -62,10 +62,29 @@
       <h2 id="factories-title"><%= t('factories_title_before') %><%= (proof && proof.live) || 0 %><%= t('factories_title_after') %></h2>
       <p class="cn-note"><%= t('peers_lead') %></p>
       <% if (proof && proof.recent && proof.recent.length) { %>
-        <% var cards = proof.recent.slice(0, 6); %>
+        <%
+          var cards = proof.recent.slice(0, 6);
+          var liveCats = [];
+          var liveCatMeta = {};
+          proof.recent.forEach(function (row) {
+            var slug = String(row.niche || '').trim();
+            if (!slug || liveCatMeta[slug]) return;
+            liveCatMeta[slug] = row;
+            liveCats.push(slug);
+          });
+        %>
+        <% if (liveCats.length) { %>
+          <div class="cn-cat-filters" id="cn-cat-filters" role="group" aria-label="<%= t('peers_col_cat') %>">
+            <button type="button" class="cn-cat-chip is-on" data-filter=""><%= t('filter_all') %></button>
+            <% liveCats.forEach(function (slug) { %>
+              <% var meta = liveCatMeta[slug]; %>
+              <button type="button" class="cn-cat-chip" data-filter="<%= slug %>"><%= lang === 'en' ? (meta.niche_en || slug) : (meta.niche_zh || slug) %></button>
+            <% }) %>
+          </div>
+        <% } %>
         <div class="cn-factory-cards">
           <% cards.forEach(function (row) { %>
-            <article class="cn-factory-card">
+            <article class="cn-factory-card" data-niche="<%= row.niche || '' %>">
               <strong><%= lang === 'en' ? (row.name || row.name_zh || row.domain) : (row.name_zh || row.name || row.domain) %></strong>
               <p><a href="<%= row.website || ('https://' + row.domain) %>" rel="noopener noreferrer" target="_blank"><%= row.domain %></a></p>
               <p class="cn-meta"><%= lang === 'en' ? (row.niche_en || row.niche) : (row.niche_zh || row.niche) %></p>
@@ -85,7 +104,7 @@
               </thead>
               <tbody>
                 <% proof.recent.forEach(function (row) { %>
-                  <tr>
+                  <tr data-niche="<%= row.niche || '' %>">
                     <td><%= lang === 'en' ? (row.name || row.name_zh) : (row.name_zh || row.name) %></td>
                     <td><a href="<%= row.website || ('https://' + row.domain) %>" rel="noopener noreferrer" target="_blank"><%= row.domain %></a></td>
                     <td><%= lang === 'en' ? (row.niche_en || row.niche) : (row.niche_zh || row.niche) %></td>
@@ -95,6 +114,39 @@
             </table>
           </div>
         </details>
+        <script>
+        (function () {
+          var root = document.getElementById('factories');
+          if (!root) return;
+          var chips = root.querySelectorAll('.cn-cat-chip');
+          var items = root.querySelectorAll('[data-niche]');
+          if (!chips.length) return;
+          function apply(slug) {
+            var want = String(slug || '');
+            chips.forEach(function (ch) {
+              ch.classList.toggle('is-on', String(ch.getAttribute('data-filter') || '') === want);
+            });
+            items.forEach(function (el) {
+              var match = !want || String(el.getAttribute('data-niche') || '') === want;
+              el.hidden = !match;
+            });
+            try {
+              var url = new URL(window.location.href);
+              if (want) url.searchParams.set('category', want);
+              else url.searchParams.delete('category');
+              history.replaceState({}, '', url.pathname + url.search + url.hash);
+            } catch (e) {}
+          }
+          chips.forEach(function (ch) {
+            ch.addEventListener('click', function () {
+              apply(ch.getAttribute('data-filter') || '');
+            });
+          });
+          var initial = '';
+          try { initial = new URLSearchParams(window.location.search).get('category') || ''; } catch (e) {}
+          if (initial) apply(initial);
+        })();
+        </script>
       <% } %>
       <% if (proof && proof.chart && proof.live > 0) { %>
       <figure class="cn-chart" id="cn-growth-chart" data-lang="<%= lang %>" data-tip-day="<%= t('growth_tip_day') %>" data-tip-live="<%= t('growth_tip_live') %>" data-points='<%= JSON.stringify(proof.chart.points).replace(/'/g, "&#39;") %>'>
@@ -290,5 +342,109 @@
     </section>
   </main>
   <%- include('partials/footer') %>
+</body>
+</html>
+    <div class="cn-login-card" role="dialog" aria-modal="true" aria-labelledby="cn-login-title">
+      <h2 id="cn-login-title"><%= t('login_title') %></h2>
+      <p class="cn-login-lead"><%= t('login_lead') %></p>
+      <div class="cn-login-msg" id="cn-login-msg" role="status"></div>
+      <label for="cn-login-email"><%= t('login_email') %></label>
+      <input type="email" id="cn-login-email" autocomplete="email" placeholder="you@factory.com">
+      <div id="cn-login-code-wrap" hidden>
+        <label for="cn-login-code"><%= t('login_code') %></label>
+        <input type="text" id="cn-login-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456">
+      </div>
+      <div class="cn-login-actions">
+        <button type="button" class="cn-btn-ghost" id="cn-login-cancel"><%= t('login_cancel') %></button>
+        <button type="button" class="cn-btn" id="cn-login-go"><%= t('login_send') %></button>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function () {
+    var openBtn = document.getElementById('cn-header-login');
+    var modal = document.getElementById('cn-login-modal');
+    if (!openBtn || !modal) return;
+    var msg = document.getElementById('cn-login-msg');
+    var emailEl = document.getElementById('cn-login-email');
+    var codeEl = document.getElementById('cn-login-code');
+    var codeWrap = document.getElementById('cn-login-code-wrap');
+    var go = document.getElementById('cn-login-go');
+    var cancel = document.getElementById('cn-login-cancel');
+    var step = 'email';
+    var copy = {
+      send: <%= JSON.stringify(t('login_send')) %>,
+      verify: <%= JSON.stringify(t('login_verify')) %>,
+      sent: <%= JSON.stringify(t('login_sent')) %>,
+      busy: <%= JSON.stringify(t('login_busy')) %>
+    };
+    function openModal() {
+      modal.hidden = false;
+      modal.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('cn-login-open');
+      step = 'email';
+      codeWrap.hidden = true;
+      go.textContent = copy.send;
+      msg.textContent = '';
+      emailEl.focus();
+    }
+    function closeModal() {
+      modal.hidden = true;
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('cn-login-open');
+    }
+    openBtn.addEventListener('click', openModal);
+    cancel.addEventListener('click', closeModal);
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !modal.hidden) closeModal();
+    });
+    go.addEventListener('click', async function () {
+      msg.textContent = '';
+      go.disabled = true;
+      var prev = go.textContent;
+      go.textContent = copy.busy;
+      try {
+        if (step === 'email') {
+          var res = await fetch('/airsup/dashboard/api/login/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ email: String(emailEl.value || '').trim() }),
+          });
+          var data = await res.json().catch(function () { return {}; });
+          if (!res.ok) throw new Error(data.error || 'request');
+          step = 'code';
+          codeWrap.hidden = false;
+          go.textContent = copy.verify;
+          msg.textContent = copy.sent;
+          codeEl.focus();
+        } else {
+          var res2 = await fetch('/airsup/dashboard/api/login/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+              email: String(emailEl.value || '').trim(),
+              code: String(codeEl.value || '').trim(),
+            }),
+          });
+          var data2 = await res2.json().catch(function () { return {}; });
+          if (!res2.ok) throw new Error(data2.error || 'verify');
+          window.location.href = data2.redirect || '/airsup/dashboard';
+          return;
+        }
+      } catch (err) {
+        msg.textContent = err && err.message ? err.message : 'Error';
+        go.textContent = step === 'email' ? copy.send : copy.verify;
+      } finally {
+        go.disabled = false;
+        if (step === 'email' && go.textContent === copy.busy) go.textContent = prev;
+      }
+    });
+  })();
+  </script>
 </body>
 </html>

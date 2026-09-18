@@ -24,6 +24,21 @@ async function getByDomain(domain) {
   return data || null;
 }
 
+async function getByContactEmail(email) {
+  const db = requireDb();
+  const value = String(email || '').trim().toLowerCase();
+  if (!value) return null;
+  const { data, error } = await db
+    .from('airsup_china_companies')
+    .select('*')
+    .ilike('contact_email', value)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
 async function getById(companyId) {
   const db = requireDb();
   const { data, error } = await db.from('airsup_china_companies').select('*').eq('company_id', companyId).maybeSingle();
@@ -321,6 +336,7 @@ module.exports = {
   isConfigured,
   requireDb,
   getByDomain,
+  getByContactEmail,
   getById,
   listCompanies,
   listCompaniesProof,

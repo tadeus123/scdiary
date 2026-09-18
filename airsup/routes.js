@@ -275,6 +275,8 @@ router.all('/mcp', (req, res) => mcp.handleMcp(req, res));
 // AIRSUP-CHINA-BEGIN
 router.get('/live-companies.json', require('./china/live-companies'));
 router.use('/china', require('./china/routes'));
+// Live supplier dashboard (board UI from china/test)
+router.use('/dashboard', require('./china/test/routes'));
 // AIRSUP-CHINA-END
 
 module.exports = router;
