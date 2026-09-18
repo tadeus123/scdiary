@@ -442,6 +442,27 @@
   font-family: Georgia, "Songti SC", serif;
   font-size: 0.95rem;
 }
+.cn-test-onboard-gaps {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(26, 26, 26, 0.04);
+  border: 1px solid rgba(26, 26, 26, 0.08);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.cn-test-onboard-gaps li { margin: 0.15rem 0; }
+.cn-ob-gaps-title {
+  color: var(--ink);
+  font-weight: 600;
+  margin-bottom: 0.25rem !important;
+}
+.cn-ob-primary:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
 .cn-ob-step label {
   display: block;
   font-size: 0.72rem;
