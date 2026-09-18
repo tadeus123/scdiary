@@ -19,6 +19,7 @@ The test onboarding core is `airsup/china/test/onboard.js`. It reuses live `db`,
    - Replace `home.ejs` / `preview.ejs` / `check.ejs` / `setup.ejs` flow with the test chat + note-web UI under `airsup/china/test/views`.
    - Map steps from `onboardingState(company, lang).step`: `site` → `email` → `verify` → `fields` → `live`.
    - Use `previewWebsite`, `saveInteraction`, `publishCompany`, `seedWebFromCompany` for scrape / fields / publish / web seed.
+   - After `live`, the **supplier board** (`board.js` + `#cn-test-board`) is the main dashboard: conversation rate above interactions / customers / revenue, context upload on the right. Keep login/logout in the top-right.
 
 5. **Error keys**
    - Reuse the same i18n keys live uses: `err_mismatch`, `err_taken`, `err_free_mail`, `err_rate`, `err_email`, `err_website`, `err_mail`, `err_db`, `err_token`, `err_publish`.

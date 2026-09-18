@@ -15,11 +15,12 @@ const db = require('../db');
 const peopleAuth = require('../../auth');
 const { welcomeMessage, completeTestTurn, emptyWeb } = require('./chat');
 const { describeUploads } = require('./files');
-const { layoutPositions, normalizeClientWeb, addCustomLink, seedFromCompany } = require('./web');
+const { layoutPositions, normalizeClientWeb, addCustomLink, seedFromCompany, applyDump } = require('./web');
 const authCodes = require('./auth-codes');
 const { sendVerifyEmail } = require('../mail');
 const onboard = require('./onboard');
 const memoryStore = require('./memory-store');
+const { computeBoard, applyContextUpload } = require('./board');
 
 const {
   previewWebsite,
@@ -76,7 +77,7 @@ router.use(express.static(path.join(__dirname, 'public'), {
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 4 * 1024 * 1024, files: 5 },
+  limits: { fileSize: 4 * 1024 * 1024, files: 8 },
 });
 
 function langFrom(req, res) {
@@ -262,6 +263,9 @@ router.get(['/', ''], async (req, res) => {
 
   const demoMode = String(req.query.demo || '') === '1';
   const autoDemo = String(req.query.auto || '') === '1';
+  const board = company && onboardState.step === 'live'
+    ? computeBoard(company, initial)
+    : null;
 
   return render(req, res, 'chat.ejs', {
     lang,
@@ -276,6 +280,7 @@ router.get(['/', ''], async (req, res) => {
     layoutPositions: layoutPositions(),
     demoMode,
     autoDemo,
+    board,
   });
 });
 
@@ -438,6 +443,7 @@ router.post('/api/onboard/publish', express.json(), async (req, res) => {
       company: companySummary(result.company, lang),
       state,
       web,
+      board: computeBoard(result.company, web),
       error: null,
     });
   } catch (error) {
@@ -588,6 +594,17 @@ router.post('/api/chat', (req, res) => {
     }
 
     try {
+      // Persist context uploads on the company so conversation rate rises for the board.
+      if (company && company.status === 'live' && files.length) {
+        try {
+          const profile = applyContextUpload(company, files);
+          const storeApi = usingMemory() ? memoryStore : db;
+          company = await storeApi.updateCompany(company.company_id, { profile });
+        } catch (error) {
+          console.error('Airsup china test board context bump skipped:', error.message);
+        }
+      }
+
       const result = await completeTestTurn({
         lang,
         message,
@@ -596,6 +613,7 @@ router.post('/api/chat', (req, res) => {
         company,
         web,
       });
+      const board = company ? computeBoard(company, result.web) : null;
       return res.json({
         reply: result.reply,
         files,
@@ -603,10 +621,109 @@ router.post('/api/chat', (req, res) => {
         compressed: Boolean(result.summary),
         web: result.web,
         signals: result.signals,
+        board,
       });
     } catch (error) {
       console.error('Airsup china test chat error:', error);
       return res.status(500).json({ error: 'chat_failed' });
+    }
+  });
+});
+
+router.get('/api/board', async (req, res) => {
+  const lang = langFrom(req, res);
+  try {
+    const company = await readTestCompany(req);
+    if (!company) {
+      return res.status(401).json({ ok: false, error: 'login_required' });
+    }
+    let web = emptyWeb(lang);
+    try {
+      web = seedWebFromCompany(company, lang).web || web;
+    } catch {
+      /* keep empty */
+    }
+    if (req.query.web) {
+      try {
+        web = parseWeb(req.query.web, lang);
+      } catch {
+        /* keep seed */
+      }
+    }
+    return res.json({
+      ok: true,
+      board: computeBoard(company, web),
+      company: companySummary(company, lang),
+      state: onboardingState(company, lang),
+    });
+  } catch (error) {
+    console.error('Airsup china test board error:', error);
+    return res.status(500).json({ ok: false, error: 'board_failed' });
+  }
+});
+
+router.post('/api/board/context', (req, res) => {
+  upload.array('files', 8)(req, res, async (err) => {
+    if (err) {
+      const tooBig = err.code === 'LIMIT_FILE_SIZE';
+      return res.status(tooBig ? 413 : 400).json({
+        ok: false,
+        error: tooBig ? 'file_too_large' : 'upload_failed',
+      });
+    }
+    if (!peopleAuth.allowedOrigin(req)) {
+      return res.status(403).json({ ok: false, error: 'forbidden' });
+    }
+    const lang = langFrom(req, res);
+    const note = String((req.body && req.body.message) || '').trim();
+    const files = describeUploads(req.files || []);
+    let clientWeb = null;
+    try {
+      clientWeb = parseWeb(req.body && req.body.web, lang);
+    } catch {
+      clientWeb = null;
+    }
+
+    if (!note && !files.length) {
+      return res.status(400).json({ ok: false, error: 'empty' });
+    }
+
+    try {
+      let company = await readTestCompany(req);
+      if (!company) {
+        return res.status(401).json({ ok: false, error: 'login_required' });
+      }
+      if (company.status !== 'live') {
+        return res.status(400).json({ ok: false, error: 'not_live' });
+      }
+
+      const profile = applyContextUpload(company, files.length ? files : [{ size: note.length }]);
+      const storeApi = usingMemory() ? memoryStore : db;
+      company = await storeApi.updateCompany(company.company_id, { profile });
+
+      const seeded = seedWebFromCompany(company, lang).web || emptyWeb(lang);
+      const hasClientNodes = clientWeb
+        && clientWeb.nodes
+        && typeof clientWeb.nodes === 'object'
+        && Object.keys(clientWeb.nodes).length > 0;
+      const baseWeb = hasClientNodes ? clientWeb : seeded;
+      const dumped = applyDump(baseWeb, {
+        message: note || files.map((f) => f.name).join(' '),
+        files,
+        lang,
+      });
+      const board = computeBoard(company, dumped.web);
+
+      return res.json({
+        ok: true,
+        board,
+        web: dumped.web,
+        files,
+        company: companySummary(company, lang),
+      });
+    } catch (error) {
+      console.error('Airsup china test board context error:', error);
+      return res.status(500).json({ ok: false, error: 'upload_failed' });
     }
   });
 });
