@@ -1,9 +1,9 @@
 const db = require('./db');
 const { DEFAULT_ACTIONS, normalizeProfile } = require('./fields');
 
-const DEMO_DOMAIN = 'demo.airsup.tademehl.com';
-const DEMO_EMAIL = 'hello@demo.airsup.tademehl.com';
-const DEMO_OPS_EMAIL = 'tademehl@gmail.com';
+const DEMO_DOMAIN = 'demo.com';
+const DEMO_EMAIL = 'tade@demo.com';
+const DEMO_LEGACY_DOMAINS = ['demo.airsup.tademehl.com'];
 const DEMO_NAME_EN = 'Demo company (Tade / Airsup)';
 const DEMO_NAME_ZH = '演示工厂（Tade / Airsup）';
 
@@ -144,7 +144,7 @@ function isDemoDomain(value) {
     .replace(/^https?:\/\//, '')
     .replace(/^www\./, '')
     .split('/')[0];
-  return host === DEMO_DOMAIN;
+  return host === DEMO_DOMAIN || DEMO_LEGACY_DOMAINS.includes(host);
 }
 
 function syntheticDemoPreview(lang) {
@@ -170,9 +170,9 @@ function syntheticDemoPreview(lang) {
       materials: ['resin', 'pa12', 'tpu'],
       finishing: ['polish'],
       certifications: ['iso9001'],
-      site_notes: 'Synthetic public site text for demo.airsup.tademehl.com onboarding preview.',
+      site_notes: 'Synthetic public site text for demo.com onboarding preview.',
     }),
-    siteNotes: 'Synthetic public site text for demo.airsup.tademehl.com onboarding preview.',
+    siteNotes: 'Synthetic public site text for demo.com onboarding preview.',
     siteEmails: [DEMO_EMAIL],
     fromSite: true,
     crawlPages: 1,
@@ -194,20 +194,32 @@ async function ensureDemoAllowlist() {
     domain: DEMO_DOMAIN,
     contact_email: DEMO_EMAIL,
     source: 'manual',
-    note: 'Airsup demo onboarding mailbox (same domain)',
+    note: 'Airsup demo onboarding mailbox',
   }).catch(() => null);
-  await db.upsertDomainAllow({
-    domain: DEMO_DOMAIN,
-    contact_email: DEMO_OPS_EMAIL,
-    source: 'manual',
-    note: 'Airsup demo ops Gmail allow for onboarding tests',
-  }).catch(() => null);
+}
+
+async function migrateLegacyDemoDomain() {
+  if (!db.isConfigured()) return null;
+  const current = await db.getByDomain(DEMO_DOMAIN);
+  if (current) return current;
+  for (const legacy of DEMO_LEGACY_DOMAINS) {
+    const old = await db.getByDomain(legacy);
+    if (!old) continue;
+    return db.updateCompany(old.company_id, {
+      domain: DEMO_DOMAIN,
+      website: `https://${DEMO_DOMAIN}`,
+      contact_email: DEMO_EMAIL,
+      source: 'demo',
+    });
+  }
+  return null;
 }
 
 async function ensureDemoCompany(options = {}) {
   if (!db.isConfigured()) {
     throw new Error('Airsup China storage is not configured.');
   }
+  await migrateLegacyDemoDomain();
   const forceLive = options.forceLive === true;
   const spec = demoSpec();
   const existing = await db.getByDomain(DEMO_DOMAIN);
@@ -248,6 +260,7 @@ async function resetDemoForOnboarding() {
   if (!db.isConfigured()) {
     throw new Error('Airsup China storage is not configured.');
   }
+  await migrateLegacyDemoDomain();
   await ensureDemoAllowlist();
   const existing = await db.getByDomain(DEMO_DOMAIN);
   const patch = onboardingResetPatch();
@@ -266,7 +279,7 @@ async function resetDemoForOnboarding() {
 module.exports = {
   DEMO_DOMAIN,
   DEMO_EMAIL,
-  DEMO_OPS_EMAIL,
+  DEMO_LEGACY_DOMAINS,
   DEMO_NAME_EN,
   DEMO_NAME_ZH,
   demoSpec,
@@ -274,6 +287,7 @@ module.exports = {
   isDemoDomain,
   syntheticDemoPreview,
   ensureDemoAllowlist,
+  migrateLegacyDemoDomain,
   ensureDemoCompany,
   resetDemoForOnboarding,
 };
