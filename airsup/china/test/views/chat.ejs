@@ -6,22 +6,21 @@
   <% if (typeof testCss === 'string' && testCss) { %>
   <style><%- testCss %></style>
   <% } else { %>
-  <link rel="stylesheet" href="/airsup/china/test/test-chat.css">
+  <link rel="stylesheet" href="/airsup/china/test/test-chat.css?v=2">
   <% } %>
 </head>
 <body class="cn-body cn-test" data-lang="<%= lang %>" data-logged-in="<%= loggedIn ? '1' : '0' %>">
   <header class="cn-test-top">
     <div class="cn-test-brand">
       <a href="/airsup/china/test">Airsup</a>
-      <span class="cn-test-pill"><%= lang === 'en' ? 'Test concept' : '测试概念' %></span>
+      <span class="cn-test-pill"><%= lang === 'en' ? 'Test' : '测试' %></span>
     </div>
-    <div class="cn-test-actions">
+    <div class="cn-test-actions" id="cn-test-actions">
       <% if (loggedIn) { %>
         <span class="cn-test-who" id="cn-test-who" title="<%= companyLabel %>"><%= companyLabel %></span>
         <button type="button" class="cn-btn-ghost" id="cn-test-logout"><%= lang === 'en' ? 'Log out' : '退出' %></button>
       <% } else { %>
-        <button type="button" class="cn-btn" id="cn-test-login"><%= lang === 'en' ? 'Log in (demo)' : '登录（演示）' %></button>
-        <a class="cn-btn-ghost" href="/airsup/china"><%= lang === 'en' ? 'Real signup' : '正式开通' %></a>
+        <button type="button" class="cn-btn" id="cn-test-login"><%= lang === 'en' ? 'Log in' : '登录' %></button>
       <% } %>
       <a class="cn-lang" href="/airsup/china/lang/<%= otherLang %>?next=<%= encodeURIComponent('/airsup/china/test') %>">
         <%= t('other_lang') %>
@@ -32,27 +31,27 @@
   <main class="cn-test-main">
     <div class="cn-test-thread" id="cn-test-thread" aria-live="polite"></div>
 
-    <div class="cn-test-composer-wrap">
+    <div class="cn-test-composer-wrap" id="cn-test-composer-wrap">
       <form class="cn-test-composer" id="cn-test-form">
         <div class="cn-test-pending" id="cn-test-pending"></div>
         <div class="cn-test-row">
           <label class="cn-test-attach" title="<%= lang === 'en' ? 'Attach files' : '上传文件' %>">
             <input type="file" id="cn-test-files" multiple accept=".pdf,.xlsx,.xls,.zip,.csv,.txt,application/pdf,application/zip,image/*">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M21 12.5V17a4 4 0 0 1-4 4H8a5 5 0 0 1-5-5V8a5 5 0 0 1 5-5h7.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-              <path d="M16 3v6h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M22 3 12 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M21.4 11.6 12.1 20.9a5.2 5.2 0 0 1-7.4-7.4l9.9-9.9a3.5 3.5 0 0 1 4.9 4.9l-9.2 9.2a1.7 1.7 0 1 1-2.4-2.4l8.1-8.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </label>
           <textarea class="cn-test-input" id="cn-test-input" rows="1" placeholder="<%= lang === 'en' ? 'Message Airsup…' : '给 Airsup 发消息…' %>"></textarea>
-          <button class="cn-test-send" id="cn-test-send" type="submit"><%= lang === 'en' ? 'Send' : '发送' %></button>
+          <button class="cn-test-send" id="cn-test-send" type="submit" aria-label="<%= lang === 'en' ? 'Send' : '发送' %>">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
         </div>
       </form>
       <p class="cn-test-hint">
-        <%= lang === 'en'
-          ? 'One ongoing chat only — like WhatsApp with Airsup. Concept page; live product unchanged.'
-          : '只有一条持续对话 — 像和 Airsup 的微信。概念页，不影响正式产品。' %>
-        · <a href="/airsup/china"><%= lang === 'en' ? 'Back to live Airsup China' : '返回正式版' %></a>
+        <%= lang === 'en' ? 'One chat with Airsup · concept only' : '与 Airsup 的一条对话 · 概念页' %>
+        · <a href="/airsup/china"><%= lang === 'en' ? 'Live product' : '正式版' %></a>
       </p>
     </div>
   </main>
@@ -67,11 +66,11 @@
     var fileInput = document.getElementById('cn-test-files');
     var pendingEl = document.getElementById('cn-test-pending');
     var sendBtn = document.getElementById('cn-test-send');
-    var loginBtn = document.getElementById('cn-test-login');
-    var logoutBtn = document.getElementById('cn-test-logout');
+    var actionsEl = document.getElementById('cn-test-actions');
     var welcome = <%- JSON.stringify(welcome) %>;
     var pendingFiles = [];
     var busy = false;
+    var typingRow = null;
 
     function loadMessages() {
       try {
@@ -97,28 +96,80 @@
         .replace(/>/g, '&gt;');
     }
 
+    function linkify(text) {
+      var escaped = esc(text);
+      return escaped.replace(/(https?:\/\/[^\s<]+)/g, function (url) {
+        return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + '</a>';
+      });
+    }
+
+    function formatSize(n) {
+      n = Number(n) || 0;
+      if (n < 1024) return n + ' B';
+      if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+      return (n / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function fileExt(name) {
+      var m = String(name || '').match(/\.([a-z0-9]+)$/i);
+      return (m ? m[1] : 'FILE').toUpperCase().slice(0, 4);
+    }
+
     function renderFiles(files) {
       if (!files || !files.length) return '';
       return '<div class="cn-test-files">' + files.map(function (f) {
-        return '<span class="cn-test-file-chip">' + esc(f.name || 'file') + '</span>';
+        return '<div class="cn-test-file-card">'
+          + '<span class="cn-test-file-ico">' + esc(fileExt(f.name)) + '</span>'
+          + '<span class="cn-test-file-meta">'
+          + '<span class="cn-test-file-name">' + esc(f.name || 'file') + '</span>'
+          + (f.size ? '<span class="cn-test-file-size">' + esc(formatSize(f.size)) + '</span>' : '')
+          + '</span></div>';
       }).join('') + '</div>';
+    }
+
+    function scrollToBottom(force) {
+      requestAnimationFrame(function () {
+        thread.scrollTop = thread.scrollHeight + 200;
+        if (force) {
+          setTimeout(function () {
+            thread.scrollTop = thread.scrollHeight + 200;
+          }, 40);
+        }
+      });
     }
 
     function appendBubble(role, content, files, opts) {
       opts = opts || {};
+      var empty = thread.querySelector('.cn-test-empty');
+      if (empty) empty.remove();
+
       var row = document.createElement('div');
       row.className = 'cn-test-msg is-' + (role === 'user' ? 'user' : 'assistant');
       if (opts.typing) row.classList.add('is-typing');
+
       var avatar = document.createElement('div');
       avatar.className = 'cn-test-avatar';
-      avatar.textContent = role === 'user' ? (lang === 'en' ? 'You' : '你') : 'A';
+      avatar.textContent = role === 'user' ? 'U' : 'A';
+
       var bubble = document.createElement('div');
-      bubble.className = 'cn-test-bubble' + (opts.typing ? ' cn-test-typing' : '');
-      bubble.innerHTML = esc(content) + renderFiles(files);
+      bubble.className = 'cn-test-bubble';
+      var hasText = Boolean(content && String(content).trim());
+      var hasFiles = files && files.length;
+      if (!hasText && hasFiles) bubble.classList.add('is-files-only');
+
+      if (opts.typing) {
+        bubble.innerHTML = '<span class="cn-test-dots" aria-label="…"><span></span><span></span><span></span></span>';
+      } else {
+        var html = '';
+        if (hasText) html += '<div class="cn-test-text">' + (role === 'assistant' ? linkify(content) : esc(content)) + '</div>';
+        html += renderFiles(files);
+        bubble.innerHTML = html;
+      }
+
       row.appendChild(avatar);
       row.appendChild(bubble);
       thread.appendChild(row);
-      thread.scrollTop = thread.scrollHeight;
+      scrollToBottom(true);
       return row;
     }
 
@@ -128,8 +179,8 @@
       empty.className = 'cn-test-empty';
       empty.innerHTML = '<h1>Airsup</h1><p>' + esc(
         lang === 'en'
-          ? 'One chat to set up your ChatGPT endpoint. Upload files, describe the factory, log in when ready.'
-          : '一条对话开通 ChatGPT 端点。上传文件、描述工厂，准备好了再登录。'
+          ? 'One chat to set up your ChatGPT endpoint.'
+          : '一条对话开通 ChatGPT 端点。'
       ) + '</p>';
       thread.appendChild(empty);
     }
@@ -143,6 +194,7 @@
       messages.forEach(function (m) {
         appendBubble(m.role, m.content, m.files);
       });
+      scrollToBottom(true);
     }
 
     function ensureWelcome(messages) {
@@ -154,12 +206,16 @@
 
     function renderPending() {
       pendingEl.innerHTML = pendingFiles.map(function (f, i) {
-        return '<span class="cn-test-file-chip" data-i="' + i + '">' + esc(f.name) + ' ×</span>';
+        return '<div class="cn-test-file-card" data-i="' + i + '" title="' + esc(lang === 'en' ? 'Remove' : '移除') + '">'
+          + '<span class="cn-test-file-ico">' + esc(fileExt(f.name)) + '</span>'
+          + '<span class="cn-test-file-meta">'
+          + '<span class="cn-test-file-name">' + esc(f.name) + '</span>'
+          + '<span class="cn-test-file-size">' + esc(formatSize(f.size)) + '</span>'
+          + '</span></div>';
       }).join('');
       pendingEl.querySelectorAll('[data-i]').forEach(function (chip) {
         chip.addEventListener('click', function () {
-          var i = Number(chip.getAttribute('data-i'));
-          pendingFiles.splice(i, 1);
+          pendingFiles.splice(Number(chip.getAttribute('data-i')), 1);
           renderPending();
         });
       });
@@ -167,11 +223,83 @@
 
     function autosize() {
       input.style.height = 'auto';
-      input.style.height = Math.min(160, input.scrollHeight) + 'px';
+      input.style.height = Math.min(140, input.scrollHeight) + 'px';
+    }
+
+    function bindAuthButtons() {
+      var loginBtn = document.getElementById('cn-test-login');
+      var logoutBtn = document.getElementById('cn-test-logout');
+      if (loginBtn) {
+        loginBtn.addEventListener('click', async function () {
+          loginBtn.disabled = true;
+          try {
+            var res = await fetch('/airsup/china/test/api/login-demo', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'same-origin',
+              body: '{}',
+            });
+            var data = await res.json().catch(function () { return {}; });
+            if (!res.ok) throw new Error('login');
+            setLoggedIn(true, data.company && data.company.name);
+            appendBubble(
+              'assistant',
+              lang === 'en'
+                ? 'Logged in as ' + ((data.company && data.company.name) || 'demo') + '. We can keep building your endpoint in this same chat.'
+                : '已登录为 ' + ((data.company && data.company.name) || '演示工厂') + '。继续在这条对话里准备端点即可。'
+            );
+            messages.push({
+              role: 'assistant',
+              content: lang === 'en'
+                ? 'Logged in as ' + ((data.company && data.company.name) || 'demo') + '. We can keep building your endpoint in this same chat.'
+                : '已登录为 ' + ((data.company && data.company.name) || '演示工厂') + '。继续在这条对话里准备端点即可。',
+              at: Date.now(),
+            });
+            saveMessages(messages);
+          } catch (e) {
+            alert(lang === 'en' ? 'Demo login failed.' : '演示登录失败。');
+          } finally {
+            loginBtn.disabled = false;
+          }
+        });
+      }
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', async function () {
+          logoutBtn.disabled = true;
+          try {
+            await fetch('/airsup/china/test/api/logout', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'same-origin',
+              body: '{}',
+            });
+          } catch (e) {}
+          setLoggedIn(false, '');
+          logoutBtn.disabled = false;
+        });
+      }
+    }
+
+    function setLoggedIn(on, name) {
+      document.body.setAttribute('data-logged-in', on ? '1' : '0');
+      var langLink = actionsEl.querySelector('.cn-lang');
+      var langHtml = langLink ? langLink.outerHTML : '';
+      if (on) {
+        actionsEl.innerHTML =
+          '<span class="cn-test-who" id="cn-test-who" title="' + esc(name || '') + '">' + esc(name || '') + '</span>'
+          + '<button type="button" class="cn-btn-ghost" id="cn-test-logout">' + (lang === 'en' ? 'Log out' : '退出') + '</button>'
+          + langHtml;
+      } else {
+        actionsEl.innerHTML =
+          '<button type="button" class="cn-btn" id="cn-test-login">' + (lang === 'en' ? 'Log in' : '登录') + '</button>'
+          + langHtml;
+      }
+      bindAuthButtons();
     }
 
     var messages = ensureWelcome(loadMessages());
     paintAll(messages);
+    bindAuthButtons();
 
     fileInput.addEventListener('change', function () {
       var list = Array.prototype.slice.call(fileInput.files || []);
@@ -204,22 +332,20 @@
 
       var userMsg = {
         role: 'user',
-        content: text || (lang === 'en' ? '(uploaded files)' : '（已上传文件）'),
-        files: filesSnap.map(function (f) { return { name: f.name }; }),
+        content: text,
+        files: filesSnap.map(function (f) { return { name: f.name, size: f.size }; }),
         at: Date.now(),
       };
       messages.push(userMsg);
       saveMessages(messages);
-      paintAll(messages);
-      var typing = appendBubble('assistant', lang === 'en' ? 'Thinking…' : '思考中…', null, { typing: true });
+      appendBubble('user', userMsg.content, userMsg.files);
+      typingRow = appendBubble('assistant', '', null, { typing: true });
 
       try {
         var body = new FormData();
         body.append('message', text);
-        body.append('history', JSON.stringify(messages.filter(function (m) {
-          return m.role === 'user' || m.role === 'assistant';
-        }).slice(0, -1).map(function (m) {
-          return { role: m.role, content: m.content };
+        body.append('history', JSON.stringify(messages.slice(0, -1).map(function (m) {
+          return { role: m.role, content: m.content || (m.files && m.files.length ? '[file upload]' : '') };
         })));
         filesSnap.forEach(function (f) { body.append('files', f); });
 
@@ -229,77 +355,30 @@
           credentials: 'same-origin',
         });
         var data = await res.json().catch(function () { return {}; });
-        if (typing && typing.parentNode) typing.parentNode.removeChild(typing);
-        if (!res.ok) {
-          messages.push({
-            role: 'assistant',
-            content: lang === 'en'
-              ? 'Something went wrong sending that. Try again in a moment.'
-              : '发送失败，请稍后再试。',
-            at: Date.now(),
-          });
-        } else {
-          messages.push({
-            role: 'assistant',
-            content: data.reply || '',
-            files: data.files,
-            at: Date.now(),
-          });
-        }
+        if (typingRow && typingRow.parentNode) typingRow.parentNode.removeChild(typingRow);
+        typingRow = null;
+
+        var replyText = res.ok
+          ? (data.reply || '')
+          : (lang === 'en' ? 'Something went wrong. Try again.' : '发送失败，请稍后再试。');
+        var replyFiles = res.ok ? data.files : null;
+        messages.push({ role: 'assistant', content: replyText, files: replyFiles, at: Date.now() });
         saveMessages(messages);
-        paintAll(messages);
+        appendBubble('assistant', replyText, replyFiles);
       } catch (err) {
-        if (typing && typing.parentNode) typing.parentNode.removeChild(typing);
-        messages.push({
-          role: 'assistant',
-          content: lang === 'en' ? 'Network error. Try again.' : '网络错误，请重试。',
-          at: Date.now(),
-        });
+        if (typingRow && typingRow.parentNode) typingRow.parentNode.removeChild(typingRow);
+        typingRow = null;
+        var fail = lang === 'en' ? 'Network error. Try again.' : '网络错误，请重试。';
+        messages.push({ role: 'assistant', content: fail, at: Date.now() });
         saveMessages(messages);
-        paintAll(messages);
+        appendBubble('assistant', fail);
       } finally {
         busy = false;
         sendBtn.disabled = false;
         input.focus();
+        scrollToBottom(true);
       }
     });
-
-    if (loginBtn) {
-      loginBtn.addEventListener('click', async function () {
-        loginBtn.disabled = true;
-        try {
-          var res = await fetch('/airsup/china/test/api/login-demo', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: '{}',
-          });
-          if (res.ok) location.reload();
-          else alert(lang === 'en' ? 'Demo login failed.' : '演示登录失败。');
-        } catch (e) {
-          alert(lang === 'en' ? 'Demo login failed.' : '演示登录失败。');
-        } finally {
-          loginBtn.disabled = false;
-        }
-      });
-    }
-
-    if (logoutBtn) {
-      logoutBtn.addEventListener('click', async function () {
-        logoutBtn.disabled = true;
-        try {
-          await fetch('/airsup/china/test/api/logout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: '{}',
-          });
-          location.reload();
-        } catch (e) {
-          location.reload();
-        }
-      });
-    }
   })();
   </script>
 </body>
