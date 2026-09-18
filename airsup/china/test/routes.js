@@ -231,7 +231,8 @@ async function resetDemoPending(lang, req, res) {
 
 router.get(['/', ''], async (req, res) => {
   const lang = langFrom(req, res);
-  res.set('Cache-Control', 'private, no-store');
+  res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+  res.set('Pragma', 'no-cache');
   res.locals.seo = {
     title: lang === 'en' ? 'Airsup test — company endpoint web' : 'Airsup 测试 — 公司端点网',
     description: lang === 'en'
