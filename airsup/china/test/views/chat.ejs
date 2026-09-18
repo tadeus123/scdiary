@@ -118,32 +118,62 @@
   <div class="cn-test-toast" id="cn-test-toast" role="status"></div>
 
   <section class="cn-test-board is-ready" id="cn-test-board" aria-label="<%= lang === 'en' ? 'Supplier board' : '供应商看板' %>">
-    <div class="cn-test-board-main">
-      <p class="cn-test-board-rate-label"><%= lang === 'en' ? 'Conversation rate' : '转化率' %></p>
-      <p class="cn-test-board-rate" id="cn-board-rate"><%= (typeof board !== 'undefined' && board ? board.conversationRate : 0) + '%' %></p>
-      <div class="cn-test-board-metrics">
-        <div class="cn-test-board-metric">
-          <div class="n" id="cn-board-interactions"><%= typeof board !== 'undefined' && board ? board.interactions : 0 %></div>
-          <div class="l"><%= lang === 'en' ? 'Endpoint interactions' : '端点互动次数' %></div>
+    <div class="cn-test-board-kpis">
+      <div class="cn-test-board-kpi">
+        <div class="cn-test-board-kpi-label"><%= lang === 'en' ? 'Interactions' : '互动' %></div>
+        <div class="cn-test-board-kpi-value" id="cn-board-interactions"><%= typeof board !== 'undefined' && board ? board.interactions : 0 %></div>
+        <div class="cn-test-board-kpi-sub">
+          <span class="cn-test-board-kpi-arrow" aria-hidden="true">↳</span>
+          <span id="cn-board-rate"><%= (typeof board !== 'undefined' && board ? board.conversationRate : 0) %>%</span>
+          <span><%= lang === 'en' ? 'conversation rate' : '转化率' %></span>
         </div>
-        <div class="cn-test-board-metric">
-          <div class="n" id="cn-board-customers"><%= typeof board !== 'undefined' && board ? board.customers : 0 %></div>
-          <div class="l"><%= lang === 'en' ? 'Customers from endpoint' : '由此而来的客户' %></div>
-        </div>
-        <div class="cn-test-board-metric">
-          <div class="n" id="cn-board-revenue"><%= typeof board !== 'undefined' && board ? ('$' + Number(board.revenue || 0).toLocaleString('en-US')) : '$0' %></div>
-          <div class="l"><%= lang === 'en' ? 'Revenue through endpoint' : '端点带来的收入' %></div>
+      </div>
+      <div class="cn-test-board-kpi">
+        <div class="cn-test-board-kpi-label"><%= lang === 'en' ? 'Customers' : '客户' %></div>
+        <div class="cn-test-board-kpi-value" id="cn-board-customers"><%= typeof board !== 'undefined' && board ? board.customers : 0 %></div>
+      </div>
+      <div class="cn-test-board-kpi">
+        <div class="cn-test-board-kpi-label"><%= lang === 'en' ? 'Revenue from Endpoint' : '端点收入' %></div>
+        <div class="cn-test-board-kpi-value" id="cn-board-revenue"><%= typeof board !== 'undefined' && board ? (Number(board.revenue || 0).toLocaleString('en-US') + ' USD') : '0 USD' %></div>
+      </div>
+    </div>
+
+    <div class="cn-test-board-lower">
+      <div class="cn-test-board-connect">
+        <p class="cn-test-board-connect-title"><%= lang === 'en' ? 'Connect live context to increase conversation rate' : '接入实时上下文以提高转化率' %></p>
+        <ul class="cn-test-board-connect-list">
+          <li>
+            <label class="cn-test-board-check">
+              <input type="checkbox" id="cn-board-connect-email" data-connect="email">
+              <span class="cn-test-board-check-mark" aria-hidden="true"></span>
+              <span><%= lang === 'en' ? 'Connect Email context' : '接入邮箱上下文' %></span>
+            </label>
+          </li>
+          <li>
+            <label class="cn-test-board-check">
+              <input type="checkbox" id="cn-board-connect-erp" data-connect="erp">
+              <span class="cn-test-board-check-mark" aria-hidden="true"></span>
+              <span><%= lang === 'en' ? 'Connect ERP context' : '接入 ERP 上下文' %></span>
+            </label>
+          </li>
+          <li>
+            <label class="cn-test-board-check">
+              <input type="checkbox" id="cn-board-connect-bank" data-connect="bank">
+              <span class="cn-test-board-check-mark" aria-hidden="true"></span>
+              <span><%= lang === 'en' ? 'Connect bank account' : '接入银行账户' %></span>
+            </label>
+          </li>
+        </ul>
+      </div>
+
+      <div class="cn-test-board-upload-row">
+        <p class="cn-test-board-hint"><%= lang === 'en' ? 'Upload more context to increase conversation rate' : '上传更多上下文以提高转化率' %></p>
+        <div class="cn-test-board-drop" id="cn-board-drop" tabindex="0">
+          <input type="file" id="cn-board-files" multiple accept=".pdf,.xlsx,.xls,.zip,.csv,.txt,.doc,.docx,application/pdf,application/zip,image/*,text/*">
+          <p class="cn-test-board-drop-title"><%= lang === 'en' ? 'Upload' : '上传' %></p>
         </div>
       </div>
     </div>
-    <aside class="cn-test-board-side">
-      <div class="cn-test-board-drop" id="cn-board-drop" tabindex="0">
-        <input type="file" id="cn-board-files" multiple accept=".pdf,.xlsx,.xls,.zip,.csv,.txt,.doc,.docx,application/pdf,application/zip,image/*,text/*">
-        <p class="cn-test-board-drop-title"><%= lang === 'en' ? 'Drop files here' : '把文件拖到这里' %></p>
-        <p class="cn-test-board-drop-sub"><%= lang === 'en' ? 'or click to upload' : '或点击上传' %></p>
-      </div>
-      <p class="cn-test-board-hint"><%= lang === 'en' ? 'Upload more context to increase conversation rate' : '上传更多上下文以提高转化率' %></p>
-    </aside>
   </section>
 
   <div class="cn-test-dock" id="cn-test-dock" hidden>
@@ -409,8 +439,7 @@
 
     function formatMoney(n) {
       var v = Math.round(Number(n) || 0);
-      if (en) return '$' + v.toLocaleString('en-US');
-      return '$' + v.toLocaleString('en-US');
+      return v.toLocaleString('en-US') + ' USD';
     }
 
     function emptyBoard() {

@@ -528,14 +528,13 @@ a.cn-ob-verify-link {
 }
 
 
-/* Supplier board — match Airsup China live pages (simple, not arty) */
+/* Supplier board — layout matches the sketch, Airsup China styling */
 .cn-test-board-first.cn-test {
   --bg: #f4eee4;
   --ink: #1a1512;
   --muted: #4d4740;
   --accent: #7a1e2b;
   --line: #eadfce;
-  --panel: #fffdf8;
   position: relative;
   width: auto;
   height: auto;
@@ -572,16 +571,8 @@ a.cn-ob-verify-link {
   letter-spacing: -0.02em;
 }
 
-.cn-test-board-first .cn-test-actions {
-  gap: 0.65rem;
-}
-
-.cn-test-board-first .cn-test-who {
-  font-size: 0.86rem;
-  color: #5e5852;
-  max-width: 200px;
-}
-
+.cn-test-board-first .cn-test-actions { gap: 0.65rem; }
+.cn-test-board-first .cn-test-who { font-size: 0.86rem; color: #5e5852; max-width: 200px; }
 .cn-test-board-first .cn-test-actions .cn-btn,
 .cn-test-board-first .cn-test-actions .cn-btn-ghost,
 .cn-test-board-first .cn-test-actions button {
@@ -590,122 +581,149 @@ a.cn-ob-verify-link {
   border-radius: 4px;
   font-family: inherit;
 }
-
 .cn-test-board-first .cn-test-actions .cn-btn {
   background: #7a1e2b;
   border: 1px solid #7a1e2b;
   color: #fff;
 }
-
 .cn-test-board-first .cn-test-actions .cn-btn-ghost {
   background: transparent;
   border: 1px solid #c4b79d;
   color: #1a1512;
   text-decoration: none;
 }
-
-.cn-test-board-first .cn-lang {
-  color: #5e5852;
-  font-size: 0.86rem;
-  text-decoration: none;
-}
+.cn-test-board-first .cn-lang { color: #5e5852; font-size: 0.86rem; text-decoration: none; }
 
 .cn-test-board {
   position: relative;
   inset: auto;
   z-index: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(240px, 0.7fr);
-  gap: 2rem 2.5rem;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 2.25rem;
   width: min(1120px, calc(100% - 2.4rem));
   margin: 0 auto;
   padding: 2rem 0 3.5rem;
   pointer-events: auto;
   background: none;
 }
-
 .cn-test-board[hidden] { display: none !important; }
 .cn-test-board > * { pointer-events: auto; }
 
-.cn-test-board-main {
-  max-width: none;
+.cn-test-board-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem 1.5rem;
 }
 
-.cn-test-board-rate-label {
-  display: inline-block;
-  margin: 0 0 0.85rem;
-  padding: 0.15rem 0.45rem;
-  border: 1px solid #7a1e2b;
+.cn-test-board-kpi-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.92rem;
+  color: #4d4740;
+}
+
+.cn-test-board-kpi-value {
+  margin: 0;
+  font-family: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", Georgia, serif;
+  font-size: clamp(1.75rem, 3.5vw, 2.35rem);
+  font-weight: 600;
+  line-height: 1.15;
+  color: #171311;
+}
+
+.cn-test-board-kpi-sub {
+  margin-top: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.35rem;
+  font-size: 0.88rem;
+  color: #4d4740;
+}
+
+.cn-test-board-kpi-arrow {
   color: #7a1e2b;
-  letter-spacing: 0.14em;
-  font-size: 0.75rem;
-  text-transform: uppercase;
+  font-size: 0.95rem;
+}
+
+.cn-test-board-lower {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 2rem 2.5rem;
+  align-items: end;
+}
+
+.cn-test-board-connect-title {
+  margin: 0 0 0.85rem;
+  font-size: 1rem;
+  font-weight: 650;
+  color: #171311;
+  line-height: 1.4;
+}
+
+.cn-test-board-connect-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.cn-test-board-check {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #1a1512;
+  user-select: none;
+}
+
+.cn-test-board-check input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.cn-test-board-check-mark {
+  flex: 0 0 auto;
+  width: 1.05rem;
+  height: 1.05rem;
+  border: 1.5px solid #7a1e2b;
+  border-radius: 50%;
   background: transparent;
 }
 
-.cn-test-board-rate {
-  margin: 0 0 1.35rem;
-  font-family: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", Georgia, serif;
-  font-size: clamp(2rem, 4.2vw, 3.1rem);
-  font-weight: 600;
-  line-height: 1.18;
-  letter-spacing: 0.01em;
-  color: #171311;
+.cn-test-board-check input:checked + .cn-test-board-check-mark {
+  background: #7a1e2b;
+  box-shadow: inset 0 0 0 3px #f4eee4;
 }
 
-.cn-test-board-metrics {
-  display: block;
-  width: 100%;
-  max-width: none;
-  background: #fffdf8;
-  border: 1px solid #eadfce;
+.cn-test-board-upload-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.85rem;
 }
 
-.cn-test-board-metric {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: baseline;
-  gap: 1rem;
-  padding: 0.75rem 0.9rem;
-  border-top: 1px solid #eadfce;
-}
-
-.cn-test-board-metric:first-child {
-  border-top: 0;
-}
-
-.cn-test-board-metric .l {
+.cn-test-board-hint {
   margin: 0;
-  font-size: 0.92rem;
-  line-height: 1.4;
+  font-size: 0.95rem;
+  line-height: 1.45;
   color: #4d4740;
-  order: 0;
-}
-
-.cn-test-board-metric .n {
-  margin: 0;
-  font-family: inherit;
-  font-size: 1.05rem;
-  font-weight: 650;
-  color: #171311;
-  line-height: 1.3;
-  text-align: right;
-  order: 1;
-}
-
-.cn-test-board-side {
-  justify-self: stretch;
-  width: 100%;
+  font-style: italic;
 }
 
 .cn-test-board-drop {
   position: relative;
-  min-height: 140px;
-  padding: 1.1rem 1rem;
-  border: 1px solid #eadfce;
-  border-radius: 10px;
-  background: #faf6ef;
+  width: 100%;
+  min-height: 120px;
+  padding: 1.25rem 1rem;
+  border: 1px solid #c4b79d;
+  border-radius: 4px;
+  background: #fffdf8;
   display: grid;
   place-content: center;
   text-align: center;
@@ -722,8 +740,8 @@ a.cn-ob-verify-link {
 
 .cn-test-board-drop:hover,
 .cn-test-board-drop.is-drag {
-  border-color: #c4b79d;
-  background: #fffdf8;
+  border-color: #7a1e2b;
+  background: #faf6ef;
 }
 
 .cn-test-board-drop.is-busy { opacity: 0.55; pointer-events: none; }
@@ -731,23 +749,9 @@ a.cn-ob-verify-link {
 .cn-test-board-drop-title {
   margin: 0;
   font-family: inherit;
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 650;
   color: #171311;
-}
-
-.cn-test-board-drop-sub {
-  margin: 0.3rem 0 0;
-  font-size: 0.86rem;
-  color: #4d4740;
-}
-
-.cn-test-board-hint {
-  margin: 0.75rem 0 0;
-  font-size: 0.9rem;
-  line-height: 1.45;
-  color: #4d4740;
-  text-align: left;
 }
 
 .cn-test-has-board #cn-test-network {
@@ -768,28 +772,22 @@ a.cn-ob-verify-link {
   display: none !important;
 }
 
-.cn-test-board-first .cn-test-board {
-  display: grid;
-}
-
+.cn-test-board-first .cn-test-board { display: flex; }
 .cn-test-board-first .cn-test-empty,
 .cn-test-board-first .cn-test-reach-float,
-.cn-test-board-first .cn-test-dock {
-  display: none !important;
-}
-
-.cn-test-board-first .cn-test-toast {
-  bottom: 24px;
-}
+.cn-test-board-first .cn-test-dock { display: none !important; }
+.cn-test-board-first .cn-test-toast { bottom: 24px; }
 
 @media (max-width: 860px) {
-  .cn-test-board {
+  .cn-test-board-kpis {
     grid-template-columns: 1fr;
-    gap: 1.5rem;
-    padding-top: 1.5rem;
+    gap: 1.25rem;
   }
-  .cn-test-board-side {
-    justify-self: stretch;
-    width: 100%;
+  .cn-test-board-lower {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+  }
+  .cn-test-board {
+    padding-top: 1.5rem;
   }
 }
