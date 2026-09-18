@@ -361,10 +361,9 @@
         var replyText = res.ok
           ? (data.reply || '')
           : (lang === 'en' ? 'Something went wrong. Try again.' : '发送失败，请稍后再试。');
-        var replyFiles = res.ok ? data.files : null;
-        messages.push({ role: 'assistant', content: replyText, files: replyFiles, at: Date.now() });
+        messages.push({ role: 'assistant', content: replyText, at: Date.now() });
         saveMessages(messages);
-        appendBubble('assistant', replyText, replyFiles);
+        appendBubble('assistant', replyText);
       } catch (err) {
         if (typingRow && typingRow.parentNode) typingRow.parentNode.removeChild(typingRow);
         typingRow = null;
