@@ -49,17 +49,17 @@
   var approve = document.getElementById('cn-quote-approve');
   var drop = document.getElementById('cn-quote-drop');
   var copy = {
-    empty: <%= JSON.stringify(t('quote_empty')) %>,
-    ready: <%= JSON.stringify(t('quote_status_ready')) %>,
-    processing: <%= JSON.stringify(t('quote_status_processing')) %>,
-    failed: <%= JSON.stringify(t('quote_status_failed')) %>,
-    pending: <%= JSON.stringify(t('quote_status_pending')) %>,
-    del: <%= JSON.stringify(t('quote_delete')) %>,
-    badFile: <%= JSON.stringify(t('quote_error_file')) %>,
-    tooMany: <%= JSON.stringify(t('quote_error_many')) %>,
-    tooLarge: <%= JSON.stringify(t('quote_error_large')) %>,
-    auth: <%= JSON.stringify(t('quote_error_auth')) %>,
-    generic: <%= JSON.stringify(t('quote_error_generic')) %>
+    empty: <%- JSON.stringify(t('quote_empty')) %>,
+    ready: <%- JSON.stringify(t('quote_status_ready')) %>,
+    processing: <%- JSON.stringify(t('quote_status_processing')) %>,
+    failed: <%- JSON.stringify(t('quote_status_failed')) %>,
+    pending: <%- JSON.stringify(t('quote_status_pending')) %>,
+    del: <%- JSON.stringify(t('quote_delete')) %>,
+    badFile: <%- JSON.stringify(t('quote_error_file')) %>,
+    tooMany: <%- JSON.stringify(t('quote_error_many')) %>,
+    tooLarge: <%- JSON.stringify(t('quote_error_large')) %>,
+    auth: <%- JSON.stringify(t('quote_error_auth')) %>,
+    generic: <%- JSON.stringify(t('quote_error_generic')) %>
   };
 
   function statusLabel(status) {

@@ -1257,6 +1257,9 @@ function memoryChina(companies) {
   assert.ok(fs.existsSync(path.join(__dirname, 'quotations.js')));
   assert.ok(fs.readFileSync(path.join(__dirname, 'views/setup.ejs'), 'utf8').includes('partials/quotations'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'views/live.ejs'), 'utf8').includes('/airsup/china/quotes'));
+  const quotationsPartial = fs.readFileSync(path.join(__dirname, 'views/partials/quotations.ejs'), 'utf8');
+  assert.ok(quotationsPartial.includes("empty: <%- JSON.stringify(t('quote_empty')) %>"));
+  assert.ok(!quotationsPartial.includes("empty: <%= JSON.stringify(t('quote_empty')) %>"));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('/api/quotations'));
   assert.ok(COPY.zh.quote_title.includes('报价'));
   assert.ok(COPY.en.quote_title.toLowerCase().includes('quotation'));
