@@ -1370,6 +1370,9 @@ function memoryChina(companies) {
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('vis-network@10.1.2'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('login/request'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('api/onboard'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-board'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('data-board-first'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-board-first'));
   assert.ok(fs.existsSync(path.join(__dirname, 'test/public/test-network.js')));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/public/test-network.js'), 'utf8').includes('gravitationalConstant: -5000'));
   assert.ok(!fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-thread'));
@@ -1381,8 +1384,13 @@ function memoryChina(companies) {
   assert.ok(testRoutesSrc.includes("/api/onboard/publish"));
   assert.ok(testRoutesSrc.includes("/api/onboard/state"));
   assert.ok(testRoutesSrc.includes("/api/onboard/demo"));
+  assert.ok(testRoutesSrc.includes('ensureDemoLiveCompany'));
+  assert.ok(testRoutesSrc.includes('boardFirst: true'));
+  assert.ok(testRoutesSrc.includes("guest || '') === '1'"));
   assert.ok(testRoutesSrc.includes("router.get('/verify'"));
-  const testOnboard = require('./test/onboard');
+  assert.ok(fs.existsSync(path.join(__dirname, 'test/board.js')));
+  const { computeBoard } = require('./test/board');
+  assert.strictEqual(computeBoard(null, { nodes: {}, edges: [], reach: 0 }).conversationRate, 0);  const testOnboard = require('./test/onboard');
   assert.strictEqual(typeof testOnboard.previewWebsite, 'function');
   assert.strictEqual(typeof testOnboard.startSignup, 'function');
   assert.strictEqual(typeof testOnboard.consumeVerifyToken, 'function');
