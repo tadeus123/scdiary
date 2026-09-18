@@ -215,10 +215,13 @@
         var pulse = pulseIds.indexOf(id) >= 0 ? ' is-pulse' : '';
         var core = id === 'core' ? ' is-core' : '';
         var r = nodeRadius(node);
-        var labelY = pos.y + r + 3.2;
+        // Place labels outside the spoke cluster to reduce line/text collisions
+        var below = pos.y >= 48;
+        var labelY = below ? (pos.y + r + 4.2) : (pos.y - r - 2.4);
+        var short = String(node.label || '').replace(/\s*\/\s*/g, '/');
         return '<g class="cn-test-node' + (on ? ' is-on' : '') + core + pulse + '" data-id="' + id + '">'
           + '<circle cx="' + pos.x + '" cy="' + pos.y + '" r="' + r.toFixed(2) + '"></circle>'
-          + '<text x="' + pos.x + '" y="' + labelY.toFixed(2) + '">' + esc(node.label) + '</text>'
+          + '<text x="' + pos.x + '" y="' + labelY.toFixed(2) + '">' + esc(short) + '</text>'
           + '</g>';
       }).join('');
 

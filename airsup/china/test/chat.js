@@ -83,25 +83,25 @@ function compressHistory(messages, lang) {
 function fallbackReply({ lang, message, files, web, changedNodes }) {
   const reach = web.reach;
   const names = (files || []).map((f) => f.name).filter(Boolean);
-  const grew = (changedNodes || []).join('、') || (lang === 'en' ? 'the web' : '端点网');
+  const grew = (changedNodes || []).join(lang === 'en' ? ', ' : '、') || (lang === 'en' ? 'the web' : '端点网');
 
   if (lang === 'en') {
     if (names.length) {
-      return `Got ${names.join(', ')} — private to buyers. That thickened ${grew}. Reach is now ${reach}. Keep dumping real factory material; the denser this web, the easier ChatGPT can route the right RFQs to you.`;
+      return `Got ${names.join(', ')} — buyers never see the original. That thickened ${grew}. Reach is now ${reach}. Keep dumping real factory material; denser web means ChatGPT can route better RFQs to you.`;
     }
     if (/https?:\/\//i.test(message || '') || /\.\w{2,}/.test(message || '')) {
-      return `Website noted — domain node lit up. Reach ${reach}. Toss a past quote or a process scrap next if you want the web to branch.`;
+      return `Website noted — domain lit up. Reach ${reach}. A past quote or a process scrap will branch the web further.`;
     }
-    return `Logged into the web. Reach ${reach}. There is no form — drop whatever makes the factory truer (quote, WeChat, lead time, capability note) and watch the map grow.`;
+    return `Reach ${reach}. No form — drop whatever makes the factory truer (quote, WeChat, lead time, capability note) and watch the map grow.`;
   }
 
   if (names.length) {
-    return `收到 ${names.join('、')}（买家看不到原件）。${grew} 变亮了。当前可达 ${reach}。继续往里丢真材料就行 — 网越密，ChatGPT 越容易把合适询盘推给你们。`;
+    return `收到 ${names.join('、')}（买家看不到原件）。${grew} 变亮了。可达 ${reach}。继续丢真材料就行 — 网越密，ChatGPT 越容易把合适询盘推过来。`;
   }
   if (/https?:\/\//i.test(message || '') || /\.\w{2,}/.test(message || '')) {
-    return `网站记上了，域名节点亮了。可达 ${reach}。想让网再分叉，丢一份过去报价或一段工艺说明都行。`;
+    return `网站记上了，域名亮了。可达 ${reach}。再丢一份过去报价或一段工艺说明，网会继续分叉。`;
   }
-  return `端点网在长。当前可达 ${reach}。没有问卷 — 报价、微信、交期、能力碎片，什么真就丢什么，看左边变亮。`;
+  return `可达 ${reach}。没有问卷 — 报价、微信、交期、能力碎片，什么真就丢什么，看左边变亮。`;
 }
 
 async function completeTestTurn({
