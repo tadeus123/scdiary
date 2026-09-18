@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="<%= lang === 'en' ? 'en' : 'zh-CN' %>">
+<head>
+  <meta charset="UTF-8">
+  <%- include('partials/head') %>
+</head>
+<body class="cn-body">
+  <%- include('partials/header') %>
+  <main class="cn-wrap cn-inner cn-quotes-page">
+    <p class="cn-stamp"><%= t('quote_page_stamp') %></p>
+    <h1><%= t('quote_page_title') %></h1>
+    <p class="cn-lead"><%= t('quote_page_lead') %></p>
+    <p class="cn-meta"><%= companyTitle %> · <%= company.domain %> · <%= company.contact_email %></p>
+    <%- include('partials/quotations', { quotationMeta: typeof quotationMeta !== 'undefined' ? quotationMeta : { documents: [], endpoint_use: false } }) %>
+    <p class="cn-note"><a class="cn-text-link" href="/airsup/china/setup"><%= t('quote_page_back') %></a></p>
+  </main>
+  <%- include('partials/footer') %>
+</body>
+</html>

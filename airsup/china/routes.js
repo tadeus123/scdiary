@@ -634,6 +634,10 @@ router.get('/verify', async (req, res) => {
       }
       return res.redirect('/airsup/china/setup?ok=live');
     }
+    const next = String(req.query.next || '').trim().toLowerCase();
+    if (next === 'quotes' || next === 'quotations') {
+      return res.redirect('/airsup/china/quotes');
+    }
     return res.redirect('/airsup/china/setup');
   } catch (error) {
     console.error('Airsup china verify error:', error);
@@ -775,6 +779,19 @@ router.get('/setup', async (req, res) => {
     error: req.query.error === 'publish' ? t(langFrom(req, res), 'err_publish') : null,
     saved: req.query.saved === '1',
     paused: req.query.paused === '1',
+  });
+});
+
+router.get('/quotes', async (req, res) => {
+  const company = await requireCompany(req, res);
+  if (!company) return;
+  const lang = langFrom(req, res);
+  return render(req, res, 'quotes.ejs', {
+    proof: await proof(),
+    company,
+    companyTitle: companyTitle(company, lang),
+    quotationMeta: quotations.listMeta(company),
+    headerLive: company.status === 'live',
   });
 });
 

@@ -1672,3 +1672,11 @@ h3 {
   margin: 0.35rem 0 1rem;
   max-width: 42rem;
 }
+
+.cn-quotes-page {
+  max-width: 40rem;
+}
+
+.cn-quotes-page .cn-quotes {
+  margin-top: 1.25rem;
+}

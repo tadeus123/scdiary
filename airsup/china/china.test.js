@@ -1331,10 +1331,14 @@ function memoryChina(companies) {
   assert.ok(fs.existsSync(path.join(__dirname, 'demo-company.js')));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.get('/demo'"));
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.get('/demo/onboarding'"));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes("router.get('/quotes'"));
+  assert.ok(fs.existsSync(path.join(__dirname, 'views/quotes.ejs')));
   assert.ok(fs.readFileSync(path.join(__dirname, 'views/check.ejs'), 'utf8').includes('demo_check_cta'));
   assert.ok(COPY.zh.demo_banner.includes('演示'));
   assert.ok(COPY.en.demo_banner.toLowerCase().includes('demo'));
   assert.ok(COPY.en.demo_restart_onboarding.toLowerCase().includes('onboarding'));
+  assert.ok(COPY.zh.quote_page_title.includes('上传'));
+  assert.ok(COPY.en.quote_page_title.toLowerCase().includes('upload'));
   assert.strictEqual(DEMO_NAME_EN.includes('Demo'), true);
 
   console.log('airsup china tests passed');
