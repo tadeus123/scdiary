@@ -92,7 +92,7 @@ app.use('/airsup', express.static(path.join(__dirname, '../airsup/public'), { in
 app.use('/airsup', airsupRoutes);
 // AIRSUP-CHINA-BEGIN
 app.get(['/tademehl/airsup/china', '/tademehl/airsup/china/'], (req, res) => {
-  res.redirect(301, '/airsup/china');
+  res.redirect(301, 'https://www.airsup.co/');
 });
 // AIRSUP-CHINA-END
 app.get('/.well-known/oauth-protected-resource', (req, res) => {

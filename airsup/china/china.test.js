@@ -126,7 +126,7 @@ assert.ok(fs.existsSync(path.join(__dirname, '../public/china.txt')));
 assert.ok(fs.readFileSync(path.join(__dirname, '../../public/robots.txt'), 'utf8').includes('ChatGPT-User'));
 assert.ok(fs.readFileSync(path.join(__dirname, '../../public/robots.txt'), 'utf8').includes('OAI-SearchBot'));
 assert.ok(fs.readFileSync(path.join(__dirname, '../../public/llms.txt'), 'utf8').includes('/airsup/live-companies.json'));
-assert.ok(fs.readFileSync(path.join(__dirname, '../../server/utils/seo.js'), 'utf8').includes("'/airsup/china'"));
+assert.ok(fs.readFileSync(path.join(__dirname, '../routes.js'), 'utf8').includes('https://www.airsup.co'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/partials/diagram.ejs'), 'utf8').includes('cn-gpt-mark'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/partials/diagram.ejs'), 'utf8').includes('stroke="currentColor"'));
 assert.ok(!fs.readFileSync(path.join(__dirname, 'views/partials/diagram.ejs'), 'utf8').includes('M9 1.5l1.2 5.2'));

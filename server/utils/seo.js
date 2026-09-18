@@ -68,7 +68,6 @@ const SITEMAP_PATHS = [
   '/liquidity',
   '/graph',
   '/graph/zh',
-  '/airsup/china',
 ];
 
 function normalizePath(pathname) {

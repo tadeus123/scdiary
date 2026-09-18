@@ -274,9 +274,14 @@ router.all('/mcp', (req, res) => mcp.handleMcp(req, res));
 
 // AIRSUP-CHINA-BEGIN
 router.get('/live-companies.json', require('./china/live-companies'));
-router.use('/china', require('./china/routes'));
-// Live supplier dashboard (board UI from china/test)
-router.use('/dashboard', require('./china/test/routes'));
+router.use('/china', (req, res) => {
+  const dest = req.url === '/' ? '/' : req.url;
+  return res.redirect(302, `https://www.airsup.co${dest.startsWith('/') ? dest : `/${dest}`}`);
+});
+router.use('/dashboard', (req, res) => {
+  const dest = `/dashboard${req.url === '/' ? '' : req.url}`;
+  return res.redirect(302, `https://www.airsup.co${dest}`);
+});
 // AIRSUP-CHINA-END
 
 module.exports = router;
