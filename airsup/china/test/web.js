@@ -5,15 +5,18 @@
 
 const NODE_DEFS = [
   { id: 'core', zh: '工厂', en: 'Factory', weight: 0 },
-  { id: 'domain', zh: '域名 / 网站', en: 'Domain / site', weight: 18 },
-  { id: 'process', zh: '工艺', en: 'Processes', weight: 18 },
-  { id: 'material', zh: '材料', en: 'Materials', weight: 14 },
-  { id: 'quotes', zh: '历史报价', en: 'Past quotes', weight: 20 },
-  { id: 'contact', zh: '联系 / 微信', en: 'Contact / WeChat', weight: 14 },
-  { id: 'lead', zh: '交期 / 样品', en: 'Lead / samples', weight: 10 },
-  { id: 'export', zh: '出口能力', en: 'Export readiness', weight: 6 },
+  { id: 'domain', zh: '网站', en: 'Site', weight: 14 },
+  { id: 'process', zh: '工艺', en: 'Process', weight: 16 },
+  { id: 'material', zh: '材料', en: 'Material', weight: 12 },
+  { id: 'quotes', zh: '报价', en: 'Quotes', weight: 16 },
+  { id: 'contact', zh: '联系', en: 'Contact', weight: 12 },
+  { id: 'lead', zh: '交期', en: 'Lead', weight: 9 },
+  { id: 'export', zh: '出口', en: 'Export', weight: 8 },
+  { id: 'quality', zh: '品质', en: 'Quality', weight: 7 },
+  { id: 'capacity', zh: '产能', en: 'Capacity', weight: 6 },
 ];
 
+/** Structural skeleton — denser mesh, not a star */
 const EDGES = [
   ['core', 'domain'],
   ['core', 'process'],
@@ -22,12 +25,28 @@ const EDGES = [
   ['core', 'contact'],
   ['core', 'lead'],
   ['core', 'export'],
+  ['core', 'quality'],
+  ['core', 'capacity'],
+  ['domain', 'export'],
+  ['domain', 'contact'],
   ['process', 'material'],
   ['process', 'quotes'],
+  ['process', 'quality'],
+  ['process', 'capacity'],
   ['material', 'quotes'],
+  ['material', 'quality'],
+  ['quotes', 'lead'],
+  ['quotes', 'export'],
   ['contact', 'lead'],
-  ['domain', 'export'],
+  ['contact', 'export'],
+  ['lead', 'capacity'],
+  ['quality', 'export'],
+  ['capacity', 'export'],
 ];
+
+function edgeKey(a, b) {
+  return [a, b].sort().join('::');
+}
 
 function emptyWeb(lang) {
   const nodes = {};
@@ -35,16 +54,17 @@ function emptyWeb(lang) {
     nodes[def.id] = {
       id: def.id,
       label: lang === 'en' ? def.en : def.zh,
-      strength: def.id === 'core' ? 0.35 : 0,
+      strength: def.id === 'core' ? 0.4 : 0.04,
       hints: [],
       count: def.id === 'core' ? 1 : 0,
     };
   }
   return {
     nodes,
-    edges: EDGES.map(([from, to]) => ({ from, to })),
-    reach: 8,
-    reachHistory: [8],
+    edges: EDGES.map(([from, to]) => ({ from, to, kind: 'base' })),
+    customLinks: [],
+    reach: 10,
+    reachHistory: [10],
     events: [],
   };
 }
@@ -53,15 +73,37 @@ function clamp01(n) {
   return Math.max(0, Math.min(1, n));
 }
 
-function computeReach(nodes) {
-  let score = 8;
+function liveEdgeCount(web) {
+  const nodes = web.nodes || {};
+  const all = [...(web.edges || []), ...(web.customLinks || []).map((l) => ({ ...l, kind: 'custom' }))];
+  let n = 0;
+  for (const e of all) {
+    const a = nodes[e.from];
+    const b = nodes[e.to];
+    if (!a || !b) continue;
+    if (a.strength > 0.15 && b.strength > 0.15) n += 1;
+  }
+  return n;
+}
+
+function computeReach(web) {
+  const nodes = web.nodes || web;
+  let score = 10;
   for (const def of NODE_DEFS) {
     if (def.id === 'core') continue;
-    const node = nodes[def.id];
+    const node = nodes[def.id] || (web.nodes && web.nodes[def.id]);
     const s = node ? Number(node.strength) || 0 : 0;
     score += def.weight * s;
   }
-  return Math.round(Math.max(8, Math.min(100, score)));
+  // Dense live mesh bonus — linking nodes yourself raises findability
+  const links = typeof web.customLinks !== 'undefined'
+    ? liveEdgeCount(web)
+    : 0;
+  score += Math.min(18, links * 1.1);
+  if (Array.isArray(web.customLinks)) {
+    score += Math.min(12, web.customLinks.length * 1.8);
+  }
+  return Math.round(Math.max(10, Math.min(100, score)));
 }
 
 function bump(node, amount, hint) {
@@ -86,7 +128,7 @@ function extractSignals({ message, files, lang }) {
   if (/https?:\/\//i.test(text) || /\b[\w.-]+\.(com|cn|net|co)\b/i.test(text)) {
     const m = text.match(/https?:\/\/[^\s]+/i) || text.match(/\b[\w.-]+\.(com|cn|net|co)\b/i);
     signals.push({ node: 'domain', amount: 0.45, hint: m ? m[0] : 'website' });
-    signals.push({ node: 'export', amount: 0.12, hint: lang === 'en' ? 'public site' : '公开网站' });
+    signals.push({ node: 'export', amount: 0.12, hint: lang === 'en' ? 'site' : '网站' });
   }
 
   if (/\b(sla|sls|fdm|mjf|cnc|注塑|机加|钣金|冲压|铸造|喷涂|阳极|3d\s*print|resin|铣削|车削)\b/i.test(lower)
@@ -102,33 +144,36 @@ function extractSignals({ message, files, lang }) {
   }
 
   if (/wechat|微信|whatsapp|电话|sales@|联系人/i.test(lower) || /微信/.test(text)) {
-    signals.push({ node: 'contact', amount: 0.4, hint: lang === 'en' ? 'contact' : '联系方式' });
+    signals.push({ node: 'contact', amount: 0.4, hint: lang === 'en' ? 'contact' : '联系' });
   }
 
   if (/lead\s*time|交期|样品|sample|working\s*days|天交/i.test(lower) || /交期|样品/.test(text)) {
-    signals.push({ node: 'lead', amount: 0.35, hint: lang === 'en' ? 'lead time' : '交期' });
+    signals.push({ node: 'lead', amount: 0.35, hint: lang === 'en' ? 'lead' : '交期' });
   }
 
   if (/export|出口|欧美|海外|incoterm|fob|exw/i.test(lower) || /出口|海外/.test(text)) {
     signals.push({ node: 'export', amount: 0.25, hint: lang === 'en' ? 'export' : '出口' });
   }
 
+  if (/iso|证书|cert|qc|品质|公差|tolerance|inspection/i.test(lower) || /品质|证书|公差/.test(text)) {
+    signals.push({ node: 'quality', amount: 0.35, hint: lang === 'en' ? 'quality' : '品质' });
+  }
+
+  if (/产能|capacity|pcs\/|月产|台设备|machines?/i.test(lower) || /产能|设备/.test(text)) {
+    signals.push({ node: 'capacity', amount: 0.3, hint: lang === 'en' ? 'capacity' : '产能' });
+  }
+
   const fileList = files || [];
   if (fileList.length) {
     for (const file of fileList) {
       const name = String(file.name || 'file');
-      signals.push({
-        node: 'quotes',
-        amount: 0.28,
-        hint: name.slice(0, 60),
-      });
+      signals.push({ node: 'quotes', amount: 0.28, hint: name.slice(0, 60) });
       if (/\b(sla|resin|cnc|quote|报价)/i.test(name)) {
-        signals.push({ node: 'process', amount: 0.12, hint: lang === 'en' ? 'from quote' : '来自报价' });
+        signals.push({ node: 'process', amount: 0.12, hint: lang === 'en' ? 'from quote' : '报价' });
       }
     }
   }
 
-  // Free-form creative dump still grows the web a little via core + export readiness
   if (!signals.length && text.trim().length > 12) {
     signals.push({ node: 'export', amount: 0.08, hint: lang === 'en' ? 'note' : '备注' });
     signals.push({ node: 'process', amount: 0.08, hint: text.trim().slice(0, 40) });
@@ -137,33 +182,64 @@ function extractSignals({ message, files, lang }) {
   return signals;
 }
 
+function refreshReach(web) {
+  web.reach = computeReach(web);
+  if (!Array.isArray(web.reachHistory)) web.reachHistory = [web.reach];
+  web.reachHistory = [...web.reachHistory, web.reach].slice(-24);
+  return web;
+}
+
 function applySignals(web, signals, eventLabel) {
   const next = JSON.parse(JSON.stringify(web));
+  if (!Array.isArray(next.customLinks)) next.customLinks = [];
   let changed = false;
   for (const sig of signals) {
     if (bump(next.nodes[sig.node], sig.amount, sig.hint)) changed = true;
   }
-  // Core solidifies as peripheral knowledge grows
   const avg = NODE_DEFS.filter((d) => d.id !== 'core')
     .reduce((sum, d) => sum + (next.nodes[d.id].strength || 0), 0) / (NODE_DEFS.length - 1);
-  next.nodes.core.strength = clamp01(0.35 + avg * 0.65);
+  next.nodes.core.strength = clamp01(0.4 + avg * 0.6);
 
-  const reach = computeReach(next.nodes);
-  next.reach = reach;
-  if (!Array.isArray(next.reachHistory)) next.reachHistory = [8];
-  next.reachHistory = [...next.reachHistory, reach].slice(-24);
+  refreshReach(next);
   if (changed || (signals && signals.length)) {
     next.events = [
       {
         at: Date.now(),
         label: eventLabel || 'update',
-        reach,
+        reach: next.reach,
         nodes: signals.map((s) => s.node),
       },
       ...(next.events || []),
     ].slice(0, 12);
   }
-  return { web: next, changed, reach };
+  return { web: next, changed, reach: next.reach };
+}
+
+function addCustomLink(web, from, to) {
+  const next = JSON.parse(JSON.stringify(web));
+  if (!next.nodes[from] || !next.nodes[to] || from === to) {
+    return { web: next, ok: false, reason: 'bad_nodes' };
+  }
+  if (!Array.isArray(next.customLinks)) next.customLinks = [];
+  const key = edgeKey(from, to);
+  const existsBase = (next.edges || []).some((e) => edgeKey(e.from, e.to) === key);
+  const existsCustom = next.customLinks.some((e) => edgeKey(e.from, e.to) === key);
+  if (existsBase || existsCustom) {
+    return { web: next, ok: false, reason: 'exists' };
+  }
+  next.customLinks.push({ from, to, kind: 'custom', at: Date.now() });
+  // Drawing a link affirms both sides of the relationship
+  bump(next.nodes[from], 0.08, null);
+  bump(next.nodes[to], 0.08, null);
+  const avg = NODE_DEFS.filter((d) => d.id !== 'core')
+    .reduce((sum, d) => sum + (next.nodes[d.id].strength || 0), 0) / (NODE_DEFS.length - 1);
+  next.nodes.core.strength = clamp01(0.4 + avg * 0.6);
+  refreshReach(next);
+  next.events = [
+    { at: Date.now(), label: `link:${from}-${to}`, reach: next.reach, nodes: [from, to] },
+    ...(next.events || []),
+  ].slice(0, 12);
+  return { web: next, ok: true };
 }
 
 function normalizeClientWeb(raw, lang) {
@@ -179,7 +255,22 @@ function normalizeClientWeb(raw, lang) {
       : [];
     base.nodes[def.id].label = lang === 'en' ? def.en : def.zh;
   }
-  base.reach = computeReach(base.nodes);
+  const allowed = new Set(NODE_DEFS.map((d) => d.id));
+  base.customLinks = Array.isArray(raw.customLinks)
+    ? raw.customLinks
+      .filter((e) => e && allowed.has(e.from) && allowed.has(e.to) && e.from !== e.to)
+      .map((e) => ({ from: e.from, to: e.to, kind: 'custom', at: e.at || Date.now() }))
+      .slice(0, 40)
+    : [];
+  // Deduplicate
+  const seen = new Set();
+  base.customLinks = base.customLinks.filter((e) => {
+    const k = edgeKey(e.from, e.to);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  base.reach = computeReach(base);
   base.reachHistory = Array.isArray(raw.reachHistory)
     ? raw.reachHistory.map((n) => Math.round(Number(n) || 0)).slice(-24)
     : [base.reach];
@@ -189,17 +280,32 @@ function normalizeClientWeb(raw, lang) {
 }
 
 function layoutPositions() {
-  // Fixed abstract constellation — readable, not a physics sim
+  // Slightly irregular constellation — reads more like a real network
   return {
     core: { x: 50, y: 50 },
-    domain: { x: 18, y: 30 },
-    process: { x: 82, y: 28 },
-    material: { x: 88, y: 55 },
-    quotes: { x: 70, y: 82 },
-    contact: { x: 26, y: 80 },
-    lead: { x: 12, y: 55 },
-    export: { x: 50, y: 16 },
+    domain: { x: 22, y: 24 },
+    process: { x: 78, y: 22 },
+    material: { x: 90, y: 48 },
+    quotes: { x: 76, y: 78 },
+    contact: { x: 34, y: 84 },
+    lead: { x: 12, y: 62 },
+    export: { x: 58, y: 14 },
+    quality: { x: 66, y: 64 },
+    capacity: { x: 28, y: 42 },
   };
+}
+
+/** Quadratic curve control point offset for organic edges */
+function curveControl(a, b, bend) {
+  const mx = (a.x + b.x) / 2;
+  const my = (a.y + b.y) / 2;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  const nx = -dy / len;
+  const ny = dx / len;
+  const mag = (bend == null ? 1 : bend) * Math.min(10, len * 0.18);
+  return { x: mx + nx * mag, y: my + ny * mag };
 }
 
 module.exports = {
@@ -208,7 +314,10 @@ module.exports = {
   emptyWeb,
   extractSignals,
   applySignals,
+  addCustomLink,
   normalizeClientWeb,
   computeReach,
   layoutPositions,
+  curveControl,
+  edgeKey,
 };

@@ -15,7 +15,7 @@ const db = require('../db');
 const peopleAuth = require('../../auth');
 const { welcomeMessage, completeTestTurn, emptyWeb } = require('./chat');
 const { describeUploads } = require('./files');
-const { layoutPositions, normalizeClientWeb } = require('./web');
+const { layoutPositions, normalizeClientWeb, addCustomLink } = require('./web');
 
 const router = express.Router();
 const VIEWS = path.join(__dirname, 'views');
@@ -268,6 +268,21 @@ router.post('/api/logout', express.json(), async (req, res) => {
     console.error('Airsup china test logout error:', error);
   }
   return res.json({ ok: true });
+});
+
+router.post('/api/link', express.json(), async (req, res) => {
+  if (!peopleAuth.allowedOrigin(req)) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  const lang = langFrom(req, res);
+  const from = String((req.body && req.body.from) || '').trim();
+  const to = String((req.body && req.body.to) || '').trim();
+  const web = parseWeb(req.body && req.body.web, lang);
+  const result = addCustomLink(web, from, to);
+  if (!result.ok) {
+    return res.status(400).json({ error: result.reason || 'link_failed', web: result.web });
+  }
+  return res.json({ ok: true, web: result.web });
 });
 
 module.exports = router;

@@ -1382,10 +1382,16 @@ function memoryChina(companies) {
     web: testWeb.emptyWeb('en'),
   });
   assert.ok(String(grown.reply || '').length > 10);
-  assert.ok(grown.web.reach > 8);
+  assert.ok(grown.web.reach > 10);
   assert.ok(grown.web.nodes.domain.strength > 0);
   assert.ok(grown.web.nodes.quotes.strength > 0);
   assert.ok(grown.web.reachHistory.length >= 2);
+  const linked = testWeb.addCustomLink(grown.web, 'process', 'contact');
+  assert.ok(linked.ok);
+  assert.ok(linked.web.customLinks.length >= 1);
+  assert.ok(linked.web.reach >= grown.web.reach);
+  assert.ok(Object.keys(testWeb.layoutPositions()).length >= 10);
+  assert.ok((testWeb.emptyWeb('zh').edges || []).length >= 20);
 
   console.log('airsup china tests passed');
 })().catch((error) => {

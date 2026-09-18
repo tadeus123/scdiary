@@ -6,7 +6,7 @@
   <% if (typeof testCss === 'string' && testCss) { %>
   <style><%- testCss %></style>
   <% } else { %>
-  <link rel="stylesheet" href="/airsup/china/test/test-chat.css?v=3">
+  <link rel="stylesheet" href="/airsup/china/test/test-chat.css?v=4">
   <% } %>
 </head>
 <body class="cn-body cn-test" data-lang="<%= lang %>" data-logged-in="<%= loggedIn ? '1' : '0' %>">
@@ -32,21 +32,18 @@
     <section class="cn-test-web-pane" aria-label="<%= lang === 'en' ? 'Company endpoint web' : '公司端点网' %>">
       <div class="cn-test-web-head">
         <div>
-          <h1><%= lang === 'en' ? 'Your endpoint web' : '你们的端点网' %></h1>
-          <p><%= lang === 'en'
-            ? 'Abstract map of what ChatGPT can know about the factory. Feed it — it grows. Denser web, easier to find.'
-            : 'ChatGPT 能「看见」你们工厂的抽象地图。往里喂料，它就变亮。网越密，越容易被找到。' %></p>
+          <h1><%= lang === 'en' ? 'Endpoint web' : '端点网' %></h1>
         </div>
         <div class="cn-test-reach">
-          <div class="cn-test-reach-label"><%= lang === 'en' ? 'Reach in ChatGPT' : 'ChatGPT 可达' %></div>
-          <div class="cn-test-reach-value" id="cn-test-reach">8<span>/100</span></div>
-          <svg class="cn-test-spark" id="cn-test-spark" viewBox="0 0 140 36" aria-hidden="true"></svg>
+          <div class="cn-test-reach-label"><%= lang === 'en' ? 'Reach' : '可达' %></div>
+          <div class="cn-test-reach-value" id="cn-test-reach">10<span>/100</span></div>
+          <svg class="cn-test-spark" id="cn-test-spark" viewBox="0 0 120 28" aria-hidden="true"></svg>
         </div>
       </div>
+      <p class="cn-test-link-hint" id="cn-test-link-hint"><%= lang === 'en' ? 'Click two nodes to connect them' : '点两个节点，把它们连上' %></p>
       <div class="cn-test-canvas-wrap">
         <svg class="cn-test-canvas" id="cn-test-canvas" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
       </div>
-      <div class="cn-test-legend" id="cn-test-legend"></div>
     </section>
 
     <section class="cn-test-chat-pane" aria-label="<%= lang === 'en' ? 'Feed the web' : '喂养端点网' %>">
@@ -70,8 +67,7 @@
           </div>
         </form>
         <p class="cn-test-hint">
-          <%= lang === 'en' ? 'No form — feed the web · concept only' : '没有问卷 — 喂养端点网 · 概念页' %>
-          · <a href="/airsup/china"><%= lang === 'en' ? 'Live product' : '正式版' %></a>
+          <%= lang === 'en' ? 'Concept · ' : '概念 · ' %><a href="/airsup/china"><%= lang === 'en' ? 'Live' : '正式版' %></a>
         </p>
       </div>
     </section>
@@ -80,8 +76,8 @@
   <script>
   (function () {
     var lang = document.body.getAttribute('data-lang') || 'zh';
-    var chatKey = 'airsup_china_test_chat_v2';
-    var webKey = 'airsup_china_test_web_v2';
+    var chatKey = 'airsup_china_test_chat_v3';
+    var webKey = 'airsup_china_test_web_v3';
     var thread = document.getElementById('cn-test-thread');
     var form = document.getElementById('cn-test-form');
     var input = document.getElementById('cn-test-input');
@@ -92,7 +88,7 @@
     var canvas = document.getElementById('cn-test-canvas');
     var spark = document.getElementById('cn-test-spark');
     var reachEl = document.getElementById('cn-test-reach');
-    var legendEl = document.getElementById('cn-test-legend');
+    var linkHint = document.getElementById('cn-test-link-hint');
     var welcome = <%- JSON.stringify(welcome) %>;
     var layout = <%- JSON.stringify(layoutPositions) %>;
     var initialWeb = <%- JSON.stringify(initialWeb) %>;
@@ -100,6 +96,7 @@
     var busy = false;
     var typingRow = null;
     var pulseIds = [];
+    var selectedNode = null;
 
     function loadJson(key, fallback) {
       try {
@@ -193,67 +190,161 @@
     }
 
     function nodeRadius(node) {
-      if (node.id === 'core') return 5.2 + node.strength * 1.8;
-      return 2.2 + node.strength * 3.6;
+      if (node.id === 'core') return 6.2 + (node.strength || 0) * 1.4;
+      return 2.4 + (node.strength || 0) * 3.2;
+    }
+
+    function curvePath(a, b, bend) {
+      var mx = (a.x + b.x) / 2;
+      var my = (a.y + b.y) / 2;
+      var dx = b.x - a.x;
+      var dy = b.y - a.y;
+      var len = Math.sqrt(dx * dx + dy * dy) || 1;
+      var mag = (bend == null ? 1 : bend) * Math.min(9, len * 0.2);
+      var cx = mx + (-dy / len) * mag;
+      var cy = my + (dx / len) * mag;
+      return 'M ' + a.x + ' ' + a.y + ' Q ' + cx.toFixed(2) + ' ' + cy.toFixed(2) + ' ' + b.x + ' ' + b.y;
+    }
+
+    function edgeBend(from, to) {
+      var seed = (String(from) + String(to)).length;
+      return (seed % 2 === 0 ? 1 : -1) * (0.7 + (seed % 5) * 0.12);
     }
 
     function renderWeb(web) {
-      var edges = web.edges || [];
       var nodes = web.nodes || {};
-      var edgeHtml = edges.map(function (e) {
+      var baseEdges = web.edges || [];
+      var custom = web.customLinks || [];
+      var allEdges = baseEdges.concat(custom.map(function (e) {
+        return { from: e.from, to: e.to, kind: 'custom' };
+      }));
+
+      var edgeHtml = allEdges.map(function (e) {
         var a = layout[e.from];
         var b = layout[e.to];
         if (!a || !b) return '';
-        var live = (nodes[e.from] && nodes[e.from].strength > 0.12) && (nodes[e.to] && nodes[e.to].strength > 0.12);
-        return '<line class="cn-test-edge' + (live ? ' is-live' : '') + '" x1="' + a.x + '" y1="' + a.y + '" x2="' + b.x + '" y2="' + b.y + '"></line>';
+        var sa = nodes[e.from] ? nodes[e.from].strength : 0;
+        var sb = nodes[e.to] ? nodes[e.to].strength : 0;
+        var live = sa > 0.15 && sb > 0.15;
+        var cls = 'cn-test-edge'
+          + (e.kind === 'custom' ? ' is-custom' : '')
+          + (live || e.kind === 'custom' ? ' is-live' : '');
+        var preview = selectedNode && (
+          (selectedNode === e.from || selectedNode === e.to) ? '' : ''
+        );
+        void preview;
+        return '<path class="' + cls + '" d="' + curvePath(a, b, edgeBend(e.from, e.to)) + '"></path>';
       }).join('');
+
+      if (selectedNode && layout[selectedNode]) {
+        // soft preview ring already via selected class
+      }
 
       var nodeHtml = Object.keys(layout).map(function (id) {
         var pos = layout[id];
         var node = nodes[id] || { id: id, label: id, strength: 0 };
-        var on = node.strength > 0.12 || id === 'core';
+        var on = node.strength > 0.15 || id === 'core';
         var pulse = pulseIds.indexOf(id) >= 0 ? ' is-pulse' : '';
         var core = id === 'core' ? ' is-core' : '';
+        var sel = selectedNode === id ? ' is-selected' : '';
         var r = nodeRadius(node);
-        // Place labels outside the spoke cluster to reduce line/text collisions
-        var below = pos.y >= 48;
-        var labelY = below ? (pos.y + r + 4.2) : (pos.y - r - 2.4);
-        var short = String(node.label || '').replace(/\s*\/\s*/g, '/');
-        return '<g class="cn-test-node' + (on ? ' is-on' : '') + core + pulse + '" data-id="' + id + '">'
-          + '<circle cx="' + pos.x + '" cy="' + pos.y + '" r="' + r.toFixed(2) + '"></circle>'
+        var halo = Math.max(r + 1.6, r * 1.35);
+        var below = pos.y >= 52;
+        var labelY = below ? (pos.y + r + 3.6) : (pos.y - r - 1.8);
+        var short = String(node.label || '');
+        return '<g class="cn-test-node' + (on ? ' is-on' : '') + core + pulse + sel + '" data-id="' + id + '">'
+          + '<circle class="halo" cx="' + pos.x + '" cy="' + pos.y + '" r="' + halo.toFixed(2) + '"></circle>'
+          + '<circle class="core-dot" cx="' + pos.x + '" cy="' + pos.y + '" r="' + r.toFixed(2) + '"></circle>'
           + '<text x="' + pos.x + '" y="' + labelY.toFixed(2) + '">' + esc(short) + '</text>'
           + '</g>';
       }).join('');
 
       canvas.innerHTML = edgeHtml + nodeHtml;
-      reachEl.innerHTML = String(web.reach || 8) + '<span>/100</span>';
-      renderSpark(web.reachHistory || [web.reach || 8]);
-
-      var lit = Object.keys(nodes).filter(function (id) {
-        return id !== 'core' && nodes[id].strength > 0.15;
-      }).map(function (id) {
-        var hints = (nodes[id].hints || []).slice(0, 2).join(', ');
-        return '<span><strong>' + esc(nodes[id].label) + '</strong>' + (hints ? ' · ' + esc(hints) : '') + '</span>';
-      });
-      legendEl.innerHTML = lit.length
-        ? lit.join('')
-        : '<span>' + esc(lang === 'en' ? 'Ghost nodes wait for real material.' : '淡节点在等真材料。') + '</span>';
+      reachEl.innerHTML = String(web.reach || 10) + '<span>/100</span>';
+      renderSpark(web.reachHistory || [web.reach || 10]);
+      bindGraphClicks();
+      updateLinkHint();
     }
 
     function renderSpark(history) {
-      var vals = (history || [8]).map(function (n) { return Number(n) || 0; });
-      if (vals.length < 2) vals = [vals[0] || 8, vals[0] || 8];
+      var vals = (history || [10]).map(function (n) { return Number(n) || 0; });
+      if (vals.length < 2) vals = [vals[0] || 10, vals[0] || 10];
       var min = Math.min.apply(null, vals.concat([0]));
       var max = Math.max.apply(null, vals.concat([20]));
       if (max - min < 8) max = min + 8;
-      var w = 140;
-      var h = 36;
+      var w = 120;
+      var h = 28;
       var pts = vals.map(function (v, i) {
         var x = (i / (vals.length - 1)) * (w - 4) + 2;
-        var y = h - 4 - ((v - min) / (max - min)) * (h - 10);
+        var y = h - 3 - ((v - min) / (max - min)) * (h - 8);
         return x.toFixed(1) + ',' + y.toFixed(1);
       }).join(' ');
-      spark.innerHTML = '<polyline fill="none" stroke="#7a1e2b" stroke-width="2" points="' + pts + '"></polyline>';
+      spark.innerHTML = '<polyline fill="none" stroke="#7a1e2b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" points="' + pts + '"></polyline>';
+    }
+
+    function updateLinkHint() {
+      if (!linkHint) return;
+      if (!selectedNode) {
+        linkHint.textContent = lang === 'en' ? 'Click two nodes to connect them' : '点两个节点，把它们连上';
+        return;
+      }
+      var label = (web.nodes[selectedNode] && web.nodes[selectedNode].label) || selectedNode;
+      linkHint.textContent = lang === 'en'
+        ? ('Selected “' + label + '” — click another node')
+        : ('已选「' + label + '」— 再点另一个节点');
+    }
+
+    function bindGraphClicks() {
+      canvas.querySelectorAll('.cn-test-node').forEach(function (g) {
+        g.onclick = function (ev) {
+          ev.preventDefault();
+          var id = g.getAttribute('data-id');
+          if (!id) return;
+          if (!selectedNode) {
+            selectedNode = id;
+            renderWeb(web);
+            return;
+          }
+          if (selectedNode === id) {
+            selectedNode = null;
+            renderWeb(web);
+            return;
+          }
+          var from = selectedNode;
+          var to = id;
+          selectedNode = null;
+          createLink(from, to);
+        };
+      });
+    }
+
+    async function createLink(from, to) {
+      try {
+        var res = await fetch('/airsup/china/test/api/link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ from: from, to: to, web: web }),
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (data.web) {
+          pulseIds = [from, to];
+          web = data.web;
+          saveJson(webKey, web);
+          renderWeb(web);
+          setTimeout(function () { pulseIds = []; renderWeb(web); }, 800);
+          var note = lang === 'en'
+            ? ('Linked. Reach ' + web.reach + '.')
+            : ('已连接。可达 ' + web.reach + '。');
+          messages.push({ role: 'assistant', content: note, at: Date.now() });
+          saveJson(chatKey, messages);
+          appendBubble('assistant', note);
+        } else {
+          renderWeb(web);
+        }
+      } catch (e) {
+        renderWeb(web);
+      }
     }
 
     function ensureWelcome(messages) {
