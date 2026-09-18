@@ -57,6 +57,8 @@
     del: <%= JSON.stringify(t('quote_delete')) %>,
     badFile: <%= JSON.stringify(t('quote_error_file')) %>,
     tooMany: <%= JSON.stringify(t('quote_error_many')) %>,
+    tooLarge: <%= JSON.stringify(t('quote_error_large')) %>,
+    auth: <%= JSON.stringify(t('quote_error_auth')) %>,
     generic: <%= JSON.stringify(t('quote_error_generic')) %>
   };
 
@@ -133,8 +135,11 @@
       });
       var data = await res.json().catch(function () { return {}; });
       if (!res.ok) {
-        if (data.error === 'unsupported_file') showError(copy.badFile);
+        if (res.status === 401 || res.status === 403 || data.error === 'auth_required' || data.error === 'forbidden') {
+          showError(copy.auth);
+        } else if (data.error === 'unsupported_file') showError(copy.badFile);
         else if (data.error === 'too_many_files') showError(copy.tooMany);
+        else if (data.error === 'file_too_large') showError(copy.tooLarge);
         else showError(copy.generic);
         return;
       }

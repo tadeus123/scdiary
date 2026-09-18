@@ -12,7 +12,8 @@ const {
 
 const BUCKET = 'airsup-china-quotations';
 const MAX_FILES = 10;
-const MAX_BYTES = 15 * 1024 * 1024;
+// Vercel serverless request body limit is ~4.5MB; keep headroom under that.
+const MAX_BYTES = 4 * 1024 * 1024;
 const ALLOWED_EXT = new Set(['.pdf', '.xlsx', '.xls', '.zip', '.csv', '.txt']);
 const ALLOWED_MIME = new Set([
   'application/pdf',
@@ -242,10 +243,18 @@ function mergeExtracted(prev, incoming) {
 
 async function ensureBucket() {
   const client = db.requireDb();
-  const { data: buckets } = await client.storage.listBuckets();
-  if ((buckets || []).some((row) => row.name === BUCKET)) return;
-  const { error } = await client.storage.createBucket(BUCKET, { public: false });
-  if (error && !/already exists|duplicate/i.test(error.message || '')) {
+  try {
+    const { data: buckets, error: listError } = await client.storage.listBuckets();
+    if (listError) throw listError;
+    if ((buckets || []).some((row) => row.name === BUCKET)) return;
+  } catch (error) {
+    console.error('Airsup china quotation listBuckets:', error.message || error);
+  }
+  const { error } = await client.storage.createBucket(BUCKET, {
+    public: false,
+    fileSizeLimit: MAX_BYTES,
+  });
+  if (error && !/already exists|duplicate|Bucket already exists/i.test(String(error.message || error.error || ''))) {
     throw error;
   }
 }
@@ -300,7 +309,12 @@ async function uploadAndExtract(company, file) {
       contentType: file.mimetype || 'application/octet-stream',
       upsert: false,
     });
-  if (uploadError) throw uploadError;
+    if (uploadError) {
+      const err = new Error(uploadError.message || 'storage_upload_failed');
+      err.code = 'storage_failed';
+      err.cause = uploadError;
+      throw err;
+    }
 
   const doc = {
     id: docId,

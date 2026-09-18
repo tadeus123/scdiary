@@ -1015,7 +1015,11 @@ router.get('/api/quotations', async (req, res) => {
 router.post('/api/quotations', (req, res) => {
   quoteUpload.single('file')(req, res, async (multerErr) => {
     if (multerErr) {
-      return res.status(400).json({ error: 'upload_failed', detail: multerErr.message });
+      const tooBig = multerErr.code === 'LIMIT_FILE_SIZE';
+      return res.status(400).json({
+        error: tooBig ? 'file_too_large' : 'upload_failed',
+        detail: multerErr.message,
+      });
     }
     if (!peopleAuth.allowedOrigin(req)) return res.status(403).json({ error: 'forbidden' });
     const company = await requireCompanyApi(req, res);
@@ -1026,11 +1030,14 @@ router.post('/api/quotations', (req, res) => {
       return res.json(result.meta);
     } catch (error) {
       const code = error && error.code;
-      if (code === 'unsupported_file' || code === 'too_many_files') {
+      if (code === 'unsupported_file' || code === 'too_many_files' || code === 'file_too_large') {
         return res.status(400).json({ error: code });
       }
       console.error('Airsup china quotation upload error:', error);
-      return res.status(500).json({ error: 'unavailable' });
+      return res.status(500).json({
+        error: code === 'storage_failed' ? 'storage_failed' : 'unavailable',
+        detail: String((error && error.message) || '').slice(0, 200),
+      });
     }
   });
 });
