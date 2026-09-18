@@ -144,8 +144,6 @@
         hideEdgesOnDrag: false,
         hideEdgesOnZoom: false,
         zoomSpeed: 0.5,
-        zoomMin: 0.2,
-        zoomMax: 8.0,
       },
       nodes: {
         borderWidth: 2,
