@@ -185,30 +185,47 @@ async function ensureTestDemoAllowlist() {
   return ensureDemoAllowlist();
 }
 
-async function resetDemoPending(lang) {
+async function resetDemoPending(lang, req, res) {
   await ensureTestDemoAllowlist();
   const patch = {
     ...onboardingResetPatch(),
     locale: lang === 'en' ? 'en' : 'zh',
   };
+  let company = null;
   if (usingMemory()) {
     const existing = await memoryStore.getByDomain(DEMO_DOMAIN);
     if (existing) {
-      return memoryStore.updateCompany(existing.company_id, patch);
+      if (typeof memoryStore.deleteSessionsForCompany === 'function') {
+        await memoryStore.deleteSessionsForCompany(existing.company_id).catch(() => null);
+      }
+      company = await memoryStore.updateCompany(existing.company_id, patch);
+    } else {
+      company = await memoryStore.insertCompany({
+        domain: DEMO_DOMAIN,
+        ...patch,
+      });
     }
-    return memoryStore.insertCompany({
-      domain: DEMO_DOMAIN,
-      ...patch,
-    });
+  } else {
+    try {
+      company = await ensureDemoCompany({ forceLive: true });
+      if (company && typeof db.deleteSessionsForCompany === 'function') {
+        await db.deleteSessionsForCompany(company.company_id).catch(() => null);
+      }
+      company = await db.updateCompany(company.company_id, patch);
+    } catch (error) {
+      console.error('Airsup china test demo reset skipped:', error.message);
+      company = null;
+    }
   }
-  try {
-    let company = await ensureDemoCompany({ forceLive: true });
-    company = await db.updateCompany(company.company_id, patch);
-    return company;
-  } catch (error) {
-    console.error('Airsup china test demo reset skipped:', error.message);
-    return null;
+  // Drop this browser's cookie so SSR/API do not keep a stale logged-in company.
+  if (req && res) {
+    try {
+      await clearTestSession(req, res);
+    } catch {
+      /* ignore */
+    }
   }
+  return company;
 }
 
 router.get(['/', ''], async (req, res) => {
@@ -456,7 +473,7 @@ router.post('/api/onboard/demo', express.json(), async (req, res) => {
   }
   const lang = langFrom(req, res);
   try {
-    await resetDemoPending(lang);
+    await resetDemoPending(lang, req, res);
     // Do not openSession until verify — demo UX returns verifyPath for one-click verify.
     const result = await startSignup({
       website: `https://${DEMO_DOMAIN}`,
@@ -600,7 +617,7 @@ router.post('/api/login-demo', express.json(), async (req, res) => {
       if (existing && existing.status === 'live') {
         company = existing;
       } else {
-        await resetDemoPending(langFrom(req, res));
+        await resetDemoPending(langFrom(req, res), req, res);
         const started = await startSignup({
           website: `https://${DEMO_DOMAIN}`,
           email: DEMO_EMAIL,
@@ -709,7 +726,7 @@ router.post('/api/login/verify', express.json(), async (req, res) => {
         const demoLogin = await (async () => {
           const existing = await memoryStore.getByDomain(DEMO_DOMAIN);
           if (existing && existing.status === 'live') return existing;
-          await resetDemoPending(lang);
+          await resetDemoPending(lang, req, res);
           const started = await startSignup({
             website: `https://${DEMO_DOMAIN}`,
             email: DEMO_EMAIL,

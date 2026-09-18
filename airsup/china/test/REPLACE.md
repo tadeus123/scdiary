@@ -23,6 +23,7 @@ The test onboarding core is `airsup/china/test/onboard.js`. It reuses live `db`,
 5. **Error keys**
    - Reuse the same i18n keys live uses: `err_mismatch`, `err_taken`, `err_free_mail`, `err_rate`, `err_email`, `err_website`, `err_mail`, `err_db`, `err_token`, `err_publish`.
    - Test `publishCompany` is stricter than live `canPublish`: it also requires WeChat + `sample_lead` (`qualityReady` → `err_publish_quality`) so the endpoint can convert buyers. Keep that gate when swapping live, or live endpoints stay thin.
+   - Demo reset (`resetDemoPending`) must call `deleteSessionsForCompany` + clear the browser cookie (same as live `resetDemoForOnboarding`) so `?demo=1` never leaves a stale logged-in session.
 
 6. **Auth (pick one at cutover)**
    - Canonical identity for cutover: **email magic-link verify** via `startSignup` / `VERIFY_PATH` (same as live).

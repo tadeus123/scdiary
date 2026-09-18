@@ -722,8 +722,10 @@
         if (fieldsOut.data.web) applyWeb(fieldsOut.data.web, true);
         applyState(fieldsOut.data.state, { loggedIn: true });
         if (!fieldsOut.data.state || !fieldsOut.data.state.qualityReady) {
-          setObMsg(copy.needQuality);
-          renderGaps(fieldsOut.data.state && fieldsOut.data.state.gaps);
+          var st = fieldsOut.data.state;
+          // canPublish false → enrichment gaps; else missing WeChat/sample quality gate.
+          setObMsg(st && st.canPublish ? copy.needQuality : copy.publishFail);
+          renderGaps(st && st.gaps);
           return;
         }
         var pubOut = await apiJson('/airsup/china/test/api/onboard/publish', {
@@ -778,6 +780,9 @@
             history.replaceState({}, '', '/airsup/china/test' + (en ? '?lang=en' : ''));
           } catch (e2) {}
           if (auto && out.data.verifyPath) {
+            try {
+              sessionStorage.setItem('cn_test_auto_onboard', '1');
+            } catch (e3) {}
             window.location.href = out.data.verifyPath;
             return;
           }
@@ -788,6 +793,21 @@
         }
       })();
     }
+
+    // After verify redirect from ?demo=1&auto=1, finish WeChat/sample → publish for a smooth full-funnel demo.
+    (async function runAutoFields() {
+      var flag = '';
+      try { flag = sessionStorage.getItem('cn_test_auto_onboard') || ''; } catch (e) { flag = ''; }
+      if (flag !== '1') return;
+      if (!state || state.step !== 'fields') return;
+      try { sessionStorage.removeItem('cn_test_auto_onboard'); } catch (e2) {}
+      await new Promise(function (r) { setTimeout(r, 700); });
+      document.getElementById('cn-ob-wechat').value = state.wechat || 'airsup_demo_tade';
+      document.getElementById('cn-ob-sample').value = state.sampleLead || (en ? 'samples in 5 days' : '样品 5 天');
+      document.getElementById('cn-ob-flex').value = state.flexibility || 'normal';
+      if (state.contactName) document.getElementById('cn-ob-contact-fields').value = state.contactName;
+      document.getElementById('cn-ob-publish').click();
+    })();
 
     fileInput.addEventListener('change', function () {
       Array.prototype.slice.call(fileInput.files || []).forEach(function (f) { pendingFiles.push(f); });
