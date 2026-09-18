@@ -229,6 +229,48 @@ async function resetDemoPending(lang, req, res) {
   return company;
 }
 
+/**
+ * Ensure a live demo company exists and return it (memory or db).
+ * Used by board-first /test SSR and ?demo_login=1 / api/login-demo.
+ */
+async function ensureDemoLiveCompany(lang, req, res) {
+  await ensureTestDemoAllowlist();
+  let company = usingMemory()
+    ? await memoryStore.getByDomain(DEMO_DOMAIN)
+    : (db.isConfigured() ? await db.getByDomain(DEMO_DOMAIN).catch(() => null) : null);
+
+  if (company && company.status === 'live') {
+    return company;
+  }
+
+  if (usingMemory()) {
+    await resetDemoPending(lang, req, res);
+    const started = await startSignup({
+      website: `https://${DEMO_DOMAIN}`,
+      email: DEMO_EMAIL,
+      contact: 'Tade',
+      city: 'shenzhen',
+      lang,
+      source: 'demo',
+      publicOrigin: peopleAuth.getPublicOrigin(req),
+    });
+    if (!started.ok) return null;
+    const verified = await consumeVerifyToken(started.token);
+    if (!verified.ok || !verified.company) return null;
+    const withFields = await saveInteraction(verified.company, {
+      contact_wechat: 'airsup_demo_tade',
+      sample_lead: 'samples in 5 days',
+      flexibility: 'normal',
+      contact_name: 'Tade',
+    }, lang);
+    const published = await publishCompany(withFields);
+    return published.company || withFields || null;
+  }
+
+  if (!db.isConfigured()) return null;
+  return ensureDemoCompany({ forceLive: true });
+}
+
 router.get(['/', ''], async (req, res) => {
   const lang = langFrom(req, res);
   res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
@@ -237,35 +279,7 @@ router.get(['/', ''], async (req, res) => {
   // One-click demo login for board demos: /airsup/china/test?demo_login=1
   if (String(req.query.demo_login || '') === '1') {
     try {
-      await ensureTestDemoAllowlist();
-      let company = usingMemory()
-        ? await memoryStore.getByDomain(DEMO_DOMAIN)
-        : (db.isConfigured() ? await db.getByDomain(DEMO_DOMAIN).catch(() => null) : null);
-      if (!company || company.status !== 'live') {
-        await resetDemoPending(lang, req, res);
-        const started = await startSignup({
-          website: `https://${DEMO_DOMAIN}`,
-          email: DEMO_EMAIL,
-          contact: 'Tade',
-          city: 'shenzhen',
-          lang,
-          source: 'demo',
-          publicOrigin: peopleAuth.getPublicOrigin(req),
-        });
-        if (started.ok) {
-          const verified = await consumeVerifyToken(started.token);
-          if (verified.ok && verified.company) {
-            const withFields = await saveInteraction(verified.company, {
-              contact_wechat: 'airsup_demo_tade',
-              sample_lead: 'samples in 5 days',
-              flexibility: 'normal',
-              contact_name: 'Tade',
-            }, lang);
-            const published = await publishCompany(withFields);
-            company = published.company || withFields;
-          }
-        }
-      }
+      const company = await ensureDemoLiveCompany(lang, req, res);
       if (company && company.company_id) {
         await openSession(req, res, company.company_id);
       }
@@ -276,10 +290,10 @@ router.get(['/', ''], async (req, res) => {
   }
 
   res.locals.seo = {
-    title: lang === 'en' ? 'Airsup test — company endpoint web' : 'Airsup 测试 — 公司端点网',
+    title: lang === 'en' ? 'Airsup test — supplier board' : 'Airsup 测试 — 供应商看板',
     description: lang === 'en'
-      ? 'Isolated concept: grow your ChatGPT endpoint web by dumping real factory material. Live product unchanged.'
-      : '独立概念：往端点网里丢真材料，看着它变亮。不影响正式产品。',
+      ? 'Isolated supplier board: conversation rate, interactions, customers, revenue. Live product unchanged.'
+      : '独立供应商看板：转化率、互动、客户、收入。不影响正式产品。',
     path: '/airsup/china/test',
     noindex: true,
     includePersonSchema: false,
@@ -294,7 +308,25 @@ router.get(['/', ''], async (req, res) => {
     company = null;
   }
 
-  const onboardState = onboardingState(company, lang);
+  // Board-first: /test always lands on the live supplier board (no onboarding wizard).
+  // Guest mode (?guest=1) keeps the board shell with zeros and login available.
+  const guestMode = String(req.query.guest || '') === '1';
+  if ((!company || company.status !== 'live') && !guestMode) {
+    try {
+      const demo = await ensureDemoLiveCompany(lang, req, res);
+      if (demo && demo.company_id) {
+        await openSession(req, res, demo.company_id);
+        company = demo;
+      }
+    } catch (error) {
+      console.error('Airsup china test auto demo session skipped:', error.message);
+    }
+  }
+
+  // Surface as live when we have a live company — hide wizard copy from SSR.
+  const onboardState = company && company.status === 'live'
+    ? { ...onboardingState(company, lang), step: 'live' }
+    : onboardingState(company, lang);
   let initial = emptyWeb(lang);
   if (company) {
     try {
@@ -304,11 +336,8 @@ router.get(['/', ''], async (req, res) => {
     }
   }
 
-  const demoMode = String(req.query.demo || '') === '1';
-  const autoDemo = String(req.query.auto || '') === '1';
-  const board = company && onboardState.step === 'live'
-    ? computeBoard(company, initial)
-    : null;
+  // Always pass a board payload so the supplier board is the main surface.
+  const board = computeBoard(company, initial);
 
   return render(req, res, 'chat.ejs', {
     lang,
@@ -321,9 +350,10 @@ router.get(['/', ''], async (req, res) => {
     cities: CITIES,
     initialWeb: initial,
     layoutPositions: layoutPositions(),
-    demoMode,
-    autoDemo,
+    demoMode: false,
+    autoDemo: false,
     board,
+    boardFirst: true,
   });
 });
 
@@ -678,7 +708,14 @@ router.get('/api/board', async (req, res) => {
   try {
     const company = await readTestCompany(req);
     if (!company) {
-      return res.status(401).json({ ok: false, error: 'login_required' });
+      // Board-first shell: zeros until login (do not force onboarding).
+      return res.json({
+        ok: true,
+        board: computeBoard(null, emptyWeb(lang)),
+        company: null,
+        state: onboardingState(null, lang),
+        loggedIn: false,
+      });
     }
     let web = emptyWeb(lang);
     try {
@@ -698,6 +735,7 @@ router.get('/api/board', async (req, res) => {
       board: computeBoard(company, web),
       company: companySummary(company, lang),
       state: onboardingState(company, lang),
+      loggedIn: true,
     });
   } catch (error) {
     console.error('Airsup china test board error:', error);
@@ -776,50 +814,14 @@ router.post('/api/login-demo', express.json(), async (req, res) => {
     return res.status(403).json({ error: 'forbidden' });
   }
   try {
-    await ensureTestDemoAllowlist();
-    let company;
-    if (usingMemory()) {
-      const existing = await memoryStore.getByDomain(DEMO_DOMAIN);
-      if (existing && existing.status === 'live') {
-        company = existing;
-      } else {
-        await resetDemoPending(langFrom(req, res), req, res);
-        const started = await startSignup({
-          website: `https://${DEMO_DOMAIN}`,
-          email: DEMO_EMAIL,
-          contact: 'Tade',
-          city: 'shenzhen',
-          lang: langFrom(req, res),
-          source: 'demo',
-          publicOrigin: peopleAuth.getPublicOrigin(req),
-        });
-        if (!started.ok) {
-          return res.status(500).json({ error: 'login_failed' });
-        }
-        const verified = await consumeVerifyToken(started.token);
-        if (!verified.ok || !verified.company) {
-          return res.status(500).json({ error: 'login_failed' });
-        }
-        const withFields = await saveInteraction(verified.company, {
-          contact_wechat: 'airsup_demo_tade',
-          sample_lead: 'samples in 3 days',
-          flexibility: 'normal',
-          contact_name: 'Tade',
-        }, langFrom(req, res));
-        const published = await publishCompany(withFields);
-        if (!published.ok) {
-          return res.status(500).json({ error: 'login_failed' });
-        }
-        company = published.company;
-      }
-    } else {
-      if (!db.isConfigured()) {
-        return res.status(503).json({ error: 'storage_unavailable' });
-      }
-      company = await ensureDemoCompany({ forceLive: true });
+    const lang = langFrom(req, res);
+    const company = await ensureDemoLiveCompany(lang, req, res);
+    if (!company || !company.company_id) {
+      return res.status(usingMemory() || db.isConfigured() ? 500 : 503).json({
+        error: usingMemory() || db.isConfigured() ? 'login_failed' : 'storage_unavailable',
+      });
     }
     await openSession(req, res, company.company_id);
-    const lang = langFrom(req, res);
     const seeded = seedWebFromCompany(company, lang);
     return res.json({
       ok: true,
@@ -830,6 +832,7 @@ router.post('/api/login-demo', express.json(), async (req, res) => {
       },
       web: seeded.web,
       seeded: seeded.added,
+      board: computeBoard(company, seeded.web),
     });
   } catch (error) {
     console.error('Airsup china test demo login error:', error);

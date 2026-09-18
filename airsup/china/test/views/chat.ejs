@@ -11,13 +11,14 @@
   <% } %>
 </head>
 <body
-  class="cn-body cn-test"
+  class="cn-body cn-test<%= typeof boardFirst !== 'undefined' && boardFirst ? ' cn-test-board-first' : '' %><%= typeof board !== 'undefined' && board ? ' cn-test-has-board' : '' %>"
   data-lang="<%= lang %>"
   data-logged-in="<%= loggedIn ? '1' : '0' %>"
-  data-onboard-step="<%= (onboard && onboard.step) || 'site' %>"
+  data-onboard-step="<%= (typeof boardFirst !== 'undefined' && boardFirst) ? 'live' : ((onboard && onboard.step) || 'site') %>"
+  data-board-first="<%= typeof boardFirst !== 'undefined' && boardFirst ? '1' : '0' %>"
   data-using-memory="<%= usingMemory ? '1' : '0' %>"
-  data-demo="<%= typeof demoMode !== 'undefined' && demoMode ? '1' : '0' %>"
-  data-auto="<%= typeof autoDemo !== 'undefined' && autoDemo ? '1' : '0' %>"
+  data-demo="0"
+  data-auto="0"
 >
   <header class="cn-test-top">
     <div class="cn-test-brand">
@@ -36,12 +37,12 @@
     </div>
   </header>
 
-  <div class="cn-test-reach-float" aria-hidden="true">
+  <div class="cn-test-reach-float" aria-hidden="true" hidden>
     <div class="n" id="cn-test-reach">0<span>/100</span></div>
     <svg class="cn-test-spark" id="cn-test-spark" viewBox="0 0 72 14"></svg>
   </div>
 
-  <aside class="cn-test-onboard" id="cn-test-onboard" aria-label="<%= lang === 'en' ? 'Factory onboarding' : '工厂上线' %>" <%= onboard && onboard.step === 'live' ? 'hidden' : '' %>>
+  <aside class="cn-test-onboard" id="cn-test-onboard" aria-label="<%= lang === 'en' ? 'Factory onboarding' : '工厂上线' %>" hidden>
     <div class="cn-test-onboard-card">
       <p class="cn-test-onboard-kicker" id="cn-ob-kicker"></p>
       <h1 class="cn-test-onboard-title" id="cn-ob-title"></h1>
@@ -103,7 +104,7 @@
   </aside>
 
   <div id="cn-test-network"></div>
-  <div class="cn-test-empty" id="cn-test-empty">
+  <div class="cn-test-empty<%= typeof board !== 'undefined' && board ? ' is-gone' : '' %>" id="cn-test-empty" <%= typeof board !== 'undefined' && board ? 'hidden' : '' %>>
     <p><%= lang === 'en' ? 'Empty web. Drop a quote, site, or scrap — nodes appear and link.' : '空网。丢报价、网站或碎片 — 节点会出现并连上。' %></p>
   </div>
 
@@ -116,10 +117,10 @@
 
   <div class="cn-test-toast" id="cn-test-toast" role="status"></div>
 
-  <section class="cn-test-board<%= typeof board !== 'undefined' && board ? ' is-ready' : '' %>" id="cn-test-board" <%= typeof board !== 'undefined' && board ? '' : 'hidden' %> aria-label="<%= lang === 'en' ? 'Supplier board' : '供应商看板' %>">
+  <section class="cn-test-board is-ready" id="cn-test-board" aria-label="<%= lang === 'en' ? 'Supplier board' : '供应商看板' %>">
     <div class="cn-test-board-main">
       <p class="cn-test-board-rate-label"><%= lang === 'en' ? 'Conversation rate' : '转化率' %></p>
-      <p class="cn-test-board-rate" id="cn-board-rate"><%= typeof board !== 'undefined' && board ? (board.conversationRate + '%') : '0%' %></p>
+      <p class="cn-test-board-rate" id="cn-board-rate"><%= (typeof board !== 'undefined' && board ? board.conversationRate : 0) + '%' %></p>
       <div class="cn-test-board-metrics">
         <div class="cn-test-board-metric">
           <div class="n" id="cn-board-interactions"><%= typeof board !== 'undefined' && board ? board.interactions : 0 %></div>
@@ -183,10 +184,8 @@
     </div>
   </div>
 
-  <!-- Prefer server board so the dashboard paints before JS. -->
-  <% if (typeof board !== 'undefined' && board) { %>
+  <!-- Board is the only main surface on /test. -->
   <script>document.body.classList.add('cn-test-has-board');</script>
-  <% } %>
 
   <script src="/airsup/china/test/test-network.js?v=2"></script>
   <script>
@@ -226,7 +225,8 @@
     var obVerifyNow = document.getElementById('cn-ob-verify-now');
     var initialWeb = <%- JSON.stringify(initialWeb) %>;
     var initialOnboard = <%- JSON.stringify(onboard || { step: 'site' }) %>;
-    var initialBoard = <%- JSON.stringify(typeof board !== 'undefined' ? board : null) %>;
+    var initialBoard = <%- JSON.stringify(typeof board !== 'undefined' ? board : { conversationRate: 0, interactions: 0, customers: 0, revenue: 0 }) %>;
+    var boardFirst = true;
     var initialLoggedIn = document.body.getAttribute('data-logged-in') === '1';
     var pendingFiles = [];
     var busy = false;
@@ -328,8 +328,9 @@
       } catch (e) { return ''; }
     }
     // Prefer SSR flags — browser tooling sometimes strips ?demo before client JS runs.
-    var wantDemo = document.body.getAttribute('data-demo') === '1' || qs('demo') === '1';
-    var wantAuto = document.body.getAttribute('data-auto') === '1' || qs('auto') === '1';
+    // Board-first /test never runs the onboarding demo wizard.
+    var wantDemo = !boardFirst && (document.body.getAttribute('data-demo') === '1' || qs('demo') === '1');
+    var wantAuto = !boardFirst && (document.body.getAttribute('data-auto') === '1' || qs('auto') === '1');
 
     function hideDetails() {
       detailsEl.classList.add('hidden');
@@ -481,14 +482,16 @@
       obLead.textContent = pair[1];
       document.getElementById('cn-ob-check-copy').textContent = copy.checkMail;
       document.getElementById('cn-ob-live-copy').textContent = copy.liveBody;
-      var isLive = step === 'live';
-      // Board replaces dock + onboard panel once published.
-      setDockVisible(!isLive && (step === 'fields' && state && state.qualityReady));
+      // /test is board-only — never show onboarding panel or dump dock.
+      setDockVisible(false);
       if (onboardEl) {
-        onboardEl.hidden = isLive;
-        onboardEl.classList.toggle('is-compact', isLive);
+        onboardEl.hidden = true;
+        onboardEl.classList.add('is-compact');
       }
-      if (!isLive) renderBoard(null);
+      if (reachFloat) reachFloat.hidden = true;
+      if (emptyEl) emptyEl.classList.add('is-gone');
+      document.body.classList.add('cn-test-has-board');
+      if (initialBoard) renderBoard(initialBoard);
     }
 
     function renderGaps(gaps) {
@@ -568,7 +571,7 @@
       } else if (initialLoggedIn && state.title) {
         setLoggedIn(true, state.title);
       }
-      if (step === 'live') {
+      if (step === 'live' || boardFirst) {
         if (extra && extra.board) renderBoard(extra.board);
         else if (initialBoard) renderBoard(initialBoard);
         else {
@@ -643,9 +646,9 @@
             });
           } catch (e) {}
           setLoggedIn(false, '');
-          initialBoard = null;
-          renderBoard(null);
-          applyState({ step: 'site', status: null, title: '', gaps: [] }, { loggedIn: false });
+          initialBoard = { conversationRate: 0, interactions: 0, customers: 0, revenue: 0, contextScore: 0 };
+          renderBoard(initialBoard);
+          applyState({ step: 'live', status: null, title: '', gaps: [] }, { loggedIn: false, board: initialBoard });
         });
       }
     }
