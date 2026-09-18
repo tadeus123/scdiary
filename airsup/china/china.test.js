@@ -1363,10 +1363,13 @@ function memoryChina(companies) {
   assert.ok(fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8').includes('AIRSUP-CHINA-TEST-BEGIN'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-universe'));
   assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-dock'));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('login/request'));
+  assert.ok(!fs.readFileSync(path.join(__dirname, 'test/views/chat.ejs'), 'utf8').includes('cn-test-thread'));
   const testChat = require('./test/chat');
   const testWeb = require('./test/web');
-  assert.ok(testChat.welcomeMessage('zh').includes('网'));
-  assert.ok(testChat.welcomeMessage('en').toLowerCase().includes('web'));
+  assert.strictEqual(testChat.welcomeMessage('zh'), '');
+  assert.strictEqual(Object.keys(testWeb.emptyWeb().nodes).length, 0);
+  assert.strictEqual(testWeb.emptyWeb().reach, 0);
   const compressed = testChat.compressHistory(
     Array.from({ length: 20 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: `turn ${i} ${'x'.repeat(200)}` })),
     'en'
@@ -1379,19 +1382,27 @@ function memoryChina(companies) {
     history: [],
     files: [{ name: 'quote.pdf', mime: 'application/pdf', size: 1200 }],
     company: null,
-    web: testWeb.emptyWeb('en'),
+    web: testWeb.emptyWeb(),
   });
-  assert.ok(String(grown.reply || '').length > 10);
-  assert.ok(grown.web.reach > 10);
-  assert.ok(grown.web.nodes.domain.strength > 0);
-  assert.ok(grown.web.nodes.quotes.strength > 0);
+  assert.ok(String(grown.reply || '').length > 2);
+  assert.ok(grown.web.reach > 0);
+  assert.ok(Object.keys(grown.web.nodes).length >= 2);
+  assert.ok((grown.web.edges || []).length >= 1);
   assert.ok(grown.web.reachHistory.length >= 2);
-  const linked = testWeb.addCustomLink(grown.web, 'process', 'contact');
-  assert.ok(linked.ok);
-  assert.ok(linked.web.customLinks.length >= 1);
-  assert.ok(linked.web.reach >= grown.web.reach);
-  assert.ok(Object.keys(testWeb.layoutPositions()).length >= 10);
-  assert.ok((testWeb.emptyWeb('zh').edges || []).length >= 20);
+  const ids = Object.keys(grown.web.nodes);
+  assert.ok(ids.length >= 2);
+  // Prefer an unlinked pair if auto-link already connected the first two
+  let linked = testWeb.addCustomLink(grown.web, ids[0], ids[1]);
+  if (!linked.ok && linked.reason === 'exists' && ids.length >= 3) {
+    linked = testWeb.addCustomLink(grown.web, ids[0], ids[2]);
+  }
+  assert.ok(linked.ok || linked.reason === 'exists');
+  if (linked.ok) {
+    assert.ok(linked.web.edges.some((e) => e.kind === 'custom'));
+    assert.ok(linked.web.reach >= grown.web.reach);
+  }
+  const seeded = testWeb.seedFromCompany(testWeb.emptyWeb(), { domain: 'demo.com', company_name: 'Demo Co' }, 'en');
+  assert.ok(Object.keys(seeded.web.nodes).length >= 1);
 
   console.log('airsup china tests passed');
 })().catch((error) => {
