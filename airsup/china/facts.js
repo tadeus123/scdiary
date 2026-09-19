@@ -149,6 +149,83 @@ function factsFromReplyText(text, sourceReference) {
   return out.filter((row) => row.value);
 }
 
+function factsFromMachineListText(text, sourceReference) {
+  const raw = String(text || '');
+  const src = {
+    source_type: 'machine_list',
+    source_reference: sourceReference || 'pasted_machine_list',
+    confidence: 0.8,
+    visibility: 'buyer',
+    supplier_confirmed: true,
+  };
+  const out = [];
+  const lines = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).slice(0, 80);
+  lines.forEach((line, i) => {
+    if (line.length < 4 || line.length > 200) return;
+    if (/^(hi|hello|dear|thanks|best|regards)\b/i.test(line)) return;
+    out.push(fact({ fact_type: 'machine', fact_key: `list.${i}`, value: line, ...src }));
+  });
+  const brands = raw.match(/\b(Haas|Mazak|DMG|Fanuc|Okuma|Brother|Makino|Doosan|Yamaha|Juki|Siemens|Mitsubishi)\b/gi) || [];
+  Array.from(new Set(brands.map((b) => b.toLowerCase()))).slice(0, 12).forEach((brand) => {
+    out.push(fact({ fact_type: 'machine', fact_key: `brand.${brand}`, value: brand, ...src }));
+  });
+  return out.filter((row) => row.value);
+}
+
+function factsFromBuyerThread(buyerMessage, factoryReply, sourceReference) {
+  const buyer = String(buyerMessage || '').trim();
+  const reply = String(factoryReply || '').trim();
+  const combined = `${buyer}\n${reply}`;
+  const src = {
+    source_type: 'buyer_chat',
+    source_reference: sourceReference || 'buyer_thread',
+    confidence: 0.65,
+    visibility: 'buyer',
+  };
+  const out = [];
+  const procs = combined.match(/\b(5-?axis|cnc|pcba|smt|injection|sla|sls|fdm|anodiz\w+|turning|milling)\b/gi) || [];
+  Array.from(new Set(procs.map((p) => p.toLowerCase()))).slice(0, 6).forEach((id) => {
+    out.push(fact({ fact_type: 'process', fact_key: `chat.has.${id.replace(/\s+/g, '_')}`, value: id, ...src }));
+  });
+  const mats = combined.match(/\b(aluminum|aluminium|steel|stainless|titanium|brass|copper|peek|abs|pc)\b/gi) || [];
+  Array.from(new Set(mats.map((m) => m.toLowerCase()))).slice(0, 6).forEach((id) => {
+    out.push(fact({ fact_type: 'material', fact_key: `chat.has.${id}`, value: id, ...src }));
+  });
+  const lead = reply.match(/(\d+)\s*(?:-|–|to)\s*(\d+)\s*days?/i) || reply.match(/(\d+)\s*days?/i);
+  if (lead) {
+    out.push(fact({
+      fact_type: 'commercial',
+      fact_key: 'chat.lead_time',
+      value: lead[2] ? `${lead[1]}-${lead[2]} days` : lead[0],
+      visibility: 'ops',
+      source_type: 'buyer_chat',
+      source_reference: sourceReference || 'buyer_thread',
+      confidence: 0.6,
+    }));
+  }
+  if (/\b(iso\s*9001|iatf|as9100)\b/i.test(combined)) {
+    const cert = combined.match(/\b(iso\s*9001|iatf|as9100)\b/i);
+    if (cert) out.push(fact({ fact_type: 'qc', fact_key: `chat.cert.${cert[1].toLowerCase().replace(/\s+/g, '')}`, value: cert[1], ...src }));
+  }
+  return out.filter((row) => row.value);
+}
+
+function buyerVisibleLines(rows, maxChars) {
+  const budget = Math.max(200, Math.min(2400, Number(maxChars) || 900));
+  const list = (Array.isArray(rows) ? rows : [])
+    .filter((row) => row && !row.valid_until && row.visibility === 'buyer' && isCountable(row))
+    .slice(0, 40);
+  const lines = [];
+  let used = 0;
+  for (const row of list) {
+    const line = `${row.fact_type}.${row.fact_key}: ${row.value}`.slice(0, 180);
+    if (used + line.length + 1 > budget) break;
+    lines.push(line);
+    used += line.length + 1;
+  }
+  return lines;
+}
+
 function summarizeDepth(rows, extras) {
   const list = (Array.isArray(rows) ? rows : []).filter(isCountable);
   const byType = {};
@@ -404,6 +481,9 @@ module.exports = {
   factsFromCompany,
   factsFromExtracted,
   factsFromReplyText,
+  factsFromMachineListText,
+  factsFromBuyerThread,
+  buyerVisibleLines,
   summarizeDepth,
   gapsFromFacts,
   suggestNext,

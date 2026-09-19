@@ -37,6 +37,7 @@ const { sendVerifyEmail } = require('../airsup/china/mail');
 const { chinaVerifyUrl, chinaLiveJsonUrl, chinaEndpointUrl } = require('../airsup/china/origin');
 const facts = require('../airsup/china/facts');
 const factsStore = require('../airsup/china/facts-store');
+const quotations = require('../airsup/china/quotations');
 
 function requireChinaDb() {
   if (!chinaDb.isConfigured()) {
@@ -870,6 +871,300 @@ async function recordSupplierReply(args = {}) {
   };
 }
 
+async function backfillSupplierFacts(args = {}) {
+  requireChinaDb();
+  if (args.all_live) {
+    const limit = Math.max(1, Math.min(200, Number(args.limit) || 80));
+    const live = await chinaDb.listLive();
+    const targets = (live || []).slice(0, limit);
+    const results = [];
+    for (const company of targets) {
+      try {
+        const before = typeof chinaDb.listFacts === 'function'
+          ? (await chinaDb.listFacts(company.company_id).catch(() => [])).filter((row) => !row.valid_until).length
+          : 0;
+        const persisted = await factsStore.backfillCompanyFacts(chinaDb, company);
+        const fresh = await chinaDb.getById(company.company_id);
+        await factsStore.projectBuyerFactsOntoCompany(chinaDb, fresh || company);
+        const afterRows = typeof chinaDb.listFacts === 'function'
+          ? (await chinaDb.listFacts(company.company_id).catch(() => [])).filter((row) => !row.valid_until)
+          : facts.factsFromCompany(fresh || company);
+        results.push({
+          company_id: company.company_id,
+          domain: company.domain,
+          ok: true,
+          stored: persisted.stored || 0,
+          fact_count: afterRows.length,
+          before,
+          depth_tier: facts.summarizeDepth(afterRows).depth_tier,
+        });
+      } catch (error) {
+        results.push({
+          company_id: company.company_id,
+          domain: company.domain,
+          ok: false,
+          error: error.message || String(error),
+        });
+      }
+    }
+    return { ok: true, processed: results.length, live_total: (live || []).length, results };
+  }
+  const company = await resolveCompany(args, { allowFuzzy: true });
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  const persisted = await factsStore.backfillCompanyFacts(chinaDb, company);
+  const fresh = await chinaDb.getById(company.company_id);
+  await factsStore.projectBuyerFactsOntoCompany(chinaDb, fresh || company);
+  await factsStore.recordFunnelEvent(chinaDb, {
+    company_id: company.company_id,
+    event: 'facts_backfilled',
+    detail: String(persisted.stored || 0),
+  });
+  const loaded = await loadCompanyFacts(fresh || company);
+  return {
+    ok: true,
+    company_id: company.company_id,
+    domain: company.domain,
+    stored: persisted.stored || 0,
+    skipped: persisted.skipped || 0,
+    ...facts.summarizeDepth(loaded.rows),
+    facts_store: loaded.facts_store,
+  };
+}
+
+async function ingestHistoricalQuotes(args = {}) {
+  requireChinaDb();
+  const company = await resolveCompany(args, { allowFuzzy: true });
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+
+  const machineList = String(args.machine_list || '').trim();
+  const text = String(args.text || '').trim();
+  const b64 = String(args.content_base64 || '').trim();
+  let stored = 0;
+  let mode = 'none';
+  let nextCompany = company;
+
+  if (b64) {
+    mode = 'file';
+    const buffer = Buffer.from(b64, 'base64');
+    if (!buffer.length || buffer.length > quotations.MAX_BYTES) {
+      return { ok: false, error: 'invalid_file' };
+    }
+    const file = {
+      originalname: String(args.filename || 'quote.bin').slice(0, 200),
+      mimetype: String(args.mime || 'application/octet-stream').slice(0, 120),
+      size: buffer.length,
+      buffer,
+    };
+    if (!quotations.isAllowedFile(file)) return { ok: false, error: 'file_type_not_allowed' };
+    const uploaded = await quotations.uploadAndExtract(company, file);
+    nextCompany = uploaded.company || company;
+    if (args.endpoint_use === true) {
+      const toggled = await quotations.setEndpointUse(nextCompany, true);
+      nextCompany = toggled.company || nextCompany;
+    }
+    const extracted = (nextCompany.profile && nextCompany.profile.quotation_knowledge
+      && nextCompany.profile.quotation_knowledge.extracted) || {};
+    const vis = nextCompany.profile && nextCompany.profile.quotation_knowledge
+      && nextCompany.profile.quotation_knowledge.endpoint_use ? 'buyer' : 'private';
+    const rows = facts.factsFromExtracted(extracted, vis);
+    const result = await factsStore.persistFacts(chinaDb, nextCompany, rows, {
+      source_type: 'quotation',
+      source_reference: file.originalname,
+      visibility: vis,
+      note: 'ingest_historical_quotes',
+    });
+    stored = result.stored || 0;
+  } else if (machineList || text) {
+    mode = machineList ? 'machine_list' : 'text';
+    const body = machineList || text;
+    const rows = [
+      ...facts.factsFromMachineListText(body, 'ingest_historical_quotes'),
+      ...facts.factsFromReplyText(body, 'ingest_historical_quotes'),
+      ...facts.factsFromExtracted(
+        typeof quotations.heuristicExtract === 'function' ? quotations.heuristicExtract(body) : {},
+        'private'
+      ),
+    ];
+    const result = await factsStore.persistFacts(chinaDb, company, rows, {
+      source_type: machineList ? 'machine_list' : 'quotation',
+      source_reference: 'worker_paste',
+      visibility: 'ops',
+      note: 'ingest_historical_quotes',
+    });
+    stored = result.stored || 0;
+  } else {
+    return { ok: false, error: 'text_or_file_required' };
+  }
+
+  await factsStore.recordFunnelEvent(chinaDb, {
+    company_id: company.company_id,
+    event: 'quotes_ingested',
+    detail: mode,
+  });
+  const fresh = await chinaDb.getById(company.company_id);
+  await factsStore.backfillCompanyFacts(chinaDb, fresh || nextCompany);
+  await factsStore.projectBuyerFactsOntoCompany(chinaDb, fresh || nextCompany);
+  const loaded = await loadCompanyFacts(fresh || nextCompany);
+  return {
+    ok: true,
+    company_id: company.company_id,
+    domain: company.domain,
+    mode,
+    facts_stored: stored,
+    ...facts.summarizeDepth(loaded.rows),
+    facts_store: loaded.facts_store,
+  };
+}
+
+async function suggestNextSupplierEnrichment(args = {}) {
+  const company = await resolveCompany(args, { allowFuzzy: true });
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  const loaded = await loadCompanyFacts(company);
+  const next = facts.suggestNext(loaded.rows, company);
+  const depth = facts.summarizeDepth(loaded.rows);
+  return {
+    ok: true,
+    company_id: company.company_id,
+    domain: company.domain,
+    next_ask: next,
+    depth,
+    publish_gaps: publishGaps(company),
+    facts_store: loaded.facts_store,
+  };
+}
+
+async function getFactConflicts(args = {}) {
+  const company = await resolveCompany(args, { allowFuzzy: true });
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  const loaded = await loadCompanyFacts(company);
+  return {
+    ok: true,
+    company_id: company.company_id,
+    domain: company.domain,
+    conflicts: facts.detectConflicts(loaded.rows),
+  };
+}
+
+async function getStaleSupplierFacts(args = {}) {
+  const company = await resolveCompany(args, { allowFuzzy: true });
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  const loaded = await loadCompanyFacts(company);
+  const stale = facts.staleFacts(loaded.rows);
+  return {
+    ok: true,
+    company_id: company.company_id,
+    domain: company.domain,
+    count: stale.length,
+    facts: stale.slice(0, 80),
+  };
+}
+
+async function confirmSupplierFacts(args = {}) {
+  requireChinaDb();
+  const company = await resolveCompany(args, { allowFuzzy: true });
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  const factType = String(args.fact_type || '').trim();
+  const factKey = String(args.fact_key || '').trim();
+  const value = String(args.value || '').trim();
+  const factId = String(args.fact_id || '').trim();
+  if ((!factType || !factKey || !value) && !factId) {
+    return { ok: false, error: 'fact_type_key_value_or_fact_id_required' };
+  }
+  const rows = typeof chinaDb.listFacts === 'function'
+    ? await chinaDb.listFacts(company.company_id).catch(() => [])
+    : [];
+  const current = (rows || []).filter((row) => !row.valid_until);
+  let winner = null;
+  if (factId) {
+    winner = current.find((row) => row.fact_id === factId) || null;
+  } else {
+    winner = current.find((row) => row.fact_type === factType && row.fact_key === factKey && String(row.value) === value) || null;
+  }
+  if (!winner) {
+    const created = await factsStore.persistFacts(chinaDb, company, [facts.fact({
+      fact_type: factType || 'identity',
+      fact_key: factKey || 'confirmed',
+      value,
+      confidence: 0.95,
+      supplier_confirmed: true,
+      visibility: 'buyer',
+      source_type: 'supplier_confirm',
+      source_reference: 'confirm_supplier_facts',
+    })], {
+      source_type: 'supplier_confirm',
+      source_reference: 'confirm_supplier_facts',
+      visibility: 'buyer',
+      note: 'worker_confirm',
+    });
+    await factsStore.projectBuyerFactsOntoCompany(chinaDb, company);
+    return { ok: true, created: true, stored: created.stored || 0 };
+  }
+  let expired = 0;
+  for (const row of current) {
+    if (row.fact_id === winner.fact_id) continue;
+    if (row.fact_type === winner.fact_type && row.fact_key === winner.fact_key && typeof chinaDb.expireFact === 'function') {
+      await chinaDb.expireFact(row.fact_id);
+      expired += 1;
+    }
+  }
+  await factsStore.persistFacts(chinaDb, company, [{
+    ...winner,
+    supplier_confirmed: true,
+    confidence: Math.max(0.9, Number(winner.confidence) || 0.9),
+    last_verified_at: new Date().toISOString(),
+    visibility: winner.visibility || 'buyer',
+    source_type: 'supplier_confirm',
+    source_reference: 'confirm_supplier_facts',
+  }], {
+    source_type: 'supplier_confirm',
+    source_reference: 'confirm_supplier_facts',
+    visibility: 'buyer',
+    note: 'worker_confirm',
+  });
+  await factsStore.projectBuyerFactsOntoCompany(chinaDb, company);
+  return {
+    ok: true,
+    created: false,
+    fact_id: winner.fact_id,
+    expired,
+  };
+}
+
+async function enrichSupplierDeep(args = {}) {
+  requireChinaDb();
+  const company = await resolveCompany(args, { allowFuzzy: true });
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  const beforeLoaded = await loadCompanyFacts(company);
+  const before = facts.summarizeDepth(beforeLoaded.rows);
+  const enriched = await enrichCompany(company, {
+    lang: args.lang === 'en' ? 'en' : 'zh',
+  });
+  if (!enriched.ok) {
+    return { ok: false, error: enriched.error || 'enrich_failed', domain: company.domain };
+  }
+  const fresh = enriched.company || await chinaDb.getById(company.company_id);
+  const persisted = await factsStore.backfillCompanyFacts(chinaDb, fresh);
+  await factsStore.projectBuyerFactsOntoCompany(chinaDb, fresh);
+  await factsStore.recordFunnelEvent(chinaDb, {
+    company_id: company.company_id,
+    event: 'deep_crawl',
+    detail: String(enriched.crawl_pages || 1),
+  });
+  const afterLoaded = await loadCompanyFacts(fresh);
+  const after = facts.summarizeDepth(afterLoaded.rows);
+  return {
+    ok: true,
+    company_id: company.company_id,
+    domain: company.domain,
+    crawl_pages: enriched.crawl_pages || 1,
+    filled_delta: enriched.filled_delta || 0,
+    facts_stored: persisted.stored || 0,
+    before,
+    after,
+    listing_preview: String(listingText(fresh) || '').slice(0, 500),
+  };
+}
+
 async function callTool(name, args) {
   switch (name) {
     case 'lookup_supplier':
@@ -910,6 +1205,20 @@ async function callTool(name, args) {
       return getSupplierFactGaps(args);
     case 'list_supplier_facts':
       return listSupplierFacts(args);
+    case 'backfill_supplier_facts':
+      return backfillSupplierFacts(args);
+    case 'ingest_historical_quotes':
+      return ingestHistoricalQuotes(args);
+    case 'suggest_next_supplier_enrichment':
+      return suggestNextSupplierEnrichment(args);
+    case 'get_fact_conflicts':
+      return getFactConflicts(args);
+    case 'get_stale_supplier_facts':
+      return getStaleSupplierFacts(args);
+    case 'confirm_supplier_facts':
+      return confirmSupplierFacts(args);
+    case 'enrich_supplier_deep':
+      return enrichSupplierDeep(args);
     default: {
       const error = new Error(`Unknown tool: ${name}`);
       error.code = -32601;

@@ -1,0 +1,22 @@
+{
+  "name": "backfill_supplier_facts",
+  "title": "Backfill supplier facts",
+  "description": "Persist atomic facts from the current company profile, enrichment, and gated quotation_knowledge. Use for one company or set all_live=true to backfill every live factory. Does not invent CNC from context uploads.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" },
+      "all_live": { "type": "boolean" },
+      "limit": { "type": "integer" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}

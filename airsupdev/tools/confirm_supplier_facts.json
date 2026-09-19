@@ -1,0 +1,24 @@
+{
+  "name": "confirm_supplier_facts",
+  "title": "Confirm supplier facts",
+  "description": "Mark a fact value as supplier_confirmed and expire other current values for the same fact_type+fact_key. Never invent values.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" },
+      "fact_type": { "type": "string" },
+      "fact_key": { "type": "string" },
+      "value": { "type": "string" },
+      "fact_id": { "type": "string" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false
+  }
+}

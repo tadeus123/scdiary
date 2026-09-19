@@ -105,9 +105,35 @@ async function recordFunnelEvent(store, row) {
   }
 }
 
+async function projectBuyerFactsOntoCompany(store, company, rows) {
+  if (!store || !company || !company.company_id || typeof store.updateCompany !== 'function') {
+    return company;
+  }
+  const { buyerVisibleLines, normalizeProfile } = (() => {
+    const factsMod = require('./facts');
+    const fieldsMod = require('./fields');
+    return {
+      buyerVisibleLines: factsMod.buyerVisibleLines,
+      normalizeProfile: fieldsMod.normalizeProfile,
+    };
+  })();
+  let list = rows;
+  if (!Array.isArray(list) && typeof store.listFacts === 'function') {
+    list = await store.listFacts(company.company_id).catch(() => []);
+  }
+  const lines = buyerVisibleLines(list || [], 900);
+  const profile = normalizeProfile(company.profile);
+  profile.buyer_fact_block = lines.length
+    ? `Evidence-backed facts (buyer-visible):\n${lines.join('\n')}`
+    : '';
+  profile.buyer_fact_updated_at = new Date().toISOString();
+  return store.updateCompany(company.company_id, { profile });
+}
+
 module.exports = {
   persistFacts,
   backfillCompanyFacts,
   recordFunnelEvent,
+  projectBuyerFactsOntoCompany,
   factRow,
 };

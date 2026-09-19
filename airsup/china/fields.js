@@ -271,6 +271,8 @@ function normalizeProfile(raw) {
     enrichment: normalizeEnrichment(source.enrichment),
     quotation_knowledge: normalizeQuotationKnowledge(source.quotation_knowledge),
     board: normalizeBoard(source.board),
+    buyer_fact_block: String(source.buyer_fact_block || '').trim().slice(0, 1600),
+    buyer_fact_updated_at: String(source.buyer_fact_updated_at || '').trim(),
   };
 }
 
@@ -341,6 +343,10 @@ function listingText(company) {
     company && company.context ? `Context: ${company.context}` : '',
     company && company.goal ? `Goal: ${company.goal}` : '',
     quotationInsightsText(company),
+    (() => {
+      const block = String((profile && profile.buyer_fact_block) || '').trim();
+      return block ? block.slice(0, 1200) : '';
+    })(),
   ];
   return lines.filter(Boolean).join('\n');
 }
@@ -490,7 +496,7 @@ function fillEmptyCompany(company, draft) {
   next.profile = {
     ...prevProfile,
     ...Object.fromEntries(Object.entries(draftProfile).filter(([key, value]) => {
-      if (key === 'contacts' || key === 'flexibility' || key === 'enrichment' || key === 'quotation_knowledge' || key === 'claim_ready' || key === 'is_demo' || key === 'board') return false;
+      if (key === 'contacts' || key === 'flexibility' || key === 'enrichment' || key === 'quotation_knowledge' || key === 'claim_ready' || key === 'is_demo' || key === 'board' || key === 'buyer_fact_block' || key === 'buyer_fact_updated_at') return false;
       if (Array.isArray(value)) return value.length && !(Array.isArray(prevProfile[key]) && prevProfile[key].length);
       return Boolean(String(value || '').trim()) && !String(prevProfile[key] || '').trim();
     })),
@@ -502,6 +508,8 @@ function fillEmptyCompany(company, draft) {
     enrichment: mergeEnrichment(prevProfile.enrichment, draftProfile.enrichment),
     quotation_knowledge: keepQuotationKnowledge(prevProfile.quotation_knowledge, draftProfile.quotation_knowledge),
     board: prevProfile.board,
+    buyer_fact_block: prevProfile.buyer_fact_block,
+    buyer_fact_updated_at: prevProfile.buyer_fact_updated_at,
   };
   return next;
 }

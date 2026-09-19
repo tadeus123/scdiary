@@ -28,6 +28,13 @@ const TOOL_NAMES = [
   'get_supplier_data_depth',
   'get_supplier_fact_gaps',
   'list_supplier_facts',
+  'backfill_supplier_facts',
+  'ingest_historical_quotes',
+  'suggest_next_supplier_enrichment',
+  'get_fact_conflicts',
+  'get_stale_supplier_facts',
+  'confirm_supplier_facts',
+  'enrich_supplier_deep',
 ];
 
 for (const name of TOOL_NAMES) {
@@ -39,7 +46,7 @@ for (const name of TOOL_NAMES) {
 
 const mcp = createMcp();
 assert.deepStrictEqual(mcp.TOOL_FILES, TOOL_NAMES);
-assert.strictEqual(mcp.toolList().tools.length, 19);
+assert.strictEqual(mcp.toolList().tools.length, 26);
 
 assert.strictEqual(timingSafeEqualString('abc', 'abc'), true);
 assert.strictEqual(timingSafeEqualString('abc', 'abd'), false);
@@ -98,6 +105,25 @@ assert.ok(facts.factsFromCompany({
   profile: { processes: ['smt'], machines: 'Yamaha YSM20' },
 }).length >= 5);
 assert.ok(facts.factsFromReplyText('MOQ 50, lead 12 days, we do PCBA').some((row) => row.fact_key === 'reply.moq'));
+assert.ok(facts.factsFromMachineListText('Haas UMC-750 x2\nMazak QT-250').length >= 2);
+assert.ok(facts.factsFromBuyerThread('Need 5-axis aluminum', 'Yes we run 5-axis on aluminum').some((row) => row.fact_type === 'process'));
+assert.ok(facts.buyerVisibleLines([{
+  fact_type: 'process', fact_key: 'has.cnc', value: 'cnc', visibility: 'buyer', confidence: 0.8,
+}]).length === 1);
+assert.ok(fs.existsSync(path.join(__dirname, 'tools/suggest_next_supplier_enrichment.json')));
+assert.ok(fs.existsSync(path.join(__dirname, 'tools/ingest_historical_quotes.json')));
+assert.ok(fs.existsSync(path.join(__dirname, 'tools/backfill_supplier_facts.json')));
+assert.ok(fs.existsSync(path.join(__dirname, 'tools/enrich_supplier_deep.json')));
+assert.deepStrictEqual(
+  facts.suggestNext([], {
+    status: 'live',
+    company_name_en: 'Acme',
+    city: 'shenzhen',
+    goal: 'g',
+    profile: { processes: ['cnc'], machines: 'Haas' },
+  }).action,
+  'ask_historical_quotes'
+);
 
 assert.strictEqual(
   typeof pluginOauth.protectedResourceMetadata,

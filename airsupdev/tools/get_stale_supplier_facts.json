@@ -1,0 +1,20 @@
+{
+  "name": "get_stale_supplier_facts",
+  "title": "Get stale supplier facts",
+  "description": "List commercial/logistics facts older than 180 days and machine/qc facts older than 365 days. Historical quotes do not stale.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}

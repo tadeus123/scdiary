@@ -250,6 +250,23 @@ async function turn(store, { thread, company, caller, message, deps }) {
     role: 'factory',
     body: reply,
   });
+  try {
+    const facts = require('./facts');
+    const factsStore = require('./facts-store');
+    const extracted = facts.factsFromBuyerThread(message, reply, thread.conversation_id);
+    if (extracted.length) {
+      await factsStore.persistFacts(store, company, extracted, {
+        source_type: 'buyer_chat',
+        source_reference: thread.conversation_id,
+        visibility: 'buyer',
+        note: 'buyer_thread',
+      });
+      const fresh = await store.getById(company.company_id);
+      await factsStore.projectBuyerFactsOntoCompany(store, fresh || company);
+    }
+  } catch (error) {
+    console.error('Airsup china buyer-thread facts skipped:', error.message);
+  }
   store.insertInquiry({
     company_id: company.company_id,
     caller_person_id: caller && caller.person_id ? caller.person_id : null,

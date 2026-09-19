@@ -1,0 +1,21 @@
+{
+  "name": "enrich_supplier_deep",
+  "title": "Enrich supplier deep",
+  "description": "Re-crawl the factory website (multi-page site preview), merge empty profile fields, backfill facts, and project buyer-visible facts into the listing endpoint. Does not invent CNC or overwrite supplier_confirmed values.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" },
+      "lang": { "type": "string" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": true
+  }
+}

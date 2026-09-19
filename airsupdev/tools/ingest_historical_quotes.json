@@ -1,0 +1,26 @@
+{
+  "name": "ingest_historical_quotes",
+  "title": "Ingest historical quotes",
+  "description": "Import old quotations or a machine list into airsup_china_facts. Prefer text paste of quote body / machine list, or base64 file (pdf/xlsx/csv/txt). Uses existing quote extract; hist facts stay private unless endpoint_use is on. Never invent RFQs.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" },
+      "text": { "type": "string" },
+      "machine_list": { "type": "string" },
+      "filename": { "type": "string" },
+      "mime": { "type": "string" },
+      "content_base64": { "type": "string" },
+      "endpoint_use": { "type": "boolean" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false
+  }
+}

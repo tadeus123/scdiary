@@ -1,0 +1,20 @@
+{
+  "name": "suggest_next_supplier_enrichment",
+  "title": "Suggest next supplier enrichment",
+  "description": "Return the single highest-ROI next ask for this factory (capabilities, historical quotes, machine list, certs, or deep crawl). Plain-text copy for worker email. Never invent RFQs.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}

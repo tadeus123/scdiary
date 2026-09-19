@@ -1,0 +1,20 @@
+{
+  "name": "get_fact_conflicts",
+  "title": "Get fact conflicts",
+  "description": "List current facts where the same fact_type+fact_key has more than one value. Worker should ask one clarifying question then call confirm_supplier_facts.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}

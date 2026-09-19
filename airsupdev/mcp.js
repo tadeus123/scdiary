@@ -26,6 +26,13 @@ const TOOL_FILES = [
   'get_supplier_data_depth',
   'get_supplier_fact_gaps',
   'list_supplier_facts',
+  'backfill_supplier_facts',
+  'ingest_historical_quotes',
+  'suggest_next_supplier_enrichment',
+  'get_fact_conflicts',
+  'get_stale_supplier_facts',
+  'confirm_supplier_facts',
+  'enrich_supplier_deep',
 ];
 
 const TOOL_STATUS = {
@@ -48,6 +55,13 @@ const TOOL_STATUS = {
   get_supplier_data_depth: { invoking: 'Measuring data depth', invoked: 'Depth ready' },
   get_supplier_fact_gaps: { invoking: 'Checking fact gaps', invoked: 'Gaps ready' },
   list_supplier_facts: { invoking: 'Listing facts', invoked: 'Facts ready' },
+  backfill_supplier_facts: { invoking: 'Backfilling facts', invoked: 'Facts backfilled' },
+  ingest_historical_quotes: { invoking: 'Ingesting quotations', invoked: 'Quotations ingested' },
+  suggest_next_supplier_enrichment: { invoking: 'Choosing next ask', invoked: 'Next ask ready' },
+  get_fact_conflicts: { invoking: 'Checking conflicts', invoked: 'Conflicts ready' },
+  get_stale_supplier_facts: { invoking: 'Checking stale facts', invoked: 'Stale facts ready' },
+  confirm_supplier_facts: { invoking: 'Confirming facts', invoked: 'Facts confirmed' },
+  enrich_supplier_deep: { invoking: 'Deep crawling site', invoked: 'Deep enrich done' },
 };
 
 function loadTools() {
