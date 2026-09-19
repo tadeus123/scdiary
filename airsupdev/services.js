@@ -35,6 +35,8 @@ const {
 const session = require('../airsup/china/session');
 const { sendVerifyEmail } = require('../airsup/china/mail');
 const { chinaVerifyUrl, chinaLiveJsonUrl, chinaEndpointUrl } = require('../airsup/china/origin');
+const facts = require('../airsup/china/facts');
+const factsStore = require('../airsup/china/facts-store');
 
 function requireChinaDb() {
   if (!chinaDb.isConfigured()) {
@@ -127,47 +129,8 @@ async function resolveCompanyExact(args = {}) {
   }
 }
 
-function deriveOnboardingStatus({ company, allow, tokens }) {
-  if (!company) {
-    return { state: 'blocked', reason: 'supplier_not_found', publish_gaps: [] };
-  }
-  const missing = publishGaps(company);
-  const reason = missing.length ? `missing:${missing.join(',')}` : null;
-  const profile = normalizeProfile(company.profile);
-
-  if (company.status === 'live') {
-    return { state: 'live', published: true, reason: null, publish_gaps: [] };
-  }
-
-  if (allow && allow.bounced_at && !allow.claim_opened_at) {
-    return { state: 'bounced', reason: String(allow.bounce_type || 'undelivered'), publish_gaps: missing };
-  }
-
-  if (company.status === 'verified') {
-    if (canPublish(company)) return { state: 'ready_to_publish', reason: null, publish_gaps: [] };
-    return { state: 'email_verified', reason, publish_gaps: missing };
-  }
-
-  if (profile.claim_ready && company.status === 'pending') {
-    return { state: 'awaiting_verification', reason, publish_gaps: missing };
-  }
-
-  if (allow && allow.claim_opened_at) {
-    return { state: 'opened', reason, publish_gaps: missing };
-  }
-
-  const openClaim = (tokens || []).find(
-    (row) => row.purpose === 'claim' && !row.used_at && new Date(row.expires_at).getTime() > Date.now()
-  );
-  if (openClaim) {
-    return { state: 'magic_link_created', reason, publish_gaps: missing };
-  }
-
-  if (company.status === 'pending') {
-    return { state: 'draft', reason, publish_gaps: missing };
-  }
-
-  return { state: 'blocked', reason: `unknown_status:${company.status}`, publish_gaps: missing };
+function deriveOnboardingStatus({ company, allow, tokens, events }) {
+  return facts.deriveOnboardingStatus({ company, allow, tokens, events });
 }
 
 async function lookupSupplier(args = {}) {
@@ -391,13 +354,20 @@ async function getOnboardingStatus(args = {}) {
   if (!company) return { ok: false, state: 'blocked', reason: 'supplier_not_found' };
   const allow = await chinaDb.getDomainAllow(company.domain, company.contact_email).catch(() => null);
   const tokens = await chinaDb.listTokensForCompany(company.company_id).catch(() => []);
-  const derived = deriveOnboardingStatus({ company, allow, tokens });
+  const events = typeof chinaDb.listFunnelEvents === 'function'
+    ? await chinaDb.listFunnelEvents(company.company_id).catch(() => [])
+    : [];
+  const derived = deriveOnboardingStatus({ company, allow, tokens, events });
   return {
     ok: true,
     company_id: company.company_id,
     domain: company.domain,
     status: company.status,
     ...derived,
+    claim_page_viewed: Boolean(allow && allow.claim_opened_at),
+    email_verified: Boolean(company.verified_at || company.status === 'verified' || company.status === 'live'),
+    page_viewed_at: (allow && allow.claim_opened_at) || null,
+    email_verified_at: company.verified_at || null,
     can_publish: canPublish(company),
     publish_gaps: publishGaps(company),
     allow: allow
@@ -683,10 +653,12 @@ async function getGrowthFunnel() {
     : 0;
   return {
     ok: true,
-    metric: 'outreach → clicked claim → published → live → enriched_fields → discovery_score → first inquiry',
+    metric: 'outreach → claim_page_viewed → email_verified → published → live → enriched_fields → discovery_score → first inquiry',
     live: live.length,
     companies_by_status: byStatus,
     allows_total: allows.length,
+    claim_page_viewed: allows.filter((row) => row.claim_opened_at).length,
+    email_verified: companies.filter((row) => row.verified_at || row.status === 'verified' || row.status === 'live').length,
     allows_claim_opened: allows.filter((row) => row.claim_opened_at).length,
     allows_bounced: allows.filter((row) => row.bounced_at).length,
     allows_published: allows.filter((row) => row.published_at).length,
@@ -785,6 +757,94 @@ async function recordEmailBounce(args = {}) {
   };
 }
 
+async function loadCompanyFacts(company) {
+  requireChinaDb();
+  let rows = typeof chinaDb.listFacts === 'function'
+    ? await chinaDb.listFacts(company.company_id).catch(() => [])
+    : [];
+  const current = (rows || []).filter((row) => !row.valid_until && facts.isCountable(row));
+  if (!current.length) {
+    await factsStore.backfillCompanyFacts(chinaDb, company).catch(() => null);
+    rows = typeof chinaDb.listFacts === 'function'
+      ? await chinaDb.listFacts(company.company_id).catch(() => [])
+      : facts.factsFromCompany(company);
+  }
+  return (rows || []).filter((row) => !row.valid_until);
+}
+
+async function getSupplierDataDepth(args = {}) {
+  const company = await resolveCompany(args, { allowFuzzy: true });
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  const rows = await loadCompanyFacts(company);
+  const summary = facts.summarizeDepth(rows);
+  return {
+    ok: true,
+    company_id: company.company_id,
+    domain: company.domain,
+    ...summary,
+  };
+}
+
+async function getSupplierFactGaps(args = {}) {
+  const company = await resolveCompany(args, { allowFuzzy: true });
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  const rows = await loadCompanyFacts(company);
+  const gaps = facts.gapsFromFacts(rows, company);
+  const next = facts.suggestNext(rows, company);
+  return {
+    ok: true,
+    company_id: company.company_id,
+    domain: company.domain,
+    ...gaps,
+    next_ask: next,
+  };
+}
+
+async function listSupplierFacts(args = {}) {
+  const company = await resolveCompany(args, { allowFuzzy: true });
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  let rows = await loadCompanyFacts(company);
+  const type = String(args.fact_type || '').trim();
+  if (type) rows = rows.filter((row) => row.fact_type === type);
+  const limit = Math.max(1, Math.min(500, Number(args.limit) || 100));
+  return {
+    ok: true,
+    company_id: company.company_id,
+    domain: company.domain,
+    count: rows.length,
+    facts: rows.slice(0, limit),
+  };
+}
+
+async function recordSupplierReply(args = {}) {
+  requireChinaDb();
+  const company = await resolveCompany(args, { allowFuzzy: true });
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  const text = String(args.text || args.body || args.reply || '').trim();
+  await factsStore.recordFunnelEvent(chinaDb, {
+    company_id: company.company_id,
+    event: 'human_replied',
+    detail: String(args.thread_id || '').slice(0, 120),
+  });
+  let stored = 0;
+  if (text) {
+    const extracted = facts.factsFromReplyText(text, args.thread_id || 'supplier_reply');
+    const result = await factsStore.persistFacts(chinaDb, company, extracted, {
+      source_type: 'supplier_reply',
+      source_reference: String(args.thread_id || 'email').slice(0, 400),
+      visibility: 'ops',
+      note: 'human_replied',
+    });
+    stored = result.stored || 0;
+  }
+  return {
+    ok: true,
+    company_id: company.company_id,
+    domain: company.domain,
+    facts_stored: stored,
+  };
+}
+
 async function callTool(name, args) {
   switch (name) {
     case 'lookup_supplier':
@@ -817,8 +877,14 @@ async function callTool(name, args) {
       return getSupplierEvents(args);
     case 'record_email_bounce':
       return recordEmailBounce(args);
-    case 'record_email_bounce':
-      return recordEmailBounce(args);
+    case 'record_supplier_reply':
+      return recordSupplierReply(args);
+    case 'get_supplier_data_depth':
+      return getSupplierDataDepth(args);
+    case 'get_supplier_fact_gaps':
+      return getSupplierFactGaps(args);
+    case 'list_supplier_facts':
+      return listSupplierFacts(args);
     default: {
       const error = new Error(`Unknown tool: ${name}`);
       error.code = -32601;

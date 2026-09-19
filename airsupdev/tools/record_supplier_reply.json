@@ -1,0 +1,24 @@
+{
+  "name": "record_supplier_reply",
+  "title": "Record supplier reply",
+  "description": "Append-only human_replied funnel event from a factory email. Optionally extracts a few commercial/process facts. Opening a claim link is not a reply.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" },
+      "text": { "type": "string" },
+      "body": { "type": "string" },
+      "reply": { "type": "string" },
+      "thread_id": { "type": "string" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false
+  }
+}

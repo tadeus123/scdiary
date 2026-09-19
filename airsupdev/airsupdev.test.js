@@ -6,6 +6,7 @@ const { deriveOnboardingStatus, timingSafeEqualString, callTool } = require('./s
 const { isEmailAllowed, allowedEmails } = require('./config');
 const auth = require('./auth');
 const pluginOauth = require('./oauth-plugin');
+const facts = require('../airsup/china/facts');
 
 const TOOL_NAMES = [
   'lookup_supplier',
@@ -23,6 +24,10 @@ const TOOL_NAMES = [
   'get_growth_funnel',
   'get_supplier_events',
   'record_email_bounce',
+  'record_supplier_reply',
+  'get_supplier_data_depth',
+  'get_supplier_fact_gaps',
+  'list_supplier_facts',
 ];
 
 for (const name of TOOL_NAMES) {
@@ -34,7 +39,7 @@ for (const name of TOOL_NAMES) {
 
 const mcp = createMcp();
 assert.deepStrictEqual(mcp.TOOL_FILES, TOOL_NAMES);
-assert.strictEqual(mcp.toolList().tools.length, 15);
+assert.strictEqual(mcp.toolList().tools.length, 19);
 
 assert.strictEqual(timingSafeEqualString('abc', 'abc'), true);
 assert.strictEqual(timingSafeEqualString('abc', 'abd'), false);
@@ -53,14 +58,46 @@ assert.strictEqual(
   'live'
 );
 
-assert.deepStrictEqual(
+const opened = deriveOnboardingStatus({
+  company: { status: 'pending', company_name_en: 'Superb Tech', city: 'shenzhen', goal: 'g', profile: {} },
+  allow: { claim_opened_at: '2026-09-18T16:07:08.000Z' },
+  tokens: [],
+});
+assert.strictEqual(opened.state, 'claim_page_viewed');
+assert.strictEqual(opened.funnel_state, 'claim_page_viewed');
+assert.strictEqual(opened.inbox_owned, false);
+assert.strictEqual(opened.opened_is_not_verified, true);
+assert.strictEqual(opened.company_status, 'pending');
+assert.deepStrictEqual(opened.publish_gaps, ['capabilities']);
+assert.ok(opened.reason.includes('capabilities'));
+
+assert.strictEqual(
   deriveOnboardingStatus({
-    company: { status: 'pending', company_name_en: 'Superb Tech', city: 'shenzhen', goal: 'g', profile: {} },
+    company: {
+      status: 'verified',
+      verified_at: '2026-09-19T00:00:00.000Z',
+      company_name_en: 'Superb Tech',
+      city: 'shenzhen',
+      goal: 'g',
+      profile: {},
+    },
     allow: { claim_opened_at: '2026-09-18T16:07:08.000Z' },
     tokens: [],
-  }),
-  { state: 'opened', reason: 'missing:capabilities', publish_gaps: ['capabilities'] }
+  }).state,
+  'email_verified'
 );
+
+assert.strictEqual(facts.depthTier(12), 'seed');
+assert.strictEqual(facts.depthTier(120), 'enriched');
+assert.strictEqual(facts.depthTier(800), 'deep');
+assert.ok(facts.factsFromCompany({
+  domain: 'acme.com',
+  company_name_en: 'Acme',
+  city: 'shenzhen',
+  niche: 'pcba',
+  profile: { processes: ['smt'], machines: 'Yamaha YSM20' },
+}).length >= 5);
+assert.ok(facts.factsFromReplyText('MOQ 50, lead 12 days, we do PCBA').some((row) => row.fact_key === 'reply.moq'));
 
 assert.strictEqual(
   typeof pluginOauth.protectedResourceMetadata,
@@ -80,6 +117,8 @@ assert.strictEqual(
   assert.ok(serverJs.includes('AIRSUPDEV-BEGIN'));
   assert.ok(serverJs.includes('oauth-protected-resource/airsupdev/mcp'));
   assert.ok(serverJs.includes('oauth-authorization-server/airsupdev/oauth'));
+  assert.ok(serverJs.includes("'/tademehl/airsup/china'"));
+  assert.ok(serverJs.includes('? 302 : 307'));
   const vercel = fs.readFileSync(path.join(__dirname, '../vercel.json'), 'utf8');
   assert.ok(vercel.includes('airsupdev/**'));
   const routes = fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8');
@@ -96,6 +135,9 @@ assert.strictEqual(
   assert.ok(servicesSrc.includes('chinaLiveJsonUrl'));
   assert.ok(!servicesSrc.includes('/airsup/china/verify'));
   assert.ok(fs.existsSync(path.join(__dirname, 'sql/schema.sql')));
+  const i18n = fs.readFileSync(path.join(__dirname, '../airsup/china/i18n.js'), 'utf8');
+  assert.ok(i18n.includes('Hellerhofstr. 17, 01129 Dresden'));
+  assert.ok(!i18n.includes('Sebnitzer'));
 
   console.log('airsupdev tests passed');
 })().catch((error) => {

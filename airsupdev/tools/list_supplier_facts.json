@@ -1,0 +1,22 @@
+{
+  "name": "list_supplier_facts",
+  "title": "List supplier facts",
+  "description": "List current atomic facts for a factory. Filter by fact_type. Current means valid_until is null.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" },
+      "fact_type": { "type": "string" },
+      "limit": { "type": "integer" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}

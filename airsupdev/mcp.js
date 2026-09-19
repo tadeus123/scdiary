@@ -22,6 +22,10 @@ const TOOL_FILES = [
   'get_growth_funnel',
   'get_supplier_events',
   'record_email_bounce',
+  'record_supplier_reply',
+  'get_supplier_data_depth',
+  'get_supplier_fact_gaps',
+  'list_supplier_facts',
 ];
 
 const TOOL_STATUS = {
@@ -40,6 +44,10 @@ const TOOL_STATUS = {
   get_growth_funnel: { invoking: 'Loading growth funnel', invoked: 'Funnel ready' },
   get_supplier_events: { invoking: 'Loading supplier events', invoked: 'Events ready' },
   record_email_bounce: { invoking: 'Recording bounce', invoked: 'Bounce recorded' },
+  record_supplier_reply: { invoking: 'Recording supplier reply', invoked: 'Reply recorded' },
+  get_supplier_data_depth: { invoking: 'Measuring data depth', invoked: 'Depth ready' },
+  get_supplier_fact_gaps: { invoking: 'Checking fact gaps', invoked: 'Gaps ready' },
+  list_supplier_facts: { invoking: 'Listing facts', invoked: 'Facts ready' },
 };
 
 function loadTools() {

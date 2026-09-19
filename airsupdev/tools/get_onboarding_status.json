@@ -1,7 +1,7 @@
 {
   "name": "get_onboarding_status",
   "title": "Get onboarding status",
-  "description": "Return explicit onboarding state: draft, magic_link_created, opened, email_verified, ready_to_publish, live, or blocked with reason.",
+  "description": "Return explicit onboarding state: draft, magic_link_created, claim_page_viewed, email_verified, ready_to_publish, live, or blocked with reason. claim_page_viewed is a human open of the claim page (claim_opened_at); it is not inbox proof. email_verified is POST confirm or 6-digit code only.",
   "inputSchema": {
     "type": "object",
     "properties": {

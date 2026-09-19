@@ -1,0 +1,20 @@
+{
+  "name": "get_supplier_data_depth",
+  "title": "Get supplier data depth",
+  "description": "Count current evidence-backed facts (confidence >= 0.4) and return Seed/Enriched/Rich/Deep/Living tier. Lazy-backfills from profile if the fact table is empty. Does not invent CNC from context uploads.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}

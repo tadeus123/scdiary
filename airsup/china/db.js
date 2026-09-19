@@ -385,6 +385,106 @@ async function listDomainAllows() {
   return data || [];
 }
 
+async function insertFunnelEvent(row) {
+  const db = requireDb();
+  const { data, error } = await db
+    .from('airsup_china_funnel_events')
+    .insert({
+      company_id: row.company_id,
+      event: String(row.event || '').slice(0, 80),
+      detail: String(row.detail || '').slice(0, 500),
+      at: row.at || new Date().toISOString(),
+    })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function listFunnelEvents(companyId) {
+  const db = requireDb();
+  if (!companyId) return [];
+  const { data, error } = await db
+    .from('airsup_china_funnel_events')
+    .select('*')
+    .eq('company_id', companyId)
+    .order('at', { ascending: true })
+    .limit(200);
+  if (error) throw error;
+  return data || [];
+}
+
+async function insertSource(row) {
+  const db = requireDb();
+  const { data, error } = await db
+    .from('airsup_china_sources')
+    .insert({
+      company_id: row.company_id,
+      source_type: String(row.source_type || 'profile_backfill').slice(0, 40),
+      source_reference: String(row.source_reference || '').slice(0, 400),
+      visibility: ['buyer', 'ops', 'private'].includes(row.visibility) ? row.visibility : 'ops',
+      note: String(row.note || '').slice(0, 500),
+    })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function listSources(companyId) {
+  const db = requireDb();
+  if (!companyId) return [];
+  const { data, error } = await db
+    .from('airsup_china_sources')
+    .select('*')
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false })
+    .limit(80);
+  if (error) throw error;
+  return data || [];
+}
+
+async function insertFact(row) {
+  const db = requireDb();
+  const { data, error } = await db.from('airsup_china_facts').insert(row).select('*').single();
+  if (error) throw error;
+  return data;
+}
+
+async function insertFacts(rows) {
+  const db = requireDb();
+  const list = Array.isArray(rows) ? rows.filter(Boolean) : [];
+  if (!list.length) return [];
+  const { data, error } = await db.from('airsup_china_facts').insert(list).select('fact_id');
+  if (error) throw error;
+  return data || [];
+}
+
+async function expireFact(factId) {
+  const db = requireDb();
+  const { data, error } = await db
+    .from('airsup_china_facts')
+    .update({ valid_until: new Date().toISOString() })
+    .eq('fact_id', factId)
+    .select('*')
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+async function listFacts(companyId) {
+  const db = requireDb();
+  if (!companyId) return [];
+  const { data, error } = await db
+    .from('airsup_china_facts')
+    .select('*')
+    .eq('company_id', companyId)
+    .order('first_seen_at', { ascending: true })
+    .limit(2000);
+  if (error) throw error;
+  return data || [];
+}
+
 module.exports = {
   isConfigured,
   requireDb,
@@ -417,4 +517,12 @@ module.exports = {
   upsertDomainAllow: wrap('upsertDomainAllow', upsertDomainAllow),
   touchDomainAllow: wrap('touchDomainAllow', touchDomainAllow),
   listDomainAllows: wrap('listDomainAllows', listDomainAllows),
+  insertFunnelEvent: wrap('insertFunnelEvent', insertFunnelEvent),
+  listFunnelEvents: wrap('listFunnelEvents', listFunnelEvents),
+  insertSource: wrap('insertSource', insertSource),
+  listSources: wrap('listSources', listSources),
+  insertFact: wrap('insertFact', insertFact),
+  insertFacts: wrap('insertFacts', insertFacts),
+  expireFact: wrap('expireFact', expireFact),
+  listFacts: wrap('listFacts', listFacts),
 };

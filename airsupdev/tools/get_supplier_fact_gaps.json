@@ -1,0 +1,20 @@
+{
+  "name": "get_supplier_fact_gaps",
+  "title": "Get supplier fact gaps",
+  "description": "Weak fact categories plus publish_gaps and the next highest-ROI ask (machine list or old quotes). Not a 1000-field form.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}
