@@ -1,5 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
-const { sha256, listingTextBlob, nowIso } = require('./util');
+const { sha256, listingTextBlob, nowIso, resolveListingMedia } = require('./util');
 const { createMemoryStore } = require('./store-memory');
 
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -106,7 +106,7 @@ async function upsertListing(userId, { body, media, merge }) {
   const nextBody = merge && body && typeof body === 'object'
     ? { ...((prev && prev.body) || {}), ...body }
     : (body != null ? body : (prev && prev.body) || {});
-  const nextMedia = Array.isArray(media) ? media : ((prev && prev.media) || []);
+  const nextMedia = resolveListingMedia(prev && prev.media, media, merge !== false);
   const row = {
     user_id: userId,
     body: nextBody && typeof nextBody === 'object' ? nextBody : { note: String(nextBody || '') },

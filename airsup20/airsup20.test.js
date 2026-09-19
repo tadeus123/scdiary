@@ -126,7 +126,53 @@ async function run() {
     assert.ok(span.duration_ms != null, `span ${span.name} missing duration`);
   }
 
-  // MCP tool call path
+  // Pictures: ChatGPT file objects, path alias, append, and first-shot confirmation.
+  const updateTool = mcp.toolList().tools.find((t) => t.name === 'update_listing');
+  const setupTool = mcp.toolList().tools.find((t) => t.name === 'setup');
+  assert.deepStrictEqual(updateTool._meta['openai/fileParams'], ['media']);
+  assert.deepStrictEqual(setupTool._meta['openai/fileParams'], ['media']);
+  assert.ok(/you can upload pictures/i.test(updateTool.description));
+  assert.ok(updateTool.inputSchema.properties.media.items.properties.download_url);
+  assert.ok(updateTool.inputSchema.properties.media.items.properties.path);
+
+  const freshAlice = await store.getUser(alice.user_id);
+  const withPath = await services.updateListing(freshAlice, {
+    note: 'Blackbird shampoo $24 USD',
+    patch: { offer: 'Blackbird shampoo $24 USD' },
+    media: [{ path: '/mnt/data/blackbird.jpg', caption: 'Blackbird' }],
+  });
+  assert.strictEqual(withPath.ok, true);
+  assert.strictEqual(withPath.media_added, 1);
+  assert.strictEqual(withPath.listing.media[0].url, '/mnt/data/blackbird.jpg');
+  assert.strictEqual(withPath.listing.media[0].caption, 'Blackbird');
+  assert.ok(!Object.prototype.hasOwnProperty.call(withPath.listing.media[0], 'path'));
+
+  const withFileObject = await services.updateListing(freshAlice, {
+    patch: { offer: 'Blackbird shampoo $24 USD' },
+    media: [{
+      download_url: 'https://files.example/blackbird.png',
+      file_id: 'file_blackbird',
+      mime_type: 'image/png',
+      file_name: 'blackbird.png',
+      caption: 'Blackbird bottle',
+    }],
+  });
+  assert.strictEqual(withFileObject.media_count, 2);
+  assert.ok(withFileObject.listing.media.some((m) => m.file_id === 'file_blackbird'));
+  assert.ok(withFileObject.listing.media.some((m) => m.url === '/mnt/data/blackbird.jpg'));
+
+  const mediaResult = mcp.formatToolResult(withFileObject);
+  assert.ok(/Pictures added this call: 1/.test(mediaResult.content[0].text));
+
+  const badMedia = await services.updateListing(freshAlice, {
+    patch: { offer: 'Blackbird shampoo $24 USD' },
+    media: [{ caption: 'no file' }],
+  });
+  assert.strictEqual(badMedia.ok, true);
+  assert.ok(badMedia.media_error);
+  assert.ok(/never in a path field/i.test(badMedia.media_error));
+  assert.strictEqual(badMedia.media_count, 2);
+
   const listed = await mcp.callTool('me', await store.getUser(alice.user_id), {});
   assert.strictEqual(listed.needs_setup, false);
 

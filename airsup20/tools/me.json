@@ -1,7 +1,7 @@
 {
   "name": "me",
   "title": "Me",
-  "description": "Return the signed-in Airsup20 user, whether setup is required, listing summary, active intents, and unread inbox count. Call this first when unsure about setup state, and whenever the user asks who they are on Airsup20.",
+  "description": "Return the signed-in Airsup20 user, whether setup is required, listing summary, active intents, and unread inbox count. Call this first when unsure about setup state, and whenever the user asks who they are on Airsup20. After setup, attached pictures belong on update_listing.media.",
   "inputSchema": {
     "type": "object",
     "properties": {

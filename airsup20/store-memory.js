@@ -1,4 +1,4 @@
-const { sha256, randomToken, newId, nowIso, listingTextBlob } = require('./util');
+const { sha256, randomToken, newId, nowIso, listingTextBlob, resolveListingMedia } = require('./util');
 
 function createMemoryStore() {
   const users = new Map();
@@ -107,7 +107,7 @@ function createMemoryStore() {
       const nextBody = merge && body && typeof body === 'object'
         ? { ...(prev.body || {}), ...body }
         : (body != null ? body : prev.body);
-      const nextMedia = Array.isArray(media) ? media : (prev.media || []);
+      const nextMedia = resolveListingMedia(prev.media, media, merge !== false);
       const row = {
         user_id: id,
         body: nextBody && typeof nextBody === 'object' ? nextBody : { note: String(nextBody || '') },

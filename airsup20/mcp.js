@@ -22,11 +22,17 @@ function loadTools() {
       fs.readFileSync(path.join(__dirname, 'tools', `${name}.json`), 'utf8'),
     );
     const status = TOOL_STATUS[name];
-    if (status) {
+    const fileParams = Array.isArray(tool._meta && tool._meta['openai/fileParams'])
+      ? tool._meta['openai/fileParams']
+      : ((name === 'setup' || name === 'update_listing') ? ['media'] : null);
+    if (status || fileParams) {
       tool._meta = {
         ...(tool._meta || {}),
-        'openai/toolInvocation/invoking': status.invoking,
-        'openai/toolInvocation/invoked': status.invoked,
+        ...(status ? {
+          'openai/toolInvocation/invoking': status.invoking,
+          'openai/toolInvocation/invoked': status.invoked,
+        } : {}),
+        ...(fileParams ? { 'openai/fileParams': fileParams } : {}),
       };
     }
     return tool;
@@ -54,6 +60,12 @@ function formatToolResult(data) {
   if (answer) parts.push(answer);
   if (data && data.needs_setup) parts.push('Initial setup required.');
   if (data && data.inbox_unread) parts.push(`Inbox unread: ${data.inbox_unread}`);
+  if (data && data.media_error) parts.push(String(data.media_error));
+  if (data && data.media_added != null) {
+    parts.push(`Pictures added this call: ${data.media_added}. Pictures on listing now: ${data.media_count != null ? data.media_count : data.media_added}.`);
+  } else if (data && data.listing && Array.isArray(data.listing.media) && data.listing.media.length) {
+    parts.push(`Pictures on listing: ${data.listing.media.length}.`);
+  }
   if (data && data.trace_id) parts.push(`trace_id ${data.trace_id}`);
   if (!parts.length) parts.push(JSON.stringify(data));
   return {
@@ -120,8 +132,10 @@ function createMcp({ store, fetchImpl } = {}) {
           'No website dashboard. Listing and setup happen through these tools.',
           'Tools: me, setup, update_listing, fulfill, get_inbox, get_trace.',
           'On first use, call me; if needs_setup, ask setup_questions then call setup.',
+          'You can upload pictures. When the user attaches a photo or asks to add an image, include every file in media on the same setup or update_listing call as the text/price. Do not save text first and pictures later.',
+          'media is a ChatGPT file field (openai/fileParams). Pass file objects {download_url, file_id, mime_type, file_name}. If you only have a local file location, put that string in url or download_url — never in a path field.',
           'For people goals use fulfill once — Airsup runs fast endpoint probes and internal endpoint talk; do not expect a chat widget.',
-          'Show the user status_labels and the final answer, not raw AI↔AI packets.',
+          'Show the user status_labels, whether pictures were saved, and the final answer, not raw AI↔AI packets.',
           'Mention inbox_unread when present. Use get_trace with trace_id to inspect timings.',
         ].join(' '),
       };

@@ -107,6 +107,14 @@
       "expected_output_url": null
     },
     {
+      "description": "Add a listing photo on the same call as the offer.",
+      "user_prompt": "Update my Airsup listing to sell Blackbird shampoo for 24 USD and add this product photo to the listing now.",
+      "file_attachment_urls": ["https://upload.wikimedia.org/wikipedia/commons/3/3f/Placeholder_view_vector.svg"],
+      "tools_triggered": "update_listing",
+      "expected_output": "Confirms the $24 USD Blackbird offer was saved and that the attached picture was stored in listing media on that same call, not skipped.",
+      "expected_output_url": null
+    },
+    {
       "description": "Fulfill a people request among participating users.",
       "user_prompt": "Using Airsup, find a participating user who might want to buy a used chair in Berlin and summarize the best match if any.",
       "file_attachment_urls": null,

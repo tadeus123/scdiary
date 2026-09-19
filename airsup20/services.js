@@ -1,5 +1,6 @@
 const { createTracer } = require('./trace');
 const { probeCandidate, deepTalk } = require('./endpoint');
+const { prepareListingMedia, MEDIA_RETRY_HINT } = require('./util');
 
 const INTENT_TYPES = new Set(['WANT', 'NEED', 'OFFER', 'OPEN_TO', 'AVOID']);
 
@@ -95,8 +96,8 @@ function createServices({ store, fetchImpl } = {}) {
         })),
         inbox_unread: inboxUnread,
         note: needs
-          ? 'Initial setup required. Ask the user the setup_questions, then call setup with answers and any relevant ChatGPT context.'
-          : 'Ready. Use fulfill for goals, update_listing to change the listing, get_inbox for inbox.',
+          ? 'Initial setup required. Ask the user the setup_questions, then call setup with answers, any relevant ChatGPT context, and any attached pictures in media.'
+          : 'Ready. Use fulfill for goals, update_listing to change the listing (including pictures via media), get_inbox for inbox.',
       };
     });
   }
@@ -108,7 +109,11 @@ function createServices({ store, fetchImpl } = {}) {
       const context = String((args && args.context) || '').trim();
       const listingPatch = (args && args.listing && typeof args.listing === 'object') ? args.listing : {};
       const intentsIn = Array.isArray(args && args.intents) ? args.intents : [];
-      const media = Array.isArray(args && args.media) ? args.media : undefined;
+      const preparedMedia = prepareListingMedia(args && args.media);
+      const media = preparedMedia.provided ? preparedMedia.media : undefined;
+      const mediaError = preparedMedia.provided && preparedMedia.media.length === 0
+        ? MEDIA_RETRY_HINT
+        : null;
 
       const body = {
         ...listingPatch,
@@ -176,6 +181,10 @@ function createServices({ store, fetchImpl } = {}) {
         kind: 'setup_completed',
         payload: { answers, context: context.slice(0, 2000) },
       });
+      if (preparedMedia.provided && preparedMedia.media.length) status.push(`saved ${preparedMedia.media.length} picture(s)`);
+      else if (mediaError) status.push('pictures missing usable url');
+      if (preparedMedia.provided && preparedMedia.media.length) status.push(`saved ${preparedMedia.media.length} picture(s)`);
+      else if (mediaError) status.push('pictures missing usable url');
       status.push('setup complete');
       const fresh = await store.getUser(user.user_id);
       return {
@@ -184,6 +193,9 @@ function createServices({ store, fetchImpl } = {}) {
         listing: { body: listing.body, media: listing.media },
         intents_created: createdIntents.length,
         needs_setup: false,
+        media_added: preparedMedia.provided ? preparedMedia.media.length : 0,
+        media_count: Array.isArray(listing.media) ? listing.media.length : 0,
+        media_error: mediaError,
       };
     });
   }
@@ -202,7 +214,11 @@ function createServices({ store, fetchImpl } = {}) {
       status.push('updating listing');
       const patch = (args && args.patch && typeof args.patch === 'object') ? args.patch : {};
       const replace = args && args.replace === true;
-      const media = Array.isArray(args && args.media) ? args.media : undefined;
+      const preparedMedia = prepareListingMedia(args && args.media);
+      const media = preparedMedia.provided ? preparedMedia.media : undefined;
+      const mediaError = preparedMedia.provided && preparedMedia.media.length === 0
+        ? MEDIA_RETRY_HINT
+        : null;
       const note = String((args && args.note) || '').trim();
       const body = { ...patch };
       if (note) body.last_note = note;
@@ -249,10 +265,15 @@ function createServices({ store, fetchImpl } = {}) {
         kind: 'listing_updated',
         payload: { patch: body, media_count: Array.isArray(media) ? media.length : 0 },
       });
+      if (preparedMedia.provided && preparedMedia.media.length) status.push(`saved ${preparedMedia.media.length} picture(s)`);
+      else if (mediaError) status.push('pictures missing usable url');
       status.push('listing saved');
       return {
         ok: true,
         listing: { body: listing.body, media: listing.media, updated_at: listing.updated_at },
+        media_added: preparedMedia.provided ? preparedMedia.media.length : 0,
+        media_count: Array.isArray(listing.media) ? listing.media.length : 0,
+        media_error: mediaError,
       };
     });
   }
