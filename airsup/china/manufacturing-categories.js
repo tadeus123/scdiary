@@ -563,12 +563,12 @@ function routeQueryToCategory(query) {
 }
 
 function guessNiche(text) {
-  return routeQueryToCategory(text) || 'cnc';
+  return routeQueryToCategory(text) || 'other';
 }
 
 function normalizeNiche(raw) {
   const folded = foldKey(raw);
-  if (!folded) return 'cnc';
+  if (!folded) return 'other';
   const direct = bySlug.get(String(raw || '').trim())
     || bySlug.get(folded)
     || bySlug.get(folded.replace(/-/g, '_'))
@@ -577,7 +577,7 @@ function normalizeNiche(raw) {
   return aliasMap.get(folded)
     || aliasMap.get(folded.replace(/-/g, '_'))
     || aliasMap.get(String(raw || '').trim().toLowerCase())
-    || 'cnc';
+    || 'other';
 }
 
 function categorySearchHaystack(slug) {

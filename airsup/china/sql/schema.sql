@@ -73,6 +73,9 @@ create table if not exists public.airsup_china_domain_allows (
   source text not null default 'outreach',
   note text not null default '',
   claim_opened_at timestamptz,
+  bounced_at timestamptz,
+  bounce_type text,
+  bounce_detail text,
   published_at timestamptz,
   created_at timestamptz not null default now(),
   constraint airsup_china_domain_allows_source_chk check (source in ('outreach', 'manual', 'site'))

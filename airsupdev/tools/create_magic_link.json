@@ -1,7 +1,7 @@
 {
   "name": "create_magic_link",
   "title": "Create magic link",
-  "description": "Most important ops tool. Prefills the factory from the website, allowlists domain↔email, and returns a one-click claim URL. Refuses already-live factories. Optional company_id pins the row.",
+  "description": "Most important ops tool. Prefills the factory from the website, allowlists domain↔email, and returns a one-click claim URL. Refuses already-live factories. Optional company_id pins the row. Optional niche keeps PCBA/EMS out of the CNC default.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -12,7 +12,8 @@
       "contact_email": { "type": "string" },
       "source": { "type": "string", "enum": ["outreach", "manual"] },
       "note": { "type": "string" },
-      "lang": { "type": "string", "enum": ["zh", "en"] }
+      "lang": { "type": "string", "enum": ["zh", "en"] },
+      "niche": { "type": "string", "description": "Optional manufacturing category slug, e.g. pcba. Unknown values become other, not cnc." }
     },
     "required": ["domain", "email"],
     "additionalProperties": false

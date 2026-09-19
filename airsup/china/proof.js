@@ -1,4 +1,5 @@
 const { NICHES } = require('./fields');
+const { visibleLiveRows } = require('./public-roster');
 
 const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -76,7 +77,7 @@ function nicheCopy(id) {
 }
 
 function liveRows(rows) {
-  return asRows(rows)
+  return visibleLiveRows(asRows(rows))
     .filter((row) => row.status === 'live' && row.live_at && row.domain)
     .sort((a, b) => new Date(b.live_at).getTime() - new Date(a.live_at).getTime())
     .map((row) => {
@@ -196,10 +197,11 @@ function chartFromSeries(series) {
 }
 
 function proofPayload(rows) {
-  const counts = countsFromRows(rows);
+  const publicRows = visibleLiveRows(asRows(rows));
+  const counts = countsFromRows(publicRows);
   const line = proofLines(counts);
-  const recent = liveRows(rows);
-  const series = liveSeries(rows);
+  const recent = liveRows(publicRows);
+  const series = liveSeries(publicRows);
   return {
     ...counts,
     line_zh: line.zh,

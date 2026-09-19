@@ -1,0 +1,26 @@
+{
+  "name": "record_email_bounce",
+  "title": "Record email bounce",
+  "description": "Mark a China claim/outreach mailbox as bounced (hard, spam, or soft) so the funnel does not count a scanner GET as an open.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "domain": { "type": "string" },
+      "website": { "type": "string" },
+      "email": { "type": "string" },
+      "contact_email": { "type": "string" },
+      "bounce_type": { "type": "string", "enum": ["hard", "spam", "soft"] },
+      "detail": { "type": "string" },
+      "bounce_detail": { "type": "string" },
+      "keep_open": { "type": "boolean", "description": "If true, leave claim_opened_at in place. Default clears a scanner false-open." }
+    },
+    "required": ["domain", "email"],
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}

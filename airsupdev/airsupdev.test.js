@@ -22,6 +22,7 @@ const TOOL_NAMES = [
   'generate_demo',
   'get_growth_funnel',
   'get_supplier_events',
+  'record_email_bounce',
 ];
 
 for (const name of TOOL_NAMES) {
@@ -33,7 +34,7 @@ for (const name of TOOL_NAMES) {
 
 const mcp = createMcp();
 assert.deepStrictEqual(mcp.TOOL_FILES, TOOL_NAMES);
-assert.strictEqual(mcp.toolList().tools.length, 14);
+assert.strictEqual(mcp.toolList().tools.length, 15);
 
 assert.strictEqual(timingSafeEqualString('abc', 'abc'), true);
 assert.strictEqual(timingSafeEqualString('abc', 'abd'), false);
@@ -50,6 +51,15 @@ assert.strictEqual(
     tokens: [],
   }).state,
   'live'
+);
+
+assert.deepStrictEqual(
+  deriveOnboardingStatus({
+    company: { status: 'pending', company_name_en: 'Superb Tech', city: 'shenzhen', goal: 'g', profile: {} },
+    allow: { claim_opened_at: '2026-09-18T16:07:08.000Z' },
+    tokens: [],
+  }),
+  { state: 'opened', reason: 'missing:capabilities', publish_gaps: ['capabilities'] }
 );
 
 assert.strictEqual(

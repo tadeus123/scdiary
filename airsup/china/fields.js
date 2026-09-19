@@ -345,13 +345,59 @@ function listingText(company) {
   return lines.filter(Boolean).join('\n');
 }
 
-function canPublish(company) {
-  const name = String((company && company.company_name) || '').trim() || String((company && company.company_name_en) || '').trim();
-  const city = String((company && company.city) || '').trim();
+function publishGaps(company) {
+  const gaps = [];
+  const name = String((company && company.company_name) || '').trim()
+    || String((company && company.company_name_en) || '').trim();
+  if (!name) gaps.push('company_name');
+  if (!String((company && company.city) || '').trim()) gaps.push('city');
   const profile = normalizeProfile(company && company.profile);
-  const hasCapability = profile.processes.length > 0 || profile.materials.length > 0 || String((company && company.context) || '').trim();
-  const goal = String((company && company.goal) || '').trim();
-  return Boolean(name && city && hasCapability && goal);
+  const hasCapability = profile.processes.length > 0
+    || profile.materials.length > 0
+    || String((company && company.context) || '').trim();
+  if (!hasCapability) gaps.push('capabilities');
+  if (!String((company && company.goal) || '').trim()) gaps.push('goal');
+  return gaps;
+}
+
+function canPublish(company) {
+  return publishGaps(company).length === 0;
+}
+
+function claimListing(company, lang) {
+  const locale = lang === 'en' ? 'en' : 'zh';
+  const profile = normalizeProfile(company && company.profile);
+  const textRow = (key, value) => {
+    const text = String(value || '').trim();
+    return text ? { key, value: text } : null;
+  };
+  const chipRow = (key, ids, catalog) => {
+    const values = labelsFor(ids || [], catalog, locale).filter(Boolean);
+    return values.length ? { key, values } : null;
+  };
+  const website = (company && company.website)
+    || (company && company.domain ? `https://${company.domain}` : '');
+  return {
+    niche: String((company && company.niche) || 'other'),
+    rows: [
+      textRow('website', website),
+      textRow('email', company && company.contact_email),
+      textRow('city', displayCity(company, locale)),
+      textRow('context', company && company.context),
+      textRow('machines', profile.machines),
+      textRow('moq', profile.moq),
+      textRow('lead_time', profile.lead_time),
+      textRow('tolerance', profile.tolerance),
+      textRow('how_you_work', profile.sample_lead),
+      textRow('goal', company && company.goal),
+    ].filter(Boolean),
+    groups: [
+      chipRow('processes', profile.processes, PROCESSES),
+      chipRow('materials', profile.materials, MATERIALS),
+      chipRow('finishing', profile.finishing, FINISHES),
+      chipRow('certs', profile.certifications, CERTS),
+    ].filter(Boolean),
+  };
 }
 
 /** New publishes need founder WeChat + how-you-work. Already-live factories skip this gate. */
@@ -392,7 +438,7 @@ function publicRecord(company) {
     company_name: company.company_name || '',
     company_name_en: company.company_name_en || '',
     city: displayCity(company, 'en'),
-    niche: company.niche || 'cnc',
+    niche: company.niche || 'other',
     status: company.status,
     processes: labelsFor(profile.processes, PROCESSES, 'en'),
     materials: labelsFor(profile.materials, MATERIALS, 'en'),
@@ -437,7 +483,7 @@ function fillEmptyCompany(company, draft) {
   const firstFill = !String(prevProfile.site_notes || '').trim() && !(prevProfile.processes || []).length;
   if (firstFill) {
     const placeholderCity = !String(current.city || '').trim() || current.city === 'shenzhen';
-    const placeholderNiche = !String(current.niche || '').trim() || current.niche === 'cnc';
+    const placeholderNiche = !String(current.niche || '').trim() || current.niche === 'cnc' || current.niche === 'other';
     if (placeholderCity && String(incoming.city || '').trim()) next.city = incoming.city;
     if (placeholderNiche && String(incoming.niche || '').trim()) next.niche = incoming.niche;
   }
@@ -669,7 +715,9 @@ module.exports = {
   displayCity,
   companyTitle,
   listingText,
+  claimListing,
   categorySearchHaystack,
+  publishGaps,
   canPublish,
   qualityReady,
   afterVerifyNext,

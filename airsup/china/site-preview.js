@@ -434,7 +434,7 @@ function companyDraftFromPreview(preview) {
     company_name: String(preview.companyNameZh || '').trim(),
     company_name_en: String(preview.companyNameEn || preview.companyName || '').trim(),
     city: cityId,
-    niche: preview.niche || 'cnc',
+    niche: preview.niche || 'other',
     context: String(preview.summary || '').trim(),
     goal: '',
     profile,

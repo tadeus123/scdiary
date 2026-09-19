@@ -124,7 +124,8 @@ async function listLive() {
     .eq('status', 'live')
     .order('live_at', { ascending: false });
   if (error) throw error;
-  return data || [];
+  const { visibleLiveRows } = require('./public-roster');
+  return visibleLiveRows(data || []);
 }
 
 async function insertCompany(row) {

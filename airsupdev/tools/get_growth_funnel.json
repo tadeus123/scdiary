@@ -1,7 +1,7 @@
 {
   "name": "get_growth_funnel",
   "title": "Get growth funnel",
-  "description": "Ops funnel snapshot: companies by status, allowlist opens/publishes, live count. Metric: outreach → clicked claim → published → live → inquiry.",
+  "description": "Ops funnel: sent → bounced/delivered → human claim open → published → live. Open counts are human-only; scanner GETs are not opens.",
   "inputSchema": {
     "type": "object",
     "properties": {},

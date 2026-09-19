@@ -366,7 +366,7 @@ router.post('/start', async (req, res) => {
         contact_name: contact,
         city: CITIES.some((item) => item.id === city) ? city : 'shenzhen',
         locale: lang,
-        niche: 'cnc',
+        niche: 'other',
         status: 'pending',
         source,
       });

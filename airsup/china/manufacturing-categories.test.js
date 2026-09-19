@@ -58,7 +58,7 @@ assert.strictEqual(normalizeNiche('led-manufacturing'), 'led-manufacturing');
 assert.strictEqual(normalizeNiche('3d_printing'), '3d_printing');
 assert.strictEqual(normalizeNiche('EEG electrodes'), 'biosignal-electrodes');
 assert.strictEqual(normalizeNiche('powder metallurgy'), 'sintering');
-assert.strictEqual(normalizeNiche('not-a-real-category'), 'cnc');
+assert.strictEqual(normalizeNiche('not-a-real-category'), 'other');
 assert.ok(categorySearchHaystack('biosignal-electrodes').toLowerCase().includes('eeg'));
 
 const routes = [

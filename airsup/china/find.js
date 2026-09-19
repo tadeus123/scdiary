@@ -1,6 +1,7 @@
 const db = require('./db');
 const { listingText, endpointRecord } = require('./fields');
 const { isBroadFactoryQuery, routeQueryToCategory } = require('./manufacturing-categories');
+const { visibleLiveRows } = require('./public-roster');
 
 function tokens(value) {
   return String(value || '')
@@ -51,7 +52,7 @@ function matchView(company, query) {
 async function countLive() {
   if (!db.isConfigured()) return 0;
   try {
-    const rows = await db.listLive();
+    const rows = visibleLiveRows(await db.listLive());
     return Array.isArray(rows) ? rows.length : 0;
   } catch (error) {
     console.error('Airsup china live count skipped:', error.message);
@@ -64,7 +65,7 @@ async function findForPlugin({ query, limit, excludeIds }) {
   const q = String(query || '').trim();
   if (!q) return [];
   const skip = new Set((excludeIds || []).filter(Boolean));
-  const rows = await db.listLive();
+  const rows = visibleLiveRows(await db.listLive());
   return rows
     .filter((row) => !skip.has(row.company_id))
     .map((row) => matchView(row, q))

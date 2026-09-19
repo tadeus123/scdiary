@@ -5,6 +5,7 @@ const { buildPreview, companyDraftFromPreview } = require('../airsup/china/site-
 const { findForPlugin } = require('../airsup/china/find');
 const {
   canPublish,
+  publishGaps,
   endpointRecord,
   listingText,
   buyerTestPrompt,
@@ -58,6 +59,7 @@ function summarizeCompany(company, allow) {
     status: company.status,
     source: company.source,
     can_publish: canPublish(company),
+    publish_gaps: publishGaps(company),
     verified_at: company.verified_at || null,
     live_at: company.live_at || null,
     allow: allow
@@ -65,6 +67,8 @@ function summarizeCompany(company, allow) {
           source: allow.source,
           note: allow.note || '',
           claim_opened_at: allow.claim_opened_at || null,
+          bounced_at: allow.bounced_at || null,
+          bounce_type: allow.bounce_type || null,
           published_at: allow.published_at || null,
         }
       : null,
@@ -125,45 +129,45 @@ async function resolveCompanyExact(args = {}) {
 
 function deriveOnboardingStatus({ company, allow, tokens }) {
   if (!company) {
-    return { state: 'blocked', reason: 'supplier_not_found' };
+    return { state: 'blocked', reason: 'supplier_not_found', publish_gaps: [] };
   }
+  const missing = publishGaps(company);
+  const reason = missing.length ? `missing:${missing.join(',')}` : null;
+  const profile = normalizeProfile(company.profile);
+
   if (company.status === 'live') {
-    return { state: 'live', published: true, reason: null };
+    return { state: 'live', published: true, reason: null, publish_gaps: [] };
   }
 
-  const missing = [];
-  if (!canPublish(company)) {
-    if (!String(company.company_name || company.company_name_en || '').trim()) missing.push('company_name');
-    if (!String(company.city || '').trim()) missing.push('city');
-    if (!String(company.goal || '').trim()) missing.push('goal');
-    const profile = normalizeProfile(company.profile);
-    if (!profile.processes.length && !profile.materials.length && !String(company.context || '').trim()) {
-      missing.push('capabilities');
-    }
+  if (allow && allow.bounced_at && !allow.claim_opened_at) {
+    return { state: 'bounced', reason: String(allow.bounce_type || 'undelivered'), publish_gaps: missing };
   }
 
   if (company.status === 'verified') {
-    if (canPublish(company)) return { state: 'ready_to_publish', reason: null };
-    return { state: 'email_verified', reason: missing.length ? `missing:${missing.join(',')}` : null };
+    if (canPublish(company)) return { state: 'ready_to_publish', reason: null, publish_gaps: [] };
+    return { state: 'email_verified', reason, publish_gaps: missing };
+  }
+
+  if (profile.claim_ready && company.status === 'pending') {
+    return { state: 'awaiting_verification', reason, publish_gaps: missing };
   }
 
   if (allow && allow.claim_opened_at) {
-    return { state: 'opened', reason: null };
+    return { state: 'opened', reason, publish_gaps: missing };
   }
 
   const openClaim = (tokens || []).find(
     (row) => row.purpose === 'claim' && !row.used_at && new Date(row.expires_at).getTime() > Date.now()
   );
   if (openClaim) {
-    return { state: 'magic_link_created', reason: null };
+    return { state: 'magic_link_created', reason, publish_gaps: missing };
   }
 
   if (company.status === 'pending') {
-    if (missing.length) return { state: 'draft', reason: `missing:${missing.join(',')}` };
-    return { state: 'draft', reason: null };
+    return { state: 'draft', reason, publish_gaps: missing };
   }
 
-  return { state: 'blocked', reason: `unknown_status:${company.status}` };
+  return { state: 'blocked', reason: `unknown_status:${company.status}`, publish_gaps: missing };
 }
 
 async function lookupSupplier(args = {}) {
@@ -250,7 +254,7 @@ async function createSupplierDraft(args = {}) {
       contact_name: String(args.contact_name || '').trim(),
       city: 'shenzhen',
       locale: lang,
-      niche: 'cnc',
+      niche: args.niche ? normalizeNiche(args.niche) : 'other',
       status: 'pending',
       source: String(args.source || 'outreach').slice(0, 40),
     });
@@ -374,6 +378,7 @@ async function createMagicLink(args = {}) {
       note: String(args.note || '').slice(0, 500),
       lang: args.lang === 'en' ? 'en' : 'zh',
       company_id: String(args.company_id || '').trim() || undefined,
+      niche: args.niche,
     });
     return { ok: true, ...result };
   } catch (error) {
@@ -394,8 +399,15 @@ async function getOnboardingStatus(args = {}) {
     status: company.status,
     ...derived,
     can_publish: canPublish(company),
+    publish_gaps: publishGaps(company),
     allow: allow
-      ? { source: allow.source, claim_opened_at: allow.claim_opened_at, published_at: allow.published_at }
+      ? {
+        source: allow.source,
+        claim_opened_at: allow.claim_opened_at,
+        published_at: allow.published_at,
+        bounced_at: allow.bounced_at || null,
+        bounce_type: allow.bounce_type || null,
+      }
       : null,
   };
 }
@@ -676,6 +688,7 @@ async function getGrowthFunnel() {
     companies_by_status: byStatus,
     allows_total: allows.length,
     allows_claim_opened: allows.filter((row) => row.claim_opened_at).length,
+    allows_bounced: allows.filter((row) => row.bounced_at).length,
     allows_published: allows.filter((row) => row.published_at).length,
     live_avg_filled_fields: Math.round(avgFilled * 10) / 10,
     live_with_enrichment: enriched.filter((row) => row.enriched_at).length,
@@ -685,10 +698,32 @@ async function getGrowthFunnel() {
       email: row.contact_email,
       source: row.source,
       opened: Boolean(row.claim_opened_at),
+      bounced: Boolean(row.bounced_at),
       published: Boolean(row.published_at),
       note: row.note || '',
     })),
   };
+}
+
+async function recordEmailBounce(args = {}) {
+  requireChinaDb();
+  const domain = normalizeDomain(args.domain || args.website || '');
+  const parts = emailParts(args.email || args.contact_email || '');
+  if (!domain) return { ok: false, error: 'invalid_domain' };
+  if (!parts) return { ok: false, error: 'invalid_email' };
+  const type = ['hard', 'spam', 'soft'].includes(args.bounce_type) ? args.bounce_type : 'hard';
+  const allow = await chinaDb.getDomainAllow(domain, parts.email);
+  if (!allow) return { ok: false, error: 'allow_not_found' };
+  const patch = {
+    bounced_at: new Date().toISOString(),
+    bounce_type: type,
+    bounce_detail: String(args.detail || args.reason || '').slice(0, 500),
+  };
+  if (allow.claim_opened_at && !allow.published_at) {
+    patch.claim_opened_at = null;
+  }
+  const next = await chinaDb.touchDomainAllow(domain, parts.email, patch);
+  return { ok: true, allow: next };
 }
 
 async function getSupplierEvents(args = {}) {
@@ -711,6 +746,7 @@ async function getSupplierEvents(args = {}) {
   }
   if (allow) {
     push(allow.claim_opened_at, 'magic_link_opened', allow.source);
+    push(allow.bounced_at, 'email_bounced', allow.bounce_type || '');
     push(allow.published_at, 'published_from_allow', allow.source);
   }
   push(company.verified_at, 'email_verified', '');
@@ -720,6 +756,33 @@ async function getSupplierEvents(args = {}) {
   }
   events.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
   return { ok: true, company_id: company.company_id, domain: company.domain, events };
+}
+
+async function recordEmailBounce(args = {}) {
+  requireChinaDb();
+  const domain = normalizeDomain(args.domain || args.website || '');
+  const parts = emailParts(args.email || args.contact_email || '');
+  if (!domain) return { ok: false, error: 'invalid_domain' };
+  if (!parts) return { ok: false, error: 'invalid_email' };
+  const bounceType = ['hard', 'spam', 'soft'].includes(String(args.bounce_type || '').trim())
+    ? String(args.bounce_type).trim()
+    : 'hard';
+  const allow = await chinaDb.getDomainAllow(domain, parts.email);
+  if (!allow) return { ok: false, error: 'allow_not_found' };
+  const next = await chinaDb.touchDomainAllow(domain, parts.email, {
+    bounced_at: allow.bounced_at || new Date().toISOString(),
+    bounce_type: bounceType,
+    bounce_detail: String(args.detail || args.bounce_detail || '').slice(0, 500),
+    claim_opened_at: allow.claim_opened_at && !args.keep_open ? null : allow.claim_opened_at,
+  });
+  return {
+    ok: true,
+    domain,
+    email: parts.email,
+    bounced_at: next && next.bounced_at,
+    bounce_type: next && next.bounce_type,
+    opened: Boolean(next && next.claim_opened_at),
+  };
 }
 
 async function callTool(name, args) {
@@ -752,6 +815,10 @@ async function callTool(name, args) {
       return getGrowthFunnel(args);
     case 'get_supplier_events':
       return getSupplierEvents(args);
+    case 'record_email_bounce':
+      return recordEmailBounce(args);
+    case 'record_email_bounce':
+      return recordEmailBounce(args);
     default: {
       const error = new Error(`Unknown tool: ${name}`);
       error.code = -32601;

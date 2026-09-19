@@ -21,6 +21,7 @@ const TOOL_FILES = [
   'generate_demo',
   'get_growth_funnel',
   'get_supplier_events',
+  'record_email_bounce',
 ];
 
 const TOOL_STATUS = {
@@ -38,6 +39,7 @@ const TOOL_STATUS = {
   generate_demo: { invoking: 'Generating demo', invoked: 'Demo ready' },
   get_growth_funnel: { invoking: 'Loading growth funnel', invoked: 'Funnel ready' },
   get_supplier_events: { invoking: 'Loading supplier events', invoked: 'Events ready' },
+  record_email_bounce: { invoking: 'Recording bounce', invoked: 'Bounce recorded' },
 };
 
 function loadTools() {

@@ -8,7 +8,7 @@ const { normalizeDomain, emailParts, isFreeMail } = require('./domain');
 const db = require('./db');
 const session = require('./session');
 const { buildPreview, companyDraftFromPreview } = require('./site-preview');
-const { fillEmptyCompany, canPublish, normalizeProfile } = require('./fields');
+const { fillEmptyCompany, canPublish, publishGaps, normalizeProfile, normalizeNiche } = require('./fields');
 const { chinaClaimUrl } = require('./origin');
 
 function arg(name) {
@@ -22,7 +22,7 @@ function arg(name) {
   return '';
 }
 
-async function mintClaim({ domain, email, source, note, lang, company_id: companyId }) {
+async function mintClaim({ domain, email, source, note, lang, company_id: companyId, niche }) {
   const site = normalizeDomain(domain);
   const parts = emailParts(email);
   if (!site) throw new Error('Invalid domain');
@@ -31,6 +31,7 @@ async function mintClaim({ domain, email, source, note, lang, company_id: compan
   if (!db.isConfigured()) throw new Error('Database is not configured');
 
   const sourceValue = source === 'manual' ? 'manual' : 'outreach';
+  const requestedNiche = String(niche || '').trim() ? normalizeNiche(niche) : '';
   await db.upsertDomainAllow({
     domain: site,
     contact_email: parts.email,
@@ -61,7 +62,7 @@ async function mintClaim({ domain, email, source, note, lang, company_id: compan
       contact_name: '',
       city: 'shenzhen',
       locale: lang === 'en' ? 'en' : 'zh',
-      niche: 'cnc',
+      niche: requestedNiche || 'other',
       status: 'pending',
       source: sourceValue,
     });
@@ -74,6 +75,7 @@ async function mintClaim({ domain, email, source, note, lang, company_id: compan
       contact_email: parts.email,
       source: sourceValue,
       website: company.website || `https://${site}`,
+      ...(requestedNiche ? { niche: requestedNiche } : {}),
     });
   } else if (String(company.contact_email || '').toLowerCase() !== parts.email) {
     throw new Error(`Domain already claimed by ${company.contact_email}. Use that mailbox or pause/reset first.`);
@@ -93,7 +95,7 @@ async function mintClaim({ domain, email, source, note, lang, company_id: compan
         company_name: filled.company_name,
         company_name_en: filled.company_name_en,
         city: filled.city,
-        niche: filled.niche,
+        niche: (requestedNiche && requestedNiche !== 'other') ? requestedNiche : filled.niche,
         context: filled.context,
         goal: filled.goal,
         profile: normalizeProfile(filled.profile),
@@ -112,6 +114,7 @@ async function mintClaim({ domain, email, source, note, lang, company_id: compan
     company_id: company.company_id,
     status: company.status,
     can_publish: canPublish(company),
+    publish_gaps: publishGaps(company),
     link,
   };
 }
