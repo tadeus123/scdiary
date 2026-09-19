@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="<%= lang === 'en' ? 'en' : 'zh-CN' %>">
+<head>
+  <meta charset="UTF-8">
+  <%- include('partials/head') %>
+</head>
+<body class="cn-body">
+  <%- include('partials/header') %>
+  <main class="cn-wrap cn-inner">
+    <p class="cn-stamp"><%= t('verify_stamp') %></p>
+    <h1><%= t('verify_title') %></h1>
+    <p class="cn-lead"><%= t('verify_lead', { email: email || '' }) %></p>
+    <% if (error) { %><p class="cn-error"><%= error %></p><% } %>
+    <form method="post" action="<%= verifyAction %>" class="cn-form">
+      <input type="hidden" name="token" value="<%= token %>">
+      <input type="hidden" name="email" value="<%= email || '' %>">
+      <% if (next) { %><input type="hidden" name="next" value="<%= next %>"><% } %>
+      <label>
+        <span><%= t('verify_code') %></span>
+        <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456">
+      </label>
+      <p class="cn-note"><%= t('verify_note') %></p>
+      <button type="submit" class="cn-primary"><%= t('verify_confirm') %></button>
+    </form>
+  </main>
+  <%- include('partials/footer') %>
+</body>
+</html>

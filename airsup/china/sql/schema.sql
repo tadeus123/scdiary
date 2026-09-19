@@ -11,7 +11,7 @@ create table if not exists public.airsup_china_companies (
   contact_name text not null default '',
   contact_email text not null default '',
   locale text not null default 'zh',
-  niche text not null default 'cnc', -- primary category slug from airsup/china/manufacturing-categories.js
+  niche text not null default 'other', -- primary category slug from airsup/china/manufacturing-categories.js
   status text not null default 'pending',
   source text not null default 'web',
   profile jsonb not null default '{}'::jsonb,
@@ -145,3 +145,69 @@ grant all on table public.airsup_china_inquiries to service_role;
 grant all on table public.airsup_china_threads to service_role;
 grant all on table public.airsup_china_messages to service_role;
 grant all on table public.airsup_china_domain_allows to service_role;
+
+create table if not exists public.airsup_china_sources (
+  source_id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.airsup_china_companies (company_id) on delete cascade,
+  source_type text not null default 'profile_backfill',
+  source_reference text not null default '',
+  visibility text not null default 'ops',
+  note text not null default '',
+  created_at timestamptz not null default now(),
+  constraint airsup_china_sources_visibility_chk check (visibility in ('buyer', 'ops', 'private'))
+);
+
+create index if not exists airsup_china_sources_company_idx
+  on public.airsup_china_sources (company_id, created_at desc);
+
+create table if not exists public.airsup_china_facts (
+  fact_id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.airsup_china_companies (company_id) on delete cascade,
+  fact_type text not null,
+  fact_key text not null,
+  value text not null default '',
+  unit text not null default '',
+  source_id uuid references public.airsup_china_sources (source_id) on delete set null,
+  source_type text not null default 'profile_backfill',
+  source_reference text not null default '',
+  confidence numeric not null default 0.55,
+  supplier_confirmed boolean not null default false,
+  visibility text not null default 'ops',
+  first_seen_at timestamptz not null default now(),
+  last_verified_at timestamptz,
+  valid_from timestamptz not null default now(),
+  valid_until timestamptz,
+  created_at timestamptz not null default now(),
+  constraint airsup_china_facts_visibility_chk check (visibility in ('buyer', 'ops', 'private'))
+);
+
+create unique index if not exists airsup_china_facts_current_idx
+  on public.airsup_china_facts (company_id, fact_type, fact_key)
+  where valid_until is null;
+
+create index if not exists airsup_china_facts_company_idx
+  on public.airsup_china_facts (company_id, fact_type);
+
+create table if not exists public.airsup_china_funnel_events (
+  event_id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.airsup_china_companies (company_id) on delete cascade,
+  event text not null,
+  detail text not null default '',
+  at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists airsup_china_funnel_events_company_idx
+  on public.airsup_china_funnel_events (company_id, at);
+
+alter table public.airsup_china_sources enable row level security;
+alter table public.airsup_china_facts enable row level security;
+alter table public.airsup_china_funnel_events enable row level security;
+
+revoke all on table public.airsup_china_sources from anon, authenticated, public;
+revoke all on table public.airsup_china_facts from anon, authenticated, public;
+revoke all on table public.airsup_china_funnel_events from anon, authenticated, public;
+
+grant all on table public.airsup_china_sources to service_role;
+grant all on table public.airsup_china_facts to service_role;
+grant all on table public.airsup_china_funnel_events to service_role;

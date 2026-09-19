@@ -407,6 +407,12 @@ const COPY = {
     header_live: '已上线证明',
     found_collapsed_lead: '能力与资料已从网站带入，需要时再展开修改。',
     claim_stamp: '一键发布',
+    verify_stamp: '确认邮箱',
+    verify_title: '确认此邮箱',
+    verify_lead: '确认 {{email}} 由你们控制。打开本页不算验证。',
+    verify_code: '邮件里的 6 位验证码（可选）',
+    verify_note: '点下面按钮才会验证。扫描或预览不会占用链接。',
+    verify_confirm: '确认此邮箱',
     claim_lead: '工厂资料已根据网站预填。确认企业邮箱后即可发布，让 ChatGPT 能找到你们。询盘仍发到你们现有邮箱。',
     claim_caps_fallback: '见下方说明',
     claim_listing_title: '预填内容（可发布后修改）',
@@ -849,6 +855,12 @@ const COPY = {
     header_live: 'Live proof',
     found_collapsed_lead: 'Capabilities came from your site. Expand only if you need to edit.',
     claim_stamp: 'One-click publish',
+    verify_stamp: 'Confirm email',
+    verify_title: 'Confirm this email',
+    verify_lead: 'Confirm you control {{email}}. Opening this page does not verify.',
+    verify_code: '6-digit code from the email (optional)',
+    verify_note: 'Verification happens only when you click the button. Scanners and previews do not consume the link.',
+    verify_confirm: 'Confirm this email',
     claim_lead: 'Your factory card is prefilled from your website. Confirm the company mailbox, then publish so ChatGPT can find you. Inquiries still arrive in your existing email.',
     claim_caps_fallback: 'See notes below',
     claim_listing_title: 'Prefill (editable after publish)',
@@ -885,11 +897,17 @@ const COPY = {
   },
 };
 
-function t(lang, key) {
+function t(lang, key, vars) {
   const pack = COPY[lang] || COPY.zh;
-  if (Object.prototype.hasOwnProperty.call(pack, key)) return pack[key];
-  if (Object.prototype.hasOwnProperty.call(COPY.zh, key)) return COPY.zh[key];
-  return key;
+  let text = key;
+  if (Object.prototype.hasOwnProperty.call(pack, key)) text = pack[key];
+  else if (Object.prototype.hasOwnProperty.call(COPY.zh, key)) text = COPY.zh[key];
+  if (vars && typeof vars === 'object') {
+    text = String(text).replace(/\{\{(\w+)\}\}/g, (_, name) => (
+      vars[name] == null ? '' : String(vars[name])
+    ));
+  }
+  return text;
 }
 
 function otherLang(lang) {

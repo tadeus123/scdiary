@@ -108,6 +108,16 @@ assert.strictEqual(
   'function'
 );
 
+assert.ok(fs.existsSync(path.join(__dirname, 'tools/get_supplier_data_depth.json')));
+assert.ok(fs.readFileSync(path.join(__dirname, 'services.js'), 'utf8').includes('facts_store'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'services.js'), 'utf8').includes('listFunnelEvents'));
+assert.ok(fs.readFileSync(path.join(__dirname, '../airsup/china/sql/schema.sql'), 'utf8').includes('airsup_china_facts'));
+assert.ok(fs.readFileSync(path.join(__dirname, '../airsup/china/sql/schema.sql'), 'utf8').includes("default 'other'"));
+assert.ok(fs.readFileSync(path.join(__dirname, '../airsup/china/routes.js'), 'utf8').includes('peekVerifyToken'));
+assert.ok(!fs.readFileSync(path.join(__dirname, '../airsup/china/routes.js'), 'utf8').includes("claim_opened_at: new Date"));
+assert.ok(fs.existsSync(path.join(__dirname, '../airsup/china/verify-token.js')));
+assert.ok(fs.existsSync(path.join(__dirname, '../airsup/china/views/verify.ejs')));
+
 (async () => {
   const dns = await callTool('verify_supplier', { method: 'dns', domain: 'example.com' });
   assert.strictEqual(dns.supported, false);

@@ -683,19 +683,39 @@ async function recordEmailBounce(args = {}) {
   const parts = emailParts(args.email || args.contact_email || '');
   if (!domain) return { ok: false, error: 'invalid_domain' };
   if (!parts) return { ok: false, error: 'invalid_email' };
-  const type = ['hard', 'spam', 'soft'].includes(args.bounce_type) ? args.bounce_type : 'hard';
+  const bounceType = ['hard', 'spam', 'soft'].includes(String(args.bounce_type || '').trim())
+    ? String(args.bounce_type).trim()
+    : 'hard';
   const allow = await chinaDb.getDomainAllow(domain, parts.email);
   if (!allow) return { ok: false, error: 'allow_not_found' };
-  const patch = {
-    bounced_at: new Date().toISOString(),
-    bounce_type: type,
-    bounce_detail: String(args.detail || args.reason || '').slice(0, 500),
-  };
-  if (allow.claim_opened_at && !allow.published_at) {
-    patch.claim_opened_at = null;
+  const clearOpen = allow.claim_opened_at && !allow.published_at && !args.keep_open;
+  const next = await chinaDb.touchDomainAllow(domain, parts.email, {
+    bounced_at: allow.bounced_at || new Date().toISOString(),
+    bounce_type: bounceType,
+    bounce_detail: String(args.detail || args.bounce_detail || args.reason || '').slice(0, 500),
+    claim_opened_at: clearOpen ? null : allow.claim_opened_at,
+  });
+  try {
+    const company = await chinaDb.getByDomain(domain).catch(() => null);
+    if (company) {
+      await factsStore.recordFunnelEvent(chinaDb, {
+        company_id: company.company_id,
+        event: 'bounced',
+        detail: bounceType,
+      });
+    }
+  } catch (error) {
+    console.error('Airsupdev bounce funnel skipped:', error.message);
   }
-  const next = await chinaDb.touchDomainAllow(domain, parts.email, patch);
-  return { ok: true, allow: next };
+  return {
+    ok: true,
+    domain,
+    email: parts.email,
+    bounced_at: next && next.bounced_at,
+    bounce_type: next && next.bounce_type,
+    opened: Boolean(next && next.claim_opened_at),
+    allow: next,
+  };
 }
 
 async function getSupplierEvents(args = {}) {
@@ -705,6 +725,9 @@ async function getSupplierEvents(args = {}) {
   const allow = await chinaDb.getDomainAllow(company.domain, company.contact_email).catch(() => null);
   const inquiries = await chinaDb.listInquiriesForCompany(company.company_id).catch(() => []);
   const tokens = await chinaDb.listTokensForCompany(company.company_id).catch(() => []);
+  const funnel = typeof chinaDb.listFunnelEvents === 'function'
+    ? await chinaDb.listFunnelEvents(company.company_id).catch(() => [])
+    : [];
   const events = [];
   const push = (at, type, detail) => {
     if (!at) return;
@@ -717,7 +740,7 @@ async function getSupplierEvents(args = {}) {
     if (token.used_at) push(token.used_at, `token_used_${token.purpose}`, token.email);
   }
   if (allow) {
-    push(allow.claim_opened_at, 'magic_link_opened', allow.source);
+    push(allow.claim_opened_at, 'claim_page_viewed', allow.source);
     push(allow.bounced_at, 'email_bounced', allow.bounce_type || '');
     push(allow.published_at, 'published_from_allow', allow.source);
   }
@@ -726,61 +749,60 @@ async function getSupplierEvents(args = {}) {
   for (const inquiry of inquiries) {
     push(inquiry.created_at, 'buyer_inquiry_received', String(inquiry.message || '').slice(0, 120));
   }
+  for (const row of funnel || []) {
+    push(row.at || row.created_at, row.event, row.detail || '');
+  }
   events.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
   return { ok: true, company_id: company.company_id, domain: company.domain, events };
 }
 
-async function recordEmailBounce(args = {}) {
-  requireChinaDb();
-  const domain = normalizeDomain(args.domain || args.website || '');
-  const parts = emailParts(args.email || args.contact_email || '');
-  if (!domain) return { ok: false, error: 'invalid_domain' };
-  if (!parts) return { ok: false, error: 'invalid_email' };
-  const bounceType = ['hard', 'spam', 'soft'].includes(String(args.bounce_type || '').trim())
-    ? String(args.bounce_type).trim()
-    : 'hard';
-  const allow = await chinaDb.getDomainAllow(domain, parts.email);
-  if (!allow) return { ok: false, error: 'allow_not_found' };
-  const next = await chinaDb.touchDomainAllow(domain, parts.email, {
-    bounced_at: allow.bounced_at || new Date().toISOString(),
-    bounce_type: bounceType,
-    bounce_detail: String(args.detail || args.bounce_detail || '').slice(0, 500),
-    claim_opened_at: allow.claim_opened_at && !args.keep_open ? null : allow.claim_opened_at,
-  });
-  return {
-    ok: true,
-    domain,
-    email: parts.email,
-    bounced_at: next && next.bounced_at,
-    bounce_type: next && next.bounce_type,
-    opened: Boolean(next && next.claim_opened_at),
-  };
-}
-
 async function loadCompanyFacts(company) {
   requireChinaDb();
-  let rows = typeof chinaDb.listFacts === 'function'
-    ? await chinaDb.listFacts(company.company_id).catch(() => [])
-    : [];
+  let storeUnavailable = false;
+  let rows = [];
+  if (typeof chinaDb.listFacts === 'function') {
+    try {
+      rows = await chinaDb.listFacts(company.company_id);
+    } catch (error) {
+      storeUnavailable = true;
+      console.error('Airsupdev listFacts failed:', error.message);
+      rows = [];
+    }
+  } else {
+    storeUnavailable = true;
+  }
   const current = (rows || []).filter((row) => !row.valid_until && facts.isCountable(row));
   if (!current.length) {
-    await factsStore.backfillCompanyFacts(chinaDb, company).catch(() => null);
-    rows = typeof chinaDb.listFacts === 'function'
-      ? await chinaDb.listFacts(company.company_id).catch(() => [])
-      : facts.factsFromCompany(company);
+    try {
+      await factsStore.backfillCompanyFacts(chinaDb, company);
+      if (typeof chinaDb.listFacts === 'function' && !storeUnavailable) {
+        rows = await chinaDb.listFacts(company.company_id).catch(() => []);
+      }
+    } catch (error) {
+      storeUnavailable = true;
+      console.error('Airsupdev backfillFacts failed:', error.message);
+    }
   }
-  return (rows || []).filter((row) => !row.valid_until);
+  const listed = (rows || []).filter((row) => !row.valid_until);
+  if (!listed.length) {
+    return {
+      rows: facts.factsFromCompany(company),
+      facts_store: storeUnavailable ? 'unavailable' : 'memory_fallback',
+    };
+  }
+  return { rows: listed, facts_store: storeUnavailable ? 'unavailable' : 'ok' };
 }
 
 async function getSupplierDataDepth(args = {}) {
   const company = await resolveCompany(args, { allowFuzzy: true });
   if (!company) return { ok: false, error: 'supplier_not_found' };
-  const rows = await loadCompanyFacts(company);
-  const summary = facts.summarizeDepth(rows);
+  const loaded = await loadCompanyFacts(company);
+  const summary = facts.summarizeDepth(loaded.rows);
   return {
     ok: true,
     company_id: company.company_id,
     domain: company.domain,
+    facts_store: loaded.facts_store,
     ...summary,
   };
 }
@@ -788,13 +810,14 @@ async function getSupplierDataDepth(args = {}) {
 async function getSupplierFactGaps(args = {}) {
   const company = await resolveCompany(args, { allowFuzzy: true });
   if (!company) return { ok: false, error: 'supplier_not_found' };
-  const rows = await loadCompanyFacts(company);
-  const gaps = facts.gapsFromFacts(rows, company);
-  const next = facts.suggestNext(rows, company);
+  const loaded = await loadCompanyFacts(company);
+  const gaps = facts.gapsFromFacts(loaded.rows, company);
+  const next = facts.suggestNext(loaded.rows, company);
   return {
     ok: true,
     company_id: company.company_id,
     domain: company.domain,
+    facts_store: loaded.facts_store,
     ...gaps,
     next_ask: next,
   };
@@ -803,7 +826,8 @@ async function getSupplierFactGaps(args = {}) {
 async function listSupplierFacts(args = {}) {
   const company = await resolveCompany(args, { allowFuzzy: true });
   if (!company) return { ok: false, error: 'supplier_not_found' };
-  let rows = await loadCompanyFacts(company);
+  let loaded = await loadCompanyFacts(company);
+  let rows = loaded.rows;
   const type = String(args.fact_type || '').trim();
   if (type) rows = rows.filter((row) => row.fact_type === type);
   const limit = Math.max(1, Math.min(500, Number(args.limit) || 100));
@@ -811,6 +835,7 @@ async function listSupplierFacts(args = {}) {
     ok: true,
     company_id: company.company_id,
     domain: company.domain,
+    facts_store: loaded.facts_store,
     count: rows.length,
     facts: rows.slice(0, limit),
   };

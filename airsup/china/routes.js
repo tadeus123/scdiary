@@ -28,6 +28,8 @@ const { sendForDomain } = require('./send-quotes-invite');
 const { saveInteraction, publishCompany } = require('./test/onboard');
 const peopleAuth = require('../auth');
 const handleLiveCompanies = require('./live-companies');
+const { peekVerifyToken, confirmVerifyToken } = require('./verify-token');
+const { chinaVerifyUrl } = require('./origin');
 
 const router = express.Router();
 const VIEWS = path.join(__dirname, 'views');
@@ -105,7 +107,7 @@ function render(req, res, viewName, extra = {}) {
     ...res.locals,
     lang,
     otherLang: otherLang(lang),
-    t: (key) => t(lang, key),
+    t: (key, vars) => t(lang, key, vars),
     formatChartDay: (day) => formatChartDay(day, lang),
     here: `/airsup/china${req.path === '/' ? '' : req.path}`,
     landing: extra.landing !== undefined ? extra.landing : viewName === 'home.ejs',
@@ -391,7 +393,7 @@ router.post('/start', async (req, res) => {
     }
     const purpose = company.status === 'pending' ? 'verify' : 'login';
     const token = await session.createToken(company.company_id, matched.email, purpose);
-    const link = `${publicOrigin(req)}/airsup/china/verify?token=${token}`;
+    const link = chinaVerifyUrl(token);
     await sendVerifyEmail({
       lang,
       to: matched.email,
@@ -429,13 +431,6 @@ router.get('/claim', async (req, res) => {
     const company = await db.getById(row.company_id);
     if (!company) return fail('err_claim');
     // Read-only view: do not scrape/write on GET (bots/prefetch).
-    try {
-      await db.touchDomainAllow(company.domain, row.email || company.contact_email, {
-        claim_opened_at: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error('Airsup china claim open touch skipped:', error.message);
-    }
     return render(req, res, 'claim.ejs', {
       proof: await proof(),
       company,
@@ -483,7 +478,7 @@ router.post('/claim/confirm', async (req, res) => {
     }
     company = await applySiteDraft(company, company.website || company.domain, lang) || company;
     const verifyToken = await session.createToken(company.company_id, email, 'verify');
-    const link = `${publicOrigin(req)}/airsup/china/verify?token=${verifyToken}`;
+    const link = chinaVerifyUrl(verifyToken);
     await sendVerifyEmail({
       lang,
       to: email,
@@ -501,82 +496,56 @@ router.post('/claim/confirm', async (req, res) => {
 router.get('/verify', async (req, res) => {
   const lang = langFrom(req, res);
   const token = String(req.query.token || '');
-  if (!token || !db.isConfigured()) {
-    return render(req, res, 'home.ejs', {
-      proof: await proof(),
-      form: formFromCompany(null),
-      error: t(lang, 'err_token'),
-      cities: CITIES,
-    });
-  }
+  const fail = async (errorKey) => render(req, res, 'home.ejs', {
+    proof: await proof(),
+    form: formFromCompany(null),
+    error: t(lang, errorKey),
+    cities: CITIES,
+  });
+  if (!token || !db.isConfigured()) return fail('err_token');
   try {
-    const peek = await db.getToken(session.sha256(token));
-    if (!peek || (peek.purpose !== 'verify' && peek.purpose !== 'login')) {
-      return render(req, res, 'home.ejs', {
-        proof: await proof(),
-        form: formFromCompany(null),
-        error: t(lang, 'err_token'),
-        cities: CITIES,
-      });
-    }
-    // Login links stay reusable until expiry so WeChat/email link-preview does not burn them.
-    // Verify / claim tokens stay one-shot.
-    let row = peek;
-    if (peek.purpose === 'verify') {
-      row = await db.takeToken(session.sha256(token));
-      if (!row || row.purpose !== 'verify') {
-        return render(req, res, 'home.ejs', {
-          proof: await proof(),
-          form: formFromCompany(null),
-          error: t(lang, 'err_token'),
-          cities: CITIES,
-        });
-      }
-    }
-    if (!row || (row.purpose !== 'verify' && row.purpose !== 'login')) {
-      return render(req, res, 'home.ejs', {
-        proof: await proof(),
-        form: formFromCompany(null),
-        error: t(lang, 'err_token'),
-        cities: CITIES,
-      });
-    }
-    const company = await db.getById(row.company_id);
-    if (!company) {
-      return render(req, res, 'home.ejs', {
-        proof: await proof(),
-        form: formFromCompany(null),
-        error: t(lang, 'err_token'),
-        cities: CITIES,
-      });
-    }
-    const patch = {};
-    if (company.status === 'pending') {
-      patch.contact_email = row.email || company.contact_email;
-      patch.status = 'verified';
-      patch.verified_at = new Date().toISOString();
-    } else if (company.status === 'verified' && row.email) {
-      // Keep mailbox aligned only while not live.
-      patch.contact_email = row.email;
-    }
-    // Never change contact_email or status for live (pause stays paused until explicit publish).
-    if (Object.keys(patch).length) {
-      await db.updateCompany(company.company_id, patch);
-    }
-    await session.createSession(req, res, company.company_id);
-    let fresh = await db.getById(company.company_id);
-    if (fresh && (fresh.status === 'pending' || fresh.status === 'verified')) {
-      fresh = await applySiteDraft(fresh, company.website || company.domain, lang) || fresh;
-    }
-    return res.redirect(afterVerifyNext(fresh, req.query.next));
-  } catch (error) {
-    console.error('Airsup china verify error:', error);
-    return render(req, res, 'home.ejs', {
+    const peeked = await peekVerifyToken(db, session, token);
+    if (!peeked.ok) return fail(peeked.errorKey || 'err_token');
+    return render(req, res, 'verify.ejs', {
       proof: await proof(),
-      form: formFromCompany(null),
-      error: t(lang, 'err_db'),
-      cities: CITIES,
+      company: peeked.company,
+      token,
+      email: peeked.email,
+      next: String(req.query.next || ''),
+      verifyAction: '/airsup/china/verify',
+      error: null,
+      quietChrome: true,
     });
+  } catch (error) {
+    console.error('Airsup china verify peek error:', error);
+    return fail('err_db');
+  }
+});
+
+router.post('/verify', async (req, res) => {
+  const lang = langFrom(req, res);
+  const fail = async (errorKey) => render(req, res, 'home.ejs', {
+    proof: await proof(),
+    form: formFromCompany(null),
+    error: t(lang, errorKey),
+    cities: CITIES,
+  });
+  if (!peopleAuth.allowedOrigin(req)) return fail('err_origin');
+  if (!db.isConfigured()) return fail('err_token');
+  try {
+    const result = await confirmVerifyToken(db, session, {
+      token: req.body && req.body.token,
+      email: req.body && req.body.email,
+      code: req.body && req.body.code,
+      applySiteDraft,
+    });
+    if (!result.ok) return fail(result.errorKey || 'err_token');
+    await session.createSession(req, res, result.company.company_id);
+    const next = String((req.body && req.body.next) || req.query.next || '');
+    return res.redirect(afterVerifyNext(result.company, next));
+  } catch (error) {
+    console.error('Airsup china verify confirm error:', error);
+    return fail('err_db');
   }
 });
 
