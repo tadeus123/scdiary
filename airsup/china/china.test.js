@@ -353,6 +353,8 @@ assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includ
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('manual_email_cta'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes('id="cn-login-modal"'));
 assert.ok(fs.readFileSync(path.join(__dirname, 'views/partials/header.ejs'), 'utf8').includes('id="cn-header-login"'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes("<%- JSON.stringify(t('login_send')) %>"));
+assert.ok(!fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').includes("<%= JSON.stringify(t('login_send')) %>"));
 assert.strictEqual((fs.readFileSync(path.join(__dirname, 'views/home.ejs'), 'utf8').match(/<\/html>/g) || []).length, 1);
 assert.ok(COPY.en.growth_launch.toLowerCase().includes('launch'));
 assert.ok(COPY.zh.growth_launch.includes('开通'));

@@ -372,10 +372,10 @@
     var cancel = document.getElementById('cn-login-cancel');
     var step = 'email';
     var copy = {
-      send: <%= JSON.stringify(t('login_send')) %>,
-      verify: <%= JSON.stringify(t('login_verify')) %>,
-      sent: <%= JSON.stringify(t('login_sent')) %>,
-      busy: <%= JSON.stringify(t('login_busy')) %>
+      send: <%- JSON.stringify(t('login_send')) %>,
+      verify: <%- JSON.stringify(t('login_verify')) %>,
+      sent: <%- JSON.stringify(t('login_sent')) %>,
+      busy: <%- JSON.stringify(t('login_busy')) %>
     };
     function openModal() {
       modal.hidden = false;
@@ -392,8 +392,17 @@
       modal.setAttribute('aria-hidden', 'true');
       document.body.classList.remove('cn-login-open');
     }
-    openBtn.addEventListener('click', openModal);
+    openBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      openModal();
+    });
     cancel.addEventListener('click', closeModal);
+    emailEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); go.click(); }
+    });
+    codeEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); go.click(); }
+    });
     modal.addEventListener('click', function (e) {
       if (e.target === modal) closeModal();
     });
