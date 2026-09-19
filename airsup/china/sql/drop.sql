@@ -1,5 +1,9 @@
 -- Drop only Airsup China company tables. Does not touch people Airsup or diary.
 
+drop table if exists public.airsup_china_project_events;
+drop table if exists public.airsup_china_projects;
+drop table if exists public.airsup_china_gap_outreach;
+drop table if exists public.airsup_china_gap_demands;
 drop table if exists public.airsup_china_facts;
 drop table if exists public.airsup_china_sources;
 drop table if exists public.airsup_china_funnel_events;
