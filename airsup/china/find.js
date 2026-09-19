@@ -2,6 +2,7 @@ const db = require('./db');
 const { listingText, endpointRecord } = require('./fields');
 const { isBroadFactoryQuery, routeQueryToCategory } = require('./manufacturing-categories');
 const { visibleLiveRows } = require('./public-roster');
+const gapDemand = require('./gap-demand');
 
 function tokens(value) {
   return String(value || '')
@@ -30,6 +31,19 @@ function scoreCompany(company, query) {
   return hits;
 }
 
+/** Score without broad-query padding of 1 — used for gap detection. */
+function meaningfulScore(company, query) {
+  const hay = listingText(company).toLowerCase();
+  const needles = tokens(query);
+  let hits = 0;
+  for (const word of needles) {
+    if (hay.includes(word)) hits += 1;
+  }
+  const routed = routeQueryToCategory(query);
+  if (routed && routed !== 'other' && String((company && company.niche) || '') === routed) hits += 8;
+  return hits;
+}
+
 function matchView(company, query) {
   const record = endpointRecord(company);
   const hay = record.listing_text || '';
@@ -46,6 +60,7 @@ function matchView(company, query) {
       ? `A factory ChatGPT can ask (replies in this send_message). ${description}`
       : 'A factory ChatGPT can ask. Replies in this send_message.',
     score: scoreCompany(company, query),
+    meaningful_score: meaningfulScore(company, query),
   };
 }
 
@@ -60,23 +75,57 @@ async function countLive() {
   }
 }
 
-async function findForPlugin({ query, limit, excludeIds }) {
-  if (!db.isConfigured()) return [];
+async function findForPlugin({ query, limit, excludeIds, callerPersonId, recordGap }) {
+  if (!db.isConfigured()) return { matches: [], gap: null };
   const q = String(query || '').trim();
-  if (!q) return [];
+  if (!q) return { matches: [], gap: null };
   const skip = new Set((excludeIds || []).filter(Boolean));
   const rows = visibleLiveRows(await db.listLive());
-  return rows
+  const scored = rows
     .filter((row) => !skip.has(row.company_id))
     .map((row) => matchView(row, q))
     .filter((row) => row.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, Math.min(Math.max(Number(limit) || 5, 1), 50));
+    .sort((a, b) => b.score - a.score || b.meaningful_score - a.meaningful_score);
+
+  const bestMeaningful = scored.reduce((max, row) => Math.max(max, row.meaningful_score || 0), 0);
+  const isGap = gapDemand.looksLikeFulfillmentNeed(q) && bestMeaningful < 2;
+
+  let matches = scored.slice(0, Math.min(Math.max(Number(limit) || 5, 1), 50));
+  // Honest path: do not push weak padded matches when this is a real fulfillment gap.
+  if (isGap) {
+    matches = scored.filter((row) => (row.meaningful_score || 0) >= 2).slice(0, Math.min(Math.max(Number(limit) || 5, 1), 50));
+  }
+
+  let gap = null;
+  if (isGap && recordGap !== false) {
+    gap = await gapDemand.recordGapIfNeeded(db, {
+      query: q,
+      callerPersonId,
+      chinaMatches: scored.slice(0, 8).map((row) => ({
+        person_id: row.person_id,
+        name: row.name,
+        score: row.meaningful_score || 0,
+      })),
+      scoreCompany: meaningfulScore,
+    });
+  }
+
+  return {
+    matches: matches.map(({ person_id, name, description, score }) => ({
+      person_id,
+      name,
+      description,
+      score,
+    })),
+    gap,
+    gap_note: isGap ? gapDemand.GAP_NOTE : null,
+  };
 }
 
 module.exports = {
   tokens,
   scoreCompany,
+  meaningfulScore,
   matchView,
   countLive,
   findForPlugin,

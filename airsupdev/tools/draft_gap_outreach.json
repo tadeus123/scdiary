@@ -1,0 +1,24 @@
+{
+  "name": "draft_gap_outreach",
+  "title": "Draft gap outreach",
+  "description": "Draft a plain-text onboarding email for a real unmatched customer need. Creates a claim link with demand_id. Does not send unless send=true. Never invent the customer need — demand_id must exist.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "demand_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" },
+      "lang": { "type": "string", "enum": ["zh", "en"] },
+      "send": { "type": "boolean", "description": "If true, send the email via Gmail. Default false (draft only)." },
+      "niche": { "type": "string" }
+    },
+    "required": ["demand_id", "domain", "email"],
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": true
+  }
+}

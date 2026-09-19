@@ -34,10 +34,13 @@ const {
 } = require('../airsup/china/domain');
 const session = require('../airsup/china/session');
 const { sendVerifyEmail } = require('../airsup/china/mail');
+const { sendGapOutreachEmail } = require('../airsup/china/mail');
 const { chinaVerifyUrl, chinaLiveJsonUrl, chinaEndpointUrl } = require('../airsup/china/origin');
 const facts = require('../airsup/china/facts');
 const factsStore = require('../airsup/china/facts-store');
 const quotations = require('../airsup/china/quotations');
+const gapDemand = require('../airsup/china/gap-demand');
+const projectEvents = require('../airsup/china/project-events');
 
 function requireChinaDb() {
   if (!chinaDb.isConfigured()) {
@@ -343,6 +346,7 @@ async function createMagicLink(args = {}) {
       lang: args.lang === 'en' ? 'en' : 'zh',
       company_id: String(args.company_id || '').trim() || undefined,
       niche: args.niche,
+      demand_id: String(args.demand_id || '').trim() || undefined,
     });
     return { ok: true, ...result };
   } catch (error) {
@@ -527,7 +531,8 @@ async function testSupplierDiscovery(args = {}) {
       query,
     };
   }
-  const matches = await findForPlugin({ query, limit: Number(args.limit) || 10 });
+  const found = await findForPlugin({ query, limit: Number(args.limit) || 10, recordGap: false });
+  const matches = (found && found.matches) || (Array.isArray(found) ? found : []);
   const hit = matches.find((row) => row.person_id === company.company_id);
   const result = {
     ok: true,
@@ -537,6 +542,7 @@ async function testSupplierDiscovery(args = {}) {
     match: hit || null,
     card: endpointRecord(company),
     other_matches: matches.filter((row) => row.person_id !== company.company_id).slice(0, 5),
+    gap_note: found && found.gap_note ? found.gap_note : null,
   };
   if (args.store_score !== false) {
     try {
@@ -1165,6 +1171,194 @@ async function enrichSupplierDeep(args = {}) {
   };
 }
 
+async function listGapDemands(args = {}) {
+  requireChinaDb();
+  const rows = await chinaDb.listGapDemands({
+    status: args.status || undefined,
+    limit: args.limit,
+  });
+  return {
+    ok: true,
+    count: rows.length,
+    demands: rows.map((row) => ({
+      demand_id: row.demand_id,
+      status: row.status,
+      query: row.query,
+      need_summary: row.need_summary,
+      process_hint: row.process_hint,
+      qty: row.qty,
+      budget: row.budget,
+      matched_company_id: row.matched_company_id,
+      created_at: row.created_at,
+    })),
+  };
+}
+
+async function draftGapOutreach(args = {}) {
+  requireChinaDb();
+  const demandId = String(args.demand_id || '').trim();
+  if (!demandId) return { ok: false, error: 'demand_id_required' };
+  const demand = await chinaDb.getGapDemand(demandId);
+  if (!demand) return { ok: false, error: 'gap_demand_not_found' };
+  const domain = normalizeDomain(args.domain || args.website || '');
+  const parts = emailParts(args.email || args.contact_email || '');
+  if (!domain) return { ok: false, error: 'invalid_domain' };
+  if (!parts) return { ok: false, error: 'invalid_email' };
+  const lang = args.lang === 'en' ? 'en' : 'zh';
+  let minted;
+  try {
+    minted = await mintClaim({
+      domain,
+      email: parts.email,
+      source: 'outreach',
+      note: `gap_demand:${demandId}`,
+      lang,
+      niche: args.niche || demand.process_hint || undefined,
+      demand_id: demandId,
+    });
+  } catch (error) {
+    return { ok: false, error: error.message || 'mint_failed' };
+  }
+  const draft = gapDemand.draftOutreachEmail({
+    demand,
+    domain,
+    claimLink: minted.link,
+    lang,
+  });
+  const outreach = await chinaDb.insertGapOutreach({
+    demand_id: demandId,
+    company_id: minted.company_id,
+    domain,
+    email: parts.email,
+    claim_link: minted.link,
+    draft_text: draft.text,
+    sent_at: null,
+  });
+  if (args.send === true) {
+    try {
+      await sendGapOutreachEmail({
+        to: parts.email,
+        subject: draft.subject,
+        text: draft.text,
+      });
+      if (outreach && outreach.outreach_id && typeof chinaDb.requireDb === 'function') {
+        try {
+          const client = chinaDb.requireDb();
+          await client.from('airsup_china_gap_outreach')
+            .update({ sent_at: new Date().toISOString() })
+            .eq('outreach_id', outreach.outreach_id);
+        } catch {
+          await chinaDb.insertGapOutreach({
+            demand_id: demandId,
+            company_id: minted.company_id,
+            domain,
+            email: parts.email,
+            claim_link: minted.link,
+            draft_text: draft.text,
+            sent_at: new Date().toISOString(),
+          });
+        }
+      }
+      await chinaDb.updateGapDemand(demandId, { status: 'outreach', matched_company_id: minted.company_id });
+      return {
+        ok: true,
+        sent: true,
+        subject: draft.subject,
+        text: draft.text,
+        claim_link: minted.link,
+        demand_id: demandId,
+        company_id: minted.company_id,
+        outreach_id: outreach.outreach_id,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error.message || 'send_failed',
+        draft: { subject: draft.subject, text: draft.text },
+        claim_link: minted.link,
+      };
+    }
+  }
+  return {
+    ok: true,
+    sent: false,
+    subject: draft.subject,
+    text: draft.text,
+    claim_link: minted.link,
+    demand_id: demandId,
+    company_id: minted.company_id,
+    outreach_id: outreach.outreach_id,
+    note: 'Draft only. Pass send=true to email via Gmail.',
+  };
+}
+
+async function listProjectEventsTool(args = {}) {
+  requireChinaDb();
+  let company = null;
+  if (args.company_id || args.domain) {
+    company = await resolveCompany(args, { allowFuzzy: true });
+    if (!company) return { ok: false, error: 'supplier_not_found' };
+  }
+  const projectId = String(args.project_id || '').trim() || null;
+  if (!projectId && !company) return { ok: false, error: 'company_or_project_required' };
+  const rows = await chinaDb.listProjectEvents(projectId, company && company.company_id);
+  const limit = Math.min(Math.max(Number(args.limit) || 100, 1), 200);
+  return {
+    ok: true,
+    company_id: company ? company.company_id : null,
+    project_id: projectId,
+    events: rows.slice(-limit),
+  };
+}
+
+async function recordProjectEvent(args = {}) {
+  requireChinaDb();
+  const event = String(args.event || '').trim();
+  if (!projectEvents.OUTCOME_EVENTS.has(event)) {
+    return { ok: false, error: 'invalid_event', allowed: Array.from(projectEvents.OUTCOME_EVENTS) };
+  }
+  const company = await resolveCompany(args, { allowFuzzy: true });
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  let projectId = String(args.project_id || '').trim();
+  let project = projectId ? await chinaDb.getProject(projectId) : null;
+  if (!project) {
+    project = await projectEvents.ensureProject(chinaDb, {
+      companyId: company.company_id,
+      conversationId: args.conversation_id,
+      title: String(args.detail || args.evidence || event).slice(0, 120),
+    });
+    projectId = project && project.project_id;
+  }
+  if (!projectId) return { ok: false, error: 'project_create_failed' };
+  const row = await chinaDb.insertProjectEvent({
+    project_id: projectId,
+    company_id: company.company_id,
+    event,
+    detail: String(args.detail || '').slice(0, 500),
+    evidence: String(args.evidence || '').slice(0, 2000),
+  });
+  if (event !== 'note') {
+    const statusMap = {
+      quoted: 'quoted', accepted: 'accepted', delayed: 'delayed',
+      shipped: 'shipped', paid: 'paid', cancelled: 'closed',
+    };
+    if (statusMap[event]) await chinaDb.updateProject(projectId, { status: statusMap[event] });
+  }
+  return { ok: true, project_id: projectId, event: row };
+}
+
+async function promoteProjectOutcomesTool(args = {}) {
+  requireChinaDb();
+  const company = await resolveCompany(args, { allowFuzzy: true });
+  if (!company) return { ok: false, error: 'supplier_not_found' };
+  return projectEvents.promoteProjectOutcomes(chinaDb, {
+    company,
+    projectId: String(args.project_id || '').trim() || null,
+    eventIds: args.event_ids,
+    confirm: args.confirm === true,
+  });
+}
+
 async function callTool(name, args) {
   switch (name) {
     case 'lookup_supplier':
@@ -1219,6 +1413,16 @@ async function callTool(name, args) {
       return confirmSupplierFacts(args);
     case 'enrich_supplier_deep':
       return enrichSupplierDeep(args);
+    case 'list_gap_demands':
+      return listGapDemands(args);
+    case 'draft_gap_outreach':
+      return draftGapOutreach(args);
+    case 'list_project_events':
+      return listProjectEventsTool(args);
+    case 'record_project_event':
+      return recordProjectEvent(args);
+    case 'promote_project_outcomes':
+      return promoteProjectOutcomesTool(args);
     default: {
       const error = new Error(`Unknown tool: ${name}`);
       error.code = -32601;

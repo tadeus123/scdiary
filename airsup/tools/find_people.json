@@ -1,7 +1,7 @@
 {
   "name": "find_people",
   "title": "Find People",
-  "description": "Find people and live China factories on Airsup by name, identity, role, company, expertise, or other natural-language description. Use this when you want to contact someone but do not already have their person_id. Do not use this if an exact person_id is already known. Important: matches is a relevance-ranked search sample (capped by maximum_results), not a complete directory. When the user asks how many factories exist, or what the total factory count is, always answer with live_factories_total from this tool result — never invent a total from matches.length.",
+  "description": "Find people and live China factories on Airsup by name, identity, role, company, expertise, or other natural-language description. Use this when you want to contact someone but do not already have their person_id. Do not use this if an exact person_id is already known. Important: matches is a relevance-ranked search sample (capped by maximum_results), not a complete directory. When the user asks how many factories exist, or what the total factory count is, always answer with live_factories_total from this tool result — never invent a total from matches.length. If gap_note is present, tell the buyer honestly that no onboarded factory can fulfill this need yet and that Airsup is opening it to matching suppliers — do not invent a factory answer.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -53,7 +53,15 @@
       },
       "matches_note": {
         "type": "string",
-        "description": "Reminder that matches is a ranked search sample, not a complete listing."
+        "description": "Reminder that matches is a ranked search sample, not a complete listing. May include an honest gap notice when no live factory can fulfill the need."
+      },
+      "gap_note": {
+        "type": "string",
+        "description": "Present when no live Airsup factory meaningfully matches a real fulfillment need. Tell the buyer honestly; do not invent a factory."
+      },
+      "gap_demand_id": {
+        "type": "string",
+        "description": "Ops id for the unmatched demand queue when a gap was recorded."
       }
     },
     "required": ["matches", "live_factories_total", "matches_note"],

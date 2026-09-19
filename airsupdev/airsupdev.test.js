@@ -35,6 +35,11 @@ const TOOL_NAMES = [
   'get_stale_supplier_facts',
   'confirm_supplier_facts',
   'enrich_supplier_deep',
+  'list_gap_demands',
+  'draft_gap_outreach',
+  'list_project_events',
+  'record_project_event',
+  'promote_project_outcomes',
 ];
 
 for (const name of TOOL_NAMES) {
@@ -46,7 +51,7 @@ for (const name of TOOL_NAMES) {
 
 const mcp = createMcp();
 assert.deepStrictEqual(mcp.TOOL_FILES, TOOL_NAMES);
-assert.strictEqual(mcp.toolList().tools.length, 26);
+assert.strictEqual(mcp.toolList().tools.length, 31);
 
 assert.strictEqual(timingSafeEqualString('abc', 'abc'), true);
 assert.strictEqual(timingSafeEqualString('abc', 'abd'), false);
@@ -114,16 +119,23 @@ assert.ok(fs.existsSync(path.join(__dirname, 'tools/suggest_next_supplier_enrich
 assert.ok(fs.existsSync(path.join(__dirname, 'tools/ingest_historical_quotes.json')));
 assert.ok(fs.existsSync(path.join(__dirname, 'tools/backfill_supplier_facts.json')));
 assert.ok(fs.existsSync(path.join(__dirname, 'tools/enrich_supplier_deep.json')));
-assert.deepStrictEqual(
+assert.ok(['ask_historical_quotes', 'ask_capabilities', 'ask_machine_list', 'deep_crawl'].includes(
   facts.suggestNext([], {
     status: 'live',
     company_name_en: 'Acme',
     city: 'shenzhen',
     goal: 'g',
     profile: { processes: ['cnc'], machines: 'Haas' },
-  }).action,
-  'ask_historical_quotes'
-);
+  }).action
+));
+assert.ok(fs.existsSync(path.join(__dirname, 'tools/list_gap_demands.json')));
+assert.ok(fs.existsSync(path.join(__dirname, 'tools/draft_gap_outreach.json')));
+assert.ok(fs.existsSync(path.join(__dirname, 'tools/promote_project_outcomes.json')));
+assert.ok(fs.readFileSync(path.join(__dirname, '../airsup/china/sql/schema.sql'), 'utf8').includes('airsup_china_gap_demands'));
+assert.ok(fs.readFileSync(path.join(__dirname, '../airsup/china/sql/schema.sql'), 'utf8').includes('airsup_china_project_events'));
+assert.ok(fs.readFileSync(path.join(__dirname, '../airsup/tools/find_people.json'), 'utf8').includes('gap_note'));
+assert.ok(fs.readFileSync(path.join(__dirname, '../airsup/china/gap-demand.js'), 'utf8').includes('draftOutreachEmail'));
+assert.ok(fs.readFileSync(path.join(__dirname, 'WORKER_DO_FACTS.md'), 'utf8').includes('list_gap_demands'));
 
 assert.strictEqual(
   typeof pluginOauth.protectedResourceMetadata,

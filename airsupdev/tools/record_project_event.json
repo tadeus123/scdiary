@@ -1,0 +1,25 @@
+{
+  "name": "record_project_event",
+  "title": "Record project event",
+  "description": "Manually record a project outcome with evidence (quoted, accepted, delayed, shipped, paid, note). Does not write listingText until promote_project_outcomes with confirm=true.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "project_id": { "type": "string" },
+      "conversation_id": { "type": "string" },
+      "event": { "type": "string", "enum": ["quoted", "accepted", "delayed", "shipped", "paid", "note", "cancelled"] },
+      "detail": { "type": "string" },
+      "evidence": { "type": "string" }
+    },
+    "required": ["event"],
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false
+  }
+}

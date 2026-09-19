@@ -94,7 +94,7 @@ app.use('/airsup', airsupRoutes);
 app.use('/tademehl/airsup/china', (req, res) => {
   const dest = req.url === '/' ? '/' : req.url;
   const destPath = dest.startsWith('/') ? dest : `/${dest}`;
-  const status = req.method === 'GET' || req.method === 'HEAD' ? 301 : 307;
+  const status = req.method === 'GET' || req.method === 'HEAD' ? 302 : 307;
   return res.redirect(status, `https://www.airsup.co${destPath}`);
 });
 // AIRSUP-CHINA-END

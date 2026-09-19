@@ -485,6 +485,157 @@ async function listFacts(companyId) {
   return data || [];
 }
 
+async function insertGapDemand(row) {
+  const db = requireDb();
+  const { data, error } = await db.from('airsup_china_gap_demands').insert({
+    query: String((row && row.query) || '').slice(0, 1000),
+    need_summary: String((row && row.need_summary) || '').slice(0, 2000),
+    budget: String((row && row.budget) || '').slice(0, 80),
+    qty: String((row && row.qty) || '').slice(0, 80),
+    process_hint: String((row && row.process_hint) || '').slice(0, 80),
+    caller_person_id: (row && row.caller_person_id) || null,
+    conversation_id: (row && row.conversation_id) || null,
+    status: (row && row.status) || 'open',
+    matched_company_id: (row && row.matched_company_id) || null,
+    meta: (row && row.meta && typeof row.meta === 'object') ? row.meta : {},
+  }).select('*').single();
+  if (error) throw error;
+  return data;
+}
+
+async function getGapDemand(demandId) {
+  const db = requireDb();
+  const id = String(demandId || '').trim();
+  if (!id) return null;
+  const { data, error } = await db.from('airsup_china_gap_demands').select('*').eq('demand_id', id).maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+async function listGapDemands({ status, limit } = {}) {
+  const db = requireDb();
+  let q = db.from('airsup_china_gap_demands').select('*').order('created_at', { ascending: false })
+    .limit(Math.min(Math.max(Number(limit) || 40, 1), 200));
+  if (status) q = q.eq('status', String(status));
+  const { data, error } = await q;
+  if (error) throw error;
+  return data || [];
+}
+
+async function updateGapDemand(demandId, patch) {
+  const db = requireDb();
+  const id = String(demandId || '').trim();
+  if (!id) return null;
+  const next = { ...(patch || {}), updated_at: new Date().toISOString() };
+  const { data, error } = await db.from('airsup_china_gap_demands').update(next).eq('demand_id', id).select('*').maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+async function insertGapOutreach(row) {
+  const db = requireDb();
+  const { data, error } = await db.from('airsup_china_gap_outreach').insert({
+    demand_id: row.demand_id,
+    company_id: row.company_id || null,
+    domain: String(row.domain || '').slice(0, 200),
+    email: String(row.email || '').slice(0, 320),
+    claim_link: String(row.claim_link || '').slice(0, 800),
+    draft_text: String(row.draft_text || '').slice(0, 8000),
+    sent_at: row.sent_at || null,
+  }).select('*').single();
+  if (error) throw error;
+  return data;
+}
+
+async function listGapOutreach(demandId) {
+  const db = requireDb();
+  const id = String(demandId || '').trim();
+  if (!id) return [];
+  const { data, error } = await db.from('airsup_china_gap_outreach').select('*').eq('demand_id', id)
+    .order('created_at', { ascending: false }).limit(50);
+  if (error) throw error;
+  return data || [];
+}
+
+async function insertProject(row) {
+  const db = requireDb();
+  const { data, error } = await db.from('airsup_china_projects').insert({
+    company_id: row.company_id,
+    demand_id: row.demand_id || null,
+    conversation_id: row.conversation_id || null,
+    inquiry_id: row.inquiry_id || null,
+    status: row.status || 'open',
+    title: String(row.title || '').slice(0, 200),
+  }).select('*').single();
+  if (error) throw error;
+  return data;
+}
+
+async function getProjectByConversation(conversationId) {
+  const db = requireDb();
+  const id = String(conversationId || '').trim();
+  if (!id) return null;
+  const { data, error } = await db.from('airsup_china_projects').select('*').eq('conversation_id', id).maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+async function getProject(projectId) {
+  const db = requireDb();
+  const id = String(projectId || '').trim();
+  if (!id) return null;
+  const { data, error } = await db.from('airsup_china_projects').select('*').eq('project_id', id).maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+async function updateProject(projectId, patch) {
+  const db = requireDb();
+  const id = String(projectId || '').trim();
+  if (!id) return null;
+  const next = { ...(patch || {}), updated_at: new Date().toISOString() };
+  const { data, error } = await db.from('airsup_china_projects').update(next).eq('project_id', id).select('*').maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+async function insertProjectEvent(row) {
+  const db = requireDb();
+  const { data, error } = await db.from('airsup_china_project_events').insert({
+    project_id: row.project_id,
+    company_id: row.company_id,
+    event: String(row.event || 'note').slice(0, 40),
+    detail: String(row.detail || '').slice(0, 500),
+    evidence: String(row.evidence || '').slice(0, 2000),
+    promote_to_endpoint: Boolean(row.promote_to_endpoint),
+  }).select('*').single();
+  if (error) throw error;
+  return data;
+}
+
+async function listProjectEvents(projectId, companyId) {
+  const db = requireDb();
+  let q = db.from('airsup_china_project_events').select('*').order('created_at', { ascending: true }).limit(200);
+  if (projectId) q = q.eq('project_id', String(projectId));
+  else if (companyId) q = q.eq('company_id', String(companyId));
+  else return [];
+  const { data, error } = await q;
+  if (error) throw error;
+  return data || [];
+}
+
+async function markProjectEventsPromoted(eventIds) {
+  const db = requireDb();
+  const ids = (Array.isArray(eventIds) ? eventIds : []).map(String).filter(Boolean);
+  if (!ids.length) return [];
+  const { data, error } = await db.from('airsup_china_project_events')
+    .update({ promote_to_endpoint: true, promoted_at: new Date().toISOString() })
+    .in('event_id', ids)
+    .select('event_id');
+  if (error) throw error;
+  return data || [];
+}
+
 module.exports = {
   isConfigured,
   requireDb,
@@ -525,4 +676,17 @@ module.exports = {
   insertFacts: wrap('insertFacts', insertFacts),
   expireFact: wrap('expireFact', expireFact),
   listFacts: wrap('listFacts', listFacts),
+  insertGapDemand: wrap('insertGapDemand', insertGapDemand),
+  getGapDemand: wrap('getGapDemand', getGapDemand),
+  listGapDemands: wrap('listGapDemands', listGapDemands),
+  updateGapDemand: wrap('updateGapDemand', updateGapDemand),
+  insertGapOutreach: wrap('insertGapOutreach', insertGapOutreach),
+  listGapOutreach: wrap('listGapOutreach', listGapOutreach),
+  insertProject: wrap('insertProject', insertProject),
+  getProjectByConversation: wrap('getProjectByConversation', getProjectByConversation),
+  getProject: wrap('getProject', getProject),
+  updateProject: wrap('updateProject', updateProject),
+  insertProjectEvent: wrap('insertProjectEvent', insertProjectEvent),
+  listProjectEvents: wrap('listProjectEvents', listProjectEvents),
+  markProjectEventsPromoted: wrap('markProjectEventsPromoted', markProjectEventsPromoted),
 };

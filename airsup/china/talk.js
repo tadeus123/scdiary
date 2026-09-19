@@ -273,6 +273,19 @@ async function turn(store, { thread, company, caller, message, deps }) {
     conversation_id: thread.conversation_id,
     message,
     reply,
+  }).then(async (inquiry) => {
+    try {
+      const projectEvents = require('./project-events');
+      await projectEvents.recordThreadOutcomes(store, {
+        company,
+        conversationId: thread.conversation_id,
+        message,
+        reply,
+        inquiryId: inquiry && inquiry.inquiry_id,
+      });
+    } catch (error) {
+      console.error('Airsup china project outcomes skipped:', error.message);
+    }
   }).catch((error) => {
     console.error('Airsup china inquiry log failed:', error.message);
   });

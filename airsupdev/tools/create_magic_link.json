@@ -13,7 +13,8 @@
       "source": { "type": "string", "enum": ["outreach", "manual"] },
       "note": { "type": "string" },
       "lang": { "type": "string", "enum": ["zh", "en"] },
-      "niche": { "type": "string", "description": "Optional manufacturing category slug, e.g. pcba. Unknown values become other, not cnc." }
+      "niche": { "type": "string", "description": "Optional manufacturing category slug, e.g. pcba. Unknown values become other, not cnc." },
+      "demand_id": { "type": "string", "description": "Optional unmatched gap demand id — claim link includes demand context." }
     },
     "required": ["domain", "email"],
     "additionalProperties": false

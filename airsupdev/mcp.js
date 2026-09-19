@@ -33,6 +33,11 @@ const TOOL_FILES = [
   'get_stale_supplier_facts',
   'confirm_supplier_facts',
   'enrich_supplier_deep',
+  'list_gap_demands',
+  'draft_gap_outreach',
+  'list_project_events',
+  'record_project_event',
+  'promote_project_outcomes',
 ];
 
 const TOOL_STATUS = {
@@ -62,6 +67,11 @@ const TOOL_STATUS = {
   get_stale_supplier_facts: { invoking: 'Checking stale facts', invoked: 'Stale facts ready' },
   confirm_supplier_facts: { invoking: 'Confirming facts', invoked: 'Facts confirmed' },
   enrich_supplier_deep: { invoking: 'Deep crawling site', invoked: 'Deep enrich done' },
+  list_gap_demands: { invoking: 'Listing gap demands', invoked: 'Gap demands ready' },
+  draft_gap_outreach: { invoking: 'Drafting gap outreach', invoked: 'Gap outreach ready' },
+  list_project_events: { invoking: 'Listing project events', invoked: 'Project events ready' },
+  record_project_event: { invoking: 'Recording project event', invoked: 'Project event recorded' },
+  promote_project_outcomes: { invoking: 'Promoting outcomes', invoked: 'Outcomes promoted' },
 };
 
 function loadTools() {

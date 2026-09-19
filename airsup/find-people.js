@@ -67,21 +67,30 @@ async function findPeople(store, { callerPersonId, query, maximumResults }) {
   // AIRSUP-CHINA-BEGIN
   try {
     const chinaFind = require('./china/find');
-    const extra = await chinaFind.findForPlugin({
+    const found = await chinaFind.findForPlugin({
       query: q,
       limit,
       excludeIds: [callerPersonId, ...matches.map((row) => row.person_id)],
+      callerPersonId,
+      recordGap: true,
     });
+    const extra = (found && found.matches) || (Array.isArray(found) ? found : []);
     const companies = (extra || []).map((row) => ({
       person_id: row.person_id,
       name: row.name,
       ...(row.description ? { description: row.description } : {}),
     }));
-    return {
+    const out = {
       matches: mergeMatches(matches, companies, limit),
       live_factories_total: total,
       matches_note: MATCHES_NOTE,
     };
+    if (found && found.gap_note) {
+      out.gap_note = found.gap_note;
+      out.matches_note = `${MATCHES_NOTE} ${found.gap_note}`;
+      if (found.gap && found.gap.demand_id) out.gap_demand_id = found.gap.demand_id;
+    }
+    return out;
   } catch (error) {
     console.error('Airsup china find skipped:', error.message);
   }

@@ -198,7 +198,7 @@ create table if not exists public.airsup_china_funnel_events (
 );
 
 create index if not exists airsup_china_funnel_events_company_idx
-  on public.airsup_china_funnel_events (company_id, at);
+  on public.airsup_china_funnel_events (company_id, at desc);
 
 alter table public.airsup_china_sources enable row level security;
 alter table public.airsup_china_facts enable row level security;
@@ -211,3 +211,90 @@ revoke all on table public.airsup_china_funnel_events from anon, authenticated, 
 grant all on table public.airsup_china_sources to service_role;
 grant all on table public.airsup_china_facts to service_role;
 grant all on table public.airsup_china_funnel_events to service_role;
+
+-- Gap demand + project outcome flywheel
+create table if not exists public.airsup_china_gap_demands (
+  demand_id uuid primary key default gen_random_uuid(),
+  query text not null default '',
+  need_summary text not null default '',
+  budget text not null default '',
+  qty text not null default '',
+  process_hint text not null default '',
+  caller_person_id uuid,
+  conversation_id uuid,
+  status text not null default 'open',
+  matched_company_id uuid references public.airsup_china_companies (company_id) on delete set null,
+  meta jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint airsup_china_gap_demands_status_chk check (status in ('open', 'outreach', 'filled', 'closed'))
+);
+
+create index if not exists airsup_china_gap_demands_status_idx
+  on public.airsup_china_gap_demands (status, created_at desc);
+
+create table if not exists public.airsup_china_gap_outreach (
+  outreach_id uuid primary key default gen_random_uuid(),
+  demand_id uuid not null references public.airsup_china_gap_demands (demand_id) on delete cascade,
+  company_id uuid references public.airsup_china_companies (company_id) on delete set null,
+  domain text not null default '',
+  email text not null default '',
+  claim_link text not null default '',
+  draft_text text not null default '',
+  sent_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists airsup_china_gap_outreach_demand_idx
+  on public.airsup_china_gap_outreach (demand_id, created_at desc);
+
+create table if not exists public.airsup_china_projects (
+  project_id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.airsup_china_companies (company_id) on delete cascade,
+  demand_id uuid references public.airsup_china_gap_demands (demand_id) on delete set null,
+  conversation_id uuid,
+  inquiry_id uuid,
+  status text not null default 'open',
+  title text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint airsup_china_projects_status_chk check (status in ('open', 'quoted', 'accepted', 'delayed', 'shipped', 'paid', 'closed'))
+);
+
+create unique index if not exists airsup_china_projects_conversation_idx
+  on public.airsup_china_projects (conversation_id)
+  where conversation_id is not null;
+
+create index if not exists airsup_china_projects_company_idx
+  on public.airsup_china_projects (company_id, updated_at desc);
+
+create table if not exists public.airsup_china_project_events (
+  event_id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.airsup_china_projects (project_id) on delete cascade,
+  company_id uuid not null references public.airsup_china_companies (company_id) on delete cascade,
+  event text not null,
+  detail text not null default '',
+  evidence text not null default '',
+  promote_to_endpoint boolean not null default false,
+  promoted_at timestamptz,
+  created_at timestamptz not null default now(),
+  constraint airsup_china_project_events_event_chk check (event in ('quoted', 'accepted', 'delayed', 'shipped', 'paid', 'note', 'cancelled'))
+);
+
+create index if not exists airsup_china_project_events_project_idx
+  on public.airsup_china_project_events (project_id, created_at asc);
+
+alter table public.airsup_china_gap_demands enable row level security;
+alter table public.airsup_china_gap_outreach enable row level security;
+alter table public.airsup_china_projects enable row level security;
+alter table public.airsup_china_project_events enable row level security;
+
+revoke all on table public.airsup_china_gap_demands from anon, authenticated, public;
+revoke all on table public.airsup_china_gap_outreach from anon, authenticated, public;
+revoke all on table public.airsup_china_projects from anon, authenticated, public;
+revoke all on table public.airsup_china_project_events from anon, authenticated, public;
+
+grant all on table public.airsup_china_gap_demands to service_role;
+grant all on table public.airsup_china_gap_outreach to service_role;
+grant all on table public.airsup_china_projects to service_role;
+grant all on table public.airsup_china_project_events to service_role;

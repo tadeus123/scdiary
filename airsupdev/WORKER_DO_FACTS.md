@@ -4,6 +4,17 @@ Paste this into ChatGPT connected to https://www.tademehl.com/airsupdev/mcp
 
 Do not invent RFQs. Do not treat claim page open as email verified. Plain text only. No emojis.
 
+## Gap demand (unmatched real buyers)
+
+When find_people on the buyer MCP returns gap_note / gap_demand_id, or when list_gap_demands shows open rows:
+
+1. list_gap_demands (status open)
+2. Pick a real candidate factory (domain + work email) that could fulfill that need
+3. draft_gap_outreach with demand_id, domain, email
+   - Review the draft. It must stay a real customer need — never invent one.
+   - Pass send=true only after you are ready to email.
+4. Claim link includes demand_id so the factory sees the customer need on /claim
+
 ## Per company (about 20 minutes max)
 
 1. get_onboarding_status
@@ -34,7 +45,12 @@ Do not invent RFQs. Do not treat claim page open as email verified. Plain text o
    - Ask one clarifying question. When answered, confirm_supplier_facts with the winning value.
    - get_stale_supplier_facts: only re-ask commercial/machine items that matter for the next buyer answer.
 
-8. Stop rules
+8. Project outcomes (real jobs)
+   - list_project_events for the company when a thread shows quote/accept/ship/delay/pay signals.
+   - record_project_event when you have clear evidence (include evidence text).
+   - promote_project_outcomes with confirm=true only after evidence is solid — this writes facts into listingText.
+
+9. Stop rules
    - Never invent RFQs or fake buyer demand.
    - Never invent CNC or niche from context uploads.
    - Opening a claim link is not verification.

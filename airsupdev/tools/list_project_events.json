@@ -1,0 +1,21 @@
+{
+  "name": "list_project_events",
+  "title": "List project events",
+  "description": "List observed project outcomes (quoted, accepted, delayed, shipped, paid) for a factory or project. Use before promote_project_outcomes.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "project_id": { "type": "string" },
+      "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}

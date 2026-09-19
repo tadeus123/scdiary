@@ -1,0 +1,22 @@
+{
+  "name": "promote_project_outcomes",
+  "title": "Promote project outcomes",
+  "description": "Preview or confirm writing project outcomes into supplier facts and buyer listingText. Pass confirm=true only when evidence is solid. Never invent outcomes.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "company_id": { "type": "string" },
+      "domain": { "type": "string" },
+      "project_id": { "type": "string" },
+      "event_ids": { "type": "array", "items": { "type": "string" } },
+      "confirm": { "type": "boolean" }
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false
+  }
+}

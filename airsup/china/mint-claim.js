@@ -9,7 +9,6 @@ const db = require('./db');
 const session = require('./session');
 const { buildPreview, companyDraftFromPreview } = require('./site-preview');
 const { fillEmptyCompany, canPublish, publishGaps, normalizeProfile, normalizeNiche } = require('./fields');
-const { chinaClaimUrl } = require('./origin');
 
 function arg(name) {
   const prefix = `--${name}=`;
@@ -22,7 +21,11 @@ function arg(name) {
   return '';
 }
 
-async function mintClaim({ domain, email, source, note, lang, company_id: companyId, niche }) {
+function publicBase() {
+  return String(process.env.PUBLIC_BASE_URL || process.env.SITE_URL || process.env.AIRSUP_PUBLIC_ORIGIN || 'https://www.airsup.co').trim().replace(/\/$/, '');
+}
+
+async function mintClaim({ domain, email, source, note, lang, company_id: companyId, niche, demand_id: demandId }) {
   const site = normalizeDomain(domain);
   const parts = emailParts(email);
   if (!site) throw new Error('Invalid domain');
@@ -32,11 +35,20 @@ async function mintClaim({ domain, email, source, note, lang, company_id: compan
 
   const sourceValue = source === 'manual' ? 'manual' : 'outreach';
   const requestedNiche = String(niche || '').trim() ? normalizeNiche(niche) : '';
+  const demand = String(demandId || '').trim();
+  let demandRow = null;
+  if (demand && typeof db.getGapDemand === 'function') {
+    demandRow = await db.getGapDemand(demand);
+    if (!demandRow) throw new Error('gap_demand_not_found');
+  }
+  const noteWithDemand = demand
+    ? `${note || ''}${note ? ' | ' : ''}gap_demand:${demand}`.slice(0, 500)
+    : (note || '');
   await db.upsertDomainAllow({
     domain: site,
     contact_email: parts.email,
     source: sourceValue,
-    note: note || '',
+    note: noteWithDemand,
   });
 
   let company = null;
@@ -106,7 +118,7 @@ async function mintClaim({ domain, email, source, note, lang, company_id: compan
   }
 
   const token = await session.createToken(company.company_id, parts.email, 'claim');
-  const link = chinaClaimUrl(token);
+  const link = `${publicBase()}/claim?token=${token}`;
   return {
     domain: site,
     email: parts.email,

@@ -347,6 +347,15 @@ async function sendFactoryNotice({ company, callerName, message, reply, rfq, rea
   await sendRaw(mail);
 }
 
+async function sendGapOutreachEmail({ to, subject, text }) {
+  const body = String(text || '');
+  const html = `<pre style="font-family:Georgia,serif;white-space:pre-wrap;line-height:1.5;color:#1c1814;">${body
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')}</pre>`;
+  await sendRaw({ to, subject: String(subject || 'Airsup customer need'), text: body, html });
+}
+
 module.exports = {
   encodeSubject,
   rfc822,
@@ -358,4 +367,5 @@ module.exports = {
   sendInquiryNotice,
   sendFactoryNotice,
   factoryNoticeMail,
+  sendGapOutreachEmail,
 };
