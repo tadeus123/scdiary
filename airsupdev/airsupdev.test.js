@@ -162,13 +162,12 @@ assert.ok(fs.existsSync(path.join(__dirname, '../airsup/china/views/verify.ejs')
   assert.strictEqual(dns.ok, false);
 
   const serverJs = fs.readFileSync(path.join(__dirname, '../server/server.js'), 'utf8');
-  assert.ok(serverJs.includes('AIRSUPDEV-BEGIN'));
-  assert.ok(serverJs.includes('oauth-protected-resource/airsupdev/mcp'));
-  assert.ok(serverJs.includes('oauth-authorization-server/airsupdev/oauth'));
-  assert.ok(serverJs.includes("'/tademehl/airsup/china'"));
-  assert.ok(serverJs.includes('? 302 : 307'));
+  assert.ok(!serverJs.includes('AIRSUPDEV-BEGIN'));
+  assert.ok(!serverJs.includes("require('../airsupdev/routes')"));
+  assert.ok(serverJs.includes('www.airsup.co'));
   const vercel = fs.readFileSync(path.join(__dirname, '../vercel.json'), 'utf8');
-  assert.ok(vercel.includes('airsupdev/**'));
+  assert.ok(!vercel.includes('airsupdev/**'));
+  assert.ok(vercel.includes('https://www.airsup.co/airsupdev'));
   const routes = fs.readFileSync(path.join(__dirname, 'routes.js'), 'utf8');
   assert.ok(routes.includes('/connect'));
   assert.ok(routes.includes('/auth/google'));

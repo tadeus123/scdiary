@@ -10,9 +10,7 @@
           "cause/dist/**",
           "eisenkind/**",
           "views/**",
-          "public/**",
-          "airsup/**",
-          "airsupdev/**"
+          "public/**"
         ]
       }
     }
@@ -33,6 +31,42 @@
     {
       "src": "/.well-known/oauth-authorization-server/airsup20/oauth",
       "dest": "https://www.airsup.co/.well-known/oauth-authorization-server/airsup20/oauth"
+    },
+    {
+      "src": "/airsup",
+      "dest": "https://www.airsup.co/airsup"
+    },
+    {
+      "src": "/airsup/(.*)",
+      "dest": "https://www.airsup.co/airsup/$1"
+    },
+    {
+      "src": "/.well-known/oauth-protected-resource/airsup/mcp",
+      "dest": "https://www.airsup.co/.well-known/oauth-protected-resource/airsup/mcp"
+    },
+    {
+      "src": "/.well-known/oauth-authorization-server/airsup/oauth",
+      "dest": "https://www.airsup.co/.well-known/oauth-authorization-server/airsup/oauth"
+    },
+    {
+      "src": "/.well-known/oauth-protected-resource",
+      "dest": "https://www.airsup.co/.well-known/oauth-protected-resource/airsup/mcp"
+    },
+    {
+      "src": "/airsupdev",
+      "dest": "https://www.airsup.co/airsupdev"
+    },
+    {
+      "src": "/airsupdev/(.*)",
+      "dest": "https://www.airsup.co/airsupdev/$1"
+    },
+    {
+      "src": "/.well-known/oauth-protected-resource/airsupdev/mcp",
+      "dest": "https://www.airsup.co/.well-known/oauth-protected-resource/airsupdev/mcp"
+    },
+    {
+      "src": "/.well-known/oauth-authorization-server/airsupdev/oauth",
+      "dest": "https://www.airsup.co/.well-known/oauth-authorization-server/airsupdev/oauth"
     },
     {
       "src": "/(.*)",

@@ -85,32 +85,16 @@ app.get(['/tademehl/cause', '/tademehl/cause/'], (req, res) => {
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));
 
-// AIRSUP-BEGIN
-const airsupRoutes = require('../airsup/routes');
-const airsupOauth = require('../airsup/oauth-plugin');
-app.use('/airsup', express.static(path.join(__dirname, '../airsup/public'), { index: false, redirect: false }));
-app.use('/airsup', airsupRoutes);
-// AIRSUP-CHINA-BEGIN
+// Airsup buyer/ops MCP moved to www.airsup.co — tademehl only redirects (see vercel.json).
 app.use('/tademehl/airsup/china', (req, res) => {
   const dest = req.url === '/' ? '/' : req.url;
   const destPath = dest.startsWith('/') ? dest : `/${dest}`;
   const status = req.method === 'GET' || req.method === 'HEAD' ? 302 : 307;
   return res.redirect(status, `https://www.airsup.co${destPath}`);
 });
-// AIRSUP-CHINA-END
-app.get('/.well-known/oauth-protected-resource', (req, res) => {
-  res.json(airsupOauth.protectedResourceMetadata(req));
-});
-app.get('/.well-known/oauth-protected-resource/airsup/mcp', (req, res) => {
-  res.json(airsupOauth.protectedResourceMetadata(req));
-});
-app.get('/.well-known/oauth-authorization-server/airsup/oauth', (req, res) => {
-  res.json(airsupOauth.authorizationServerMetadata(req));
-});
-// AIRSUP-END
 
 // OpenAI Plugins Directory domain verification (plain token only).
-// Airsup20 MCP/site is proxied to www.airsup.co via vercel.json rewrites.
+// Airsup20 / Airsup / airsupdev MCP are proxied to www.airsup.co via vercel.json rewrites.
 app.get('/.well-known/openai-apps-challenge', (req, res) => {
   res
     .status(200)
@@ -118,18 +102,6 @@ app.get('/.well-known/openai-apps-challenge', (req, res) => {
     .set('Cache-Control', 'no-store')
     .send('n8fEliTuk9U6PCu3LY6bu5Ro6mEfpFa6Fpn0veobyeQ');
 });
-
-// AIRSUPDEV-BEGIN
-const airsupdevRoutes = require('../airsupdev/routes');
-const airsupdevOauth = require('../airsupdev/oauth-plugin');
-app.use('/airsupdev', airsupdevRoutes);
-app.get('/.well-known/oauth-protected-resource/airsupdev/mcp', (req, res) => {
-  res.json(airsupdevOauth.protectedResourceMetadata(req));
-});
-app.get('/.well-known/oauth-authorization-server/airsupdev/oauth', (req, res) => {
-  res.json(airsupdevOauth.authorizationServerMetadata(req));
-});
-// AIRSUPDEV-END
 
 // Import routes
 const diaryRoutes = require('./routes/diary');
