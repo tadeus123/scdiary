@@ -20,6 +20,22 @@
   ],
   "routes": [
     {
+      "src": "/airsup20",
+      "dest": "https://www.airsup.co/airsup20"
+    },
+    {
+      "src": "/airsup20/(.*)",
+      "dest": "https://www.airsup.co/airsup20/$1"
+    },
+    {
+      "src": "/.well-known/oauth-protected-resource/airsup20/mcp",
+      "dest": "https://www.airsup.co/.well-known/oauth-protected-resource/airsup20/mcp"
+    },
+    {
+      "src": "/.well-known/oauth-authorization-server/airsup20/oauth",
+      "dest": "https://www.airsup.co/.well-known/oauth-authorization-server/airsup20/oauth"
+    },
+    {
       "src": "/(.*)",
       "dest": "/server/server.js"
     }
