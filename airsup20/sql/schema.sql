@@ -1,4 +1,4 @@
--- Airsup20 tables. Isolated from diary and airsup. Service role only.
+-- Airsup20 tables. Isolated from diary and China factory tables. Service role only.
 
 create table if not exists public.airsup20_users (
   user_id uuid primary key default gen_random_uuid(),

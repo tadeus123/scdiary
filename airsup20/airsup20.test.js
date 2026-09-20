@@ -14,6 +14,8 @@ async function run() {
 
   const tools = mcp.toolList().tools.map((t) => t.name);
   assert.deepStrictEqual(tools, ['me', 'setup', 'update_listing', 'fulfill', 'get_inbox', 'get_trace']);
+  const dbMod = require('./db');
+  assert.ok(dbMod.airsup20SupabaseUrl().includes('wttyutffpgazxgwjzyuw'));
 
   const alice = await store.upsertUser({
     googleId: 'g-alice',

@@ -2,7 +2,9 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
-const serverPath = path.join(root, 'server', 'server.js');
+const flatServer = path.join(root, 'server.js');
+const nestedServer = path.join(root, 'server', 'server.js');
+const serverPath = fs.existsSync(flatServer) ? flatServer : nestedServer;
 const vercelPath = path.join(root, 'vercel.json');
 
 function stripBlock(src, begin, end) {
@@ -10,13 +12,17 @@ function stripBlock(src, begin, end) {
   return src.replace(re, '\n');
 }
 
-let server = fs.readFileSync(serverPath, 'utf8');
-const nextServer = stripBlock(server, 'AIRSUP20-BEGIN', 'AIRSUP20-END');
-if (nextServer === server) {
-  console.log('server.js: no AIRSUP20 block found');
+if (!fs.existsSync(serverPath)) {
+  console.log('server file not found');
 } else {
-  fs.writeFileSync(serverPath, nextServer);
-  console.log('server.js: removed AIRSUP20 block');
+  let server = fs.readFileSync(serverPath, 'utf8');
+  const nextServer = stripBlock(server, 'AIRSUP20-BEGIN', 'AIRSUP20-END');
+  if (nextServer === server) {
+    console.log(`${path.relative(root, serverPath)}: no AIRSUP20 block found`);
+  } else {
+    fs.writeFileSync(serverPath, nextServer);
+    console.log(`${path.relative(root, serverPath)}: removed AIRSUP20 block`);
+  }
 }
 
 if (fs.existsSync(vercelPath)) {
@@ -33,4 +39,4 @@ if (fs.existsSync(vercelPath)) {
   }
 }
 
-console.log('Airsup20 mount stripped. Delete airsup20/ and run sql/drop.sql manually.');
+console.log('Airsup20 mount stripped. Delete airsup20/ and run sql/drop.sql on the Airsup factory Supabase only (airsup20_* tables). Do not drop airsup_china_*.');

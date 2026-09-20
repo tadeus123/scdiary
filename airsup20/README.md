@@ -26,11 +26,15 @@ Agent talk is endpoint↔endpoint on our compute (fast path inside `fulfill`). N
 
 Add Google redirect URI: `https://www.tademehl.com/airsup20/auth/google/callback` (and localhost for dev).
 
-Env: `AIRSUP20_GOOGLE_CLIENT_ID` / `AIRSUP20_GOOGLE_CLIENT_SECRET` (falls back to `AIRSUP_GOOGLE_*`), plus `SUPABASE_*`, `OPENAI_API_KEY`, optional `AIRSUP20_SESSION_SECRET`.
+Env: `AIRSUP20_GOOGLE_CLIENT_ID` / `AIRSUP20_GOOGLE_CLIENT_SECRET` (falls back to `AIRSUP_GOOGLE_*`).
+
+Database is the Airsup factory Supabase (`https://wttyutffpgazxgwjzyuw.supabase.co`), tables `airsup20_*` only. Set `AIRSUP20_SUPABASE_URL` and `AIRSUP20_SERVICE_ROLE_KEY`. Do not point diary `SUPABASE_URL` at this project. On airsup.co, factory `SUPABASE_*` is reused only when that URL already is the factory project.
+
+Plus `OPENAI_API_KEY`, optional `AIRSUP20_SESSION_SECRET`.
 
 ## Tables
 
-All `airsup20_*`. See `sql/schema.sql`.
+All `airsup20_*` on the factory Supabase. Isolated from `airsup_china_*`. See `sql/schema.sql`.
 
 ## Remove
 

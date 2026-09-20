@@ -19,7 +19,8 @@ description: Airsup20 lives in airsup20/ only and must stay removable
 - Layers: raw history, knowledge/facts, intents+evidence, listing (user projection), endpoint (our OpenAI), inbox
 - Endpoint talk is our compute (fast `fulfill` path). Never Gmail-wake another ChatGPT. No chat widget.
 - Trace every tool call with accurate spans from day one
-- Tables are `airsup20_*` only — never share with `airsup_*` or diary
+- Tables are `airsup20_*` only — never share with `airsup_china_*` or diary
+- Database is the Airsup factory Supabase (`wttyutffpgazxgwjzyuw`), not the tademehl.com diary project
 
 ## Do not
 - Import diary, admin, or `server/db/supabase.js` from Airsup20

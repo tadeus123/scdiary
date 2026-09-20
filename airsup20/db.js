@@ -2,8 +2,37 @@ const { createClient } = require('@supabase/supabase-js');
 const { sha256, listingTextBlob, nowIso, resolveListingMedia } = require('./util');
 const { createMemoryStore } = require('./store-memory');
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+const FACTORY_SUPABASE_URL = 'https://wttyutffpgazxgwjzyuw.supabase.co';
+
+function normalizeUrl(value) {
+  return String(value || '').trim().replace(/\/$/, '');
+}
+
+function airsup20SupabaseUrl() {
+  return normalizeUrl(
+    process.env.AIRSUP20_SUPABASE_URL
+    || process.env.AIRSUP_CHINA_SUPABASE_URL
+    || FACTORY_SUPABASE_URL,
+  );
+}
+
+function airsup20SupabaseKey() {
+  const dedicated = String(
+    process.env.AIRSUP20_SERVICE_ROLE_KEY
+    || process.env.AIRSUP20_SERVICE_KEY
+    || process.env.AIRSUP_CHINA_SERVICE_ROLE_KEY
+    || process.env.AIRSUP_CHINA_SERVICE_KEY
+    || '',
+  ).trim();
+  if (dedicated) return dedicated;
+  const sharedUrl = normalizeUrl(process.env.SUPABASE_URL);
+  const sharedKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '').trim();
+  if (sharedKey && sharedUrl === airsup20SupabaseUrl()) return sharedKey;
+  return '';
+}
+
+const supabaseUrl = airsup20SupabaseUrl();
+const supabaseKey = airsup20SupabaseKey();
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 function isConfigured() {
@@ -12,7 +41,7 @@ function isConfigured() {
 
 function requireDb() {
   if (!supabase) {
-    throw new Error('Airsup20 storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+    throw new Error('Airsup20 storage is not configured. Set AIRSUP20_SUPABASE_URL and AIRSUP20_SERVICE_ROLE_KEY.');
   }
   return supabase;
 }
@@ -547,5 +576,6 @@ module.exports = {
   ...supabaseStore,
   getStore,
   createMemoryStore,
-  sha256,
+  airsup20SupabaseUrl,
+  airsup20SupabaseKey,
 };
