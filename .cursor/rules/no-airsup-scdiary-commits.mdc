@@ -1,0 +1,21 @@
+---
+description: Do not commit Airsup work to scdiary — use airsup.cn only
+alwaysApply: true
+---
+
+# No Airsup commits on scdiary
+
+**Do not commit or push Airsup-related product changes to this `scdiary` repo.**
+
+All Airsup work (China factory **and** Airsup20 people/agent) belongs only in **`d:\cursor Projects\airsup.cn`**. Commit and push there (`origin main`).
+
+Database for Airsup20 is the **Airsup factory Supabase** (`wttyutffpgazxgwjzyuw`), tables `airsup20_*` only — never the tademehl diary project.
+
+## What may remain on scdiary (proxy shell only)
+
+- External rewrites in `vercel.json` that forward `/airsup20/*` and Airsup20 well-known OAuth paths to `https://www.airsup.co`
+- The OpenAI apps challenge route on tademehl.com
+
+Do **not** recreate `airsup20/`, remount Airsup20 in `server/server.js`, or add Airsup20 tables on the diary Supabase.
+
+If an Airsup task comes up while this workspace is open, edit and commit in `airsup.cn`, not here.

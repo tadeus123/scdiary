@@ -1,35 +1,25 @@
 ---
-description: Airsup20 lives in airsup20/ only and must stay removable
+description: Airsup20 code lives in airsup.cn only; scdiary is proxy shell
 ---
 
-# Airsup20 isolation
+# Airsup20 on scdiary (proxy only)
 
-`/airsup20` is a standalone slice. Keep it easy to delete.
+Airsup20 product code and database do **not** live in this repo anymore.
 
-## Put Airsup20 code only in
-- `airsup20/` (routes, mcp, sql, oauth, services, endpoint, tools)
-- the marked `AIRSUP20-BEGIN` / `AIRSUP20-END` blocks in `server/server.js`
-- `"airsup20/**"` in `vercel.json` includeFiles
+## Source of truth
 
-## Product rules
-- Public marketing/legal pages live under `/airsup20` (home, privacy, terms, support, imprint)
-- MCP: `https://www.tademehl.com/airsup20/mcp`
-- Google connect UI: `/airsup20/connect` (not the marketing home)
-- Tools: `me`, `setup`, `update_listing`, `fulfill`, `get_inbox`, `get_trace`
-- Layers: raw history, knowledge/facts, intents+evidence, listing (user projection), endpoint (our OpenAI), inbox
-- Endpoint talk is our compute (fast `fulfill` path). Never Gmail-wake another ChatGPT. No chat widget.
-- Trace every tool call with accurate spans from day one
-- Tables are `airsup20_*` only — never share with `airsup_china_*` or diary
-- Database is the Airsup factory Supabase (`wttyutffpgazxgwjzyuw`), not the tademehl.com diary project
+- **Repo:** `d:\cursor Projects\airsup.cn` → `airsup20/`
+- **Host:** `https://www.airsup.co/airsup20` (real app)
+- **Public MCP URL (unchanged for ChatGPT):** `https://www.tademehl.com/airsup20/mcp`
+- **DB:** factory Supabase `wttyutffpgazxgwjzyuw`, tables `airsup20_*` only
+
+## On scdiary
+
+Keep only the thin Vercel rewrites in `vercel.json` that proxy `/airsup20` and Airsup20 well-known OAuth paths to `www.airsup.co`. Do not add Airsup20 application code here.
 
 ## Do not
-- Import diary, admin, or `server/db/supabase.js` from Airsup20
-- Add Airsup20 UI to other site pages
-- Change MCP/auth/database behavior when only editing public pages
-- Copy old Airsup people/Gmail/widget code into this slice
 
-## Revert
-```bash
-node airsup20/revert-airsup20.js
-```
-See `airsup20/REVERT.md`.
+- Recreate `airsup20/` in scdiary
+- Mount Airsup20 routes in `server/server.js`
+- Create or write `airsup20_*` tables on the tademehl diary Supabase
+- Change the ChatGPT MCP URL unless the user explicitly asks
