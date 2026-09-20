@@ -61,7 +61,7 @@ async function recordGapIfNeeded(store, { query, callerPersonId, chinaMatches, s
   const matches = Array.isArray(chinaMatches) ? chinaMatches : [];
   const best = matches.reduce((max, row) => Math.max(max, Number(row && row.score) || 0), 0);
   // Gap when no meaningful china hit (score < 2 after padding stripped by find.js)
-  if (best >= 2) return null;
+  if (best >= 3) return null;
   const hints = extractHints(query);
   try {
     const row = await store.insertGapDemand({

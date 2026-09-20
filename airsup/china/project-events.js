@@ -17,7 +17,9 @@ function detectOutcomes(message, reply) {
   if (/\b(delay(ed)?|late|behind\s*schedule|延期|延误|推迟)\b/i.test(combined)) {
     found.push({ event: 'delayed', detail: 'delay signal in thread', evidence: combined.slice(0, 500) });
   }
-  if (/\b(ship(ped)?|dispatch(ed)?|delivered|发货|已寄出|到货)\b/i.test(combined)) {
+  // Require past/completed shipping language — not capability ("we can ship").
+  if (/\b(shipped|dispatch(ed)?|delivered|已发货|已寄出|到货|已送达)\b/i.test(combined)
+    || /\b(shipment\s+(sent|done|complete)|发货完成)\b/i.test(combined)) {
     found.push({ event: 'shipped', detail: 'shipment signal in thread', evidence: combined.slice(0, 500) });
   }
   if (/\b(paid|payment\s*received|已付款|收到货款)\b/i.test(combined)) {

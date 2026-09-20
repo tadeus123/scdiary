@@ -4,11 +4,31 @@ const { isBroadFactoryQuery, routeQueryToCategory } = require('./manufacturing-c
 const { visibleLiveRows } = require('./public-roster');
 const gapDemand = require('./gap-demand');
 
+/** Generic RFQ words that appear on almost every listing — ignore for gap detection. */
+const GAP_STOPWORDS = new Set([
+  'rfq', 'quote', 'quotation', 'need', 'want', 'looking', 'please', 'thanks',
+  'supplier', 'factory', 'factories', 'manufacturer', 'manufacturing', 'company',
+  'pcs', 'pieces', 'piece', 'qty', 'quantity', 'units', 'unit', 'batch',
+  'budget', 'price', 'usd', 'cny', 'eur', 'cost', 'pay', 'payment',
+  'tolerance', 'lead', 'time', 'days', 'weeks', 'moq', 'sample', 'samples',
+  'china', 'chinese', 'shenzhen', 'dongguan', 'guangdong',
+  'the', 'and', 'for', 'with', 'from', 'this', 'that', 'have', 'can',
+  '询价', '报价', '交期', '数量', '预算', '公差', '厂家', '工厂', '供应商',
+]);
+
 function tokens(value) {
   return String(value || '')
     .toLowerCase()
     .split(/[^a-z0-9\u4e00-\u9fff.+-]+/i)
     .filter((word) => word.length > 1);
+}
+
+function gapTokens(query) {
+  return tokens(query).filter((word) => {
+    if (GAP_STOPWORDS.has(word)) return false;
+    if (/^\d+(\.\d+)?$/.test(word)) return false;
+    return true;
+  });
 }
 
 function scoreCompany(company, query) {
@@ -31,10 +51,13 @@ function scoreCompany(company, query) {
   return hits;
 }
 
-/** Score without broad-query padding of 1 — used for gap detection. */
+/**
+ * Capability fit for gap detection — ignores RFQ boilerplate tokens.
+ * Niche match for a routed category counts strongly.
+ */
 function meaningfulScore(company, query) {
   const hay = listingText(company).toLowerCase();
-  const needles = tokens(query);
+  const needles = gapTokens(query);
   let hits = 0;
   for (const word of needles) {
     if (hay.includes(word)) hits += 1;
@@ -88,12 +111,15 @@ async function findForPlugin({ query, limit, excludeIds, callerPersonId, recordG
     .sort((a, b) => b.score - a.score || b.meaningful_score - a.meaningful_score);
 
   const bestMeaningful = scored.reduce((max, row) => Math.max(max, row.meaningful_score || 0), 0);
-  const isGap = gapDemand.looksLikeFulfillmentNeed(q) && bestMeaningful < 2;
+  // Gap when a real fulfillment ask has no strong capability fit (threshold 3 after stopwords).
+  const isGap = gapDemand.looksLikeFulfillmentNeed(q) && bestMeaningful < 3;
 
   let matches = scored.slice(0, Math.min(Math.max(Number(limit) || 5, 1), 50));
-  // Honest path: do not push weak padded matches when this is a real fulfillment gap.
+  // Honest path: do not push weak matches when this is a real fulfillment gap.
   if (isGap) {
-    matches = scored.filter((row) => (row.meaningful_score || 0) >= 2).slice(0, Math.min(Math.max(Number(limit) || 5, 1), 50));
+    matches = scored
+      .filter((row) => (row.meaningful_score || 0) >= 3)
+      .slice(0, Math.min(Math.max(Number(limit) || 5, 1), 50));
   }
 
   let gap = null;
@@ -124,6 +150,7 @@ async function findForPlugin({ query, limit, excludeIds, callerPersonId, recordG
 
 module.exports = {
   tokens,
+  gapTokens,
   scoreCompany,
   meaningfulScore,
   matchView,

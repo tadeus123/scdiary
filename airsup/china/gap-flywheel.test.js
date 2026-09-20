@@ -22,10 +22,23 @@ assert.ok(!draft.text.includes('😀'));
 
 const detected = projects.detectOutcomes(
   'Can you quote lead time?',
-  'Unit price USD 12. Quote ready. Lead time 14 days. We can ship next month.'
+  'Unit price USD 12. Quote ready. Lead time 14 days.'
 );
 assert.ok(detected.some((row) => row.event === 'quoted'));
 assert.ok(detected.some((row) => row.event === 'note'));
+assert.ok(!detected.some((row) => row.event === 'shipped'));
+assert.ok(projects.detectOutcomes('status?', 'Order shipped yesterday').some((row) => row.event === 'shipped'));
+
+const { gapTokens, meaningfulScore } = require('./find');
+assert.ok(!gapTokens('RFQ 12pcs budget USD 40 CNC aluminum').includes('pcs'));
+assert.ok(gapTokens('RFQ 12pcs budget USD 40 CNC aluminum').includes('cnc'));
+assert.ok(gapTokens('RFQ 12pcs budget USD 40 CNC aluminum').includes('aluminum'));
+assert.ok(
+  meaningfulScore(
+    { domain: 'cable.com', niche: 'cable-assemblies', profile: {}, company_name_en: 'Cable Co' },
+    'exotic beryllium RFQ 12pcs budget USD 9000'
+  ) < 3
+);
 
 const facts = projects.factsFromOutcomes([
   { event: 'shipped', detail: 'shipped', evidence: 'shipped today' },
