@@ -109,17 +109,8 @@ app.get('/.well-known/oauth-authorization-server/airsup/oauth', (req, res) => {
 });
 // AIRSUP-END
 
-// AIRSUP20-BEGIN
-const airsup20Routes = require('../airsup20/routes');
-const airsup20Oauth = require('../airsup20/oauth-plugin');
-app.use('/airsup20', airsup20Routes);
-app.get('/.well-known/oauth-protected-resource/airsup20/mcp', (req, res) => {
-  res.json(airsup20Oauth.protectedResourceMetadata(req));
-});
-app.get('/.well-known/oauth-authorization-server/airsup20/oauth', (req, res) => {
-  res.json(airsup20Oauth.authorizationServerMetadata(req));
-});
 // OpenAI Plugins Directory domain verification (plain token only).
+// Airsup20 MCP/site is proxied to www.airsup.co via vercel.json rewrites.
 app.get('/.well-known/openai-apps-challenge', (req, res) => {
   res
     .status(200)
@@ -127,7 +118,6 @@ app.get('/.well-known/openai-apps-challenge', (req, res) => {
     .set('Cache-Control', 'no-store')
     .send('n8fEliTuk9U6PCu3LY6bu5Ro6mEfpFa6Fpn0veobyeQ');
 });
-// AIRSUP20-END
 
 // AIRSUPDEV-BEGIN
 const airsupdevRoutes = require('../airsupdev/routes');
