@@ -60,8 +60,20 @@ async function recordGapIfNeeded(store, { query, callerPersonId, chinaMatches, s
   if (!looksLikeFulfillmentNeed(query)) return null;
   const matches = Array.isArray(chinaMatches) ? chinaMatches : [];
   const best = matches.reduce((max, row) => Math.max(max, Number(row && row.score) || 0), 0);
-  // Gap when no meaningful china hit (score < 2 after padding stripped by find.js)
+  // Gap when no strong capability fit (aligned with find.js meaningful threshold < 3).
   if (best >= 3) return null;
+  const qKey = String(query || '').trim().toLowerCase().slice(0, 400);
+  if (qKey && typeof store.listGapDemands === 'function') {
+    try {
+      const open = await store.listGapDemands({ status: 'open', limit: 50 });
+      const existing = (open || []).find((row) =>
+        String(row.query || '').trim().toLowerCase().slice(0, 400) === qKey
+      );
+      if (existing) return existing;
+    } catch (error) {
+      console.error('Airsup china gap dedupe skipped:', error.message);
+    }
+  }
   const hints = extractHints(query);
   try {
     const row = await store.insertGapDemand({
@@ -83,6 +95,26 @@ async function recordGapIfNeeded(store, { query, callerPersonId, chinaMatches, s
     console.error('Airsup china gap demand skipped:', error.message);
     return null;
   }
+}
+
+async function markGapsFilledForCompany(store, companyId) {
+  const id = String(companyId || '').trim();
+  if (!store || !id || typeof store.listGapDemands !== 'function' || typeof store.updateGapDemand !== 'function') {
+    return 0;
+  }
+  let filled = 0;
+  try {
+    const rows = await store.listGapDemands({ limit: 200 });
+    for (const row of rows || []) {
+      if (!row || String(row.matched_company_id || '') !== id) continue;
+      if (row.status === 'filled' || row.status === 'closed') continue;
+      await store.updateGapDemand(row.demand_id, { status: 'filled' });
+      filled += 1;
+    }
+  } catch (error) {
+    console.error('Airsup china mark gap filled skipped:', error.message);
+  }
+  return filled;
 }
 
 function draftOutreachEmail({ demand, domain, claimLink, lang }) {
@@ -149,5 +181,6 @@ module.exports = {
   extractHints,
   meaningfulScore,
   recordGapIfNeeded,
+  markGapsFilledForCompany,
   draftOutreachEmail,
 };

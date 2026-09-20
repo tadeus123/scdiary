@@ -513,6 +513,11 @@ async function publishSupplier(args = {}) {
   await chinaDb.touchDomainAllow(next.domain, next.contact_email, {
     published_at: new Date().toISOString(),
   }).catch(() => null);
+  try {
+    await gapDemand.markGapsFilledForCompany(chinaDb, next.company_id);
+  } catch (error) {
+    console.error('Airsupdev gap filled mark skipped:', error.message);
+  }
   return { ok: true, supplier: summarizeCompany(next, null), card: endpointRecord(next) };
 }
 

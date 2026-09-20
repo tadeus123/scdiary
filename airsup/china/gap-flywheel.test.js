@@ -48,3 +48,6 @@ assert.ok(facts.some((row) => row.fact_key === 'has_shipped_jobs'));
 assert.ok(facts.some((row) => row.fact_key === 'observed_lead_time_days' && row.value === '14'));
 
 console.log('gap-demand + project-events tests passed');
+
+assert.strictEqual(typeof gap.markGapsFilledForCompany, 'function');
+

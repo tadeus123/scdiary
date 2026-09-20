@@ -126,6 +126,7 @@ async function ensureProject(store, { companyId, conversationId, inquiryId, dema
 async function recordThreadOutcomes(store, { company, conversationId, message, reply, inquiryId }) {
   if (!store || !company || !company.company_id) return { project: null, events: [] };
   const detected = detectOutcomes(message, reply);
+  if (!detected.length) return { project: null, events: [] };
   let project = null;
   try {
     project = await ensureProject(store, {
@@ -138,7 +139,7 @@ async function recordThreadOutcomes(store, { company, conversationId, message, r
     console.error('Airsup china project ensure skipped:', error.message);
     return { project: null, events: [] };
   }
-  if (!project || !detected.length || typeof store.insertProjectEvent !== 'function') {
+  if (!project || typeof store.insertProjectEvent !== 'function') {
     return { project, events: [] };
   }
   const created = [];

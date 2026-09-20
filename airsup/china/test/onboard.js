@@ -7,8 +7,8 @@
  * always require the live modules.
  *
  * Live UI still lives in `airsup/china/routes.js`. This file mirrors
- * applySiteDraft / POST /start / GET /verify / setup interaction fields, but
- * returns data (no redirects) and uses `/airsup/china/verify` links.
+ * applySiteDraft / POST /start / POST /verify / setup interaction fields, but
+ * returns data (no redirects) and uses `/verify` links. GET /verify only peeks.
  */
 const db = require('../db');
 const session = require('../session');
@@ -26,9 +26,10 @@ const {
 } = require('../fields');
 const { normalizeDomain, emailAllowedForSite, emailParts } = require('../domain');
 const { sendVerifyEmail } = require('../mail');
+const { peekVerifyToken, confirmVerifyToken } = require('../verify-token');
 const { emptyWeb, seedFromCompany, applyDump } = require('./web');
 
-const VERIFY_PATH = '/airsup/china/verify';
+const VERIFY_PATH = '/verify';
 
 /** Live Supabase when configured; otherwise test-only memory store (demos / local). */
 function store() {
@@ -65,10 +66,11 @@ async function openSession(req, res, companyId) {
     expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
   });
   res.clearCookie('airsup_china_sid', { path: '/airsup/china' });
+  res.clearCookie('airsup_china_sid', { path: '/airsup' });
   res.cookie('airsup_china_sid', sid, {
     httpOnly: true,
     sameSite: 'lax',
-    path: '/airsup',
+    path: '/',
     secure: req.secure || req.get('x-forwarded-proto') === 'https',
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
@@ -91,6 +93,7 @@ async function clearTestSession(req, res) {
   }
   const sid = session.readSid(req);
   if (sid) await memoryStore.deleteSession(session.sha256(sid)).catch(() => null);
+  res.clearCookie('airsup_china_sid', { path: '/' });
   res.clearCookie('airsup_china_sid', { path: '/airsup' });
   res.clearCookie('airsup_china_sid', { path: '/airsup/china' });
 }
@@ -277,77 +280,30 @@ async function startSignup({
 }
 
 /**
- * Same takeToken / verify / login semantics as live GET /verify, but returns
- * data only — no redirect and no session cookie. Caller creates the session.
- *
- * Returns { ok, errorKey, company, purpose }.
+ * Same peek semantics as live GET /verify — does not consume the token
+ * and does not set verified_at.
  */
-async function consumeVerifyToken(token) {
-  const raw = String(token || '').trim();
-  if (!raw) {
-    return { ok: false, errorKey: 'err_token', company: null, purpose: null };
-  }
-
-  try {
-    const peek = await store().getToken(session.sha256(raw));
-    if (!peek || (peek.purpose !== 'verify' && peek.purpose !== 'login')) {
-      return { ok: false, errorKey: 'err_token', company: null, purpose: null };
-    }
-
-    // Login links stay reusable until expiry (link-preview safe).
-    // Verify tokens stay one-shot.
-    let row = peek;
-    if (peek.purpose === 'verify') {
-      row = await store().takeToken(session.sha256(raw));
-      if (!row || row.purpose !== 'verify') {
-        return { ok: false, errorKey: 'err_token', company: null, purpose: null };
-      }
-    }
-    if (!row || (row.purpose !== 'verify' && row.purpose !== 'login')) {
-      return { ok: false, errorKey: 'err_token', company: null, purpose: null };
-    }
-
-    const company = await store().getById(row.company_id);
-    if (!company) {
-      return { ok: false, errorKey: 'err_token', company: null, purpose: row.purpose };
-    }
-
-    const lang = company.locale === 'en' ? 'en' : 'zh';
-    const patch = {};
-    if (company.status === 'pending') {
-      patch.contact_email = row.email || company.contact_email;
-      patch.status = 'verified';
-      patch.verified_at = new Date().toISOString();
-    } else if (company.status === 'verified' && row.email) {
-      // Keep mailbox aligned only while not live.
-      patch.contact_email = row.email;
-    }
-    // Never change contact_email or status for live.
-    if (Object.keys(patch).length) {
-      await store().updateCompany(company.company_id, patch);
-    }
-
-    let fresh = await store().getById(company.company_id);
-    if (fresh && (fresh.status === 'pending' || fresh.status === 'verified')) {
-      fresh = await applySiteDraft(fresh, company.website || company.domain, lang) || fresh;
-    }
-
-    return {
-      ok: true,
-      errorKey: null,
-      company: fresh,
-      purpose: row.purpose,
-    };
-  } catch (error) {
-    console.error('Airsup china test consumeVerifyToken error:', error);
-    return { ok: false, errorKey: 'err_db', company: null, purpose: null };
-  }
+async function peekVerifyLink(token) {
+  return peekVerifyToken(store(), session, token);
 }
 
 /**
- * Update interaction fields only (WeChat contacts, sample_lead, flexibility,
- * holidays, context, goal) using the same normalizeProfile patterns as live
- * readSetup — without rewriting scrapable site facts.
+ * Same consume semantics as live POST /verify — returns data only.
+ * Caller creates the session.
+ */
+async function consumeVerifyToken(token, { email, code } = {}) {
+  return confirmVerifyToken(store(), session, {
+    token,
+    email,
+    code,
+    applySiteDraft,
+  });
+}
+
+/**
+ * Update interaction fields (WeChat contacts, sample_lead, flexibility,
+ * holidays, context, goal) plus onboard-confirmed processes/machines.
+ * Other scrapable site facts stay unless the onboard capabilities step posts them.
  */
 async function saveInteraction(company, body, lang) {
   if (!company || !company.company_id) {
@@ -384,9 +340,20 @@ async function saveInteraction(company, body, lang) {
   const nextLeadTime = prev.lead_time || howYouWork;
   const nextTolerance = prev.tolerance || (src.tolerance !== undefined ? String(src.tolerance || '').trim() : '');
   const nextMoq = prev.moq || (src.moq !== undefined ? String(src.moq || '').trim() : '');
+  const capsStep = src.capabilities_step !== undefined
+    || src.processes !== undefined
+    || src.machines !== undefined;
+  const nextProcesses = capsStep
+    ? (src.processes !== undefined ? src.processes : [])
+    : prev.processes;
+  const nextMachines = src.machines !== undefined
+    ? String(src.machines || '').trim()
+    : prev.machines;
 
   const profile = normalizeProfile({
     ...prev,
+    processes: nextProcesses,
+    machines: nextMachines,
     sample_lead: howYouWork,
     lead_time: nextLeadTime,
     tolerance: nextTolerance || prev.tolerance,
@@ -414,7 +381,21 @@ async function saveInteraction(company, body, lang) {
   // lang reserved for future localized defaults; keep signature stable.
   void lang;
 
-  return store().updateCompany(company.company_id, patch);
+  const next = await store().updateCompany(company.company_id, patch);
+  try {
+    const factsStore = require('../facts-store');
+    await factsStore.backfillCompanyFacts(store(), next);
+    if (capsStep) {
+      await factsStore.recordFunnelEvent(store(), {
+        company_id: next.company_id,
+        event: 'profile_approved',
+        detail: 'onboard_save',
+      });
+    }
+  } catch (error) {
+    console.error('Airsup china onboard facts skipped:', error.message);
+  }
+  return next;
 }
 
 /** Publish when qualityReady; else err_publish or err_publish_quality. */
@@ -440,6 +421,23 @@ async function publishCompany(company) {
       });
     } catch (error) {
       console.error('Airsup china test allow publish touch skipped:', error.message);
+    }
+    try {
+      const factsStore = require('../facts-store');
+      await factsStore.recordFunnelEvent(store(), {
+        company_id: next.company_id,
+        event: 'published_live',
+        detail: next.domain || '',
+      });
+      await factsStore.backfillCompanyFacts(store(), next);
+    } catch (error) {
+      console.error('Airsup china publish facts skipped:', error.message);
+    }
+    try {
+      const gapDemand = require('../gap-demand');
+      await gapDemand.markGapsFilledForCompany(store(), next.company_id);
+    } catch (error) {
+      console.error('Airsup china gap filled mark skipped:', error.message);
     }
     return { ok: true, errorKey: null, company: next };
   } catch (error) {
@@ -550,6 +548,7 @@ module.exports = {
   applySiteDraft,
   previewWebsite,
   startSignup,
+  peekVerifyLink,
   consumeVerifyToken,
   saveInteraction,
   publishCompany,
