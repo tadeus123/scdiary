@@ -98,6 +98,16 @@ function getSeoForPath(pathname) {
     };
   }
 
+  if (path === '/supreme' || path.startsWith('/supreme/')) {
+    return {
+      title: 'supreme',
+      description: '',
+      path: '/supreme',
+      noindex: true,
+      includePersonSchema: false,
+    };
+  }
+
   const page = PAGES[path] || {
     title: 'Tade Mehl',
     description: 'Personal site of Tade Mehl.',

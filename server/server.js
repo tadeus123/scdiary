@@ -106,6 +106,7 @@ app.get('/.well-known/openai-apps-challenge', (req, res) => {
 // Import routes
 const diaryRoutes = require('./routes/diary');
 const adminRoutes = require('./routes/admin');
+const supremeRoutes = require('./routes/supreme');
 
 app.get('/sitemap.xml', (req, res) => {
   res.type('application/xml');
@@ -113,6 +114,7 @@ app.get('/sitemap.xml', (req, res) => {
 });
 
 // Use routes
+app.use('/', supremeRoutes);
 app.use('/', diaryRoutes);
 app.use('/admin', adminRoutes);
 

@@ -4731,4 +4731,52 @@ body.people-graph-page.is-zh .people-graph-question {
   }
 }
 
+.supreme-page .container {
+  max-width: 640px;
+}
+
+.supreme-page nav {
+  margin-bottom: 2.5rem;
+}
+
+.supreme-lead {
+  font-size: 1.05rem;
+  line-height: 1.8;
+  margin: 0 0 2rem;
+}
+
+.supreme-form {
+  margin-bottom: 0.5rem;
+}
+
+.supreme-page .form-group textarea {
+  min-height: 8rem;
+}
+
+.supreme-page .error-message,
+.supreme-page .success-message {
+  margin-bottom: 1.25rem;
+}
+
+.supreme-notes {
+  margin-top: 3rem;
+}
+
+.supreme-note {
+  padding: 1.5rem 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.supreme-note-meta {
+  font-size: 0.95rem;
+  color: var(--accent-color);
+  margin-bottom: 0.75rem;
+}
+
+.supreme-note-body {
+  font-size: 1.05rem;
+  line-height: 1.9;
+  white-space: pre-wrap;
+}
+
 

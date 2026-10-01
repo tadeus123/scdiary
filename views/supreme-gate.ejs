@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <%- include('partials/seo-head') %>
+  <link rel="stylesheet" href="/css/style.css?v=supreme1">
+</head>
+<body class="supreme-page">
+  <div class="container">
+    <nav>
+      <div class="nav-left">
+        <a href="/supreme" class="site-title">supreme</a>
+        <%- include('partials/edu-theme-toggle') %>
+      </div>
+    </nav>
+
+    <main>
+      <% if (locals.error) { %>
+        <div class="error-message"><%= error %></div>
+      <% } %>
+      <form action="/supreme/unlock" method="POST" class="login-form">
+        <div class="form-group">
+          <label for="password">password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            autofocus
+            autocomplete="current-password"
+            placeholder="enter the password"
+          >
+        </div>
+        <button type="submit" class="btn">enter</button>
+      </form>
+    </main>
+  </div>
+
+  <script src="/js/main.js"></script>
+</body>
+</html>

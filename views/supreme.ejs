@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <%- include('partials/seo-head') %>
+  <link rel="stylesheet" href="/css/style.css?v=supreme1">
+</head>
+<body class="supreme-page">
+  <div class="container">
+    <nav>
+      <div class="nav-left">
+        <a href="/supreme" class="site-title">supreme</a>
+        <%- include('partials/edu-theme-toggle') %>
+      </div>
+    </nav>
+
+    <main>
+      <p class="supreme-lead">a place to leave a thought, a piece of advice, or an experience. a reply is not expected.</p>
+
+      <% if (saved) { %>
+        <div class="success-message">saved.</div>
+      <% } %>
+      <% if (error) { %>
+        <div class="error-message"><%= error %></div>
+      <% } %>
+
+      <form action="/supreme" method="POST" class="login-form supreme-form">
+        <div class="form-group">
+          <label for="author">name</label>
+          <input
+            type="text"
+            id="author"
+            name="author"
+            required
+            maxlength="80"
+            autocomplete="name"
+            value="<%= author %>"
+          >
+        </div>
+        <div class="form-group">
+          <label for="body">note</label>
+          <textarea
+            id="body"
+            name="body"
+            required
+            maxlength="4000"
+            placeholder="a thought, some advice, or an experience"
+          ><%= body %></textarea>
+        </div>
+        <button type="submit" class="btn">share</button>
+      </form>
+
+      <% if (notes.length) { %>
+        <div class="supreme-notes">
+          <% notes.forEach(note => { %>
+            <article class="supreme-note">
+              <div class="supreme-note-meta">
+                <%= note.author %>
+                ·
+                <%= new Date(note.created_at).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                }) %>
+              </div>
+              <div class="supreme-note-body"><%= note.body %></div>
+            </article>
+          <% }) %>
+        </div>
+      <% } %>
+    </main>
+  </div>
+
+  <script src="/js/main.js"></script>
+</body>
+</html>
