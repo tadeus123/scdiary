@@ -46,10 +46,6 @@ function renderGate(res, { error = null, status = 200 } = {}) {
   res.status(status).render('supreme-gate', { error });
 }
 
-function cleanAuthor(value) {
-  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, 80);
-}
-
 function cleanBody(value) {
   return String(value || '').replace(/\r\n/g, '\n').trim().slice(0, 4000);
 }
@@ -78,7 +74,6 @@ router.get(['/supreme', '/supreme/'], async (req, res) => {
     notes: listed.notes || [],
     saved: req.query.saved === '1',
     error: listed.success ? null : 'could not load notes',
-    author: '',
     body: '',
   });
 });
@@ -87,26 +82,23 @@ router.post(['/supreme', '/supreme/'], async (req, res) => {
   noStore(res);
   res.locals.seo = pageSeo();
   if (!isUnlocked(req)) return renderGate(res);
-  const author = cleanAuthor(req.body?.author);
   const body = cleanBody(req.body?.body);
-  if (!author || !body) {
+  if (!body) {
     const listed = await listSupremeNotes();
     return res.status(400).render('supreme', {
       notes: listed.notes || [],
       saved: false,
-      error: 'write a name and a note',
-      author,
+      error: 'write a note',
       body,
     });
   }
-  const saved = await addSupremeNote(author, body);
+  const saved = await addSupremeNote(body);
   if (!saved.success) {
     const listed = await listSupremeNotes();
     return res.status(500).render('supreme', {
       notes: listed.notes || [],
       saved: false,
       error: 'could not save that. try again.',
-      author,
       body,
     });
   }

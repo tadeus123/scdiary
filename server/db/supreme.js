@@ -24,12 +24,12 @@ async function listSupremeNotes() {
   return { success: true, notes: data || [] };
 }
 
-async function addSupremeNote(author, body) {
+async function addSupremeNote(body) {
   const db = getClient();
   if (!db) return { success: false, error: 'not configured' };
   const { data, error } = await db
     .from('supreme_notes')
-    .insert([{ author, body }])
+    .insert([{ body }])
     .select('id, author, body, created_at')
     .single();
   if (error) return { success: false, error: error.message };
